@@ -60,9 +60,12 @@ app.setName(STORAGE_OS_IDENTITY);
 app.setAboutPanelOptions({
   applicationName: 'Kudium Browser',
   applicationVersion: app.isPackaged ? app.getVersion() : projectVersion,
-  version: app.isPackaged ? app.getVersion() : projectVersion,
-  copyright: 'Copyright © 2026 Kudium',
-  website: 'https://kudium.com',
+  version: '',
+  copyright: `Copyright © ${new Date().getFullYear()} Kudium LTD`,
+  website: 'https://browser.kudium.com',
+  iconPath: app.isPackaged
+    ? path.join(process.resourcesPath, 'assets/app-icon.png')
+    : path.join(__dirname, '../../assets/app-icon.png'),
 });
 
 restrictPackagedDebugging();
