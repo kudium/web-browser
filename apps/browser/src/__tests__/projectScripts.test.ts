@@ -48,9 +48,11 @@ it('persists project commands separately by group and folder while making global
   );
   projectScripts('two', '/code/b', { action: 'delete', id: global.id });
   expect(projectScripts('one', '/code/a', { action: 'list' })).toEqual([local]);
-  expect(
-    fs.statSync(path.join(mockRoot, 'developer-scripts.json')).mode % 0o1000
-  ).toBe(0o600);
+  if (process.platform !== 'win32') {
+    expect(
+      fs.statSync(path.join(mockRoot, 'developer-scripts.json')).mode % 0o1000
+    ).toBe(0o600);
+  }
 });
 it('moves an edited command between global and project scope without changing its identity', () => {
   const saved = projectScripts('one', '/code/a', {
