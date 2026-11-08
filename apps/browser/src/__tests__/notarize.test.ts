@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import { notarize } from '@electron/notarize';
 
 jest.mock('@electron/notarize', () => ({ notarize: jest.fn() }));
@@ -11,6 +12,9 @@ const context = {
 };
 beforeEach(() => {
   process.env = { ...originalEnvironment, CI: 'true' };
+  delete process.env.APPLE_API_KEY;
+  delete process.env.APPLE_API_KEY_ID;
+  delete process.env.APPLE_API_ISSUER;
   delete process.env.APPLE_ID;
   delete process.env.APPLE_ID_PASS;
   delete process.env.APPLE_TEAM_ID;
@@ -57,4 +61,32 @@ it('allows explicit local builds and ignores other platforms', async () => {
   } finally {
     warning.mockRestore();
   }
+});
+
+it('uses a protected temporary API key and removes it after success or failure', async () => {
+  Object.assign(process.env, {
+    APPLE_API_KEY: 'dummy-api-key',
+    APPLE_API_KEY_ID: 'DUMMYKEY01',
+    APPLE_API_ISSUER: 'dummy-issuer',
+  });
+  let keyPath = '';
+  const submission = async (options: { appleApiKey: string }) => {
+    keyPath = options.appleApiKey;
+    expect(await fs.readFile(keyPath, 'utf8')).toBe('dummy-api-key');
+    expect((await fs.stat(keyPath)).mode & 0o777).toBe(0o600);
+  };
+  (notarize as jest.Mock).mockImplementationOnce(submission);
+  await hook(context);
+  await expect(fs.stat(keyPath)).rejects.toThrow();
+  (notarize as jest.Mock).mockImplementationOnce(async (options) => {
+    await submission(options);
+    throw new Error('API submission rejected');
+  });
+  await expect(hook(context)).rejects.toThrow('API submission rejected');
+  await expect(fs.stat(keyPath)).rejects.toThrow();
+});
+it('rejects incomplete API credentials before submission', async () => {
+  process.env.APPLE_API_KEY = 'dummy-api-key';
+  await expect(hook(context)).rejects.toThrow('APPLE_API_KEY_ID');
+  expect(notarize).not.toHaveBeenCalled();
 });

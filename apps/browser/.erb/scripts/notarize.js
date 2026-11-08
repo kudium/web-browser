@@ -39,7 +39,7 @@ exports.default = async function notarizeMacos(context) {
   const required = ['APPLE_ID', 'APPLE_ID_PASS', 'APPLE_TEAM_ID'];
   if (required.some((name) => !process.env[name]?.trim()))
     throw new Error(
-      'CI macOS releases require Apple API credentials or APPLE_ID, APPLE_ID_PASS and APPLE_TEAM_ID.'
+      'CI macOS releases require Apple API credentials or APPLE_ID, APPLE_ID_PASS and APPLE_TEAM_ID for notarization.'
     );
   await notarize({
     appPath,
