@@ -107,3 +107,10 @@ existing signed Mac build** on `main` with the tag and original Browser release
 run ID. It requires successful signing/notarization verification jobs, downloads
 those exact CI artifacts, checks their version, and retries immutable uploads.
 It does not rebuild already signed installers.
+
+Coolify uses manually managed proxy labels for this application. The dedicated
+`kudium-browser-downloads` compression middleware excludes `text/event-stream`
+and `application/octet-stream`. Keep these exclusions when changing domains or
+resetting labels: gzip on installers removes file lengths and prevents the CDN
+from serving byte ranges. The publisher also verifies response checksums if a
+CDN omits `Content-Length`.
