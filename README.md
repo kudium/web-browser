@@ -11,7 +11,7 @@ apps/
 
 - [Browser setup and documentation](apps/browser/README.md)
 - [Web service setup](apps/web/README.md)
-- [Deploy webbrowser.kudium.com](apps/web/deploy/README.md)
+- [Deploy browser.kudium.com](apps/web/deploy/README.md)
 
 ## Start development
 
@@ -47,9 +47,15 @@ integration tests. Without it, those tests are explicitly skipped.
 
 `npm run package:browser` packages the browser with its existing GitHub update feed.
 `npm run package:web` packages the browser with the feed at
-`https://webbrowser.kudium.com`. The name refers to the update provider; the web
+`https://browser.kudium.com`. The name refers to the update provider; the web
 service itself deploys from `apps/web/Dockerfile` or `apps/web/compose.yaml`.
 
 The web backend supports Better Auth sessions, encrypted sync records and update
 feeds. Desktop account connection and encryption-key onboarding remain separate
 work. Deployment instructions and current limitations live with the web app.
+
+## Local desktop installers
+
+See the browser README for [macOS, Windows and Linux build commands](apps/browser/README.md#packaging-locally)
+and [cleaning generated output](apps/browser/README.md#output-and-cleaning).
+Local packaging does not publish a stable or beta release.
