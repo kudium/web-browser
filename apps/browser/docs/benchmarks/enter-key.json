@@ -1,0 +1,953 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T09:42:09.138Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "7a5fefc79b2f6da0d8fe04cede3e087f7701eee9bb203aca5e1057412212c724",
+    "sourceHashes": {
+      "src/browser/aiKeys.ts": "efc3f20da3224e5e7e54f424ff29038386fb82ee26bb1978d5f672a6111ade06",
+      "src/main/ai.ts": "1bce8e149bc2243c2bec99888bdb9e11561d040ec4bc2b0476baeb5e51a4b240",
+      "src/main/aiProtocol.ts": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+      "src/main/aiInterrupt.ts": "63eec02aab9bdb90cdccd2ce9ecd0c1b71fb809c474382545dece78f40422ee5"
+    },
+    "bundleSha256": "383ecb0dca8b2f9f7f45419937ecffc2811f60a5c1328beb732c0844c5e3e31f",
+    "results": [
+      {
+        "label": "public Enter implicit submit",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "Shift+Enter textarea newline",
+        "key": "Shift+Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "page prevents Enter default",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "Control+Enter no character insertion",
+        "key": "Control+Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "private Enter review declined",
+        "key": "Enter",
+        "isError": true,
+        "reviews": 1,
+        "events": [],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 0
+      },
+      {
+        "label": "private Enter review accepted",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "field changes during focus",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 1",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 2",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 3",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 4",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 5",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 6",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 7",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 8",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 9",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 10",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 11",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 12",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault, official MCP SDK, hidden native WebContentsView, trusted Chromium key events and loopback POST bodies. Native reviews are controlled; page submit handler prevents navigation and fetches the synthetic form value. Baseline substitutes retained aiKeys.ts and ai.ts; other modules use current source. No physical keyboard, nested-frame coverage, original activity UnknownVizError fix, all-channel containment or signed/cross-platform claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T09:43:18.835Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "7a5fefc79b2f6da0d8fe04cede3e087f7701eee9bb203aca5e1057412212c724",
+    "sourceHashes": {
+      "src/browser/aiKeys.ts": "879734d32501b3a37289a52c19f047ae9eed6958d32c9a381403605587c793a8",
+      "src/main/ai.ts": "f9f5e11ec4b61feeab50aa83d7bc63c48824e38c45718bbc1431c23d296726d3",
+      "src/main/aiProtocol.ts": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+      "src/main/aiInterrupt.ts": "63eec02aab9bdb90cdccd2ce9ecd0c1b71fb809c474382545dece78f40422ee5"
+    },
+    "bundleSha256": "5c97df5e18508159ac17e96afd80e5c9ad3dbddab6f6cf4dd947996588ba2f26",
+    "results": [
+      {
+        "label": "public Enter implicit submit",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "Shift+Enter textarea newline",
+        "key": "Shift+Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first\n",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "page prevents Enter default",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "Control+Enter no character insertion",
+        "key": "Control+Enter",
+        "isError": false,
+        "reviews": 0,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "private Enter review declined",
+        "key": "Enter",
+        "isError": true,
+        "reviews": 1,
+        "events": [],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 0
+      },
+      {
+        "label": "private Enter review accepted",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "field changes during focus",
+        "key": "Enter",
+        "isError": true,
+        "reviews": 1,
+        "events": [],
+        "submits": 0,
+        "notes": "first",
+        "socketRequests": 0,
+        "bodies": [],
+        "nativeHooks": [],
+        "keyCommands": 0
+      },
+      {
+        "label": "approved Enter repeat 1",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 2",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 3",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 4",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 5",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 6",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 7",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 8",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 9",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 10",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 11",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      },
+      {
+        "label": "approved Enter repeat 12",
+        "key": "Enter",
+        "isError": false,
+        "reviews": 1,
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keypress",
+            "key": "Enter",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "Enter",
+            "trusted": true
+          }
+        ],
+        "submits": 1,
+        "notes": "first",
+        "socketRequests": 1,
+        "bodies": [
+          "synthetic-enter-value"
+        ],
+        "nativeHooks": [],
+        "keyCommands": 2
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault, official MCP SDK, hidden native WebContentsView, trusted Chromium key events and loopback POST bodies. Native reviews are controlled; page submit handler prevents navigation and fetches the synthetic form value. Baseline substitutes retained aiKeys.ts and ai.ts; other modules use current source. No physical keyboard, nested-frame coverage, original activity UnknownVizError fix, all-channel containment or signed/cross-platform claim."
+  }
+}

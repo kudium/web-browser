@@ -1,0 +1,73 @@
+{
+  "recordedAt": "2026-11-07T04:41:38.628Z",
+  "sourceHashes": {
+    "src/main/aiActivityLayer.ts": "bec762c6107d327178b9e0214c17c9121603af331374a9ca8a1166138a6e9174",
+    "src/__tests__/aiActivityLayer.test.ts": "03ff69d70c2b6b21363ff0124516f5363dcac3364e56b6c3c1ceac8d939be502",
+    ".erb/scripts/checks.ts": "0295fc88353c699f562d761bd73b00a5173d9b355df3cf3c9e5cc40a66216188",
+    ".erb/scripts/browser-ui-smoke.cjs": "0cd929cd29d1052348c7763ca1b26e0c44347109e093673cbc0b8c3d0c9001c0",
+    ".erb/scripts/ai-activity-smoke.cjs": "1f2a0d0cb5625cc153b42a15945680785a28283827e2c465a4e2e339e5c92706",
+    ".erb/scripts/ai-activity-lifecycle-smoke.cjs": "dc3f7d9cd30236cd03e2badbcbb9b5f0ffc9dd192ba1ec0a29a5d6792b6e4ee7"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "observedExitCode": 0,
+      "logSha256": "292fea0e7e7a63f520b24962cb2be15f1bf8873d6361c0c70b127d8f41a834fd",
+      "summary": "132 suites / 667 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native activity before",
+      "observedExitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "summary": "Baseline constructor passed: unused renderer/timer 1/1.",
+      "probe": ".erb/scripts/ai-activity-lifecycle-smoke.cjs"
+    },
+    {
+      "name": "native activity after",
+      "observedExitCode": 0,
+      "logSha256": "44a504e41c5cb5ac0952087faf422cf4a7b921833684eff755e2263ceaf1832d",
+      "summary": "Lifecycle passed: unused renderer/timer 0/0; first-use pointer, trusted takeover, reuse and cleanup.",
+      "probe": ".erb/scripts/ai-activity-lifecycle-smoke.cjs"
+    },
+    {
+      "name": "short profile after",
+      "observedExitCode": 0,
+      "logSha256": "5ee957fd232fbf45a98c68e647590b1f0e81ed9f0602bae78567bb2a0671ccec",
+      "summary": "Passed"
+    },
+    {
+      "name": "broad sidebar smoke",
+      "observedExitCode": 1,
+      "logSha256": "81b2276b03e0b43ab43c7629c7851db199857f495ad45fedc38f234322ef3211",
+      "summary": "Failed native webpage focus after takeover; hostFocused false. Not a pass."
+    },
+    {
+      "name": "restored native input regression baseline",
+      "probe": ".erb/scripts/ai-activity-smoke.cjs",
+      "baselineRevision": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+      "observedExitCode": 1,
+      "logSha256": "d8bd4125027439f4bd760ca97bb37fe5adca43c3b2b0fef5a005f79491549ee4",
+      "summary": "UnknownVizError on original baseline implementation. Cause unresolved; not a pass."
+    },
+    {
+      "name": "restored native input regression current",
+      "probe": ".erb/scripts/ai-activity-smoke.cjs",
+      "observedExitCode": 1,
+      "logSha256": "d8bd4125027439f4bd760ca97bb37fe5adca43c3b2b0fef5a005f79491549ee4",
+      "summary": "UnknownVizError also on current implementation. Baseline comparison does not establish this as a new regression; input gate remains unverified."
+    }
+  ],
+  "scope": "Component and functional checks; original native input regression fails on baseline and current, and broad native focus remains failed. No full profiling, signed installation or production-readiness claim."
+}

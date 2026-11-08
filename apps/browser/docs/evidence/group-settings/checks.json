@@ -1,0 +1,194 @@
+[
+  {
+    "width": 620,
+    "theme": "light",
+    "expanded": false,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "exportState": "visible",
+    "visible": true,
+    "disabled": false,
+    "error": false
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "exportState": "error",
+    "visible": true,
+    "disabled": false,
+    "error": true
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "exportState": "loading",
+    "visible": true,
+    "disabled": true,
+    "error": false
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "expanded": true,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "expanded": false,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "exportState": "visible",
+    "visible": true,
+    "disabled": false,
+    "error": false
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "exportState": "error",
+    "visible": true,
+    "disabled": false,
+    "error": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "exportState": "loading",
+    "visible": true,
+    "disabled": true,
+    "error": false
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "expanded": true,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "expanded": false,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "exportState": "visible",
+    "visible": true,
+    "disabled": false,
+    "error": false
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "exportState": "error",
+    "visible": true,
+    "disabled": false,
+    "error": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "exportState": "loading",
+    "visible": true,
+    "disabled": true,
+    "error": false
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "expanded": true,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "expanded": false,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "exportState": "visible",
+    "visible": true,
+    "disabled": false,
+    "error": false
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "exportState": "error",
+    "visible": true,
+    "disabled": false,
+    "error": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "exportState": "loading",
+    "visible": true,
+    "disabled": true,
+    "error": false
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "expanded": true,
+    "withinViewport": true,
+    "noOverflow": true,
+    "identityTogether": true,
+    "slugOutsideDisclosure": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "fieldsVisible": true
+  }
+]

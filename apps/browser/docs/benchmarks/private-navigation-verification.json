@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-11-07T09:15:51.769Z",
+  "valid": true,
+  "artifacts": {
+    "docs/benchmarks/private-navigation.json": "95217d4d6e6060f273900424584b20da4365c040621898d4858aa70437757184",
+    "docs/benchmarks/private-navigation-2026-11-07.md": "eaa137ddae16cbcb8ea2f813a2b98cb6e0d8ca0c9e5dbfd61f4b89eca38ab983",
+    "docs/security/ipc-inventory-2026-11-07-private-navigation.json": "27e7c1aeab15d5e05b27afc5d6ac7fdcc29c8b790b264792f6e50f28936c5397",
+    "src/main/ai.ts": "90056ba7cb5139d2718129998ca3cd38a55282b428454d4ab25c6603fa830077",
+    "src/main/aiNavigation.ts": "f00eec0680b705e7e93fef456b075bb772a26fb0d3d0c286753776cd83b232b9",
+    "src/main/advancedPreferences.ts": "9c1ee2e41a23611b73d3089ffe5efddf732bebcdf43cf795bd705084a624b926",
+    "src/main/aiDialogs.ts": "dc760ff22218ab3f9c44d916a8f252895ea57156043227a19a3008719ed676ca",
+    "src/main/requestRules.ts": "ba10d0737c62411c294e8e239fab3306dfdc69c1bdd92fd07907889a69111a5f",
+    "src/__tests__/requestRules.test.ts": "d556418277b5df6234879f7e218bcbf028f6934552a875c4038bd21c4276384e",
+    "src/__tests__/aiNavigation.test.ts": "7cace760d5ed098317068904203ea559731e09c748238990df0128eeb1444291",
+    "src/__tests__/aiDialogs.test.ts": "64b9807a760fde5de7bf0df64f032e2716b429348a6f67e3334230e7034e1301",
+    ".erb/scripts/private-navigation-smoke.cjs": "d636232b6be32e160724da6b111c0fe4ff0e55c2244bca857812f07f8a93a21e",
+    ".erb/scripts/checks.ts": "ae7ff8b87f3506fde4ccb58bca0fff068661e7b264523070ad01526d1c815026"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "0078283e0ecd9c531cfe3072d4329cbc6e2c22bdf8c5ae10b84ba4d04a629db0",
+      "summary": "142 suites /722 tests pass"
+    },
+    {
+      "name": "lint-types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Repository lint and TypeScript pass"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Production webpack build passes"
+    },
+    {
+      "name": "native",
+      "command": "node node_modules/electron/cli.js .erb/scripts/private-navigation-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "c61da8da25e4e1aa157b8d4ae55ef8efecc5cf11cc3ed885c80b5d84e55ca455",
+      "summary": "MCP redirects/Stop/consent/shared session and native POST 307 preservation pass"
+    },
+    {
+      "name": "inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "f61090eb4a22f08d92707e55a39763192a51b16f7eba0b07a8761d5f397802dc",
+      "summary": "Current inventory refreshed; immutable private-navigation snapshot preserved"
+    }
+  ],
+  "limitations": [
+    "Actual registerAI/encrypted vault/MCP/native request callbacks and loopback HTTP socket counts. Before replaces only the navigation and preference modules with retained pre-change files; other modules use current source. Controlled native reviews; synthetic values. Main-frame navigation only; no containment of descendants, fetch, workers, existing WebSocket/WebRTC channels or later sends after navigation completes. macOS native Electron only; no signed/cross-platform release claim.",
+    "Dedicated private new-tab/history socket fixtures remain open; glue is type-checked and existing navigation lifecycle tests pass.",
+    "Initial approved endpoint receives its request. Main-frame redirects only; no immutable payload provenance, all-channel containment, signed/cross-platform or overall speedup claim."
+  ]
+}

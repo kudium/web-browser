@@ -1,0 +1,90 @@
+{
+  "recordedAt": "2026-11-07T08:02:51.339607+00:00",
+  "rawReportSha256": "d474071bedb4c39e439ee3384b05e4b24e8f3d23457afef8445168480578f177",
+  "sourceHashes": {
+    "src/main/groupRemoval.ts": "d2362b5b8a144f2bc1cff37f743af5191fd189895e76411bc4aab843a713b51f",
+    "src/main/groupRemovalJournal.ts": "f7bd829c5ceeeb574f6eb3b260273d984a034ce4b4fe53bdefee09480184869c",
+    "src/main/electronBrowser.ts": "11fc87a4051532dbf83d48e332cd8d497fb25dda2ab15fe918a2eef74c9e6570",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "src/main/passwordManager/index.ts": "04011df174d83f9e841d733a53119a6abb8d21cd09994ef94e78445d6bc4252c",
+    "src/main/passwordManager/vault.ts": "ab3ff287a44374c8da3ea35583b6bf366f5b78754bdf8b11ba98d854823b00b8",
+    "src/main/preload.ts": "0fa41ad7ef5efbcbec55700e01535930f0bd87ce745ca0e135cc683457b8bd07",
+    "src/browser/contracts.ts": "8c57445b84f9e8e08b28cbb8136bc90c5c08e2124e930b5b504aa8f825bffb41",
+    "src/components/View/Main/Main.tsx": "c5ffcae86bdf98cac3dcf3e01d25eb222ddca28827bc78863d90a1ab2fc3ce92",
+    "src/utils/AppManager.ts": "7ddf48e5609b12f2741c25d9b6e0bc61be1f63c9c18b31c65570499c00f14887",
+    "src/__tests__/groupRemoval.test.ts": "e3370607f36a3b67f79b8ee6816ed95322a66ac7f198b5e7d7b2a2de7c091b02",
+    "src/__tests__/groupRemovalJournal.test.ts": "4757ebb6721d02dd2dcc735fa672c1896a1a9a215c3f1b97ac8773bc3ea7561a",
+    "src/__tests__/appState.test.tsx": "c16123bbe26e9446bd88c1c8481dec2cd4da880c35d1605cbbc1ee792d34dccb",
+    ".erb/scripts/checks.ts": "269d9fb347826dd338de8a8b4e86d6276d69f19f57dc029b98994c3ec895c849",
+    ".erb/scripts/group-removal-boundary-smoke.cjs": "3b003ddefd6084ac9a7f39e35c390bd4780cd919fe86d566d20090ed63f8d463",
+    ".erb/scripts/group-close-removal-smoke.cjs": "2f4e514041f6d3669cecc36d31f1ba99cfafed657bc35859e24dbc15e916a78b",
+    ".erb/scripts/browser-ui-smoke.cjs": "0cd929cd29d1052348c7763ca1b26e0c44347109e093673cbc0b8c3d0c9001c0"
+  },
+  "inventoryPath": "docs/security/ipc-inventory-2026-11-07-group-removal.json",
+  "inventorySha256": "47a368a5e5bc2057c583f16ae977e1aafb3879ccfa4a323b08be73f4f278362e",
+  "identitiesVerified": true,
+  "newlyBlockedUnsafeRequests": 4,
+  "secondaryProfileCookieBefore": 1,
+  "secondaryProfileCookieAfter": 0,
+  "restartStorageClearCallsBefore": 2,
+  "restartStorageClearCallsAfter": 1,
+  "approvedOwnerCloseCompletionVerified": true,
+  "staleLayoutLastOwnerDeletionVerified": true,
+  "checks": [
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/group-removal-boundary-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "52be5fa8822855fccdd0dc5a23c777402d590e3e88cdc53f8724b7d7f5ecf3af",
+      "summary": "Four unsafe requests clear cookies; second profile remains; owner-close rejects after effects; last-owner stale layout keeps cookies; process-restart retry repeats storage clear"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/group-removal-boundary-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "99bd6ba3b864b8fa3254fbc698aaab5431bd83302f8ffa6206545cba6baa0668",
+      "summary": "Four unsafe requests blocked; all selected unshared profiles clear; committed owner-close finishes; stale layout respects retired IDs; native process retry skips completed storage step"
+    },
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "31c815c81468ac936c24507a41d347ebeddabe4505056ff79f0bb1164e2a3f91",
+      "summary": "138 suites / 698 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native UI integration",
+      "command": "node node_modules/electron/cli.js .erb/scripts/group-close-removal-smoke.cjs",
+      "observedExitCode": 0,
+      "logSha256": "5517a5d1d49d69dbbe423a13513cdb786b6d22d0a11c54e9be1ef088adac2c07",
+      "summary": "Actual renderer/main unload/confirm/cancel, shared retention, final-owner cookies/storage/history/settings, light/dark/narrow native dialog passed"
+    },
+    {
+      "name": "inventory refresh",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "701730cf98c58ec57ed8f809a6147923d54c4de47259e8c7cb92f4706d290a5a",
+      "summary": "Source locations/hashes refreshed; app-owned channel counts unchanged"
+    }
+  ],
+  "limitations": [
+    "Actual group handler and native same-frame document identities; real cookies/storage/site-settings and two separate Electron processes for failed-cleanup retry. Native dialog completion, unloaded predicates, group locks, history dispatch and uninitialized vault are explicit controls. Actual application views/renderer/vault/history integration is checked separately by tests and group-close-removal-smoke. No physical OS auth, installed-extension writers, signed/cross-platform or whole-app performance claim.",
+    "Journal is bounded, file/directory synced and resumable; not an atomic transaction across Chromium/vault/history/renderer storage.",
+    "Interruption at every effect/checkpoint, power loss, full disk, conflicting/invalid recovery UI, installed-extension/session writers and cross-platform directory durability remain open.",
+    "Current production build/native UI checked; no current signed/package verification, physical OS auth, downstream private-data containment or whole-app performance claim."
+  ]
+}

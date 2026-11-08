@@ -1,0 +1,27 @@
+const {app,BrowserWindow,ipcMain}=require('electron');
+const fs=require('fs'),os=require('os'),path=require('path'),assert=require('assert');
+const {buildSync}=require('esbuild');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-developer-focus-'));
+app.setPath('userData',path.join(root,'profile'));
+const out=path.resolve('docs/evidence/developer-focus');fs.mkdirSync(out,{recursive:true});
+const tabs=[{id:'one',name:'Example',url:'https://example.com',sessionId:'work',sessionName:'Work',icon:''},{id:'two',name:'Other',url:'https://other.test',sessionId:'other',sessionName:'Other group',icon:''}];
+fs.writeFileSync(path.join(root,'main.ts'),`export {registerSiteDeveloperLibrary} from ${JSON.stringify(path.resolve('src/main/siteDeveloperLibrary'))};export {updateSiteSettings} from ${JSON.stringify(path.resolve('src/main/siteSettings'))};`);
+buildSync({entryPoints:[path.join(root,'main.ts')],bundle:true,platform:'node',external:['electron'],outfile:path.join(root,'main.cjs')});
+buildSync({entryPoints:['src/main/preload.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(root,'preload.cjs')});
+fs.writeFileSync(path.join(root,'preview.tsx'),`import React from ${JSON.stringify(require.resolve('react'))};import {createRoot} from ${JSON.stringify(require.resolve('react-dom/client'))};import {Theme} from '@radix-ui/themes';import {DeveloperSidebar} from ${JSON.stringify(path.resolve('src/components/UI/DeveloperSidebar'))};import ${JSON.stringify(path.resolve('src/renderer/index.css'))};localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(tabs))});localStorage.setItem('user_last_app_id','one');function Preview(){const [active,setActive]=React.useState(true),[focus,setFocus]=React.useState('one'),[theme,setTheme]=React.useState('light');Object.assign(window,{setFixtureActive:setActive,setFixtureFocus:setFocus,setFixtureTheme:setTheme});return <Theme appearance={theme}><aside className="ai-sidebar" style={{width:'100%',height:'100vh'}}><DeveloperSidebar active={active} focusedTabId={focus} onFocusTab={setFocus}/></aside></Theme>;}createRoot(document.getElementById('root')).render(<Preview/>);`);
+buildSync({entryPoints:[path.join(root,'preview.tsx')],bundle:true,platform:'browser',jsx:'automatic',nodePaths:[path.resolve('node_modules')],outfile:path.join(root,'preview.js'),loader:{'.svg':'dataurl','.png':'dataurl','.woff2':'dataurl'}});
+fs.writeFileSync(path.join(root,'index.html'),'<link rel="stylesheet" href="preview.css"><div id="root"></div><script src="preview.js"></script>');
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{await app.whenReady();ipcMain.handle('browser-group-lock',()=>({available:true,protected:[],unlocked:[]}));
+const w=new BrowserWindow({width:400,height:640,useContentSize:true,webPreferences:{preload:path.join(root,'preload.cjs'),contextIsolation:true}});
+const main=require(path.join(root,'main.cjs'));const dispose=main.registerSiteDeveloperLibrary(w,()=>tabs,()=>undefined);
+const run=code=>w.webContents.executeJavaScript(code);const until=async code=>{for(let i=0;i<60;i++){if(await run(code))return;await wait(50);}throw new Error('Timeout: '+code);};
+await w.loadFile(path.join(root,'index.html'));await until("document.body.textContent.includes('No hooks')");
+await run('window.setFixtureActive(false);undefined');await wait(80);
+main.updateSiteSettings('work','https://example.com',{developer:{enabled:true,before:'',after:'log(url)',css:'header {color: green}'}});
+await run('window.setFixtureActive(true);undefined');await until("document.body.textContent.includes('Hooks active')");
+await run("window.setFixtureFocus('two');undefined");await until("document.body.textContent.includes('Other group') && document.body.textContent.includes('No hooks')");
+main.updateSiteSettings('other','https://other.test',{developer:{enabled:true,before:'',after:'log(url)',css:''}});
+await until("document.body.textContent.includes('Hooks active')");
+for(const width of [240,600])for(const theme of ['light','dark']) {w.setContentSize(width,640);await run(`window.setFixtureTheme('${theme}');undefined`);await wait(160);fs.writeFileSync(path.join(out,`${width}-${theme}.png`),(await w.webContents.capturePage()).toPNG());}
+console.log('Focused group switch, hidden-panel hook save, reopen refresh, and live settings refresh passed');dispose();w.destroy();app.quit();})().catch(error=>{console.error(error);app.exit(1)});

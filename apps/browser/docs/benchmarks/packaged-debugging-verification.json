@@ -1,0 +1,110 @@
+{
+  "recordedAt": "2026-11-07T06:41:49.054Z",
+  "sourceHashes": {
+    "src/main/main.ts": "3ba787ea0f4ea33f060f8530816f2a32861a8574d85ef1483110dbc9e405aa5c",
+    "src/main/runtimeSecurity.ts": "5a2933363ac0028339c2d1b7cf0eccbed935cb1d77741c9924e0bd327b6e2eb4",
+    "src/__tests__/runtimeSecurity.test.ts": "121c1603e905ec4017780ba5b0ef08eac487f7e063f21b663da564a6b0f8e96e",
+    ".erb/scripts/checks.ts": "0ae12f60777248a7e891832312be9ee6ea0820c1272344ff382e2d8abeb2e8a1",
+    ".erb/scripts/packaged-debugging-smoke.cjs": "043beda5a107c5747caa9f4f117a731b53ac5844fae85166dcd283bfe43bdc81",
+    ".erb/scripts/packaged-observer-smoke.cjs": "0afe7937c92f5f7765eb05e5b47abf8a28104f6dd74809690522e982f1d78b79"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "e712c89940bb228da913bd68896ccc1ad917af887dea1df5739bbdb291563b56",
+      "summary": "133 suites / 673 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed; runner style checked separately after adding native cases"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native directory package",
+      "command": "electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-debugging-package",
+      "observedExitCode": 0,
+      "logSha256": "7e891b28d933d38371bb5653448878bd84c7e0220b0596a1fa4d0cb331f33ac7",
+      "summary": "Passed; unsigned/ad-hoc macOS arm64"
+    },
+    {
+      "name": "baseline CLI transports",
+      "command": "node .erb/scripts/packaged-debugging-smoke.cjs before /tmp/touchbox-fuse-package/mac-arm64/TouchBox.app",
+      "observedExitCode": 0,
+      "logSha256": "d4fa6617a3d9945b06ff74ce4049090f99e1dc7cdefaaa32196255f3bb8e2c3a",
+      "summary": "Three actual-package cases pass; endpoints available and native startup executes"
+    },
+    {
+      "name": "packaged release checks",
+      "command": "npm run test:packaged-security -- /tmp/touchbox-debugging-package/mac-arm64/TouchBox.app",
+      "observedExitCode": 0,
+      "logSha256": "69b525b0a6c916c8dba52a1f7ff5be589c206b902c0e90f963cb83e874d986ca",
+      "summary": "Fuses, actual-package debugging refusal and instrumented production-payload UI/isolation/history/CSP/cleanup pass"
+    }
+  ],
+  "nativeRuntime": {
+    "before": {
+      "frameworkSha256": "96cf581c8e57fa58a39fc4ad98ba39c8019fe83caad2e0f945f5f0335f9d14c4"
+    },
+    "after": {
+      "frameworkSha256": "96cf581c8e57fa58a39fc4ad98ba39c8019fe83caad2e0f945f5f0335f9d14c4"
+    }
+  },
+  "rawReports": {
+    "debuggingSha256": "23f90994aebaaa13d9b965b9c1471f7b4eb1e091260bd19b89c8776e2c003ef7",
+    "observerSha256": "aea4f9d0cd7db8e2459d5af97d28f6cf385bf9b3b10d1396ad0950a929275544",
+    "fusesSha256": "23b09bb9455f3a7fc769dcb6a0d909af063699b9bdbd8c801a9732dfe27ca0d2"
+  },
+  "identitiesVerified": true,
+  "scope": "Untouched local packages for native before/after debugging transports and startup. Test-only observer rewrapped ASAR with identical production entry bytes for UI/worker/CSP assertions. No production bypass. Original direct-CDP smoke retained as historical tooling.",
+  "limitations": [
+    "Only unsigned/ad-hoc macOS arm64 verified.",
+    "No full desktop suite, normal pending-quit, signed installation/update, cookie migration or other-platform claim.",
+    "Observer result is instrumented production-payload evidence, not untouched-release full UI verification.",
+    "Broader native input/focus, private-data release, IPC and file-protocol gates remain open."
+  ],
+  "runtime": {
+    "node": "24.22.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "150",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.11",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2026e",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.6.75.19-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "45.0.0",
+    "chrome": "156.0.8078.48"
+  },
+  "runtimeSource": "Native after observer; before and after framework SHA-256 identities are equal."
+}

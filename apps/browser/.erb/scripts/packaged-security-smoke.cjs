@@ -1,0 +1,80 @@
+/* Launch actual packaged code with disposable userData and renderer-only CDP. */
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+const http = require('node:http');
+const crypto = require('node:crypto');
+const assert = require('node:assert/strict');
+const { spawn } = require('node:child_process');
+const { performance } = require('node:perf_hooks');
+const asar = require('@electron/asar');
+const plist = require('plist');
+const appPath = path.resolve(process.argv[2] || '');
+assert.equal(process.platform, 'darwin');
+assert(appPath.endsWith('.app') && fs.existsSync(appPath), 'Supply a packaged .app');
+const root = path.resolve(__dirname, '../..');
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-packaged-security-'));
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const hash = (data) => crypto.createHash('sha256').update(data).digest('hex');
+const until = async (read, label, ms = 12000) => {
+  const deadline = performance.now() + ms;
+  while (performance.now() < deadline) { const value = await read(); if (value) return value; await wait(25); }
+  throw new Error(`Timed out: ${label}`);
+};
+const connection = async (url) => {
+  const socket = new WebSocket(url);
+  let sequence = 0; const pending = new Map();
+  socket.addEventListener('message', (event) => { const value = JSON.parse(event.data); const item = pending.get(value.id); if (item) { pending.delete(value.id); value.error ? item.reject(new Error(JSON.stringify(value.error))) : item.resolve(value.result); } });
+  await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }); });
+  const send = (method, params) => new Promise((resolve, reject) => { const id = ++sequence; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params })); });
+  const evaluate = async (expression) => {
+    const value = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+    if (value.exceptionDetails) throw new Error(value.exceptionDetails.text + ': ' + value.exceptionDetails.exception?.description);
+    return value.result.value;
+  };
+  return { evaluate, close: () => socket.close() };
+};
+let child; let shell; let page; let log = '';
+const server = http.createServer((_request, response) => { response.setHeader('Content-Type', 'text/html'); response.end('<!doctype html><title>Packaged local fixture</title><h1>Local page</h1><script>window.fixtureRan=true</script>'); });
+async function run() {
+  const archive = path.join(appPath, 'Contents/Resources/app.asar');
+  for (const file of ['main/main.js', 'main/preload.js', 'renderer/renderer.js', 'renderer/index.html']) assert.equal(hash(asar.extractFile(archive, `dist/${file}`)), hash(fs.readFileSync(path.join(root, 'release/app/dist', file))), `Packaged ${file} must match current production build`);
+  const info = plist.parse(fs.readFileSync(path.join(appPath, 'Contents/Info.plist'), 'utf8'));
+  const executable = path.join(appPath, 'Contents/MacOS', info.CFBundleExecutable);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${server.address().port}/fixture`;
+  child = spawn(executable, [`--user-data-dir=${directory}`, '--remote-debugging-port=0'], { env: { ...process.env, NODE_OPTIONS: '', ELECTRON_RUN_AS_NODE: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  child.stdout.on('data', (chunk) => { log = (log + chunk).slice(-15000); });
+  child.stderr.on('data', (chunk) => { log = (log + chunk).slice(-15000); });
+  const closed = new Promise((resolve) => child.once('close', (code, signal) => resolve({ code, signal })));
+  const port = await until(() => { try { return Number(fs.readFileSync(path.join(directory, 'DevToolsActivePort'), 'utf8').split('\n')[0]); } catch { return false; } }, 'renderer debug port');
+  const targets = async () => (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+  const target = await until(async () => (await targets()).find((item) => item.type === 'page' && item.url.startsWith('file:') && item.url.includes('index.html')), 'packaged app document');
+  shell = await connection(target.webSocketDebuggerUrl);
+  await until(() => shell.evaluate("!!document.querySelector('.workspace') && typeof window.electron?.browser?.preferences==='function'"), 'rendered workspace and preload');
+  const settings = await shell.evaluate("window.electron.browser.preferences('update',{spellcheck:false,permissions:'block'})");
+  assert.equal(settings.permissions, 'block');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(directory, 'browser-preferences.json'))).permissions, 'block');
+  const item = { id: 'packaged-fixture', name: 'Packaged fixture', url, icon: '', sessionId: 'packaged-profile', sessionName: 'Fixture', sessionSlug: 'fixture', spaceId: 'default' };
+  await shell.evaluate(`localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify([item]))});localStorage.setItem('user_last_app_id','packaged-fixture');window.electron.ipcRenderer.sendMessage('ipc-event-bus',[{app_list_update:undefined}]);undefined`);
+  const website = await until(async () => (await targets()).find((item) => item.url === url), 'actual website view');
+  page = await connection(website.webSocketDebuggerUrl);
+  await until(() => page.evaluate('window.fixtureRan===true'), 'local website script');
+  assert.equal(await page.evaluate('typeof window.electron'), 'undefined');
+  await until(async () => { const rows = await shell.evaluate("window.electron.browser.history('get')"); return rows.some((row) => row.url === url); }, 'recorded browsing visit');
+  await shell.evaluate("window.electron.browser.history('clear')");
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(directory, 'browsing-history.json'))), []);
+  await shell.evaluate("(()=>{const script=document.createElement('script');script.textContent='window.__packagedInjection=true';document.head.append(script);return true})()");
+  await wait(150);
+  assert.equal(await shell.evaluate('window.__packagedInjection===true'), false);
+  await shell.evaluate("localStorage.setItem('user_apps','[]');window.electron.ipcRenderer.sendMessage('ipc-event-bus',[{app_list_update:undefined}]);undefined");
+  await until(async () => !(await targets()).some((item) => item.url === url), 'website cleanup');
+  await shell.evaluate("window.electron.ipcRenderer.sendMessage('ipc-close-window',[]);undefined").catch(() => {});
+  child.kill('SIGTERM');
+  const exit = await closed;
+  const report = { recordedAt: new Date().toISOString(), platform: process.platform, architecture: process.arch, probeSha256: hash(fs.readFileSync(__filename)), appAsarSha256: hash(fs.readFileSync(archive)), executableSha256: hash(fs.readFileSync(executable)), checks: { currentProductionEntries: true, renderedPackagedWorkspace: true, trustedPreloadPreferences: true, nativeWebsiteView: true, websiteHasNoPrivilegedBridge: true, historyWorkerDurableClear: true, inlineScriptInjectionBlocked: true, tabCloseCleanup: true }, shutdown: exit, method: 'Actual local unsigned/ad-hoc packaged executable and current ASAR entries. Disposable userData, local HTTP page. Chromium renderer CDP explicitly enabled only for the test; main-process inspector stays fuse-disabled. SIGTERM ends the test after awaited durable history clear. Does not verify normal quit flushing, signed installation, extensions/native messaging, platform parity or release updates.', logSha256: hash(log) };
+  fs.writeFileSync(path.join(root, 'docs/benchmarks/packaged-security.json'), JSON.stringify(report, null, 2) + '\n');
+  console.log('PASS: actual packaged UI/preload, isolated local website, durable history worker, CSP and cleanup');
+}
+const timeout = setTimeout(() => { child?.kill('SIGKILL'); console.error('Packaged test timed out'); process.exitCode = 1; }, 35000);
+run().catch((error) => { console.error(error); console.error(log.slice(-1200)); child?.kill('SIGKILL'); process.exitCode = 1; }).finally(() => { clearTimeout(timeout); shell?.close(); page?.close(); server.close(); fs.rmSync(directory, { recursive: true, force: true }); });

@@ -1,0 +1,36 @@
+// Real IPC boundary test with local files and a disposable profile.
+const { app, BrowserWindow, ipcMain } = require('electron');
+const fs = require('fs'), path = require('path'), assert = require('assert');
+const root = path.resolve(__dirname, '../..');
+const runtime = fs.mkdtempSync(path.join(require('os').tmpdir(), 'touchbox-window-ipc-'));
+app.setPath('userData', path.join(runtime, 'profile'));
+require('esbuild').buildSync({ entryPoints: [path.join(root, 'src/main/windowCommands.ts'), path.join(root, 'src/utils/EventBus.ts')], bundle: true, platform: 'node', external: ['electron'], outdir: runtime });
+const { registerWindowCommands } = require(path.join(runtime, 'main/windowCommands.js'));
+const { eventBus } = require(path.join(runtime, 'utils/EventBus.js'));
+const preload = path.join(runtime, 'fixture-preload.cjs');
+fs.writeFileSync(preload, `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('testIPC',{send:(channel,payload)=>ipcRenderer.send(channel,payload),listen:callback=>ipcRenderer.on('ipc-event-bus',(_,payload)=>callback(payload))});`);
+const page = path.join(runtime, 'fixture.html');
+fs.writeFileSync(page, `<script>window.received=[];window.testIPC.listen(value=>window.received.push(value));</script>`);
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+app.whenReady().then(async () => {
+  const trusted = new BrowserWindow({ show: false, webPreferences: { preload, sandbox: false, nodeIntegration: false, contextIsolation: true } });
+  const untrusted = new BrowserWindow({ show: false, webPreferences: { preload, sandbox: false, nodeIntegration: false, contextIsolation: true } });
+  const registry = { main: trusted };
+  const created = [];
+  registerWindowCommands(ipcMain, registry, async params => { created.push(params); });
+  eventBus.registerOnMain(ipcMain, registry);
+  await Promise.all([trusted.loadFile(page), untrusted.loadFile(page)]);
+  await untrusted.webContents.executeJavaScript(`window.testIPC.send('ipc-create-window',[{view:'settings'}]);window.testIPC.send('ipc-close-window',[]);window.testIPC.send('ipc-event-bus',[{app_list_update:'untrusted'}]);`);
+  await wait(100);
+  assert.equal(created.length, 0);assert(!trusted.isDestroyed());assert(!untrusted.isDestroyed());
+  assert.equal(await trusted.webContents.executeJavaScript('window.received.length'), 0);
+  await trusted.webContents.executeJavaScript(`window.testIPC.send('ipc-create-window',null);window.testIPC.send('ipc-create-window',[{view:'settings',options:{webPreferences:{nodeIntegration:true},width:9999}}]);window.testIPC.send('ipc-event-bus',[{app_list_update:'trusted'}]);`);
+  await wait(100);
+  assert.equal(created.length, 1);assert.equal(created[0].options.width, 1080);assert.equal(created[0].options.webPreferences, undefined);
+  assert.equal(await trusted.webContents.executeJavaScript('window.received.length'), 1);
+  await trusted.webContents.executeJavaScript(`window.testIPC.send('ipc-close-window',[]);`);
+  await wait(100);assert(trusted.isDestroyed());assert(!untrusted.isDestroyed());
+  untrusted.close();
+  console.log('PASS: actual IPC rejects unregistered senders, retains canonical window options, bounds event routing and closes only sender window');
+  app.quit();
+}).catch(error => { console.error(error);BrowserWindow.getAllWindows().forEach(window=>window.destroy());process.exitCode=1;app.quit(); });

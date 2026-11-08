@@ -1,0 +1,323 @@
+/** @jest-environment node */
+import { ipcMain } from 'electron';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { spawn } from 'node-pty';
+import * as projects from '../main/developerProject';
+import {
+  developerPageSummaries,
+  aiDeveloperProjectAccess,
+  registerSiteDeveloperLibrary,
+} from '../main/siteDeveloperLibrary';
+import { getSiteSettings } from '../main/siteSettings';
+import { isGroupLocked } from '../main/groupLocks';
+import type { IApp } from '../types';
+
+jest.mock('node-pty', () => ({
+  spawn: jest.fn(() => ({
+    write: jest.fn(),
+    resize: jest.fn(),
+    kill: jest.fn(),
+    onData: jest.fn(),
+    onExit: jest.fn(),
+  })),
+}));
+jest.mock('electron', () => ({
+  app: { getPath: () => '/tmp', on: jest.fn() },
+  ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+}));
+jest.mock('../main/siteSettings', () => ({
+  onSiteSettingsChanged: jest.fn(() => () => {}),
+  siteOrigin: (url: string) =>
+    url.startsWith('https://') ? new URL(url).origin : undefined,
+  getSiteSettings: jest.fn(),
+}));
+jest.mock('../main/siteDeveloper', () => ({
+  developerState: () => ({ status: 'success' }),
+}));
+jest.mock('../main/groupLocks', () => ({
+  isGroupLocked: jest.fn(),
+  getGroupLocks: () => ({ subscribe: () => () => {} }),
+}));
+const home = {
+  id: 'home',
+  name: 'Home',
+  sessionName: 'Work',
+  sessionId: 'work',
+  sessionProfileId: 'shared',
+  spaceId: 'one',
+  url: 'https://example.com/home',
+} as IApp;
+const tabs = [
+  home,
+  { ...home, id: 'second', url: 'https://example.com/page' },
+  { ...home, id: 'other-group', sessionId: 'other' },
+  { ...home, id: 'other-space', spaceId: 'two' },
+  { ...home, id: 'archived', archived: true },
+];
+beforeEach(() => {
+  (isGroupLocked as jest.Mock).mockReturnValue(false);
+  (getSiteSettings as jest.Mock).mockReturnValue({
+    developer: { enabled: true, before: '', after: 'log(url)', css: '' },
+  });
+});
+it('lists only the chosen group and space, including saved hooks on unloaded pages, without returning source code', () => {
+  const pages = developerPageSummaries(tabs, home, () => undefined);
+  expect(pages.map((page) => page.id)).toEqual(['home', 'second']);
+  expect(pages[0]).toMatchObject({
+    hasHooks: true,
+    enabled: true,
+    status: 'waiting',
+    origin: 'https://example.com',
+  });
+  expect(getSiteSettings).toHaveBeenCalledWith('shared', 'https://example.com');
+  expect(JSON.stringify(pages)).not.toContain('log(url)');
+  (getSiteSettings as jest.Mock).mockReturnValue({
+    developer: { enabled: false, before: '', after: 'log(url)', css: '' },
+  });
+  expect(developerPageSummaries(tabs, home, () => undefined)[0]).toMatchObject({
+    hasHooks: true,
+    enabled: false,
+  });
+  (getSiteSettings as jest.Mock).mockReturnValue({
+    developer: { enabled: true, before: ' ', after: '', css: '' },
+  });
+  expect(developerPageSummaries(tabs, home, () => undefined)[0].hasHooks).toBe(
+    false
+  );
+});
+it('rejects locked groups, foreign windows, subframes and arbitrary group IDs', () => {
+  const mainFrame = {};
+  const sender = {
+    id: 11,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+  };
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender } as any,
+    () => tabs,
+    () => undefined
+  );
+  const handle = (ipcMain.handle as jest.Mock).mock.calls.at(-1)[1];
+  expect(() =>
+    handle({ sender: { id: 12, mainFrame }, senderFrame: mainFrame }, 'home')
+  ).toThrow('Untrusted');
+  expect(() => handle({ sender, senderFrame: {} }, 'home')).toThrow(
+    'Untrusted'
+  );
+  expect(() =>
+    handle({ sender, senderFrame: mainFrame }, 'other-scope')
+  ).toThrow('no longer available');
+  (isGroupLocked as jest.Mock).mockReturnValue(true);
+  expect(() => handle({ sender, senderFrame: mainFrame }, 'home')).toThrow(
+    'Unlock'
+  );
+  dispose();
+  expect(ipcMain.removeHandler).toHaveBeenCalledWith('site-developer-pages');
+});
+it('restricts project actions to the host main frame and rejects locked groups', async () => {
+  const mainFrame = {};
+  const sender = {
+    id: 21,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+  };
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender, isDestroyed: () => false } as any,
+    () => tabs,
+    () => undefined
+  );
+  const handle = (ipcMain.handle as jest.Mock).mock.calls.find(
+    ([channel]) => channel === 'site-developer-project'
+  )[1];
+  try {
+    expect(() => handle({ sender, senderFrame: {} }, 'home', 'get')).toThrow(
+      'Untrusted'
+    );
+    expect(() =>
+      handle({ sender, senderFrame: mainFrame }, 'home', 'execute')
+    ).toThrow('Choose');
+    await expect(
+      handle({ sender, senderFrame: mainFrame }, 'archived', 'get')
+    ).rejects.toThrow('no longer available');
+    (isGroupLocked as jest.Mock).mockReturnValue(true);
+    await expect(
+      handle({ sender, senderFrame: mainFrame }, 'home', 'get')
+    ).rejects.toThrow('Unlock');
+  } finally {
+    dispose();
+  }
+});
+it('restricts saved scripts to trusted main frames and unlocked group sources', () => {
+  const mainFrame = {};
+  const sender = {
+    id: 31,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+  };
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender } as any,
+    () => tabs,
+    () => undefined
+  );
+  const handler = (ipcMain.handle as jest.Mock).mock.calls
+    .slice()
+    .reverse()
+    .find((call) => call[0] === 'site-developer-scripts')[1];
+  expect(() =>
+    handler({ sender: { id: 90 }, senderFrame: mainFrame }, 'home', {
+      action: 'list',
+    })
+  ).toThrow('Untrusted');
+  expect(() =>
+    handler({ sender, senderFrame: {} }, 'home', { action: 'list' })
+  ).toThrow('Untrusted');
+  expect(() =>
+    handler({ sender, senderFrame: mainFrame }, 'home', {
+      action: 'run',
+      id: {},
+    })
+  ).toThrow('Invalid');
+  expect(() =>
+    handler({ sender, senderFrame: mainFrame }, 'missing', { action: 'list' })
+  ).toThrow('no longer available');
+  (isGroupLocked as jest.Mock).mockReturnValue(true);
+  expect(() =>
+    handler({ sender, senderFrame: mainFrame }, 'home', { action: 'list' })
+  ).toThrow('Unlock');
+  dispose();
+});
+it('restricts Files to trusted main frames, valid requests and unlocked source groups', async () => {
+  const mainFrame = {};
+  const sender = {
+    id: 41,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+  };
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender, isDestroyed: () => false } as any,
+    () => tabs,
+    () => undefined
+  );
+  const handler = (ipcMain.handle as jest.Mock).mock.calls
+    .slice()
+    .reverse()
+    .find(([channel]) => channel === 'site-developer-files')[1];
+  const request = { action: 'list', path: '' };
+  try {
+    await expect(
+      handler({ sender: { id: 99 }, senderFrame: mainFrame }, 'home', request)
+    ).rejects.toThrow('Untrusted');
+    await expect(
+      handler({ sender, senderFrame: {} }, 'home', request)
+    ).rejects.toThrow('Untrusted');
+    await expect(
+      handler({ sender, senderFrame: mainFrame }, 'home', {
+        action: 'exec',
+        path: '',
+      })
+    ).rejects.toThrow('Invalid');
+    await expect(
+      handler({ sender, senderFrame: mainFrame }, 'missing', request)
+    ).rejects.toThrow('no longer available');
+    (isGroupLocked as jest.Mock).mockReturnValue(true);
+    await expect(
+      handler({ sender, senderFrame: mainFrame }, 'home', request)
+    ).rejects.toThrow('Unlock');
+  } finally {
+    dispose();
+  }
+  expect(ipcMain.removeHandler).toHaveBeenCalledWith('site-developer-files');
+});
+
+it('routes the folder context action into a new inbuilt terminal for the source group', async () => {
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'folder-terminal-ipc-'))
+  );
+  fs.mkdirSync(path.join(root, 'src'));
+  const folder = jest
+    .spyOn(projects, 'linkedProjectFolder')
+    .mockReturnValue(root);
+  const mainFrame = {};
+  const sender = {
+    id: 99,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+    send: jest.fn(),
+  };
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender, isDestroyed: () => false } as any,
+    () => tabs,
+    () => undefined
+  );
+  try {
+    const handler = (ipcMain.handle as jest.Mock).mock.calls
+      .slice()
+      .reverse()
+      .find(([channel]) => channel === 'site-developer-files')[1];
+    const result = await handler({ sender, senderFrame: mainFrame }, 'home', {
+      action: 'terminal-tab',
+      path: 'src',
+    });
+    expect(result.path).toBe('src');
+    expect(result.terminal).toMatchObject({ open: true, running: true });
+    expect(result.terminal.tabs[result.terminal.tabs.length - 1].name).toBe(
+      'src'
+    );
+    expect(spawn).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({ cwd: path.join(root, 'src') })
+    );
+  } finally {
+    dispose();
+    folder.mockRestore();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it('binds AI project access to a live unlocked source group and its linked folder', () => {
+  const host = {
+    webContents: {
+      id: 71,
+      on: jest.fn(),
+      removeListener: jest.fn(),
+      send: jest.fn(),
+    },
+    isDestroyed: () => false,
+  } as any;
+  let current = [...tabs];
+  const folder = jest
+    .spyOn(projects, 'linkedProjectFolder')
+    .mockReturnValue('/tmp/project-one');
+  const dispose = registerSiteDeveloperLibrary(
+    host,
+    () => current,
+    () => undefined
+  );
+  try {
+    const access = aiDeveloperProjectAccess(host, home.id);
+    expect(access.folder).toBe('/tmp/project-one');
+    expect(() => access.check()).not.toThrow();
+    folder.mockReturnValue('/tmp/project-two');
+    expect(() => access.check()).toThrow('access changed');
+    folder.mockReturnValue('/tmp/project-one');
+    (isGroupLocked as jest.Mock).mockReturnValue(true);
+    expect(() => aiDeveloperProjectAccess(host, home.id)).toThrow('Unlock');
+    (isGroupLocked as jest.Mock).mockReturnValue(false);
+    current = current.filter((tab) => tab.id !== home.id);
+    expect(() => access.check()).toThrow('no longer available');
+    expect(() =>
+      aiDeveloperProjectAccess({ webContents: { id: 999 } } as any, home.id)
+    ).toThrow('unavailable');
+  } finally {
+    dispose();
+    folder.mockRestore();
+  }
+});

@@ -1,0 +1,482 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T06:38:21.084Z",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "probeSha256": "043beda5a107c5747caa9f4f117a731b53ac5844fae85166dcd283bfe43bdc81",
+    "appAsarSha256": "8ff84f628b0c4398abda464070aeb1a920af4e41f5334b479e0d9cee0bd54a28",
+    "mainBundleSha256": "35bd69536bb30b0b92ad447b88c75ce08562fce154c5cf17638ce8c750befc1f",
+    "samples": [
+      {
+        "mode": "randomPort",
+        "pageRequested": true,
+        "pageExecuted": true,
+        "websiteBridge": "undefined",
+        "debugServerEverObserved": true,
+        "injectedPreference": true,
+        "devToolsPortFile": true,
+        "pipeResponseObserved": false,
+        "observationMs": 2847.2495,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "logSha256": "0807d6a6c8954a9e3faef64571db5b000f71b17fac1ca38f6a6792cd31ecc4cd"
+      },
+      {
+        "mode": "fixedPort",
+        "pageRequested": true,
+        "pageExecuted": true,
+        "websiteBridge": "undefined",
+        "debugServerEverObserved": true,
+        "injectedPreference": true,
+        "devToolsPortFile": true,
+        "pipeResponseObserved": false,
+        "observationMs": 2878.6417500000002,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "logSha256": "ae549cfb14041a1a314193b4c181645385be8ea963ec329b3621e00d921ec3dc"
+      },
+      {
+        "mode": "pipe",
+        "pageRequested": true,
+        "pageExecuted": true,
+        "websiteBridge": "undefined",
+        "debugServerEverObserved": true,
+        "injectedPreference": false,
+        "devToolsPortFile": false,
+        "pipeResponseObserved": true,
+        "observationMs": 2890.840500000001,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "logSha256": "f77c96dfb7e7ce7322bd8e9e3e3b5eac5f6cd3d47e19fc36a7594c58b253805a"
+      }
+    ],
+    "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T07:27:55.877Z",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "probeSha256": "043beda5a107c5747caa9f4f117a731b53ac5844fae85166dcd283bfe43bdc81",
+    "appAsarSha256": "5eef7c94a3bed2ef245252df19dd8b4d404adb6157d3edd1600b690a112566c7",
+    "mainBundleSha256": "fa4cb1a4d415a5cf9518a635cb92f9843c9eaf8a2ca936388a2b87c2cbf417a8",
+    "samples": [
+      {
+        "mode": "randomPort",
+        "pageRequested": true,
+        "pageExecuted": true,
+        "websiteBridge": "undefined",
+        "debugServerEverObserved": false,
+        "injectedPreference": false,
+        "devToolsPortFile": false,
+        "pipeResponseObserved": false,
+        "observationMs": 4604.231458,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "logSha256": "2a57b5c45ecc8877f3df75044ba4692c3d237f4296b628ba353279cc4a4623b2"
+      },
+      {
+        "mode": "fixedPort",
+        "pageRequested": true,
+        "pageExecuted": true,
+        "websiteBridge": "undefined",
+        "debugServerEverObserved": false,
+        "injectedPreference": false,
+        "devToolsPortFile": false,
+        "pipeResponseObserved": false,
+        "observationMs": 2876.1929579999996,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "logSha256": "e2146c0c048cdd0cb24996f969ac8189b144eeef1c87ef1c4d4ee8990748212f"
+      },
+      {
+        "mode": "pipe",
+        "pageRequested": true,
+        "pageExecuted": true,
+        "websiteBridge": "undefined",
+        "debugServerEverObserved": false,
+        "injectedPreference": false,
+        "devToolsPortFile": false,
+        "pipeResponseObserved": false,
+        "observationMs": 2886.528333,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "logSha256": "cf109ff64e2160e51e7c1a1d6a8a2a12dda89df462dbdfaa9edbec62a1cbae00"
+      }
+    ],
+    "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+  },
+  "previousRuns": [
+    {
+      "phase": "before",
+      "recordedAt": "2026-11-07T06:35:25.731Z",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "probeSha256": "f9f8d0a715d9545ddafb0f67d531dc942d27a80a6a9f137eedf4959c744c06ca",
+      "appAsarSha256": "8ff84f628b0c4398abda464070aeb1a920af4e41f5334b479e0d9cee0bd54a28",
+      "mainBundleSha256": "35bd69536bb30b0b92ad447b88c75ce08562fce154c5cf17638ce8c750befc1f",
+      "samples": [
+        {
+          "mode": "randomPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": true,
+          "injectedPreference": true,
+          "devToolsPortFile": true,
+          "pipeResponseObserved": false,
+          "observationMs": 2903.123375,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "f3b57cac88c7a39d9f856d3465260d5c6aa5a0ebaa213e54ead5312fbed03cb2"
+        },
+        {
+          "mode": "fixedPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": true,
+          "injectedPreference": true,
+          "devToolsPortFile": true,
+          "pipeResponseObserved": false,
+          "observationMs": 2892.04,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "51b1d796924284608de459a86e90cc596e0cce823a6b1f3997431fddaaa47c63"
+        },
+        {
+          "mode": "pipe",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": true,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": true,
+          "observationMs": 2875.1409159999994,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "a129bfebb07773f75c503eb5f6888dc54ce85c443b6bcf2e0b44b7fcd8fc9199"
+        }
+      ],
+      "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+    },
+    {
+      "phase": "after",
+      "recordedAt": "2026-11-07T06:36:21.082Z",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "probeSha256": "ad0ada9bae0cda032ea8573e11d5aedb3bb9d2e936c6d81b363442663a995f42",
+      "appAsarSha256": "49098c5836e3d9abd5c23b999833f7bc180810af426baf933d490001a71e221b",
+      "mainBundleSha256": "5bf00a1ed3b895eaa180b33d4c290a1193ab973df939145136dbdd438a488b8f",
+      "samples": [
+        {
+          "mode": "randomPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 4721.3625,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "f957a6f902fb5350956d56bce3f83f46c706067ca08035300fddacc1c0dd277e"
+        },
+        {
+          "mode": "fixedPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2877.9220830000004,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "d3c5c423c9ebf502458ea07551a993a183aa03488d701b705a0970347d10b412"
+        },
+        {
+          "mode": "pipe",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2881.1474580000004,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "c4363ebd66acbc6b5b1516c39cf99469063e3da39cd617251f91d28a0831a969"
+        }
+      ],
+      "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+    },
+    {
+      "phase": "after",
+      "recordedAt": "2026-11-07T06:39:29.364Z",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "probeSha256": "043beda5a107c5747caa9f4f117a731b53ac5844fae85166dcd283bfe43bdc81",
+      "appAsarSha256": "49098c5836e3d9abd5c23b999833f7bc180810af426baf933d490001a71e221b",
+      "mainBundleSha256": "5bf00a1ed3b895eaa180b33d4c290a1193ab973df939145136dbdd438a488b8f",
+      "samples": [
+        {
+          "mode": "randomPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2959.512666,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "0b98fd352c7b08cdb0089de90d63b5ce92b925a20bd409d72528d68f1e905790"
+        },
+        {
+          "mode": "fixedPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2926.9392499999994,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "f7e2b45247cd221e7c06f2b696ee5e90d772b6ff04c901ae7367f07c770e5943"
+        },
+        {
+          "mode": "pipe",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2900.1883749999997,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "74606dcede41416a5eb4e057721580773bc273b7f874db6ae8f3e435b3445a91"
+        }
+      ],
+      "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+    },
+    {
+      "phase": "after",
+      "recordedAt": "2026-11-07T06:56:18.636Z",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "probeSha256": "043beda5a107c5747caa9f4f117a731b53ac5844fae85166dcd283bfe43bdc81",
+      "appAsarSha256": "5eddc4b2d2c7ca4da0752b2cdaf4aba94717a449f3614d741493b1aae2dae96a",
+      "mainBundleSha256": "99f64ae60f3c246f887f50e81b8ee01666b3fad19b077830779595faed0ca8ec",
+      "samples": [
+        {
+          "mode": "randomPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 4638.967042,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "f7acb94470bdbf7285ef937bcd00f41fd576e6a6ea0697d2eb9690be3a5ed1d0"
+        },
+        {
+          "mode": "fixedPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 3012.3126249999996,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "cc6ee20376fc1564c6946424a9e65e77471242fc172e5a30a041401d6e59e909"
+        },
+        {
+          "mode": "pipe",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2915.5702919999994,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "5725da24b2cc55c325160a8d3c1e437a222ab2813c4e08a9a902e7a6adf3ea34"
+        }
+      ],
+      "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+    },
+    {
+      "phase": "after",
+      "recordedAt": "2026-11-07T07:04:09.938Z",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "probeSha256": "043beda5a107c5747caa9f4f117a731b53ac5844fae85166dcd283bfe43bdc81",
+      "appAsarSha256": "9252ca26e29ec14c9abdae362388c6d5f17d4d835cb188f9778625456f99f78e",
+      "mainBundleSha256": "9c54223154c4c442941118b7d5b843c51f5df909c3d021ace20e1d29e8fede28",
+      "samples": [
+        {
+          "mode": "randomPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 4720.642584,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "21eb43e2dd06bd10e40bbbd3e175f8d243622568d8fee94f84aa7a76cd627ddc"
+        },
+        {
+          "mode": "fixedPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2977.8259580000004,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "8510317de4ec0372143429b62a48fcc32d8fcd4e99a85ef97d84f6ca711eee59"
+        },
+        {
+          "mode": "pipe",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2866.5588339999995,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "3b0f6ad46d49fe522e3d36450a33b14b69c9a55d37b48821ad9927e1442cd0d1"
+        }
+      ],
+      "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+    },
+    {
+      "phase": "after",
+      "recordedAt": "2026-11-07T07:13:59.776Z",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "probeSha256": "043beda5a107c5747caa9f4f117a731b53ac5844fae85166dcd283bfe43bdc81",
+      "appAsarSha256": "2d0148fa053a1cbd1b06b80a87244ac480930361e30760f0b61712257fa4d313",
+      "mainBundleSha256": "e3582a702ae376dfa510e40933a2316d7e21ac4a81144fb6ebe7f8da95fb2974",
+      "samples": [
+        {
+          "mode": "randomPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 4666.921167,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "986dfef227d3922a03641692f6b3bf85f3d9ded294cbdceaeac69cfc80fcb605"
+        },
+        {
+          "mode": "fixedPort",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2866.2960409999996,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "effffc418b2f04b71f5671825615b942acacf51e992d284902d7f9ffa32c929f"
+        },
+        {
+          "mode": "pipe",
+          "pageRequested": true,
+          "pageExecuted": true,
+          "websiteBridge": "undefined",
+          "debugServerEverObserved": false,
+          "injectedPreference": false,
+          "devToolsPortFile": false,
+          "pipeResponseObserved": false,
+          "observationMs": 2870.561917,
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "logSha256": "9514673dccdb89f2bd3570a4037231d794db9094cecc1adf464af0428aebaca9"
+        }
+      ],
+      "method": "Actual packaged executable, disposable profiles and local startup page. Poll debugging transports through at least two seconds after page execution; require live process and website bridge isolation. Before port transports change preferences through privileged renderer CDP; after must expose no endpoint or debug-port file. No signing/platform/performance claim."
+    }
+  ]
+}

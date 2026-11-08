@@ -1,0 +1,87 @@
+{
+  "recordedAt": "2026-11-07T08:35:45.494388+00:00",
+  "rawReportSha256": "829965250a2df4de3b5b4c0795bf0c20356e65ee9a3fa913a81288a5a8968578",
+  "sourceHashes": {
+    "src/main/nativeUi.ts": "7172f9dead682d8829eb026f115a1ca6892e955b9d1718724d71cd706f010163",
+    "src/main/downloads.ts": "ca23615cbc6cf8bc4a964ce4acd7c5dc2ced4b83c0826cb8d4cc4e427abe0fa7",
+    "src/main/thumbnailCache.ts": "78e679d7735374d4b8b42a9e24005cb886ffcfeb8207f791fab706acd57bd15b",
+    "src/main/localImage.ts": "e183c7776848d30fd46c4357b016d093feb7db8c81e54ee5fe9a45e352b4196b",
+    "src/main/boundedLocalFile.ts": "90df49f650c84290c80ced776e7d9325da5ed06e721984347bf38682550e58a4",
+    "src/main/aiAttachmentFile.ts": "641caa76023be7091f86e6b2a0704de30b9bd71a49bc3710f24ec4378f2eec4b",
+    "src/main/imagePreflight.ts": "201429aa875aad2261fdf377d4b459d285e3de5a84c280b53e937fd1f0efe0a9",
+    "src/__tests__/localImage.test.ts": "46b288ff363d8e18989f69c5f7fc54c45c1a7e7442396964c865152c5b26849d",
+    "src/__tests__/nativeUi.test.ts": "20fd3f3c890ba8fcb8c45dab7a3c6cde5b5943e667cad664944c6b500098cd27",
+    "src/__tests__/thumbnailCache.test.ts": "e40b27baaa36df8b431818f90b457962f2d7ccf71372a4e0f1a6c1ca7a2937f9",
+    ".erb/scripts/local-image-boundary-smoke.cjs": "1eaa5c49fd027518732febd5065aba01d5047245253e0deafa4a3f853a9629f5",
+    ".erb/scripts/browser-ui-smoke.cjs": "9480102bb07228c92812b7a622d968292da80503d4d358bd3de93fa3b2216b97",
+    ".erb/scripts/checks.ts": "6e013d9d7e65282342d8ea0b5a2e999d7f3e45cf0b10d91f0177f4e66a646602"
+  },
+  "inventoryPath": "docs/security/ipc-inventory-2026-11-07-local-images.json",
+  "inventorySha256": "ce92a7406801757d5f9be46959ae969cfa5fd7abb3e22a298801cda83559b92d",
+  "identitiesVerified": true,
+  "checks": [
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/local-image-boundary-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "7b75081bb8fa8af1051c3e70af9aa37dff3f7b7df6665aa7af08ae85dda1a5fb",
+      "summary": "Oversized/malformed inputs reach controlled decoders; replacement source is decoded; stale thumbnail publishes; 8 native thumbnails active; ICNS path decoder returns empty"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/local-image-boundary-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "9d06454c1a0d4c0ba5f4267adf77d4879928e5125e2831ec4c13ad1e694bab18",
+      "summary": "Inputs rejected before image decoding; replacement leaves validated bytes intact; stale completion rejects; 4 native thumbnails active; real ICNS thumbnail works"
+    },
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "1ed6fef4269ea720e14f60dd4c926612ac2f4d9f32d08c1aedc9ecc017afd080",
+      "summary": "140 suites / 709 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed; final subsequent checks.ts addition follows existing formatted runner pattern"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed; subsequent changes are documentation comment and test runner only"
+    },
+    {
+      "name": "production preload integration",
+      "command": "TOUCHBOX_SMOKE_OUTPUT=docs/evidence/local-images node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --local-images-only",
+      "observedExitCode": 0,
+      "logSha256": "e102e3cbddae7b9bf62df04e1b05a5e9a749e717c01127f67ed98f266f213641",
+      "summary": "Actual preload PNG/ICNS icons, cancellation, oversized/foreign-window rejection, real downloaded PNG preview and deduplication pass"
+    },
+    {
+      "name": "download boundary integration",
+      "command": "TOUCHBOX_SMOKE_OUTPUT=docs/evidence/local-images node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --download-history-boundaries-only",
+      "observedExitCode": 0,
+      "logSha256": "72932265929310ef02f4ef8423569bbdeb4327e964e99849dd68083c9b60f534",
+      "summary": "Actual preload recovery, malformed requests, regular-file icons, symlink/directory rejection and metadata-only clear pass"
+    },
+    {
+      "name": "inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "1fcc1e6d0d941942d2ab7c670e3b1924c0bbc9c8ab02b01b2d54a1f105e28e4e",
+      "summary": "Source/locations refreshed and snapshot retained"
+    }
+  ],
+  "limitations": [
+    "Actual registered handlers/native host documents, regular files, real PNG/ICNS/native thumbnail decoding. Oversized/malformed decoder inputs are dispatch observers, not hostile native decoding. Picker selection, source replacement after initial stat, read/native-thumbnail completion are controlled. No production preload/physical input, all formats/platforms, native decoder sandbox, OS file-icon resource parsing or peak memory/CPU claim.",
+    "Snapshot reads are bounded/descriptor-owned with stat checks; this does not exclude every same-size in-place mutation or same-user modification of a private temporary file.",
+    "No decoder sandbox, complete animation/container validation, every image format/platform, crash/power-loss temporary cleanup, OS file-icon resource containment, peak CPU/RSS or general latency improvement claim.",
+    "5 MiB/2048-side icon and 20 MiB/40MP raster-thumbnail limits; unsupported or oversized download previews use an OS file-type icon. Four active thumbnail pipelines and 128 pending IDs. Temporary copies add I/O; completion latency is not benchmarked.",
+    "Full unit suite, lint/types, build and scoped native/preload integration verified; no full desktop suite or signed/cross-platform release claim."
+  ]
+}

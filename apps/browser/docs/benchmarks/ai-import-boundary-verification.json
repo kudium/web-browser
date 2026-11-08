@@ -1,0 +1,118 @@
+{
+  "recordedAt": "2026-11-07T06:55:57.929454+00:00",
+  "sourceHashes": {
+    "src/main/ai.ts": "e3f8e683dc644c068484011c1ad878e97b4d81681ea938375731d0546d5420ce",
+    "src/main/aiComposer.ts": "419dd8c9bb1ba95750e5c432d95d5b0f6ec54d8ec34fb3b2d3686f5472590001",
+    "src/main/aiAttachmentFile.ts": "03635680f87ef6ba718cf113e1e799c759f36453bde32197bd053ed0e3e14868",
+    "src/__tests__/aiComposerOwnership.test.ts": "936688d8cd86d8dc579c2bd254fe45688deaabfb23910ed4e6a9216d53c02e5c",
+    "src/__tests__/aiAttachmentFile.test.ts": "58d792eb67f9aa22d0b0893012e02a7a90d051954a88e7496591f559e5a31017",
+    ".erb/scripts/ai-import-boundary-smoke.cjs": "84646fda67aac9f8b8d95a16f2da3230d9c10bc2e979acaa4d6987c7df101ca0",
+    ".erb/scripts/checks.ts": "f81efd2f38dc108a11b4d62df7b42c08d3768c3f1a96268d83a154a679ba23fc",
+    "docs/benchmarks/baselines/ai-imports/ai.ts.txt": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+    "docs/benchmarks/baselines/ai-imports/aiComposer.ts.txt": "435430331488f3d1a174862719522c2c93cf19ad5a384a44c1e1726d71eebc3b"
+  },
+  "rawReportSha256": "f4e7509721c6b28c272548d321d4695d941ff76f652b2e89ce6356460f44d760",
+  "identitiesVerified": true,
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "6c1c70ea683a473b8f223f27ec6def0c8f47bdbe1a409fbc05e7731e67e89f75",
+      "summary": "135 suites / 678 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native import before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-import-boundary-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "fa018d2b0040b25c443dc1afe75b4eb3f045371f3eecdd956104755e1393eadc",
+      "summary": "Eight stale cases accepted"
+    },
+    {
+      "name": "native import after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-import-boundary-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "3ac384d87c18bb8cbb802f337844144038d4ebb4c9ffd881855ccc4cd5a9374f",
+      "summary": "Eight stale cases rejected; zero retained entries; normal picker succeeds"
+    },
+    {
+      "name": "native AI smoke",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-smoke.cjs",
+      "observedExitCode": 0,
+      "logSha256": "ed7d80a846abb830e4181bc9052e775691857fe94fbcc8aea8f6ec53f1ef884c",
+      "summary": "Passed including Preferences after browser closure"
+    },
+    {
+      "name": "native directory package",
+      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-import-package",
+      "observedExitCode": 0,
+      "logSha256": "aafd763a737a3e495f0f606bc7a7ccc1645c87b1d4062abca60a0ea55524ad47",
+      "summary": "Unsigned/ad-hoc macOS arm64"
+    },
+    {
+      "name": "current packaged security",
+      "command": "npm run test:packaged-security -- /tmp/touchbox-import-package/mac-arm64/TouchBox.app",
+      "observedExitCode": 0,
+      "logSha256": "358a17ee3ded6328821a818f72a3d2ec64d7897154db42fffd84d28ac065c223",
+      "summary": "Fuses, actual-package remote debugging refusal and instrumented production-payload UI/preload/website isolation/history/CSP/cleanup pass"
+    }
+  ],
+  "runtime": {
+    "runtime": {
+      "node": "24.22.0",
+      "acorn": "8.18.0",
+      "ada": "4.0.0",
+      "amaro": "1.1.11",
+      "ares": "1.34.8",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.2",
+      "llhttp": "9.4.3",
+      "merve": "1.2.2",
+      "modules": "150",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.70.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "openssl": "0.0.0",
+      "simdjson": "4.6.11",
+      "simdutf": "7.7.0",
+      "sqlite": "3.53.4",
+      "tz": "2026e",
+      "undici": "7.29.1",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "15.6.75.19-electron.0",
+      "zlib": "1.3.2.1-motley",
+      "zstd": "1.6.0",
+      "electron": "45.0.0",
+      "chrome": "156.0.8078.48"
+    },
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "limitations": [
+    "Native import test calls real handlers with native frame identity; add delay is at method entry. Unit test separately covers revocation during extraction.",
+    "No renderer IPC serialization, provider-byte, whole-app latency/CPU/memory or image-decoder containment claim.",
+    "Size/mtime checks do not guarantee detection of malicious metadata-preserving edits.",
+    "Only local unsigned/ad-hoc macOS arm64 package; signing, updates, cookie migration, other platforms, IPC and downstream private-data gates remain open.",
+    "Packaged UI evidence uses a test-only ASAR observer with identical production payload; it is not signed untouched-release full UI verification."
+  ]
+}

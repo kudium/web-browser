@@ -1,0 +1,264 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T08:30:38.817Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "1eaa5c49fd027518732febd5065aba01d5047245253e0deafa4a3f853a9629f5",
+    "sourceHashes": {
+      "src/main/nativeUi.ts": "05e5aa5289e9dd110d5ae16b870ecfc1e358e806e28d370b5980e66137db2624",
+      "src/main/downloads.ts": "f76c260b23e43ed1ec84ac88a8e5a22e3495c0f88faa2f73f10a45f039c15e06",
+      "src/main/thumbnailCache.ts": "ee9ad9cc77381c78ae4a917e583098a41b7a95ed11da456111fa85eeef00e711"
+    },
+    "bundleHashes": {
+      "src/main/nativeUi.ts": "53aa5b73be4859001afadb7480e8d156367340b63ac3c67727e950f2ce0fa192",
+      "src/main/downloads.ts": "b3912d37277f1e43a4ffb0a7cf9f0a02bfedcffb41358b29045600092b86aeab"
+    },
+    "cases": [
+      {
+        "name": "oversizedIcon",
+        "accepted": true,
+        "buffer": 0,
+        "path": 1,
+        "thumbnail": 0,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "a005ac571ec0910b848598b28faeda660e77084f5132ef64d58c50c2f637cb8d"
+      },
+      {
+        "name": "invalidICNS",
+        "accepted": true,
+        "buffer": 0,
+        "path": 1,
+        "thumbnail": 0,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "9a76dceecaf65eeffa2d9b70e27b7b17b77945b437d80c201fd8e182b38bcda8"
+      },
+      {
+        "name": "normalPNG",
+        "accepted": true,
+        "buffer": 0,
+        "path": 1,
+        "thumbnail": 0,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "689a1b53589ee8742dea0b79134f067e03854b32bae4a39bf99ebb8dae553294"
+      },
+      {
+        "name": "normalICNS",
+        "accepted": false,
+        "error": "This image could not be opened.",
+        "buffer": 0,
+        "path": 1,
+        "thumbnail": 0,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "fd58fb00d61ffeaea5367f2f899c913443f8cdb8f6a7aab2067e0644b7f4e040"
+      },
+      {
+        "name": "iconSourceReplacement",
+        "accepted": true,
+        "buffer": 0,
+        "path": 1,
+        "thumbnail": 0,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "a005ac571ec0910b848598b28faeda660e77084f5132ef64d58c50c2f637cb8d"
+      },
+      {
+        "name": "oversizedThumbnail",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 1,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "a005ac571ec0910b848598b28faeda660e77084f5132ef64d58c50c2f637cb8d"
+      },
+      {
+        "name": "oversizedFileThumbnail",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 1,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "5a069e82e7da545f0d1c550af18b1fb87b202efb62567a8de67a3112af86113c"
+      },
+      {
+        "name": "thumbnailSourceReplacement",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 1,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "a005ac571ec0910b848598b28faeda660e77084f5132ef64d58c50c2f637cb8d"
+      },
+      {
+        "name": "thumbnailHostReload",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 1,
+        "sourcePathDecoded": true,
+        "snapshotModes": [
+          420
+        ],
+        "decodedSha256": "689a1b53589ee8742dea0b79134f067e03854b32bae4a39bf99ebb8dae553294"
+      }
+    ],
+    "concurrency": {
+      "requests": 8,
+      "maximumActiveNativeThumbnails": 8,
+      "totalNativeThumbnails": 8
+    },
+    "scope": "Actual registered handlers/native host documents, regular files, real PNG/ICNS/native thumbnail decoding. Oversized/malformed decoder inputs are dispatch observers, not hostile native decoding. Picker selection, source replacement after initial stat, read/native-thumbnail completion are controlled. No production preload/physical input, all formats/platforms, native decoder sandbox, OS file-icon resource parsing or peak memory/CPU claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T08:33:52.176Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "1eaa5c49fd027518732febd5065aba01d5047245253e0deafa4a3f853a9629f5",
+    "sourceHashes": {
+      "src/main/nativeUi.ts": "7172f9dead682d8829eb026f115a1ca6892e955b9d1718724d71cd706f010163",
+      "src/main/downloads.ts": "ca23615cbc6cf8bc4a964ce4acd7c5dc2ced4b83c0826cb8d4cc4e427abe0fa7",
+      "src/main/thumbnailCache.ts": "78e679d7735374d4b8b42a9e24005cb886ffcfeb8207f791fab706acd57bd15b"
+    },
+    "bundleHashes": {
+      "src/main/nativeUi.ts": "64f9da3bb903aafeab4e36df9dab0c8aaa80c2d096c530fd551426c8a2e5567d",
+      "src/main/downloads.ts": "1fae8318d5860930db4a5fb3792bcd1adafef5808eb864d177f5edbf20f6f92c"
+    },
+    "cases": [
+      {
+        "name": "oversizedIcon",
+        "accepted": false,
+        "error": "Choose a readable image up to 40 megapixels.",
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 0,
+        "sourcePathDecoded": false,
+        "snapshotModes": []
+      },
+      {
+        "name": "invalidICNS",
+        "accepted": false,
+        "error": "Invalid icon entry.",
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 0,
+        "sourcePathDecoded": false,
+        "snapshotModes": []
+      },
+      {
+        "name": "normalPNG",
+        "accepted": true,
+        "buffer": 1,
+        "path": 0,
+        "thumbnail": 0,
+        "sourcePathDecoded": false,
+        "snapshotModes": [],
+        "decodedSha256": "689a1b53589ee8742dea0b79134f067e03854b32bae4a39bf99ebb8dae553294"
+      },
+      {
+        "name": "normalICNS",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 1,
+        "sourcePathDecoded": false,
+        "snapshotModes": [
+          384
+        ],
+        "decodedSha256": "fd58fb00d61ffeaea5367f2f899c913443f8cdb8f6a7aab2067e0644b7f4e040"
+      },
+      {
+        "name": "iconSourceReplacement",
+        "accepted": true,
+        "buffer": 1,
+        "path": 0,
+        "thumbnail": 0,
+        "sourcePathDecoded": false,
+        "snapshotModes": [],
+        "decodedSha256": "689a1b53589ee8742dea0b79134f067e03854b32bae4a39bf99ebb8dae553294"
+      },
+      {
+        "name": "oversizedThumbnail",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 0,
+        "sourcePathDecoded": false,
+        "snapshotModes": []
+      },
+      {
+        "name": "oversizedFileThumbnail",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 0,
+        "sourcePathDecoded": false,
+        "snapshotModes": []
+      },
+      {
+        "name": "thumbnailSourceReplacement",
+        "accepted": true,
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 1,
+        "sourcePathDecoded": false,
+        "snapshotModes": [
+          384
+        ],
+        "decodedSha256": "689a1b53589ee8742dea0b79134f067e03854b32bae4a39bf99ebb8dae553294"
+      },
+      {
+        "name": "thumbnailHostReload",
+        "accepted": false,
+        "error": "This window or its access changed. Try the action again.",
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 1,
+        "sourcePathDecoded": false,
+        "snapshotModes": [
+          384
+        ],
+        "decodedSha256": "689a1b53589ee8742dea0b79134f067e03854b32bae4a39bf99ebb8dae553294"
+      },
+      {
+        "name": "iconReadHostReload",
+        "accepted": false,
+        "error": "Icon request expired.",
+        "buffer": 0,
+        "path": 0,
+        "thumbnail": 0,
+        "sourcePathDecoded": false,
+        "snapshotModes": []
+      }
+    ],
+    "concurrency": {
+      "requests": 8,
+      "maximumActiveNativeThumbnails": 4,
+      "totalNativeThumbnails": 8
+    },
+    "scope": "Actual registered handlers/native host documents, regular files, real PNG/ICNS/native thumbnail decoding. Oversized/malformed decoder inputs are dispatch observers, not hostile native decoding. Picker selection, source replacement after initial stat, read/native-thumbnail completion are controlled. No production preload/physical input, all formats/platforms, native decoder sandbox, OS file-icon resource parsing or peak memory/CPU claim."
+  }
+}

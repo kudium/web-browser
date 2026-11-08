@@ -1,0 +1,19 @@
+{
+  "measuredAt": "2026-11-05T15:47:02.612Z",
+  "method": "Serialized provider tool-definition bytes only, excluding messages, inference and transport framing. Baseline reproduces the previous all-fields schema using the same tool names, descriptions and parameter metadata.",
+  "before": {
+    "tools": 31,
+    "bytes": 103829,
+    "parameters": 992
+  },
+  "after": {
+    "tools": 31,
+    "bytes": 15429,
+    "parameters": 104
+  },
+  "reductionPercent": 85.1399897909062,
+  "limitations": [
+    "Byte reduction is not a tokenizer measurement, provider billing estimate or measured inference speedup.",
+    "Metadata or tool additions change the reconstructed baseline; historical raw numbers are retained in this report."
+  ]
+}

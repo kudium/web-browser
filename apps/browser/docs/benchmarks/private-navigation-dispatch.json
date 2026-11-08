@@ -1,0 +1,158 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T09:22:24.827Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "30db0263afb452f2bc74b92e3f4e13a48e00042a82705172d9fc84fd2a182d9f",
+    "sourceHashes": {
+      "src/main/ai.ts": "90056ba7cb5139d2718129998ca3cd38a55282b428454d4ab25c6603fa830077",
+      "src/main/aiNavigation.ts": "f00eec0680b705e7e93fef456b075bb772a26fb0d3d0c286753776cd83b232b9",
+      "src/main/advancedPreferences.ts": "9c1ee2e41a23611b73d3089ffe5efddf732bebcdf43cf795bd705084a624b926",
+      "src/main/aiDialogs.ts": "dc760ff22218ab3f9c44d916a8f252895ea57156043227a19a3008719ed676ca",
+      "src/main/requestRules.ts": "ba10d0737c62411c294e8e239fab3306dfdc69c1bdd92fd07907889a69111a5f"
+    },
+    "bundleSha256": "61f1c4017573e6d96911af177034c8322c042626d238219652940a97b93895b7",
+    "results": [
+      {
+        "label": "public Full access redirect",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "consent changed after loadURL before initial request",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "new-tab consent changed during native creation",
+        "isError": false,
+        "received": 1,
+        "destinationReviews": 0,
+        "tabURL": "http://127.0.0.1:51542/received?creation=private"
+      },
+      {
+        "label": "new-tab host navigated and restored during native creation",
+        "isError": false,
+        "received": 1,
+        "destinationReviews": 0,
+        "tabURL": "http://127.0.0.1:51542/received?host=private"
+      },
+      {
+        "label": "new-tab redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1,
+        "tabURL": "about:blank"
+      },
+      {
+        "label": "new-tab redirect accepted",
+        "isError": false,
+        "received": 1,
+        "destinationReviews": 1,
+        "tabURL": "http://127.0.0.1:51542/received?synthetic=private"
+      },
+      {
+        "label": "private back redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1
+      },
+      {
+        "label": "private forward redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1
+      },
+      {
+        "label": "private reload redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault/MCP/native request callbacks and loopback HTTP socket counts. Before replaces AI, navigation and request-rule modules with retained pre-dispatch-guard files; other modules use current source. Controlled native reviews; synthetic values. Main-frame navigation only; no containment of descendants, fetch, workers, existing WebSocket/WebRTC channels or later sends after navigation completes. macOS native Electron only; no signed/cross-platform release claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T09:26:00.498Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "30db0263afb452f2bc74b92e3f4e13a48e00042a82705172d9fc84fd2a182d9f",
+    "sourceHashes": {
+      "src/main/ai.ts": "1bce8e149bc2243c2bec99888bdb9e11561d040ec4bc2b0476baeb5e51a4b240",
+      "src/main/aiNavigation.ts": "e859e6fbe349e3c6af06053d58741167ab380e1b77f0a3f5e31712a4d0ff98b7",
+      "src/main/advancedPreferences.ts": "9c1ee2e41a23611b73d3089ffe5efddf732bebcdf43cf795bd705084a624b926",
+      "src/main/aiDialogs.ts": "dc760ff22218ab3f9c44d916a8f252895ea57156043227a19a3008719ed676ca",
+      "src/main/requestRules.ts": "36064c9c25e7b8f2b6c63793e8964c68baa82daa05c991ca0215e5f2e5d6116a"
+    },
+    "bundleSha256": "9b3c37ef85b42a905c882d4625c00bf59078dc05ed6901e59640add40b21af8d",
+    "results": [
+      {
+        "label": "public Full access redirect",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "consent changed after loadURL before initial request",
+        "isError": true,
+        "destinationReviews": 0,
+        "received": 0,
+        "resourceRequests": 0
+      },
+      {
+        "label": "new-tab consent changed during native creation",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 0,
+        "tabURL": "about:blank"
+      },
+      {
+        "label": "new-tab host navigated and restored during native creation",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 0,
+        "tabURL": "about:blank"
+      },
+      {
+        "label": "new-tab redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1,
+        "tabURL": "about:blank"
+      },
+      {
+        "label": "new-tab redirect accepted",
+        "isError": false,
+        "received": 1,
+        "destinationReviews": 1,
+        "tabURL": "http://127.0.0.1:51708/received?synthetic=private"
+      },
+      {
+        "label": "private back redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1
+      },
+      {
+        "label": "private forward redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1
+      },
+      {
+        "label": "private reload redirect declined",
+        "isError": true,
+        "received": 0,
+        "destinationReviews": 1
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault/MCP/native request callbacks and loopback HTTP socket counts. Before replaces AI, navigation and request-rule modules with retained pre-dispatch-guard files; other modules use current source. Controlled native reviews; synthetic values. Main-frame navigation only; no containment of descendants, fetch, workers, existing WebSocket/WebRTC channels or later sends after navigation completes. macOS native Electron only; no signed/cross-platform release claim."
+  }
+}

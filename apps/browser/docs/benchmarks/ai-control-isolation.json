@@ -1,0 +1,436 @@
+{
+  "after": {
+    "measuredAt": "2026-11-07T01:14:55.525Z",
+    "results": [
+      {
+        "case": "pause-resume",
+        "requests": 1,
+        "auxiliaryRequests": 0,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+        "externalPaused": true,
+        "explicitExternalResume": true
+      },
+      {
+        "case": "pause-chat",
+        "requests": 1,
+        "auxiliaryRequests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+        "externalPaused": true,
+        "explicitExternalResume": true
+      },
+      {
+        "case": "pause-task",
+        "requests": 1,
+        "auxiliaryRequests": 0,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+        "externalPaused": true,
+        "explicitExternalResume": true
+      }
+    ],
+    "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+  },
+  "before": {
+    "measuredAt": "2026-11-07T01:14:56.745Z",
+    "results": [
+      {
+        "case": "pause-resume",
+        "requests": 1,
+        "auxiliaryRequests": 0,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+        "externalPaused": false,
+        "explicitExternalResume": true
+      },
+      {
+        "case": "pause-chat",
+        "requests": 1,
+        "auxiliaryRequests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+        "externalPaused": false,
+        "explicitExternalResume": true
+      },
+      {
+        "case": "pause-task",
+        "requests": 1,
+        "auxiliaryRequests": 0,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+        "externalPaused": false,
+        "explicitExternalResume": true
+      }
+    ],
+    "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+  },
+  "confirmations": [
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:15:29.653Z",
+      "results": [
+        {
+          "case": "pause-resume",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-chat",
+          "requests": 1,
+          "auxiliaryRequests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-task",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "scheduledRunsAfterManualTask": 0,
+          "explicitExternalResume": true
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:15:30.844Z",
+      "results": [
+        {
+          "case": "pause-resume",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-chat",
+          "requests": 1,
+          "auxiliaryRequests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-task",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "scheduledRunsAfterManualTask": 1,
+          "explicitExternalResume": true
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:16:05.400Z",
+      "results": [
+        {
+          "case": "pause-resume",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-chat",
+          "requests": 1,
+          "auxiliaryRequests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-task",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "scheduledRunsAfterManualTask": 0,
+          "explicitExternalResume": true
+        }
+      ],
+      "method": "Actual Electron registerAI, persisted external pause, built-in chat/resume/manual task, due scheduler, explicit external resume and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:16:06.709Z",
+      "results": [
+        {
+          "case": "pause-resume",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-chat",
+          "requests": 1,
+          "auxiliaryRequests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-task",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "scheduledRunsAfterManualTask": 1,
+          "explicitExternalResume": true
+        }
+      ],
+      "method": "Actual Electron registerAI, persisted external pause, built-in chat/resume/manual task, due scheduler, explicit external resume and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:17:09.573Z",
+      "results": [
+        {
+          "case": "pause-resume",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-chat",
+          "requests": 1,
+          "auxiliaryRequests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-task",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "externalPaused": false,
+          "scheduledRunsAfterManualTask": 1,
+          "explicitExternalResume": true
+        }
+      ],
+      "method": "Actual Electron registerAI, persisted external pause, built-in chat/resume/manual task, due scheduler, explicit external resume and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:17:14.580Z",
+      "results": [
+        {
+          "case": "pause-resume",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-chat",
+          "requests": 1,
+          "auxiliaryRequests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "explicitExternalResume": true
+        },
+        {
+          "case": "pause-task",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "externalPaused": true,
+          "scheduledRunsAfterManualTask": 0,
+          "explicitExternalResume": true
+        }
+      ],
+      "method": "Actual Electron registerAI, persisted external pause, built-in chat/resume/manual task, due scheduler, explicit external resume and local HTTP provider. Each case runs in a separate disposable profile."
+    }
+  ]
+}

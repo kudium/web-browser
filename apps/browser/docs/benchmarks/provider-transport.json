@@ -1,0 +1,55 @@
+{
+  "before": {
+    "measuredAt": "2026-11-06T23:07:23.739Z",
+    "runtime": "v22.23.1",
+    "platform": "darwin/arm64",
+    "method": "Actual bundled requestAIProvider against a loopback HTTP fixture returning a 307 redirect; synthetic credentials and body. Remote HTTP is tested by URL validation without network access.",
+    "sourceSHA256": {
+      "src/main/aiProviderRequest.ts": "193fbe8437a2dffd836d1075b985af13ab6526689ce5ce47c6daeab1237d46d7",
+      "src/browser/ai.ts": "0f6550d2321148077df894af776039e4e7a23decf194e5970cc4970a2d5f4693"
+    },
+    "remotePlaintextAccepted": true,
+    "redirectAccepted": true,
+    "outgoingRequests": 2,
+    "redirectedRequestsWithCredential": 1,
+    "requests": [
+      {
+        "path": "/redirect",
+        "fakeAuthorization": true
+      },
+      {
+        "path": "/destination",
+        "fakeAuthorization": true
+      }
+    ],
+    "limitations": [
+      "Tests provider transport policy, not the whole application or TLS implementation.",
+      "Request-count reduction applies to rejected redirects, not ordinary inference latency."
+    ]
+  },
+  "after": {
+    "measuredAt": "2026-11-06T23:07:35.579Z",
+    "runtime": "v22.23.1",
+    "platform": "darwin/arm64",
+    "method": "Actual bundled requestAIProvider against a loopback HTTP fixture returning a 307 redirect; synthetic credentials and body. Remote HTTP is tested by URL validation without network access.",
+    "sourceSHA256": {
+      "src/main/aiProviderRequest.ts": "6b3bc537068a07c9efec49a38a5617049863f811b39a07b8fdf87940ed9400ed",
+      "src/browser/ai.ts": "608fe61c6e052e4b92f403dd92f99d0af0e1431b2563873692df4841c1d2ea7b"
+    },
+    "remotePlaintextAccepted": false,
+    "redirectAccepted": false,
+    "outgoingRequests": 1,
+    "redirectedRequestsWithCredential": 0,
+    "requests": [
+      {
+        "path": "/redirect",
+        "fakeAuthorization": true
+      }
+    ],
+    "error": "AI provider redirects are blocked. Configure the final HTTPS endpoint directly.",
+    "limitations": [
+      "Tests provider transport policy, not the whole application or TLS implementation.",
+      "Request-count reduction applies to rejected redirects, not ordinary inference latency."
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "recordedAt": "2026-11-07T10:19:17.630Z",
+  "runtime": {
+    "electron": "45.0.0",
+    "chrome": "156.0.8078.48",
+    "node": "24.22.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "probeSha256": "838fe635007be657d33d1f42cd6bd90c3108bdabf1b11bf52395fc583df3075e",
+  "sourceHashes": {
+    "src/main/extensions.ts": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e"
+  },
+  "dependencyHashes": {
+    "electron-chrome-extensions": "e67fb477ca9167709856203a1b217464abccfb027be9134f8fbd8021f6ca8d46",
+    "electron-chrome-web-store": "1067d84b8bd8010cae96239b188dcbc77265fd37cf6f7dd7bcd8814d94471b27"
+  },
+  "reply": {
+    "result": {
+      "result": "success"
+    }
+  },
+  "reviews": [
+    {
+      "message": "Install Permissionless local scope fixture?",
+      "scopes": [
+        {
+          "label": "All sessions, including future sessions",
+          "response": 2
+        },
+        {
+          "label": "Approved Target A",
+          "response": 1
+        }
+      ]
+    }
+  ],
+  "nativeLoadOrder": [
+    "store",
+    "a"
+  ],
+  "finalLoaded": {
+    "a": true,
+    "b": false,
+    "store": false
+  },
+  "scope": "Actual dependency chromeWebstore.beginInstall native IPC, controlled review approving only Target A, local cached permissionless MV3 package with generated public key. Reports native extension-loaded events; no background script execution or remote download verified."
+}

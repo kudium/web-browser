@@ -1,0 +1,81 @@
+import { IApp } from '../types';
+import { groupKey, isGroupHomeTab } from './groups';
+import { commandDestination } from './commandNavigation';
+
+export interface GroupSettings {
+  loginProfileId?: string;
+  name: string;
+  slug?: string;
+  emoji: string;
+  image: string;
+  homeURL: string;
+  spaceId: string;
+  folderId: string;
+  placement: 'regular' | 'pinned' | 'favorite';
+}
+export function updateGroupSettings(
+  tabs: IApp[],
+  source: IApp,
+  settings: GroupSettings
+): IApp[] {
+  const updated = tabs.map((tab) =>
+    groupKey(tab) === groupKey(source) &&
+    (tab.spaceId || 'default') === (source.spaceId || 'default')
+      ? {
+          ...tab,
+          sessionProfileId:
+            settings.loginProfileId === undefined
+              ? tab.sessionProfileId
+              : settings.loginProfileId || undefined,
+          sessionName: settings.name,
+          sessionSlug: settings.slug ?? tab.sessionSlug,
+          sessionNameCustom: true,
+          sessionNameGenerated: false,
+          sessionIconEmoji: settings.emoji || undefined,
+          sessionIconImage: settings.image || undefined,
+          sessionHomeURL: settings.homeURL || undefined,
+          spaceId: settings.spaceId,
+          folderId:
+            settings.placement === 'favorite'
+              ? undefined
+              : settings.folderId || undefined,
+          favorite: settings.placement === 'favorite',
+          pinned: settings.placement !== 'regular',
+        }
+      : tab
+  );
+  const target = updated.find((tab) => tab.id === source.id);
+  if (!settings.homeURL || !target) return updated;
+  const belongs = (tab: IApp) =>
+    groupKey(tab) === groupKey(target) &&
+    (tab.spaceId || 'default') === (target.spaceId || 'default');
+  if (!updated.some((tab) => belongs(tab) && !tab.archived)) return updated;
+  const matching =
+    updated.find(
+      (tab) => belongs(tab) && !tab.archived && isGroupHomeTab(tab)
+    ) || updated.find((tab) => belongs(tab) && isGroupHomeTab(tab));
+  const home = matching
+    ? {
+        ...matching,
+        archived: false,
+        ...(matching.archived
+          ? { restorationId: crypto.randomUUID(), openerTabId: undefined }
+          : {}),
+      }
+    : {
+        ...commandDestination(
+          [],
+          target,
+          settings.homeURL,
+          false,
+          settings.spaceId
+        ).app!,
+        sessionSlug: target.sessionSlug,
+        favorite: target.favorite,
+        pinned: target.pinned,
+      };
+  const remaining = updated.filter((tab) => tab.id !== home.id);
+  const first = remaining.findIndex(belongs);
+  remaining.splice(first < 0 ? updated.findIndex(belongs) : first, 0, home);
+  return remaining.map((tab, position) => ({ ...tab, position: position + 1 }));
+}

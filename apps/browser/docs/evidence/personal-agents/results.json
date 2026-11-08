@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "widths": [
+    1080,
+    760,
+    480
+  ],
+  "checks": [
+    "real Preferences components and AI IPC",
+    "automatic local setup for Hermes and OpenClaw",
+    "preserved JSON5/YAML settings and comments",
+    "real MCP connections from generated configs",
+    "per-agent revocation",
+    "token reset and reconnect",
+    "secret-free status and collapsed manual form",
+    "untrusted sender/frame rejection",
+    "native replacement review cancellation",
+    "native file picker selection/cancellation",
+    "responsive rows and help popover"
+  ],
+  "vendorAgents": "not installed or launched; documented configs verified with official MCP client"
+}

@@ -1,0 +1,554 @@
+{
+  "before": {
+    "measuredAt": "2026-11-07T01:32:16.861Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "sourceSHA256": "586fd4ffa3019a62c31d4c03896c6ff4e55a00799cc9f0120d4859af49ac06d6",
+    "loaderSHA256": "3f762de4da581459c59ebe6cc71c54fced718a24541dc9e2c8bf66527f607082",
+    "results": [
+      {
+        "case": "declared",
+        "requests": 1,
+        "peakServerRequests": 1,
+        "serverBytesWritten": 8388608,
+        "decodedBodyBytesConsumed": 8388608,
+        "arrayBufferBytesAllocated": 8388608,
+        "nativeDecodes": 0,
+        "published": 0,
+        "elapsedMs": 423.65766699999995
+      },
+      {
+        "case": "chunked",
+        "requests": 1,
+        "peakServerRequests": 1,
+        "serverBytesWritten": 8388608,
+        "decodedBodyBytesConsumed": 8388608,
+        "arrayBufferBytesAllocated": 8388608,
+        "nativeDecodes": 0,
+        "published": 0,
+        "elapsedMs": 358.931458
+      },
+      {
+        "case": "gzip",
+        "requests": 1,
+        "peakServerRequests": 1,
+        "serverBytesWritten": 8176,
+        "decodedBodyBytesConsumed": 8388608,
+        "arrayBufferBytesAllocated": 8388608,
+        "nativeDecodes": 0,
+        "published": 0,
+        "elapsedMs": 53.29145799999992
+      },
+      {
+        "case": "healthy-many",
+        "requests": 20,
+        "peakServerRequests": 6,
+        "serverBytesWritten": 2040,
+        "decodedBodyBytesConsumed": 2040,
+        "arrayBufferBytesAllocated": 2040,
+        "nativeDecodes": 20,
+        "published": 20,
+        "elapsedMs": 449.24675
+      },
+      {
+        "case": "superseded",
+        "requests": 20,
+        "peakServerRequests": 6,
+        "serverBytesWritten": 2040,
+        "decodedBodyBytesConsumed": 2040,
+        "arrayBufferBytesAllocated": 2040,
+        "nativeDecodes": 20,
+        "published": 1,
+        "elapsedMs": 456.064292
+      }
+    ],
+    "method": "Extracted actual production favicon event callback with its background promise tracked; actual Electron Session.fetch and nativeImage decoding. Synthetic HTTP responses, gzip decoding, 20 independent tabs or 20 superseding events. No personal profile.",
+    "limitations": [
+      "Server bytes written include network buffering; they are not exact bytes received by the client.",
+      "Encoded response bounds do not prove native image decoded-pixel memory or decoder CPU bounds.",
+      "No whole-app CPU/RSS or tab-switch improvement is claimed."
+    ]
+  },
+  "after": {
+    "measuredAt": "2026-11-07T01:33:26.191Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "sourceSHA256": "991b2670e8d3cf947a254633d6814b1f5b8c8a27bc2c3ecaed6e087941ba9163",
+    "loaderSHA256": "3f762de4da581459c59ebe6cc71c54fced718a24541dc9e2c8bf66527f607082",
+    "results": [
+      {
+        "case": "declared",
+        "requests": 1,
+        "peakClientFetches": 1,
+        "peakServerRequests": 1,
+        "serverBytesWritten": 917504,
+        "decodedBodyBytesConsumed": 0,
+        "maxReadChunkBytes": 0,
+        "arrayBufferBytesAllocated": 0,
+        "nativeDecodes": 0,
+        "published": 0,
+        "elapsedMs": 81.185791
+      },
+      {
+        "case": "chunked",
+        "requests": 1,
+        "peakClientFetches": 1,
+        "peakServerRequests": 1,
+        "serverBytesWritten": 3866624,
+        "decodedBodyBytesConsumed": 1114105,
+        "maxReadChunkBytes": 65536,
+        "arrayBufferBytesAllocated": 0,
+        "nativeDecodes": 0,
+        "published": 0,
+        "elapsedMs": 76.51974999999999
+      },
+      {
+        "case": "gzip",
+        "requests": 1,
+        "peakClientFetches": 1,
+        "peakServerRequests": 1,
+        "serverBytesWritten": 2039792,
+        "decodedBodyBytesConsumed": 2097152,
+        "maxReadChunkBytes": 2097152,
+        "arrayBufferBytesAllocated": 0,
+        "nativeDecodes": 0,
+        "published": 0,
+        "elapsedMs": 49.662125
+      },
+      {
+        "case": "healthy-many",
+        "requests": 20,
+        "peakClientFetches": 4,
+        "peakServerRequests": 3,
+        "serverBytesWritten": 9963512,
+        "decodedBodyBytesConsumed": 2040,
+        "maxReadChunkBytes": 102,
+        "arrayBufferBytesAllocated": 0,
+        "nativeDecodes": 20,
+        "published": 20,
+        "elapsedMs": 765.0720419999999
+      },
+      {
+        "case": "superseded",
+        "requests": 1,
+        "peakClientFetches": 1,
+        "peakServerRequests": 1,
+        "serverBytesWritten": 102,
+        "decodedBodyBytesConsumed": 102,
+        "maxReadChunkBytes": 102,
+        "arrayBufferBytesAllocated": 0,
+        "nativeDecodes": 1,
+        "published": 1,
+        "elapsedMs": 136.35758299999998
+      }
+    ],
+    "method": "Extracted actual production favicon event callback with its background promise tracked; actual Electron Session.fetch and nativeImage decoding. Synthetic HTTP responses, gzip decoding, 20 independent tabs or 20 superseding events. No personal profile.",
+    "limitations": [
+      "Server bytes written include network buffering; they are not exact bytes received by the client.",
+      "Encoded response bounds do not prove native image decoded-pixel memory or decoder CPU bounds.",
+      "No whole-app CPU/RSS or tab-switch improvement is claimed."
+    ],
+    "validationNote": "The initial helper cancelled its reader but did not abort the underlying Electron fetch transport on size rejection. Prior fixture responses continued into later scenarios, contaminating server byte/peak counts. Client body counts remain observations. Later confirmations abort transport and require all server responses closed before resetting counters."
+  },
+  "confirmations": [
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:34:25.916Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "sourceSHA256": "991b2670e8d3cf947a254633d6814b1f5b8c8a27bc2c3ecaed6e087941ba9163",
+      "loaderSHA256": "91ad81e6ac208ceeefec0d6a09bdee88bd425ddd15d51d357f34ba26cef6a400",
+      "results": [
+        {
+          "case": "declared",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 131072,
+          "decodedBodyBytesConsumed": 0,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 70.44270799999998
+        },
+        {
+          "case": "chunked",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 1114112,
+          "decodedBodyBytesConsumed": 1114105,
+          "maxReadChunkBytes": 65536,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 55.043957999999975
+        },
+        {
+          "case": "gzip",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 8176,
+          "decodedBodyBytesConsumed": 1703936,
+          "maxReadChunkBytes": 1703936,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 19.203292000000033
+        },
+        {
+          "case": "healthy-many",
+          "requests": 20,
+          "peakClientFetches": 4,
+          "peakServerRequests": 4,
+          "serverBytesWritten": 2040,
+          "decodedBodyBytesConsumed": 2040,
+          "maxReadChunkBytes": 102,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 20,
+          "published": 20,
+          "elapsedMs": 527.117917
+        },
+        {
+          "case": "superseded",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 102,
+          "decodedBodyBytesConsumed": 102,
+          "maxReadChunkBytes": 102,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 1,
+          "published": 1,
+          "elapsedMs": 104.04662500000006
+        }
+      ],
+      "method": "Extracted actual production favicon event callback with its background promise tracked; actual Electron Session.fetch and nativeImage decoding. Synthetic HTTP responses, gzip decoding, 20 independent tabs or 20 superseding events. No personal profile.",
+      "limitations": [
+        "Server bytes written include network buffering; they are not exact bytes received by the client.",
+        "Encoded response bounds do not prove native image decoded-pixel memory or decoder CPU bounds.",
+        "No whole-app CPU/RSS or tab-switch improvement is claimed."
+      ]
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:36:43.715Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "sourceSHA256": "7933e3b616a85611bc222b30b3858e877fcd041ea67d7fb8fa5343004b41acf8",
+      "loaderSHA256": "b53083b2a161e5f8429cf6314336671b8ae998e3b97401431ecb2c7664f9e1e8",
+      "results": [
+        {
+          "case": "declared",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 131072,
+          "decodedBodyBytesConsumed": 0,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 64.55737499999998
+        },
+        {
+          "case": "chunked",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 1114112,
+          "decodedBodyBytesConsumed": 1114105,
+          "maxReadChunkBytes": 65536,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 57.137834
+        },
+        {
+          "case": "gzip",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 8176,
+          "decodedBodyBytesConsumed": 2097152,
+          "maxReadChunkBytes": 2097152,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 18.739958
+        },
+        {
+          "case": "healthy-many",
+          "requests": 20,
+          "peakClientFetches": 4,
+          "peakServerRequests": 4,
+          "serverBytesWritten": 2040,
+          "decodedBodyBytesConsumed": 2040,
+          "maxReadChunkBytes": 102,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 20,
+          "published": 20,
+          "elapsedMs": 524.9961250000001
+        },
+        {
+          "case": "superseded",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 102,
+          "decodedBodyBytesConsumed": 102,
+          "maxReadChunkBytes": 102,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 1,
+          "published": 1,
+          "elapsedMs": 102.9219999999998
+        },
+        {
+          "case": "large-png",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 58790,
+          "decodedBodyBytesConsumed": 58790,
+          "maxReadChunkBytes": 54820,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 1.1514999999999418
+        }
+      ],
+      "method": "Extracted actual production favicon event callback with its background promise tracked; actual Electron Session.fetch and nativeImage decoding. Synthetic HTTP responses, gzip decoding, 20 independent tabs or 20 superseding events. No personal profile.",
+      "limitations": [
+        "Server bytes written include network buffering; they are not exact bytes received by the client.",
+        "Encoded response bounds do not prove native image decoded-pixel memory or decoder CPU bounds.",
+        "No whole-app CPU/RSS or tab-switch improvement is claimed."
+      ]
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:39:18.809Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "sourceSHA256": "586fd4ffa3019a62c31d4c03896c6ff4e55a00799cc9f0120d4859af49ac06d6",
+      "probeSHA256": "766e494c5485b2897ecb5f9a0ab1cfda1771e6e2fa7588e6a45ad3522c2da134",
+      "imageSizeVersion": "2.1.0",
+      "loaderSHA256": "b53083b2a161e5f8429cf6314336671b8ae998e3b97401431ecb2c7664f9e1e8",
+      "results": [
+        {
+          "case": "declared",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 8388608,
+          "decodedBodyBytesConsumed": 8388608,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 8388608,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 370.90787500000005
+        },
+        {
+          "case": "chunked",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 8388608,
+          "decodedBodyBytesConsumed": 8388608,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 8388608,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 357.289541
+        },
+        {
+          "case": "gzip",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 8176,
+          "decodedBodyBytesConsumed": 8388608,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 8388608,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 26.625834000000168
+        },
+        {
+          "case": "healthy-many",
+          "requests": 20,
+          "peakClientFetches": 20,
+          "peakServerRequests": 6,
+          "serverBytesWritten": 2040,
+          "decodedBodyBytesConsumed": 2040,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 2040,
+          "nativeDecodes": 20,
+          "published": 20,
+          "elapsedMs": 425.2201249999998
+        },
+        {
+          "case": "superseded",
+          "requests": 20,
+          "peakClientFetches": 20,
+          "peakServerRequests": 6,
+          "serverBytesWritten": 2040,
+          "decodedBodyBytesConsumed": 2040,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 2040,
+          "nativeDecodes": 20,
+          "published": 1,
+          "elapsedMs": 438.199709
+        },
+        {
+          "case": "large-png",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 58790,
+          "decodedBodyBytesConsumed": 58790,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 58790,
+          "nativeDecodes": 1,
+          "published": 1,
+          "elapsedMs": 57.75675000000001
+        },
+        {
+          "case": "healthy-jpg",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 767,
+          "decodedBodyBytesConsumed": 767,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 767,
+          "nativeDecodes": 1,
+          "published": 1,
+          "elapsedMs": 1.4577500000000327
+        }
+      ],
+      "method": "Extracted actual production favicon event callback with its background promise tracked; actual Electron Session.fetch and nativeImage decoding. Synthetic HTTP responses, gzip decoding, 20 independent tabs or 20 superseding events. No personal profile.",
+      "limitations": [
+        "Server bytes written include network buffering; they are not exact bytes received by the client.",
+        "PNG/JPEG dimensions are preflighted, but a byte/header policy is not a hard bound on Chromium stream chunks, native decoder CPU, or whole-process RSS.",
+        "No whole-app CPU/RSS or tab-switch improvement is claimed."
+      ]
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:39:20.165Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "sourceSHA256": "76e61600eef88b8165eb3a441cd9633912a4209b40497c238d9a7ddc1c467455",
+      "probeSHA256": "766e494c5485b2897ecb5f9a0ab1cfda1771e6e2fa7588e6a45ad3522c2da134",
+      "imageSizeVersion": "2.1.0",
+      "loaderSHA256": "b53083b2a161e5f8429cf6314336671b8ae998e3b97401431ecb2c7664f9e1e8",
+      "results": [
+        {
+          "case": "declared",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 131072,
+          "decodedBodyBytesConsumed": 0,
+          "maxReadChunkBytes": 0,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 59.097666999999944
+        },
+        {
+          "case": "chunked",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 1114112,
+          "decodedBodyBytesConsumed": 1114105,
+          "maxReadChunkBytes": 65536,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 60.11583400000001
+        },
+        {
+          "case": "gzip",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 8176,
+          "decodedBodyBytesConsumed": 1114112,
+          "maxReadChunkBytes": 1114112,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 18.333124999999995
+        },
+        {
+          "case": "healthy-many",
+          "requests": 20,
+          "peakClientFetches": 4,
+          "peakServerRequests": 4,
+          "serverBytesWritten": 2040,
+          "decodedBodyBytesConsumed": 2040,
+          "maxReadChunkBytes": 102,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 20,
+          "published": 20,
+          "elapsedMs": 533.208375
+        },
+        {
+          "case": "superseded",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 102,
+          "decodedBodyBytesConsumed": 102,
+          "maxReadChunkBytes": 102,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 1,
+          "published": 1,
+          "elapsedMs": 103.86445900000012
+        },
+        {
+          "case": "large-png",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 58790,
+          "decodedBodyBytesConsumed": 58790,
+          "maxReadChunkBytes": 54820,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 0,
+          "published": 0,
+          "elapsedMs": 1.4885420000000522
+        },
+        {
+          "case": "healthy-jpg",
+          "requests": 1,
+          "peakClientFetches": 1,
+          "peakServerRequests": 1,
+          "serverBytesWritten": 767,
+          "decodedBodyBytesConsumed": 767,
+          "maxReadChunkBytes": 767,
+          "arrayBufferBytesAllocated": 0,
+          "nativeDecodes": 1,
+          "published": 1,
+          "elapsedMs": 1.291834000000108
+        }
+      ],
+      "method": "Extracted actual production favicon event callback with its background promise tracked; actual Electron Session.fetch and nativeImage decoding. Synthetic HTTP responses, gzip decoding, 20 independent tabs or 20 superseding events. No personal profile.",
+      "limitations": [
+        "Server bytes written include network buffering; they are not exact bytes received by the client.",
+        "PNG/JPEG dimensions are preflighted, but a byte/header policy is not a hard bound on Chromium stream chunks, native decoder CPU, or whole-process RSS.",
+        "No whole-app CPU/RSS or tab-switch improvement is claimed."
+      ]
+    }
+  ]
+}

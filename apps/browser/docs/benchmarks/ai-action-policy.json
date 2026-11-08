@@ -1,0 +1,160 @@
+{
+  "measuredAt": "2026-11-07T00:04:41.317Z",
+  "runtime": "v22.23.1",
+  "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+  "domProgramSHA256": "61c0d65fa87dfa86637840321f50072cafe1afb47d72635d383e85f22b593479",
+  "method": "Actual readAIPage/actAIPage functions extracted by TypeScript AST and run in JSDOM; original/current requiresAIApproval decide whether synthetic controls execute without a review. No network or user account.",
+  "phases": {
+    "before": {
+      "sourceSHA256": "9d1ad2153860bb87f1c5bdbefb6f96fabcab3407aee0031ca7dce9b17acb534c",
+      "observations": [
+        {
+          "action": "click",
+          "label": "Continue",
+          "sensitiveActionHint": false,
+          "routineHint": true,
+          "requiresReview": false,
+          "sideEffectsWithoutReview": 1
+        },
+        {
+          "action": "click",
+          "label": "Continuar",
+          "sensitiveActionHint": false,
+          "routineHint": true,
+          "requiresReview": false,
+          "sideEffectsWithoutReview": 1
+        },
+        {
+          "action": "select_options",
+          "label": "Account action",
+          "requiresReview": false,
+          "sideEffectsWithoutReview": 1
+        },
+        {
+          "action": "press_key",
+          "label": "Delete keyboard shortcut",
+          "requiresReview": false
+        }
+      ],
+      "controlsWithoutReview": 4
+    },
+    "after": {
+      "sourceSHA256": "ea35d394f0699cf9802b5fda1619d04a4b50e838114fca495838f4726aa9c5a3",
+      "observations": [
+        {
+          "action": "click",
+          "label": "Continue",
+          "sensitiveActionHint": false,
+          "routineHint": true,
+          "requiresReview": true,
+          "sideEffectsWithoutReview": 0
+        },
+        {
+          "action": "click",
+          "label": "Continuar",
+          "sensitiveActionHint": false,
+          "routineHint": true,
+          "requiresReview": true,
+          "sideEffectsWithoutReview": 0
+        },
+        {
+          "action": "select_options",
+          "label": "Account action",
+          "requiresReview": true,
+          "sideEffectsWithoutReview": 0
+        },
+        {
+          "action": "press_key",
+          "label": "Delete keyboard shortcut",
+          "requiresReview": true
+        }
+      ],
+      "controlsWithoutReview": 0
+    }
+  },
+  "limitations": [
+    "DOM and policy probes do not exercise the entire MCP/inference dispatch path or prove that every sensitive workflow is safe.",
+    "Full access remains an explicit broader grant; private-data release and prompt-injection end-to-end checks remain separate requirements."
+  ],
+  "confirmations": [
+    {
+      "measuredAt": "2026-11-07T00:10:25.403Z",
+      "runtime": "v22.23.1",
+      "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+      "domProgramSHA256": "61c0d65fa87dfa86637840321f50072cafe1afb47d72635d383e85f22b593479",
+      "method": "Actual readAIPage/actAIPage functions extracted by TypeScript AST and run in JSDOM; original/current requiresAIApproval decide whether synthetic controls execute without a review. No network or user account.",
+      "phases": {
+        "before": {
+          "sourceSHA256": "9d1ad2153860bb87f1c5bdbefb6f96fabcab3407aee0031ca7dce9b17acb534c",
+          "observations": [
+            {
+              "action": "click",
+              "label": "Continue",
+              "sensitiveActionHint": false,
+              "routineHint": true,
+              "requiresReview": false,
+              "sideEffectsWithoutReview": 1
+            },
+            {
+              "action": "click",
+              "label": "Continuar",
+              "sensitiveActionHint": false,
+              "routineHint": true,
+              "requiresReview": false,
+              "sideEffectsWithoutReview": 1
+            },
+            {
+              "action": "select_options",
+              "label": "Account action",
+              "requiresReview": false,
+              "sideEffectsWithoutReview": 1
+            },
+            {
+              "action": "press_key",
+              "label": "Delete keyboard shortcut",
+              "requiresReview": false
+            }
+          ],
+          "controlsWithoutReview": 4
+        },
+        "after": {
+          "sourceSHA256": "884452a252c1e224bc4481f7c53d4c5829fdb65eed6b283251466c9f36f6d08e",
+          "observations": [
+            {
+              "action": "click",
+              "label": "Continue",
+              "sensitiveActionHint": false,
+              "routineHint": true,
+              "requiresReview": true,
+              "sideEffectsWithoutReview": 0
+            },
+            {
+              "action": "click",
+              "label": "Continuar",
+              "sensitiveActionHint": false,
+              "routineHint": true,
+              "requiresReview": true,
+              "sideEffectsWithoutReview": 0
+            },
+            {
+              "action": "select_options",
+              "label": "Account action",
+              "requiresReview": true,
+              "sideEffectsWithoutReview": 0
+            },
+            {
+              "action": "press_key",
+              "label": "Delete keyboard shortcut",
+              "requiresReview": true
+            }
+          ],
+          "controlsWithoutReview": 0
+        }
+      },
+      "limitations": [
+        "DOM and policy probes do not exercise the entire MCP/inference dispatch path or prove that every sensitive workflow is safe.",
+        "Full access remains an explicit broader grant; private-data release and prompt-injection end-to-end checks remain separate requirements."
+      ]
+    }
+  ]
+}

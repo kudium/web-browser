@@ -1,0 +1,170 @@
+{
+  "checks": {
+    "tests": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/tests.log",
+      "sha256": "9a63027d55c1b252c14f4dc88d8da7e9e8653594a859c5f6301c7e5738d37423"
+    },
+    "unit": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/unit.log",
+      "sha256": "3016088ace0a6c8a78c3f1f888dcbebdbdd5e2cda6d376a9adceac582d2c8c05"
+    },
+    "lint": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/lint.log",
+      "sha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc"
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/build.log",
+      "sha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c"
+    },
+    "before/selected": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-selected.log",
+      "sha256": "f0ccd8ec47a405d384ec91ccb201e60af34576b509b59c4c4789f9e37064b4bd"
+    },
+    "before/all": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-all.log",
+      "sha256": "441b680e9548bdb46a82c7562558bf8f3b2e4dbec1a86ac63fb16c3f9a405bea"
+    },
+    "before/decline": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-decline.log",
+      "sha256": "0de91f86f6deab1ea6b9681515707a8181dc28746af1dcda4e0b6a764fbeaa22"
+    },
+    "before/actual permissions": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-actual-permissions.log",
+      "sha256": "368fb1d8f85780c6a0a154ea9d7e254cc073d1b154b8fa5e6da431ce59d24dec"
+    },
+    "before/source changed": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-source-changed.log",
+      "sha256": "e0b0928dae0fe1995dd67ad9b2fab8069bc712e9c7f0def9096407e5d5501169"
+    },
+    "before/callbacks refreshed": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-callbacks-refreshed.log",
+      "sha256": "c5a879717911404cf1881047958fab02bf958736861f70d87679106d7a2ce513"
+    },
+    "before/target restored": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-target-restored.log",
+      "sha256": "79d5b3ff274feed557a595c2a32fd690b8559cee9db63c4b92d8511cb5238778"
+    },
+    "before/navigation": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-navigation.log",
+      "sha256": "3cabd997c57cfdcce593f9dc7ee3501041702a0b6acbb8b2cc998651c332b068"
+    },
+    "before/owner restored": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-owner-restored.log",
+      "sha256": "d92d834c84c9d2dc075bcebbb4ab95084db309b1e243f81658e6f419cfbd8332"
+    },
+    "before/queued target restored": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-queued-target-restored.log",
+      "sha256": "c1b6416b5fac7a7b6a1e1693fc5ea61d446f6346d1b982d896b23ffdcf103163"
+    },
+    "before/package changed": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-package-changed.log",
+      "sha256": "ce4b4b2eb0cc8c76275725e3249bd2ca6ab177a968d7407bc2d90393a708a6d5"
+    },
+    "before/file added": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/before-file-added.log",
+      "sha256": "f4e2e8c83b899bd40385f95ad1c4525aedd43dc673e134fe459bd2eb73896fe8"
+    },
+    "after/selected": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-selected.log",
+      "sha256": "70e3350c8f313e04117891a19841ba518d50009aed9b1a2d369cf17ee4627117"
+    },
+    "after/all": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-all.log",
+      "sha256": "823bb85ce4272af684c9812fbb8dd221e150069e6ade11fb30a845ba3f9d9066"
+    },
+    "after/decline": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-decline.log",
+      "sha256": "fa110e6e3f6256c934889c1fe96ec6c83290975458da27f4e876d6674b613acb"
+    },
+    "after/actual permissions": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-actual-permissions.log",
+      "sha256": "b251849a7c92960a21dbdb8501a609a6bdcc3693c63711416a1014f2b622da86"
+    },
+    "after/source changed": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-source-changed.log",
+      "sha256": "343526b3e3793126208d6c4c63b6339ada22c01aef0abc6b33f67f9087891727"
+    },
+    "after/callbacks refreshed": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-callbacks-refreshed.log",
+      "sha256": "5927150f77bd0196d02d49b73a3f4b818238dcce8bbd4ae61a98a54db2d709da"
+    },
+    "after/target restored": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-target-restored.log",
+      "sha256": "976f42cb65b5d0e346d862d76bea70da65fc4f4ee10e6e766db3ceb5f4ad7668"
+    },
+    "after/navigation": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-navigation.log",
+      "sha256": "f9247ef74fc71dd7c40d6cd31f5b541d1b9e7d148891b29dd4defe6f1e2a5d3a"
+    },
+    "after/owner restored": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-owner-restored.log",
+      "sha256": "9babf083b2f942b2dd0ecc94e3167fb5f2f2014ebc5905d3fd58fe75b9fdf460"
+    },
+    "after/queued target restored": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-queued-target-restored.log",
+      "sha256": "9744edfb03f0a316912eeee4d4c8cdad4c8d6985375d802289681d887b7e2742"
+    },
+    "after/package changed": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-package-changed.log",
+      "sha256": "f4847ceff9a661c84f26643ed0b865ebd9ffb2e77c3c2328b4584a658db35084"
+    },
+    "after/file added": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/after-file-added.log",
+      "sha256": "f87b3ac6ad8742a204b47872b91b8e18e8e0f4f8eb133ea735b08593b3b7abcb"
+    },
+    "finalTestLint": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-install-owned-logs/final-test-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "sourceHashes": {
+    "src/main/extensions.ts": "3bc7591c1a0546cd573061d2e72d61741800114a7854407289515c91b8573db0",
+    "src/main/extensionPackage.ts": "9d37e49c367ff06f69a232b66471b89664e38cf8ebdf9a308fda61ba23602689",
+    "src/__tests__/extensions.test.ts": "e889a05c85c2762786f07ccadd9faac020c14145b00315bcf8e0ae5f7919e336",
+    "src/__tests__/extensionPackage.test.ts": "92d320860e4e8faf30fc7a8fb9e1d0012be406f3cc56e47daf90e1313fbe8abf",
+    ".erb/scripts/extension-install-owned-smoke.cjs": "903f21da5e573ae87bdefbf39559df7af4570f49b8fb902bee44a8121b3943d9",
+    ".erb/scripts/checks.ts": "450fb07fae13aaca86debb58efb174a11453d703d8c220d32ba9e16db506b7af",
+    "docs/benchmarks/baselines/extension-install-scope/extensions.ts.txt": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "docs/benchmarks/extension-install-owned.json": "51b1f172604e114418b830cdfc788f6ba9a77291e274d6203b70b9906f828f16",
+    "docs/security/ipc-inventory-2026-11-07-extension-install-owned.json": "57f4bfc640c1d25a1ea7846f2cc51b440e8007c78f77dab291e22e7943152f47"
+  },
+  "testSuites": 143,
+  "tests": 735,
+  "nativeCases": 24,
+  "requiredPlatforms": [
+    "macOS",
+    "Windows",
+    "Linux"
+  ],
+  "nativePlatformVerified": "macOS arm64",
+  "note": "Full suite/product lint/types/build pass. A final timeout assertion was added to the existing unit case afterward; final focused 8 tests pass. Native cases use actual engines and local cached packages, not remote store downloading."
+}

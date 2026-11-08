@@ -1,0 +1,237 @@
+{
+  "measuredAt": "2026-11-07T00:12:41.782Z",
+  "runtime": "v22.23.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+  "method": "Bundle exact original Git vault/editor source and current source, create disposable encrypted files, save/edit/restart and rewrite one synthetic legacy envelope with omitted/false consents; count effective grants and public AI availability.",
+  "phases": {
+    "before": {
+      "sourceSHA256": {
+        "src/main/passwordManager/vault.ts": "94afc5c315685cd8b8eec236c12cb39cf7ae855fc0db9e415c5f59226afa3e22",
+        "src/main/passwordManager/records.ts": "443eae12c864fcf3232d4307fce7aca19b7c9dc75a37f85558d0b2572fdc1aff",
+        "src/browser/passwordManager.ts": "e614a37111837dba96534be3b64f5b3481901a88c1fba5c4d782b8224c95bc72"
+      },
+      "observations": [
+        {
+          "case": "login explicit false",
+          "editorAllowsAI": true,
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "profile explicit false",
+          "editorAllowsAI": true,
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "payment explicit false",
+          "editorAllowsAI": true,
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "knowledge explicit false",
+          "editorAllowsAI": true,
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "missing consent",
+          "persistedAllowsAI": true,
+          "searchDisclosesFact": true
+        },
+        {
+          "case": "new memory",
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "legacy false record",
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "legacy false override",
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "legacy false global permission",
+          "persistedAllowsAI": true
+        }
+      ],
+      "unrequestedGrants": 9
+    },
+    "after": {
+      "sourceSHA256": {
+        "src/main/passwordManager/vault.ts": "e5e1cc948bcdbf638a24650902ccf80959a70916535924bbc10b2fec2c45674c",
+        "src/main/passwordManager/records.ts": "443eae12c864fcf3232d4307fce7aca19b7c9dc75a37f85558d0b2572fdc1aff",
+        "src/browser/passwordManager.ts": "a84b2f70e8fb43c81cb4982c3944230d78b90d7fd2e4a2d4548d7279dabfb920"
+      },
+      "observations": [
+        {
+          "case": "login explicit false",
+          "editorAllowsAI": false,
+          "persistedAllowsAI": false
+        },
+        {
+          "case": "profile explicit false",
+          "editorAllowsAI": false,
+          "persistedAllowsAI": false
+        },
+        {
+          "case": "payment explicit false",
+          "editorAllowsAI": false,
+          "persistedAllowsAI": false
+        },
+        {
+          "case": "knowledge explicit false",
+          "editorAllowsAI": false,
+          "persistedAllowsAI": false
+        },
+        {
+          "case": "missing consent",
+          "persistedAllowsAI": false,
+          "searchDisclosesFact": false
+        },
+        {
+          "case": "new memory",
+          "persistedAllowsAI": false
+        },
+        {
+          "case": "legacy false record",
+          "persistedAllowsAI": true
+        },
+        {
+          "case": "legacy false override",
+          "persistedAllowsAI": false
+        },
+        {
+          "case": "legacy false global permission",
+          "persistedAllowsAI": false
+        }
+      ],
+      "unrequestedGrants": 1
+    }
+  },
+  "limitations": [
+    "This proves record consent preservation, not per-task provider/client or downstream data-release approval.",
+    "Previously persisted automatically forced true values cannot be distinguished from intentional user grants.",
+    "Local hook/fill permission and provider disclosure are separate boundaries."
+  ],
+  "validationNote": "Initial legacy-record probe changed items[0] after save had reordered records, leaving the intended record explicitly enabled. Its legacy false record observation/count is invalid. The confirmation below selects the intended record by ID; initial raw data is retained.",
+  "confirmations": [
+    {
+      "measuredAt": "2026-11-07T00:13:05.103Z",
+      "runtime": "v22.23.1",
+      "platform": "darwin",
+      "arch": "arm64",
+      "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+      "method": "Bundle exact original Git vault/editor source and current source, create disposable encrypted files, save/edit/restart and rewrite one synthetic legacy envelope with omitted/false consents; count effective grants and public AI availability.",
+      "phases": {
+        "before": {
+          "sourceSHA256": {
+            "src/main/passwordManager/vault.ts": "94afc5c315685cd8b8eec236c12cb39cf7ae855fc0db9e415c5f59226afa3e22",
+            "src/main/passwordManager/records.ts": "443eae12c864fcf3232d4307fce7aca19b7c9dc75a37f85558d0b2572fdc1aff",
+            "src/browser/passwordManager.ts": "e614a37111837dba96534be3b64f5b3481901a88c1fba5c4d782b8224c95bc72"
+          },
+          "observations": [
+            {
+              "case": "login explicit false",
+              "editorAllowsAI": true,
+              "persistedAllowsAI": true
+            },
+            {
+              "case": "profile explicit false",
+              "editorAllowsAI": true,
+              "persistedAllowsAI": true
+            },
+            {
+              "case": "payment explicit false",
+              "editorAllowsAI": true,
+              "persistedAllowsAI": true
+            },
+            {
+              "case": "knowledge explicit false",
+              "editorAllowsAI": true,
+              "persistedAllowsAI": true
+            },
+            {
+              "case": "missing consent",
+              "persistedAllowsAI": true,
+              "searchDisclosesFact": true
+            },
+            {
+              "case": "new memory",
+              "persistedAllowsAI": true
+            },
+            {
+              "case": "legacy false record",
+              "persistedAllowsAI": true
+            },
+            {
+              "case": "legacy false override",
+              "persistedAllowsAI": true
+            },
+            {
+              "case": "legacy false global permission",
+              "persistedAllowsAI": true
+            }
+          ],
+          "unrequestedGrants": 9
+        },
+        "after": {
+          "sourceSHA256": {
+            "src/main/passwordManager/vault.ts": "e5e1cc948bcdbf638a24650902ccf80959a70916535924bbc10b2fec2c45674c",
+            "src/main/passwordManager/records.ts": "443eae12c864fcf3232d4307fce7aca19b7c9dc75a37f85558d0b2572fdc1aff",
+            "src/browser/passwordManager.ts": "a84b2f70e8fb43c81cb4982c3944230d78b90d7fd2e4a2d4548d7279dabfb920"
+          },
+          "observations": [
+            {
+              "case": "login explicit false",
+              "editorAllowsAI": false,
+              "persistedAllowsAI": false
+            },
+            {
+              "case": "profile explicit false",
+              "editorAllowsAI": false,
+              "persistedAllowsAI": false
+            },
+            {
+              "case": "payment explicit false",
+              "editorAllowsAI": false,
+              "persistedAllowsAI": false
+            },
+            {
+              "case": "knowledge explicit false",
+              "editorAllowsAI": false,
+              "persistedAllowsAI": false
+            },
+            {
+              "case": "missing consent",
+              "persistedAllowsAI": false,
+              "searchDisclosesFact": false
+            },
+            {
+              "case": "new memory",
+              "persistedAllowsAI": false
+            },
+            {
+              "case": "legacy false record",
+              "persistedAllowsAI": false
+            },
+            {
+              "case": "legacy false override",
+              "persistedAllowsAI": false
+            },
+            {
+              "case": "legacy false global permission",
+              "persistedAllowsAI": false
+            }
+          ],
+          "unrequestedGrants": 0
+        }
+      },
+      "limitations": [
+        "This proves record consent preservation, not per-task provider/client or downstream data-release approval.",
+        "Previously persisted automatically forced true values cannot be distinguished from intentional user grants.",
+        "Local hook/fill permission and provider disclosure are separate boundaries."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "label": "pages-error",
+    "width": 420,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": true,
+    "files": false,
+    "manage": true
+  },
+  {
+    "label": "pages-error",
+    "width": 420,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": true,
+    "files": false,
+    "manage": true
+  },
+  {
+    "label": "pages-error",
+    "width": 240,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": true,
+    "files": false,
+    "manage": true
+  },
+  {
+    "label": "pages-error",
+    "width": 240,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": true,
+    "files": false,
+    "manage": true
+  }
+]

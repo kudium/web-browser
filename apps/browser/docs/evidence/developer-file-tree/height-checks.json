@@ -1,0 +1,482 @@
+[
+  {
+    "label": "height-900",
+    "width": 420,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 21,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 482,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-900",
+    "width": 420,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 14,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 262,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-640",
+    "width": 420,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 12,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 222,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-640",
+    "width": 420,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-400",
+    "width": 420,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-400",
+    "width": 420,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-900",
+    "width": 420,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 21,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 482,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-900",
+    "width": 420,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 14,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 262,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-640",
+    "width": 420,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 12,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 222,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-640",
+    "width": 420,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-400",
+    "width": 420,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-400",
+    "width": 420,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-900",
+    "width": 240,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 20,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 473,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-900",
+    "width": 240,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 13,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 253,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-640",
+    "width": 240,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 12,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 213,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-640",
+    "width": 240,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-400",
+    "width": 240,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-400",
+    "width": 240,
+    "theme": "light",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-900",
+    "width": 240,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 20,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 473,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-900",
+    "width": 240,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 13,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 253,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-640",
+    "width": 240,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 12,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 213,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-640",
+    "width": 240,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-400",
+    "width": 240,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  },
+  {
+    "label": "height-terminal-400",
+    "width": 240,
+    "theme": "dark",
+    "suspended": false,
+    "overflow": false,
+    "menuFits": true,
+    "scoped": true,
+    "pages": false,
+    "files": true,
+    "manage": true,
+    "tree": {
+      "rows": 8,
+      "visible": true,
+      "fit": true,
+      "scrollHeight": 48064,
+      "clientHeight": 76,
+      "selected": 0
+    }
+  }
+]

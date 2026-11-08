@@ -1,0 +1,53 @@
+{
+  "measuredAt": "2026-11-06T23:31:19.309Z",
+  "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+  "runtime": "v22.23.1",
+  "method": "Exact baseline git source and current history source bundled with UI mocked. Attempt a visit and clear against malformed synthetic files; compare original bytes afterward.",
+  "workloads": [
+    {
+      "phase": "before",
+      "malformedFixture": "{damaged",
+      "originalPreserved": false,
+      "clearRejected": false,
+      "sourceSHA256": "49911b770ca61db165999a00bf840350e43de2d1c64a9f6ecfce88e416e68bfd"
+    },
+    {
+      "phase": "before",
+      "malformedFixture": "{}",
+      "originalPreserved": false,
+      "clearRejected": false,
+      "sourceSHA256": "49911b770ca61db165999a00bf840350e43de2d1c64a9f6ecfce88e416e68bfd"
+    },
+    {
+      "phase": "before",
+      "malformedFixture": "[{\"id\":\"incomplete\"}]",
+      "originalPreserved": false,
+      "clearRejected": false,
+      "sourceSHA256": "49911b770ca61db165999a00bf840350e43de2d1c64a9f6ecfce88e416e68bfd"
+    },
+    {
+      "phase": "after",
+      "malformedFixture": "{damaged",
+      "originalPreserved": true,
+      "clearRejected": true,
+      "error": "Browsing history could not be read. Restore browsing-history.json before saving or deleting history; the original file has been preserved.",
+      "sourceSHA256": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3"
+    },
+    {
+      "phase": "after",
+      "malformedFixture": "{}",
+      "originalPreserved": true,
+      "clearRejected": true,
+      "error": "Browsing history could not be read. Restore browsing-history.json before saving or deleting history; the original file has been preserved.",
+      "sourceSHA256": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3"
+    },
+    {
+      "phase": "after",
+      "malformedFixture": "[{\"id\":\"incomplete\"}]",
+      "originalPreserved": true,
+      "clearRejected": true,
+      "error": "Browsing history could not be read. Restore browsing-history.json before saving or deleting history; the original file has been preserved.",
+      "sourceSHA256": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3"
+    }
+  ]
+}

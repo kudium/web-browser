@@ -1,0 +1,210 @@
+[
+  {
+    "width": 760,
+    "theme": "light",
+    "state": "empty",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nReading 2\nGroup · @reading-workspace-with-a-long-readable-slug-1\nReading 3\nGroup · @reading-workspace-with-a-long-readable-slug-2\nReading 4\nGroup · @reading-workspace-with-a-long-readable-slug-3\nReading 5\nGroup · @reading-workspace-with-a-long-readable-slug-4\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nOverview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development\nCreate a short feature video for a development workspace with a long name\nSwitch to tab · Create a short feature video for a development workspace with a long name\nReading 2\nSwitch to tab · Reading 2\nReading 3\nSwitch to tab · Reading 3\nReading 4\nSwitch to tab · Reading 4\nPersonal\nSwitch space\nSettings\nBrowser preferences\nNew space\nCreate a workspace\nChrome Web Store\nFind extensions for this app"
+  },
+  {
+    "width": 760,
+    "theme": "light",
+    "state": "matching",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nSearch for “develop”\nCurrent group · Development\nSearch for “develop”\nNew group · Separate cookies and login\nCreate a short feature video for a development workspace with a long name\nNew tab in Development"
+  },
+  {
+    "width": 760,
+    "theme": "light",
+    "state": "slug",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab"
+  },
+  {
+    "width": 760,
+    "theme": "light",
+    "state": "group",
+    "noOverflow": true,
+    "text": "Overview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 760,
+    "theme": "light",
+    "state": "filtered",
+    "noOverflow": true,
+    "text": "Issues\nSwitch to tab · Development\nSearch for “Issues”\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 760,
+    "theme": "light",
+    "state": "created",
+    "noOverflow": true,
+    "text": "https://new.example.com/path\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 760,
+    "theme": "light",
+    "state": "tag",
+    "noOverflow": true,
+    "text": "#development\nTag · Browse matching tabs"
+  },
+  {
+    "width": 760,
+    "theme": "dark",
+    "state": "empty",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nReading 2\nGroup · @reading-workspace-with-a-long-readable-slug-1\nReading 3\nGroup · @reading-workspace-with-a-long-readable-slug-2\nReading 4\nGroup · @reading-workspace-with-a-long-readable-slug-3\nReading 5\nGroup · @reading-workspace-with-a-long-readable-slug-4\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nOverview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development\nCreate a short feature video for a development workspace with a long name\nSwitch to tab · Create a short feature video for a development workspace with a long name\nReading 2\nSwitch to tab · Reading 2\nReading 3\nSwitch to tab · Reading 3\nReading 4\nSwitch to tab · Reading 4\nPersonal\nSwitch space\nSettings\nBrowser preferences\nNew space\nCreate a workspace\nChrome Web Store\nFind extensions for this app"
+  },
+  {
+    "width": 760,
+    "theme": "dark",
+    "state": "matching",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nSearch for “develop”\nCurrent group · Development\nSearch for “develop”\nNew group · Separate cookies and login\nCreate a short feature video for a development workspace with a long name\nNew tab in Development"
+  },
+  {
+    "width": 760,
+    "theme": "dark",
+    "state": "slug",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab"
+  },
+  {
+    "width": 760,
+    "theme": "dark",
+    "state": "group",
+    "noOverflow": true,
+    "text": "Overview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 760,
+    "theme": "dark",
+    "state": "filtered",
+    "noOverflow": true,
+    "text": "Issues\nSwitch to tab · Development\nSearch for “Issues”\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 760,
+    "theme": "dark",
+    "state": "created",
+    "noOverflow": true,
+    "text": "https://new.example.com/path\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 760,
+    "theme": "dark",
+    "state": "tag",
+    "noOverflow": true,
+    "text": "#development\nTag · Browse matching tabs"
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "empty",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nReading 2\nGroup · @reading-workspace-with-a-long-readable-slug-1\nReading 3\nGroup · @reading-workspace-with-a-long-readable-slug-2\nReading 4\nGroup · @reading-workspace-with-a-long-readable-slug-3\nReading 5\nGroup · @reading-workspace-with-a-long-readable-slug-4\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nOverview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development\nCreate a short feature video for a development workspace with a long name\nSwitch to tab · Create a short feature video for a development workspace with a long name\nReading 2\nSwitch to tab · Reading 2\nReading 3\nSwitch to tab · Reading 3\nReading 4\nSwitch to tab · Reading 4\nPersonal\nSwitch space\nSettings\nBrowser preferences\nNew space\nCreate a workspace\nChrome Web Store\nFind extensions for this app"
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "matching",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nSearch for “develop”\nCurrent group · Development\nSearch for “develop”\nNew group · Separate cookies and login\nCreate a short feature video for a development workspace with a long name\nNew tab in Development"
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "slug",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab"
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "group",
+    "noOverflow": true,
+    "text": "Overview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "filtered",
+    "noOverflow": true,
+    "text": "Issues\nSwitch to tab · Development\nSearch for “Issues”\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "created",
+    "noOverflow": true,
+    "text": "https://new.example.com/path\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "tag",
+    "noOverflow": true,
+    "text": "#development\nTag · Browse matching tabs"
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "empty",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nReading 2\nGroup · @reading-workspace-with-a-long-readable-slug-1\nReading 3\nGroup · @reading-workspace-with-a-long-readable-slug-2\nReading 4\nGroup · @reading-workspace-with-a-long-readable-slug-3\nReading 5\nGroup · @reading-workspace-with-a-long-readable-slug-4\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nOverview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development\nCreate a short feature video for a development workspace with a long name\nSwitch to tab · Create a short feature video for a development workspace with a long name\nReading 2\nSwitch to tab · Reading 2\nReading 3\nSwitch to tab · Reading 3\nReading 4\nSwitch to tab · Reading 4\nPersonal\nSwitch space\nSettings\nBrowser preferences\nNew space\nCreate a workspace\nChrome Web Store\nFind extensions for this app"
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "matching",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab\nCreate a short feature video for a development workspace with a long name\nGroup · @reading-workspace-with-a-long-readable-slug-0\nDevelopment projects\nFolder · Personal\n#development\nTag · Browse matching tabs\nSearch for “develop”\nCurrent group · Development\nSearch for “develop”\nNew group · Separate cookies and login\nCreate a short feature video for a development workspace with a long name\nNew tab in Development"
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "slug",
+    "noOverflow": true,
+    "text": "Development\nGroup · @development\nTab"
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "group",
+    "noOverflow": true,
+    "text": "Overview\nSwitch to tab · Development\nIssues\nSwitch to tab · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "filtered",
+    "noOverflow": true,
+    "text": "Issues\nSwitch to tab · Development\nSearch for “Issues”\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "created",
+    "noOverflow": true,
+    "text": "https://new.example.com/path\nCurrent group · Development",
+    "scope": "Development"
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "tag",
+    "noOverflow": true,
+    "text": "#development\nTag · Browse matching tabs"
+  }
+]

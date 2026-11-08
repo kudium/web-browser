@@ -1,0 +1,88 @@
+{
+  "measuredAt": "2026-11-05T09:01:25.397Z",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M1 Max",
+    "electron": "45.0.0"
+  },
+  "fixture": "128 densely sampled points; x=35+105*i/127; y=24+51*sin(pi*i/254); actual canvas pointer events; main page and forced-OOP cross-origin iframe",
+  "method": "Single before/after run per frame type through the official authenticated MCP client. No model inference. Native approvals accepted by the test fixture. Includes geometry checks and the existing input-settling waits. Build/tests completed before measurement.",
+  "baseline": {
+    "interpolation": "Eight movements per segment",
+    "movementCommands": 1016,
+    "samples": [
+      {
+        "frame": "main",
+        "fixture": "dense",
+        "milliseconds": 9000.75,
+        "error": false
+      },
+      {
+        "frame": "embedded",
+        "fixture": "dense",
+        "milliseconds": 9034.496000000003,
+        "error": false
+      }
+    ]
+  },
+  "adaptive": {
+    "interpolation": "One movement per densely sampled segment; every supplied vertex retained",
+    "movementCommands": 127,
+    "samples": [
+      {
+        "frame": "main",
+        "fixture": "dense",
+        "milliseconds": 1649.365499999999,
+        "error": false
+      },
+      {
+        "frame": "embedded",
+        "fixture": "dense",
+        "milliseconds": 1716.6827080000003,
+        "error": false
+      }
+    ]
+  },
+  "verified": [
+    "Every requested vertex reached trusted native canvas input",
+    "No failed drawing requests in the recorded runs",
+    "Final endpoint confirmed"
+  ],
+  "limitations": [
+    "Single runs are not latency distributions or broad performance evidence.",
+    "Internal TouchBox comparison; not an Ego comparison.",
+    "Two-endpoint drags retain twelve steps. Sparse zigzag paths still require more movements."
+  ],
+  "reproduction": {
+    "baseline": [
+      {
+        "frame": "main",
+        "fixture": "dense",
+        "milliseconds": 9006.467709,
+        "error": false
+      },
+      {
+        "frame": "embedded",
+        "fixture": "dense",
+        "milliseconds": 9041.662583000001,
+        "error": false
+      }
+    ],
+    "adaptive": [
+      {
+        "frame": "main",
+        "fixture": "dense",
+        "milliseconds": 1579.3141669999995,
+        "error": false
+      },
+      {
+        "frame": "embedded",
+        "fixture": "dense",
+        "milliseconds": 1629.2655419999992,
+        "error": false
+      }
+    ],
+    "fullForcedOOPSuitePassed": true
+  }
+}

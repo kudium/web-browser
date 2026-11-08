@@ -1,0 +1,194 @@
+[
+  {
+    "label": "manage",
+    "width": 420,
+    "height": 640,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 158.71875,
+      "bottom": 513.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true
+  },
+  {
+    "label": "scope",
+    "width": 420,
+    "height": 640,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 144.71875,
+      "bottom": 527.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true
+  },
+  {
+    "label": "manage",
+    "width": 420,
+    "height": 640,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 158.71875,
+      "bottom": 513.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true
+  },
+  {
+    "label": "scope",
+    "width": 420,
+    "height": 640,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 144.71875,
+      "bottom": 527.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true
+  },
+  {
+    "label": "manage",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true
+  },
+  {
+    "label": "scope",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true
+  },
+  {
+    "label": "manage",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true
+  },
+  {
+    "label": "scope",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "width": 420,
+    "theme": "light",
+    "treeVisible": false,
+    "editorWidth": 386,
+    "editorHeight": 445,
+    "fits": true,
+    "overflow": false,
+    "save": true,
+    "conflictKeepsEdits": true,
+    "closeGuard": true
+  },
+  {
+    "width": 420,
+    "theme": "dark",
+    "treeVisible": false,
+    "editorWidth": 386,
+    "editorHeight": 445,
+    "fits": true,
+    "overflow": false,
+    "save": true,
+    "conflictKeepsEdits": true,
+    "closeGuard": true
+  },
+  {
+    "width": 900,
+    "theme": "light",
+    "treeVisible": true,
+    "editorWidth": 676,
+    "editorHeight": 445,
+    "fits": true,
+    "overflow": false,
+    "save": true,
+    "conflictKeepsEdits": true,
+    "closeGuard": true
+  },
+  {
+    "width": 900,
+    "theme": "dark",
+    "treeVisible": true,
+    "editorWidth": 676,
+    "editorHeight": 445,
+    "fits": true,
+    "overflow": false,
+    "save": true,
+    "conflictKeepsEdits": true,
+    "closeGuard": true
+  }
+]

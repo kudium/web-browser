@@ -1,0 +1,334 @@
+[
+  {
+    "label": "form",
+    "width": 420,
+    "height": 640,
+    "theme": "light",
+    "inputOutline": [
+      "none",
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 144.71875,
+      "bottom": 527.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "delete",
+    "width": 420,
+    "height": 640,
+    "theme": "light",
+    "inputOutline": [],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 126.71875,
+      "bottom": 545.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "icon",
+    "width": 420,
+    "height": 640,
+    "theme": "light",
+    "inputOutline": [
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 650,
+      "right": 1010,
+      "top": 119.21875,
+      "bottom": 552.78125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "form",
+    "width": 420,
+    "height": 640,
+    "theme": "dark",
+    "inputOutline": [
+      "none",
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 144.71875,
+      "bottom": 527.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "delete",
+    "width": 420,
+    "height": 640,
+    "theme": "dark",
+    "inputOutline": [],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 1023,
+      "top": 126.71875,
+      "bottom": 545.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "icon",
+    "width": 420,
+    "height": 640,
+    "theme": "dark",
+    "inputOutline": [
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 650,
+      "right": 1010,
+      "top": 119.21875,
+      "bottom": 552.78125
+    },
+    "panel": {
+      "left": 620,
+      "right": 1040,
+      "top": 48,
+      "bottom": 624
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "form",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inputOutline": [
+      "none",
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "delete",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inputOutline": [],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "icon",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inputOutline": [
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "form",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inputOutline": [
+      "none",
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "delete",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inputOutline": [],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  },
+  {
+    "label": "icon",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inputOutline": [
+      "none"
+    ],
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    },
+    "nativeWindowCapture": true,
+    "dismissed": true
+  }
+]

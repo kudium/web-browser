@@ -1,0 +1,72 @@
+{
+  "recordedAt": "2026-11-07T07:32:47.809354+00:00",
+  "rawReportSha256": "f422a9d825fd39c6bbf4521af5bd54f798958c30c484abbd3af9aed362355d46",
+  "sourceHashes": {
+    "src/main/ai.ts": "0f5641833346a386f0e1d43dac565e0ba29ff54e3bb0be010cec9fac9b443c28",
+    "src/main/aiComposer.ts": "164393d043e1a6770b371bda5d52ffcfa6d0baaee4877797a590e87f23de9806",
+    "src/main/passwordManager/index.ts": "6ed4931018b41b91a75720817a52e93a731214ead93efd4172e0deea64e479b9",
+    ".erb/scripts/ai-composer-save-smoke.cjs": "955383b448f1cc3c4648b614f6b213195400bc60bbc144558d48c59250306b6c",
+    ".erb/scripts/checks.ts": "3811216af6ea0cc9822f341f5bf1fbdd62c139b0156508a7de95de04e3ee25bf"
+  },
+  "identitiesVerified": true,
+  "newlyBlockedStaleSaves": 9,
+  "encryptedRecordsCreatedBefore": 9,
+  "encryptedRecordsCreatedAfter": 0,
+  "credentialAdapterWritesAfter": 0,
+  "checks": [
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-composer-save-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "37edc8d8de76cc0fdf75d21ad359e9a5768b8dbb13792a6e9bc1b0c8b2365dfc",
+      "summary": "Nine stale requests create nine encrypted records; normal/private/group/cancel work"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-composer-save-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "4f51e9603f0f8e874470cc3660a033ba5e9c0db7b675c4c6db6abf0a07f349f6",
+      "summary": "Nine stale requests reject; zero encrypted records or credential writes; normal/private/group/cancel work"
+    },
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "06018380dba2bc7a0a0a8189a9044c87dbaa2cfb3ad5a12ab26e5ebe7c045410",
+      "summary": "137 suites / 693 tests passed"
+    },
+    {
+      "name": "lint initial",
+      "command": "npm run lint",
+      "observedExitCode": 1,
+      "logSha256": "1b2c98455cd7c2387e9d5fb95b120b5c537a0e05065be238a6d83f416348fa45",
+      "summary": "Runner entry formatting error; corrected with Prettier"
+    },
+    {
+      "name": "lint/types final",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "source inventory refresh",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "7f519348354a32e2c292859a0f89ecce854aa633eecd8b3995168a38868fe308",
+      "summary": "48 registrations / 47 fixed channels / 69 preload calls; counts unchanged"
+    }
+  ],
+  "limitations": [
+    "Actual registerAI/savePersonalDocument/native main-frame identity and actual encrypted PasswordVault writes. Test-only module exports replace the vault with an isolated real PasswordVault for each case. Dialog/extraction/capability scheduling and OS credential adapter are explicit fixture controls; lock-screen is a native event emission, not physical OS lock. No production preload IPC serialization, real Keychain, provider traffic or latency claim.",
+    "Production build is current; packaged-security result in ipc-boundaries-verification.json predates this Save change and is not packaged verification of this batch.",
+    "No full desktop suite, real OS authentication, downstream private-data containment, signed/cross-platform release or whole-app performance claim."
+  ]
+}

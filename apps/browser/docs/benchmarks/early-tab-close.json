@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-06",
+  "method": "Actual browser module exercised by browser.test.ts with synthetic Electron WebContents. Emit close before renderer adoption. Assert closure invoked, then simulate Electron asynchronous destroyed to verify remaining listener cleanup.",
+  "before": {
+    "sourceSHA256": "eca803491618c8f4171d6f8497098306eb968967e8b5674c729f4ee670c873c5",
+    "closeCallsAfterInterceptedClose": 0,
+    "regressionResult": "Failed: expected one close call, received zero; 6 other browser tests passed."
+  },
+  "after": {
+    "sourceSHA256": "586fd4ffa3019a62c31d4c03896c6ff4e55a00799cc9f0120d4859af49ac06d6",
+    "closeCallsAfterInterceptedClose": 1,
+    "destroyedListenersAfterDestruction": 0,
+    "regressionResult": "7 browser tests passed, including late-adoption refusal and delayed clear-data authorization.",
+    "electronCommand": "node_modules/.bin/electron .erb/scripts/browser-ui-smoke.cjs --early-tab-close-only",
+    "electronResult": "Passed: actual child WebContents destroyed, host preserved, late acknowledgement refused, metadata archived."
+  },
+  "limitations": [
+    "Deterministic lifecycle evidence, not measured memory or CPU savings.",
+    "Focused actual Electron check passes; the broader opener-flow check failed later on archived-tab restoration and remains open."
+  ]
+}

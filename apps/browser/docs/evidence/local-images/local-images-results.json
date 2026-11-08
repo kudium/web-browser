@@ -1,0 +1,11 @@
+{
+  "verified": [
+    "production preload icon IPC",
+    "real PNG/ICNS icon decode",
+    "cancel",
+    "oversized header rejection",
+    "foreign-window denial",
+    "real downloaded PNG thumbnail and cache deduplication"
+  ],
+  "nativePicker": "controlled selection of local fixture files"
+}

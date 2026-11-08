@@ -1,0 +1,161 @@
+import { BrowserWindow, ipcMain, session } from 'electron';
+import type { IApp } from '../types';
+import { groupKey, loginProfileKey, personalDataScope } from '../utils/groups';
+import { isBrowserLayout } from './browserRequests';
+import { isGroupLocked } from './groupLocks';
+import { showBrowserDialog } from './dialogs';
+import {
+  authenticatePersonalData,
+  passwordVault,
+  withPersonalData,
+} from './passwordManager';
+import { removeProfileHistory } from './history';
+import { removeSiteProfile } from './siteSettings';
+
+export const sameRemovalGroup = (a: IApp, b: IApp) =>
+  groupKey(a) === groupKey(b) &&
+  (a.spaceId || 'default') === (b.spaceId || 'default');
+export function groupRemovalPlan(apps: IApp[], source: IApp) {
+  const removed = apps.filter((item) => sameRemovalGroup(item, source));
+  const kept = apps.filter((item) => !sameRemovalGroup(item, source));
+  return {
+    removed,
+    kept,
+    sharedProfile: kept.some(
+      (item) => loginProfileKey(item) === loginProfileKey(source)
+    ),
+    sharedScope: kept.some(
+      (item) => personalDataScope(item) === personalDataScope(source)
+    ),
+  };
+}
+const owners = new Map<
+  BrowserWindow,
+  {
+    find: (id: string) => IApp | undefined;
+    unloaded: (source: IApp) => boolean;
+  }
+>();
+const pending = new Set<string>();
+let registered = false;
+export function registerGroupRemoval(
+  window: BrowserWindow,
+  find: (id: string) => IApp | undefined,
+  unloaded: (source: IApp) => boolean
+) {
+  owners.set(window, { find, unloaded });
+  if (!registered) {
+    registered = true;
+    ipcMain.handle('browser-remove-group', async (event, id: unknown) => {
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      const binding = owner && owners.get(owner);
+      if (
+        !owner ||
+        !binding ||
+        event.sender !== owner.webContents ||
+        event.senderFrame !== owner.webContents.mainFrame ||
+        typeof id !== 'string'
+      )
+        throw new Error('Untrusted group removal request.');
+      const source = binding.find(id);
+      if (!source || isGroupLocked(source))
+        throw new Error('This group is unavailable or locked.');
+      const frame = event.senderFrame;
+      const key = JSON.stringify([
+        groupKey(source),
+        source.spaceId || 'default',
+      ]);
+      const check = () => {
+        if (
+          owner.isDestroyed() ||
+          event.sender.mainFrame !== frame ||
+          isGroupLocked(source) ||
+          !binding.find(id) ||
+          [...owners.values()].some((entry) => !entry.unloaded(source))
+        )
+          throw new Error('Unload this group before removing it.');
+      };
+      const read = async () => {
+        const apps: unknown = await owner.webContents.executeJavaScript(
+          "JSON.parse(localStorage.getItem('user_apps') || '[]')"
+        );
+        if (!isBrowserLayout({ apps, visible: [] }))
+          throw new Error('Saved group data could not be read safely.');
+        const list = apps as IApp[];
+        if (
+          !list.some(
+            (item) =>
+              item.id === id &&
+              sameRemovalGroup(item, source) &&
+              loginProfileKey(item) === loginProfileKey(source)
+          )
+        )
+          throw new Error('The saved group changed. Try again.');
+        return groupRemovalPlan(list, source);
+      };
+      if (pending.has(key)) return { removed: false };
+      pending.add(key);
+      try {
+        check();
+        const initial = await read();
+        const answer = await showBrowserDialog(owner, {
+          title: 'Remove group',
+          destructive: true,
+          message: `Remove “${source.sessionName || source.name}”?`,
+          detail: `This removes the group and its ${
+            initial.removed.length
+          } saved tab${initial.removed.length === 1 ? '' : 's'}. ${
+            initial.sharedProfile
+              ? 'Its login profile is shared with another group, so shared session data will be kept.'
+              : 'Its session, cookies, website storage, cache, browsing history, and site settings will be deleted.'
+          } ${
+            initial.sharedScope
+              ? 'Shared Personal Data will be kept.'
+              : 'Personal Data saved locally for this group will be deleted; browser-wide originals are kept.'
+          } This cannot be undone.`,
+          buttons: ['Cancel', 'Remove Group & Data'],
+          defaultId: 0,
+          cancelId: 0,
+        });
+        if (answer.response !== 1) return { removed: false };
+        check();
+        const plan = await read();
+        if (
+          plan.sharedProfile !== initial.sharedProfile ||
+          plan.sharedScope !== initial.sharedScope ||
+          plan.removed.length !== initial.removed.length
+        )
+          throw new Error('The group changed during confirmation. Try again.');
+        if (!plan.sharedScope && passwordVault().status().initialized) {
+          await authenticatePersonalData();
+          check();
+          withPersonalData((vault) =>
+            vault.removeScope(personalDataScope(source), 'delete')
+          );
+        }
+        if (!plan.sharedProfile) {
+          const profile = session.fromPartition(
+            `persist:touchbox-${loginProfileKey(source)}`
+          );
+          await profile.clearStorageData();
+          await profile.clearCache();
+          await profile.clearAuthCache();
+          await profile.closeAllConnections();
+          await removeProfileHistory(loginProfileKey(source));
+          removeSiteProfile(loginProfileKey(source));
+        }
+        check();
+        return { removed: true };
+      } finally {
+        pending.delete(key);
+      }
+    });
+  }
+  return () => {
+    owners.delete(window);
+    if (!owners.size) {
+      ipcMain.removeHandler('browser-remove-group');
+      registered = false;
+    }
+  };
+}

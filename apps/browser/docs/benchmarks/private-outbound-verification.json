@@ -1,0 +1,82 @@
+{
+  "recordedAt": "2026-11-07T09:02:31.077810+00:00",
+  "rawReportSha256": "718aa291ef07446ac0c34b847e3be2275a2b4faabf09feb388ad5d19e8fafaa8",
+  "sourceHashes": {
+    "src/main/ai.ts": "a47cc858bf8ba2c82ea4b0d3bdeeddde2de587a977d06f5d2c18761607e160bc",
+    "src/main/mcp.ts": "211ee91e12871792d813530c2d269698dbd08e530536f3f3b052fe7d50d2c5c3",
+    "src/main/aiTasks.ts": "3b22bf84483f7e0422e39b1573a229a5e58016b27f116b1cd1faa3dd2a8e8d19",
+    "src/browser/aiTasks.ts": "85f3eedd5550e4c9b3f2be2a21490f48ee93693401acea286ee60acc5bd4dd18",
+    "src/browser/aiPermissions.ts": "4664fc6b3a326d5c9495a7d694be612a7ddb0aaf50d1992d81f2f80c199e9e79",
+    "src/browser/mcp.ts": "8f3a532c684239ef2e9de43de92b59cfb613a87c900c0d8a15bd942c8398b7da",
+    "src/__tests__/aiTasks.test.ts": "c7f6ba3cc489381d1fc6cb2617fc24f69c5cc81c42ef3297fdbd989bf5dd1492",
+    "src/__tests__/mcpPrivateState.test.ts": "1c4559c823f5895f4d9db6fea045e791e9b174f93ff124c915730f5cf5be748e",
+    ".erb/scripts/private-outbound-smoke.cjs": "95e77fbd75da3939ebfbaef0c95039b0edeeecb18b6ee8151f6203e3c3b598cc",
+    ".erb/scripts/checks.ts": "ca64646462240adf6d1cd19ff3307955698920ee02e9d69dfcf38aa4dbbfe87f",
+    ".erb/scripts/ai-composer-smoke.cjs": "e5dc8288d13a897f1487626df52b4066afc5bbadc3f2b9ff38c9c3cadba91447"
+  },
+  "inventoryPath": "docs/security/ipc-inventory-2026-11-07-private-outbound.json",
+  "inventorySha256": "7b24055b505729f47b4eb232bc61e83c7e28f9f0fe8f9c0e2a007ce4c597ba33",
+  "identitiesVerified": true,
+  "newlyPreventedPrivateSocketRequests": 6,
+  "approvedPrivateFormPreserved": true,
+  "publicFullAccessNavigationPreserved": true,
+  "checks": [
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/private-outbound-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "98884817346b6c4d222fad6e59ba70325404b2e4293c6cbf52e868e4164a04e1",
+      "summary": "Six unsafe private transmissions; Full access reviews none after saved-data disclosure; approved form works"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/private-outbound-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "3c31ba867de2426b2377a462405126a4581d513c40d309bf3eab7f070faac1b5",
+      "summary": "Six unsafe transmissions become zero; approved form preserved; public navigation auto-approved; consent restoration/Stop reject"
+    },
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "8726568ed376decd47bbb37d799c1a03742a896169657d1a1e46e0279b6468db",
+      "summary": "141 suites / 713 tests passed; final subsequent change is MCP guide wording, checked by current lint/build/native integration"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native composer integration",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-composer-smoke.cjs",
+      "observedExitCode": 0,
+      "logSha256": "df03449f0e34d76f21ae4172d847754ddc71b888bee971f7f4028e845c8f2dee",
+      "summary": "Real composer/preload/provider attachment, scope, private instruction resistance and light/dark responsive layout pass"
+    },
+    {
+      "name": "inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "0d08807e4e550bcd774192fed37327c4f5a1cc44e8beba17a97a11ee81b7a3d9",
+      "summary": "Refreshed; source snapshot preserved"
+    }
+  ],
+  "limitations": [
+    "Actual registerAI/encrypted vault, official MCP SDK, native host/site identities, Chromium navigation/input/select/click traffic; Enter dispatch acceptance is checked but baseline key-handler transmission is unproven and loopback HTTP request bodies. Native approval responses/revocation are controlled. Rejection happens at action review before dispatch; accepted page scripts can contact other destinations. No network allowlist/redirect/service-worker containment, physical input/authentication, signed/cross-platform or general speed claim.",
+    "Local action-review floor only. Accepting an action can release values to page scripts, redirects, hooks, other destinations, workers and existing channels; no exact network recipient enforcement or complete private-data provenance claim.",
+    "Enter dispatch accepted before but its baseline page key handler did not reliably receive the key. After rejection precedes dispatch; no before/after Enter transmission claim.",
+    "MCP controller recreation and real settings reload are verified; power-loss/directory durability, native scheduled-private-task integration and all tool branches remain open.",
+    "Task and MCP marker persistence/failure unit checks pass. Legacy markers are conservative; private attachments/user input and arbitrary website-derived facts need separate policy.",
+    "No full desktop suite, physical OS input/authentication, signed release, cross-platform or overall performance claim."
+  ]
+}

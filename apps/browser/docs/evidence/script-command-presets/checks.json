@@ -1,0 +1,442 @@
+[
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Node.js",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Bun",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Python",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "PHP",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Rust",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Go",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Ruby",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Java / Kotlin",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": ".NET",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "C / C++",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "language": "Docker",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Node.js",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Bun",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Python",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "PHP",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Rust",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Go",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Ruby",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Java / Kotlin",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": ".NET",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "C / C++",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "language": "Docker",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Node.js",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Bun",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Python",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "PHP",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Rust",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Go",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Ruby",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Java / Kotlin",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": ".NET",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "C / C++",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "language": "Docker",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Node.js",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Bun",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Python",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "PHP",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Rust",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Go",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Ruby",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Java / Kotlin",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": ".NET",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "C / C++",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "language": "Docker",
+    "dialogFits": true,
+    "grouped": true,
+    "menusFit": true,
+    "scoped": true,
+    "font": "Menlo, Monaco, monospace"
+  }
+]

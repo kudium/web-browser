@@ -1,0 +1,108 @@
+import { app, safeStorage } from 'electron';
+import fs from 'fs';
+import path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { randomBytes, randomUUID } from 'crypto';
+import type { SummaryProtection } from './vault';
+
+const execute = promisify(execFile);
+const credentialFile = () =>
+  path.join(app.getPath('userData'), 'password-manager', 'os-key');
+function helperPath() {
+  if (process.platform !== 'darwin') return undefined;
+  const candidates = [
+    path.join(process.resourcesPath, 'assets/native/touchbox-password-auth'),
+    path.join(app.getAppPath(), 'assets/native/touchbox-password-auth'),
+  ];
+  if (!app.isPackaged)
+    candidates.push(
+      path.resolve(
+        app.getAppPath(),
+        '../../assets/native/touchbox-password-auth'
+      )
+    );
+  return candidates.find((candidate) => fs.existsSync(candidate));
+}
+export const usesOSAuthentication = () => fs.existsSync(credentialFile());
+export async function canUseOSAuthentication() {
+  const helper = helperPath();
+  if (
+    !helper ||
+    !safeStorage.isEncryptionAvailable() ||
+    safeStorage.getSelectedStorageBackend?.() === 'basic_text'
+  )
+    return false;
+  try {
+    await execute(helper, ['--check'], { timeout: 10000, maxBuffer: 1024 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+export async function authenticateOS(
+  purpose: 'personal-data' | 'group' = 'personal-data'
+) {
+  const helper = helperPath();
+  if (!helper || !(await canUseOSAuthentication()))
+    throw new Error('OS authentication is unavailable.');
+  try {
+    await execute(helper, purpose === 'group' ? ['--group'] : [], {
+      timeout: 120000,
+      maxBuffer: 1024,
+    });
+  } catch {
+    throw new Error('Authentication was cancelled or unsuccessful.');
+  }
+}
+export function readOSCredential() {
+  if (!safeStorage.isEncryptionAvailable())
+    throw new Error('OS credential storage is unavailable.');
+  return safeStorage.decryptString(fs.readFileSync(credentialFile()));
+}
+export function writeOSCredential(password: string) {
+  if (
+    !safeStorage.isEncryptionAvailable() ||
+    safeStorage.getSelectedStorageBackend?.() === 'basic_text'
+  )
+    throw new Error('Secure OS credential storage is unavailable.');
+  const file = credentialFile();
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  // Create only; migration never overwrites an existing credential.
+  const temporary = `${file}.${randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temporary, safeStorage.encryptString(password), {
+      mode: 0o600,
+      flag: 'wx',
+    });
+    // Linking commits a fully written credential without replacing an existing key.
+    fs.linkSync(temporary, file);
+  } finally {
+    if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+  }
+}
+export const newOSCredential = () => randomBytes(48).toString('base64');
+
+// Basic metadata is browsable without an authentication prompt, but still uses
+// OS-backed encryption at rest wherever secure safeStorage is available.
+export const summaryProtection: SummaryProtection = {
+  seal(value) {
+    if (
+      safeStorage.isEncryptionAvailable() &&
+      safeStorage.getSelectedStorageBackend?.() !== 'basic_text'
+    )
+      return {
+        osEncrypted: safeStorage
+          .encryptString(JSON.stringify(value))
+          .toString('base64'),
+      };
+    return value;
+  },
+  open(value) {
+    if (value && 'osEncrypted' in value)
+      return JSON.parse(
+        safeStorage.decryptString(Buffer.from(value.osEncrypted, 'base64'))
+      );
+    return value;
+  },
+};

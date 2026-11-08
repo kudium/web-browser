@@ -1,0 +1,50 @@
+[
+  {
+    "width": 420,
+    "theme": "light",
+    "fileMenu": true,
+    "editorUndoRedoCopySaveSearch": true,
+    "binaryPreviewMenu": true,
+    "createRename": true,
+    "terminalCopyPasteClear": true,
+    "stoppedPasteDisabled": true,
+    "terminalTabMenu": true,
+    "filesCloseRemoved": true
+  },
+  {
+    "width": 420,
+    "theme": "dark",
+    "fileMenu": true,
+    "editorUndoRedoCopySaveSearch": true,
+    "binaryPreviewMenu": true,
+    "createRename": true,
+    "terminalCopyPasteClear": true,
+    "stoppedPasteDisabled": true,
+    "terminalTabMenu": true,
+    "filesCloseRemoved": true
+  },
+  {
+    "width": 900,
+    "theme": "light",
+    "fileMenu": true,
+    "editorUndoRedoCopySaveSearch": true,
+    "binaryPreviewMenu": true,
+    "createRename": true,
+    "terminalCopyPasteClear": true,
+    "stoppedPasteDisabled": true,
+    "terminalTabMenu": true,
+    "filesCloseRemoved": true
+  },
+  {
+    "width": 900,
+    "theme": "dark",
+    "fileMenu": true,
+    "editorUndoRedoCopySaveSearch": true,
+    "binaryPreviewMenu": true,
+    "createRename": true,
+    "terminalCopyPasteClear": true,
+    "stoppedPasteDisabled": true,
+    "terminalTabMenu": true,
+    "filesCloseRemoved": true
+  }
+]

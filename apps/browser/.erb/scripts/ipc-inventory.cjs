@@ -1,0 +1,21 @@
+/* Read-only AST inventory; authorization is reviewed manually, never inferred. */
+const fs=require('fs'),path=require('path'),crypto=require('crypto'),ts=require('typescript');
+const root=path.resolve(__dirname,'../..');
+const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
+const files=[];
+function walk(folder){for(const entry of fs.readdirSync(folder,{withFileTypes:true})){const file=path.join(folder,entry.name);if(entry.isDirectory()){if(entry.name!=='__tests__')walk(file);}else if(/\.(ts|tsx|js|jsx)$/.test(file))files.push(file);}}
+walk(path.join(root,'src'));
+const registrations=[],preloadCalls=[],generatedIPC=[],sourceHashes={};
+for(const file of files){const source=fs.readFileSync(file,'utf8');if(!/ipcMain|mainIpc|ipcRenderer|IpcMain/.test(source))continue;const name=path.relative(root,file);sourceHashes[name]=hash(source);const parsed=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true);const main=new Set(),renderer=new Set();
+function imports(node){if(ts.isImportDeclaration(node)&&node.moduleSpecifier.text==='electron'){for(const item of node.importClause?.namedBindings?.elements||[]){const original=item.propertyName?.text||item.name.text;if(original==='ipcMain')main.add(item.name.text);if(original==='ipcRenderer')renderer.add(item.name.text);}}if(ts.isParameter(node)&&node.type?.getText(parsed)==='IpcMain')main.add(node.name.getText(parsed));ts.forEachChild(node,imports);}imports(parsed);
+function capability(node){const parts=[];for(let parent=node.parent;parent;parent=parent.parent){if(ts.isMethodDeclaration(parent)||ts.isPropertyAssignment(parent))parts.unshift(parent.name.getText(parsed));if(ts.isVariableDeclaration(parent)){parts.unshift(parent.name.getText(parsed));break;}}return parts.join('.');}
+function visit(node){if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)){const receiver=node.expression.expression.getText(parsed),method=node.expression.name.text,argument=node.arguments[0],channel=argument&&ts.isStringLiteralLike(argument)?argument.text:null;const line=parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1;
+if(main.has(receiver)&&['handle','handleOnce','on','once'].includes(method)){const handler=node.arguments[1];registrations.push({file:name,line,method,channel,channelExpression:channel?undefined:argument?.getText(parsed),handler:handler&&ts.isIdentifier(handler)?handler.text:'inline',review:'pending'});}
+if(renderer.has(receiver)&&['invoke','send','on','once'].includes(method))preloadCalls.push({file:name,line,method,channel,channelExpression:channel?undefined:argument?.getText(parsed),capability:capability(node)});
+}
+if((ts.isStringLiteralLike(node)||ts.isTemplateExpression(node))&&/ipcRenderer\s*\.|ipcMain\s*\./.test(node.getText(parsed))){generatedIPC.push({file:name,line:parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line+1,expressionKind:ts.SyntaxKind[node.kind],note:'Generated script contains IPC; review interpolation and sender/schema manually.'});}
+ts.forEachChild(node,visit);}visit(parsed);
+}
+const summary={mainRegistrations:registrations.length,literalMainChannels:new Set(registrations.map(r=>r.channel).filter(Boolean)).size,dynamicMainRegistrations:registrations.filter(r=>!r.channel).length,preloadCalls:preloadCalls.length,dynamicPreloadCalls:preloadCalls.filter(r=>!r.channel).length,generatedScripts:generatedIPC.length};
+const report={recordedAt:new Date().toISOString(),generatorSha256:hash(fs.readFileSync(__filename)),summary,sourceHashes,registrations,preloadCalls,generatedIPC,limitations:['AST inventory covers own src code, named electron imports and IpcMain typed parameters.','Generated preload scripts are flagged, not expanded or proven safe.','Dependency-installed IPC/native messaging is outside this list and needs separate review.','TypeScript types and inventory coverage are not runtime validation or authorization evidence.']};
+const output=path.join(root,'docs/security/ipc-inventory-2026-11-07.json');fs.writeFileSync(output,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({summary,registrations:registrations.map(({channel,file,line,handler})=>({channel,file,line,handler})),dynamicPreload:preloadCalls.filter(r=>!r.channel),generatedIPC},null,2));

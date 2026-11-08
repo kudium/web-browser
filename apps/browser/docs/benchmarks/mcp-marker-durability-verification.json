@@ -1,0 +1,48 @@
+{
+  "checks": {
+    "before": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/mcp-marker-durability-logs/before.log",
+      "sha256": "e2d9f5376c6eeae91213cc64e116f7dae787dba4be816d1ce5f81feb4ac4d4d9"
+    },
+    "after": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/mcp-marker-durability-logs/after.log",
+      "sha256": "6bead0b7281bca31931e799a5e62bfe9469adc107ff871bf27fd17a26d698bbc"
+    },
+    "unit": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/mcp-marker-durability-logs/unit.log",
+      "sha256": "b67097bbb320a1f1d4fd72c8fd2938d4d296fbff6bf906dbf5de151afe17ccaf"
+    },
+    "tests": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/mcp-marker-durability-logs/tests.log",
+      "sha256": "cff1c6eec1f6be09e05e39989c91a572059d17470b7c314a6f73de5389c10738"
+    },
+    "lint": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/mcp-marker-durability-logs/lint.log",
+      "sha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc"
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/mcp-marker-durability-logs/build.log",
+      "sha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c"
+    }
+  },
+  "sourceHashes": {
+    "src/main/privateFile.ts": "10b17c32b3bfd5fef81dd712b618df71fa8dc8e7a33f35c2f2ec1629ac0766ce",
+    "src/main/mcp.ts": "fab1243574ce0c64a1a7984f38b29bcdc6d03d91d0d8e2141575709f97bca1e0",
+    "src/__tests__/mcpPrivateState.test.ts": "78ce77925ab5799092b1438279228ba340aebcb837625a691216e1540e675e90",
+    ".erb/scripts/mcp-marker-durability-smoke.cjs": "c684a19727b940b6b8be6e81252043854c12ec4e276fdf2ffb48bd2a94cda626",
+    ".erb/scripts/checks.ts": "f7e1458d67ec6338f24668ac43e77a380179908dc84cab16b9a8fe295c9feb44",
+    "docs/benchmarks/baselines/mcp-marker-durability/mcp.ts.txt": "211ee91e12871792d813530c2d269698dbd08e530536f3f3b052fe7d50d2c5c3",
+    "docs/benchmarks/baselines/mcp-marker-durability/privateFile.ts.txt": "7e872b56f63113b6bac9d20b9f9b5af28873cac4e4a4b81f0dd37944f4ba8e71",
+    "docs/benchmarks/mcp-marker-durability.json": "fe2b0178f4b8094ca6c7b4e4544b88fb0806d75cf318dbecae05df9936438ef8",
+    "docs/security/ipc-inventory-2026-11-07-mcp-marker-durability.json": "3addd92e1b3defe9183ae043f94885c39d1ec12ab3171205c1605047160eb202"
+  },
+  "unitSuites": 142,
+  "unitTests": 732,
+  "scope": "Filesystem sync ordering and injected failure handling on macOS. No physical power-loss, RPC/provider disclosure or cross-platform durability claim. All source tested; runner array formatting fixed after full tests."
+}

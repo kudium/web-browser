@@ -1,0 +1,63 @@
+// Native engine regression using disposable sessions, local websites and a local proxy.
+const {app,BrowserWindow,session}=require('electron');
+const assert=require('assert'),fs=require('fs'),path=require('path'),os=require('os'),http=require('http');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-advanced-'));
+app.setPath('userData',root);
+require('esbuild').buildSync({entryPoints:['src/main/advancedPreferences.ts'],bundle:true,platform:'node',external:['electron','./siteData'],outfile:path.join(root,'advanced.cjs')});
+fs.writeFileSync(path.join(root,'siteData.js'),'exports.clearSessionSiteData = session => session.clearData({dataTypes:["cookies","localStorage","indexedDB","serviceWorkers"]});');
+require('esbuild').buildSync({entryPoints:['src/browser/advancedPreferences.ts'],bundle:true,platform:'node',outfile:path.join(root,'defaults.cjs')});
+const {defaultAdvanced}=require(path.join(root,'defaults.cjs'));
+const runtime=require(path.join(root,'advanced.cjs'));
+app.userAgentFallback=app.userAgentFallback.replace(/ Electron\/\S+/g,'');
+app.on('window-all-closed',()=>{});
+const requests=[];
+const server=http.createServer((req,res)=>{
+  requests.push({url:req.url,ua:req.headers['user-agent'],cookie:req.headers.cookie,language:req.headers['accept-language']});
+  res.setHeader('Content-Type','text/html');
+  if(req.url==='/')res.end(`<script>window.inlineRan=true</script><script src="/script.js"></script><img src="/image.png"><iframe src="http://localhost:${server.address().port}/frame"></iframe>`);
+  else if(req.url==='/frame')res.end('<script>fetch("/frame-fetch")</script>');
+  else if(req.url==='/script.js'){res.setHeader('Content-Type','text/javascript');res.end('window.externalRan=true');}
+  else {res.setHeader('Set-Cookie','fixture=value; Path=/');res.end('fixture');}
+});
+let proxyCalls=0;
+const proxy=http.createServer((req,res)=>{proxyCalls++;res.end('proxy reached');});
+const listen=server=>new Promise(resolve=>server.listen(0,'0.0.0.0',resolve));
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+(async()=>{
+  await Promise.all([listen(server),listen(proxy),app.whenReady()]);
+  const url=`http://127.0.0.1:${server.address().port}/`;
+  const profile=session.fromPartition('persist:touchbox-fixture');
+  const window=new BrowserWindow({show:false,webPreferences:{session:profile,sandbox:true}});
+  const c=window.webContents;
+  const settings={...defaultAdvanced,acceptLanguages:'en-CA,fr',webrtc:'disable_non_proxied_udp'};
+  runtime.applyAdvancedContents(c,settings,'work');await runtime.waitForBrowserNetwork(c);
+  await window.loadURL(url);await wait(250);
+  assert(await c.executeJavaScript('window.inlineRan && window.externalRan'),'Default scripts must run');
+  const iframeFetch=requests.find(item=>item.url==='/frame-fetch');assert(iframeFetch,'Cross-site frame must fetch');
+  assert(!iframeFetch.ua.includes('Electron'),'Iframe fetch identity must stay clean');
+  assert.equal(iframeFetch.language,'en-CA,fr');
+  assert.equal(c.getWebRTCIPHandlingPolicy(),'disable_non_proxied_udp');
+  settings.javascript=false;settings.images=false;
+  runtime.applyAdvancedContents(c,settings,'work');requests.length=0;
+  await c.reload();await wait(350);
+  assert.equal(await c.executeJavaScript('typeof window.inlineRan'),'undefined','CSP must block inline scripts');
+  assert(!requests.some(item=>item.url==='/script.js'||item.url==='/image.png'),'Scripts/images must not issue network requests');
+  settings.siteRules=[{origin:new URL(url).origin,javascript:true,images:true,autoplay:true,popups:true,zoom:1.25,userAgent:''}];
+  runtime.applyAdvancedContents(c,settings,'work');await c.reload();await wait(350);
+  assert(await c.executeJavaScript('window.inlineRan && window.externalRan'),'Site exception must override global script block');
+  assert(Math.abs(c.getZoomFactor()-1.25)<0.001,'Site zoom must persist');
+  settings.cookies='block-all-http';runtime.applyAdvancedContents(c,settings,'work');
+  await profile.cookies.set({url,name:'fixture',value:'old'});requests.length=0;
+  await profile.fetch(`${url}cookies`);
+  assert(!requests.find(item=>item.url==='/cookies').cookie,'Blocked cookies must not be sent');
+  settings.profileProxies={work:{mode:'fixed_servers',rules:`127.0.0.1:${proxy.address().port}`,pacURL:'',bypass:''}};
+  runtime.applyAdvancedContents(c,settings,'work');await runtime.waitForBrowserNetwork(c);
+  const response=await profile.fetch('http://not-a-real-host.test/proxy-fixture');
+  assert.equal(await response.text(),'proxy reached');assert.equal(proxyCalls,1,'Session must route through selected proxy');
+  const direct=session.fromPartition('persist:touchbox-direct');const second=new BrowserWindow({show:false,webPreferences:{session:direct,sandbox:true}});
+  runtime.applyAdvancedContents(second.webContents,settings,'personal');await runtime.waitForBrowserNetwork(second.webContents);
+  await direct.fetch(url);assert.equal(proxyCalls,1,'Other sessions must inherit the global system proxy');
+  console.log('PASS: clean cross-site identity, language headers, WebRTC policy, inline/external script and image blocking, site exception/zoom, HTTP cookie filtering, and isolated proxy routing');
+  second.destroy();window.destroy();server.close();proxy.close();app.exit(0);
+})().catch(error=>{console.error(error);server.close();proxy.close();app.exit(1);});
+app.on('will-quit',()=>fs.rmSync(root,{recursive:true,force:true}));

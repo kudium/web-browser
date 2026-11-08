@@ -1,0 +1,104 @@
+{
+  "measuredAt": "2026-11-07T00:20:13.829Z",
+  "electron": "45.0.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "method": "Actual Electron/production React renderer with held child adoption, timed native retirement, late IPC replay, keyboard reopen and subsequent Archive restore; disposable profile.",
+  "before": {
+    "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+    "sourceSHA256": "fc135cd12e508bc4e8122364488f0db3af12d206d798a34a399e5da9ac7bfcf5",
+    "observed": "The same test failed at restored WebContents lookup: restored metadata was active but actual browser-sync focus remained on a neighboring tab; destination native view was absent."
+  },
+  "after": {
+    "sourceSHA256": "94cc4d62424bd32929ac712d2d1cc99b1c1dfe7e9d585dbcef94b0005cb873d8",
+    "keyboardRestoration": true,
+    "lateAcknowledgementPreservesRestoredView": true,
+    "archiveRestoration": true,
+    "originalTabIdPreserved": true,
+    "explicitLoads": 3
+  },
+  "limitations": [
+    "This is correctness/lifecycle evidence, not measured CPU/RAM or whole-app latency.",
+    "The broader opener/download workflow has its own final result; reaching this report alone does not prove later stages."
+  ],
+  "confirmations": [
+    {
+      "measuredAt": "2026-11-07T00:22:16.647Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "method": "Actual Electron/production React renderer with held child adoption, timed native retirement, late IPC replay, keyboard reopen and subsequent Archive restore; disposable profile.",
+      "before": {
+        "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+        "sourceSHA256": "fc135cd12e508bc4e8122364488f0db3af12d206d798a34a399e5da9ac7bfcf5",
+        "observed": "The same test failed at restored WebContents lookup: restored metadata was active but actual browser-sync focus remained on a neighboring tab; destination native view was absent."
+      },
+      "after": {
+        "sourceSHA256": "94cc4d62424bd32929ac712d2d1cc99b1c1dfe7e9d585dbcef94b0005cb873d8",
+        "keyboardRestoration": true,
+        "lateAcknowledgementPreservesRestoredView": true,
+        "archiveRestoration": true,
+        "originalTabIdPreserved": true,
+        "explicitLoads": 3
+      },
+      "limitations": [
+        "This is correctness/lifecycle evidence, not measured CPU/RAM or whole-app latency.",
+        "The broader opener/download workflow has its own final result; reaching this report alone does not prove later stages."
+      ]
+    },
+    {
+      "measuredAt": "2026-11-07T01:41:35.325Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "method": "Actual Electron/production React renderer with held child adoption, timed native retirement, late IPC replay, keyboard reopen and subsequent Archive restore; disposable profile.",
+      "before": {
+        "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+        "sourceSHA256": "fc135cd12e508bc4e8122364488f0db3af12d206d798a34a399e5da9ac7bfcf5",
+        "observed": "The same test failed at restored WebContents lookup: restored metadata was active but actual browser-sync focus remained on a neighboring tab; destination native view was absent."
+      },
+      "after": {
+        "sourceSHA256": "94cc4d62424bd32929ac712d2d1cc99b1c1dfe7e9d585dbcef94b0005cb873d8",
+        "keyboardRestoration": true,
+        "lateAcknowledgementPreservesRestoredView": true,
+        "archiveRestoration": true,
+        "originalTabIdPreserved": true,
+        "explicitLoads": 3
+      },
+      "limitations": [
+        "This is correctness/lifecycle evidence, not measured CPU/RAM or whole-app latency.",
+        "The broader opener/download workflow has its own final result; reaching this report alone does not prove later stages."
+      ]
+    },
+    {
+      "measuredAt": "2026-11-07T02:13:52.303Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "method": "Actual Electron/production React renderer with held child adoption, timed native retirement, late IPC replay, keyboard reopen and subsequent Archive restore; disposable profile.",
+      "before": {
+        "baselineRef": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+        "sourceSHA256": "fc135cd12e508bc4e8122364488f0db3af12d206d798a34a399e5da9ac7bfcf5",
+        "observed": "The same test failed at restored WebContents lookup: restored metadata was active but actual browser-sync focus remained on a neighboring tab; destination native view was absent."
+      },
+      "after": {
+        "sourceSHA256": "94cc4d62424bd32929ac712d2d1cc99b1c1dfe7e9d585dbcef94b0005cb873d8",
+        "keyboardRestoration": true,
+        "lateAcknowledgementPreservesRestoredView": true,
+        "archiveRestoration": true,
+        "originalTabIdPreserved": true,
+        "explicitLoads": 3
+      },
+      "limitations": [
+        "This is correctness/lifecycle evidence, not measured CPU/RAM or whole-app latency.",
+        "The broader opener/download workflow has its own final result; reaching this report alone does not prove later stages."
+      ]
+    }
+  ],
+  "fullWorkflowVerification": {
+    "command": "node_modules/.bin/electron .erb/scripts/browser-ui-smoke.cjs --opener-flow-only",
+    "exitCode": 0,
+    "result": "PASS: native adoption/opener, POST, closure, both restoration paths, nested tabs, early/active download recovery, pause/resume/cancel/denial/sidebar Stop and source closure",
+    "limitations": "Disposable macOS Electron fixture using built renderer and current bundled main source; not installer/platform verification."
+  }
+}

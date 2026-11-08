@@ -1,0 +1,212 @@
+{
+  "before": {
+    "sourceSha256": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+    "probeSha256": "22f9af474c6c372f5eec446d13f94f19af923d509986370eadaae9c01e070772",
+    "results": [
+      {
+        "outcome": "stop",
+        "error": "Stopped.",
+        "commands": [
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "rawKeyDown",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 2
+            }
+          }
+        ],
+        "events": [
+          {
+            "type": "keydown",
+            "key": "a",
+            "trusted": true
+          }
+        ]
+      },
+      {
+        "outcome": "failure",
+        "error": "Synthetic action failure",
+        "commands": [
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "rawKeyDown",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 2
+            }
+          }
+        ],
+        "events": [
+          {
+            "type": "keydown",
+            "key": "a",
+            "trusted": true
+          }
+        ]
+      },
+      {
+        "outcome": "normal",
+        "commands": [
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "rawKeyDown",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 2
+            }
+          },
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "keyUp",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 0
+            }
+          }
+        ],
+        "events": [
+          {
+            "type": "keydown",
+            "key": "a",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "a",
+            "trusted": true
+          }
+        ]
+      }
+    ],
+    "scope": "Actual withAIProtocol and hidden native WebContentsView, trusted Chromium key events. Synthetic interruption after acknowledged keydown. No physical input, compositor/resize, full sidebar handoff or all-frame native coverage."
+  },
+  "after": {
+    "sourceSha256": "baa44efd7148085f470a194c094a64833d90ef75887af8056931bb9aa6c27a87",
+    "probeSha256": "22f9af474c6c372f5eec446d13f94f19af923d509986370eadaae9c01e070772",
+    "results": [
+      {
+        "outcome": "stop",
+        "error": "Stopped.",
+        "commands": [
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "rawKeyDown",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 2
+            }
+          },
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "keyUp",
+              "modifiers": 0,
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65
+            }
+          }
+        ],
+        "events": [
+          {
+            "type": "keydown",
+            "key": "a",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "a",
+            "trusted": true
+          }
+        ]
+      },
+      {
+        "outcome": "failure",
+        "error": "Synthetic action failure",
+        "commands": [
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "rawKeyDown",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 2
+            }
+          },
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "keyUp",
+              "modifiers": 0,
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65
+            }
+          }
+        ],
+        "events": [
+          {
+            "type": "keydown",
+            "key": "a",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "a",
+            "trusted": true
+          }
+        ]
+      },
+      {
+        "outcome": "normal",
+        "commands": [
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "rawKeyDown",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 2
+            }
+          },
+          {
+            "method": "Input.dispatchKeyEvent",
+            "parameters": {
+              "type": "keyUp",
+              "key": "a",
+              "code": "KeyA",
+              "windowsVirtualKeyCode": 65,
+              "modifiers": 0
+            }
+          }
+        ],
+        "events": [
+          {
+            "type": "keydown",
+            "key": "a",
+            "trusted": true
+          },
+          {
+            "type": "keyup",
+            "key": "a",
+            "trusted": true
+          }
+        ]
+      }
+    ],
+    "scope": "Actual withAIProtocol and hidden native WebContentsView, trusted Chromium key events. Synthetic interruption after acknowledged keydown. No physical input, compositor/resize, full sidebar handoff or all-frame native coverage."
+  }
+}

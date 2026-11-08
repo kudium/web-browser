@@ -1,0 +1,30 @@
+{
+  "checks": {
+    "before": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-integration-logs/before.log",
+      "sha256": "e97937e752e923ddc5d04914294b44fe7d76600675306c7351392cd2695cd30a"
+    },
+    "after": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-integration-logs/after.log",
+      "sha256": "33d5253e47b52d7c90de9e3dc58d185b175a512ad25d00368fab654107dc897a"
+    },
+    "lint": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-integration-logs/lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "sourceHashes": {
+    "src/main/extensions.ts": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "src/__tests__/extensions.test.ts": "2705ec1f2ffbd1be797aabf83885eb88ea411b6009280d31855e03879804edd9",
+    ".erb/scripts/extension-store-integration-smoke.cjs": "b51e75de5a501eab05b4225c3e4916796a67bda7abd434abe88a1d7719457095",
+    ".erb/scripts/checks.ts": "790f7cb93c1d031acb17f186648c8339e95ca822d78b8203b8c59604f07b9a2e",
+    "docs/benchmarks/extension-store-integration.json": "ebef0060f1bc6db900d513f189aa8699fd58d46da593266e26b1500e0f591bb8",
+    "docs/benchmarks/baselines/extension-store-boundary/extensions.ts.txt": "905518e6f3f1c40a4c34d828f65ee3184baa49120d3c057c6096fd5d6fecc838"
+  },
+  "priorChecks": "extension-store-boundary-verification.json",
+  "note": "Production extensions/binding and test source hashes match prior 142 suites/732 tests, lint/types and build. No repeat full checks because only probe/runner/documentation changed. New runner passes scoped lint; actual final native probe passes before/after."
+}

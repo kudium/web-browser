@@ -1,0 +1,54 @@
+{
+  "measuredAt": "2026-11-06T23:30:23.845Z",
+  "runtime": {
+    "node": "24.22.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "150",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.11",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2026e",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.6.75.19-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "45.0.0",
+    "chrome": "156.0.8078.48"
+  },
+  "platform": "darwin/arm64",
+  "method": "Actual Electron app.quit immediately after 30 visits. No manual flush. Production quit coordinator waits for the bundled history worker before will-quit; synthetic profile and no native windows.",
+  "result": "passed",
+  "recordsAtWillQuit": 30,
+  "diagnostics": {
+    "writes": 1,
+    "bytes": 4911,
+    "pendingVisits": 0
+  },
+  "sourceSHA256": {
+    "src/main/history.ts": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3",
+    "src/main/historyPersistence.ts": "ad58ecbed68c0129002afa908e4c6e6452b84deb6217907e4e9c5d85e4dcc526",
+    "src/main/advancedPreferences.ts": "f475bf2240ee8f02619bf3c7dc8a6acecee3dc4b80903e9b76c7c19a6edcb2b4"
+  },
+  "limitations": [
+    "Source bundled with esbuild in actual Electron; packaged ASAR/signing and other target platforms remain separate gates.",
+    "Does not simulate sudden power loss or process termination."
+  ]
+}

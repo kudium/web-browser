@@ -1,0 +1,157 @@
+import path from 'path';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import type { IpcMainEvent, WebContents } from 'electron';
+import type { BrowserCommand } from '../browser/contracts';
+import type { SiteDeveloperWindowState } from '../browser/siteDeveloper';
+import { isBrowserCommand } from './browserRequests';
+import { resolveHtmlPath } from './util';
+import { protectWindowNavigation } from './windowNavigation';
+
+/** Editor actions and breadcrumb navigation are bound to its original tab/group. */
+export function registerSiteDeveloperWindows(
+  resolve: (id: string) =>
+    | {
+        contents?: WebContents;
+        profile: string;
+        groupId: string;
+        state: SiteDeveloperWindowState;
+      }
+    | undefined,
+  execute: (event: IpcMainEvent, request: BrowserCommand) => void,
+  focus: (id: string, groupId: string, destination: 'group' | 'page') => void
+) {
+  const editors = new Map<
+    string,
+    { window: BrowserWindow; update: () => void }
+  >();
+  const open = (event: IpcMainEvent, id: string, origin: string) => {
+    const target = resolve(id);
+    if (!target || target.state.origin !== origin) return;
+    const key = `${id}\n${origin}\n${target.profile}\n${
+      target.contents?.id || 'saved'
+    }`;
+    const existing = editors.get(key);
+    if (existing) {
+      existing.window.show();
+      existing.window.focus();
+      return;
+    }
+    const editor = new BrowserWindow({
+      title: `${new URL(origin).host} — Developer`,
+      width: 820,
+      height: 740,
+      minWidth: 400,
+      minHeight: 480,
+      show: false,
+      resizable: true,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        webSecurity: true,
+        preload: app.isPackaged
+          ? path.join(__dirname, 'preload.js')
+          : path.join(__dirname, '../../.erb/dll/preload.js'),
+      },
+    });
+    const current = () => {
+      const latest = resolve(id);
+      return latest &&
+        (target.contents ? latest.contents === target.contents : true) &&
+        latest.groupId === target.groupId &&
+        latest.profile === target.profile &&
+        latest.state.origin === origin
+        ? latest.state
+        : undefined;
+    };
+    let previous = '';
+    let lastState = target.state;
+    const update = (force = false) => {
+      if (editor.isDestroyed()) return;
+      const latest = current();
+      if (latest) lastState = latest;
+      const state: SiteDeveloperWindowState = latest || {
+        ...lastState,
+        available: false,
+      };
+      const serialized = JSON.stringify(state);
+      if (force || serialized !== previous) {
+        previous = serialized;
+        editor.webContents.send('site-developer-state', state);
+      }
+    };
+    const receive = (source: IpcMainEvent, request: unknown) => {
+      if (
+        source.sender !== editor.webContents ||
+        source.senderFrame !== editor.webContents.mainFrame
+      )
+        return;
+      if (request === 'focus-group' || request === 'focus-page') {
+        focus(id, target.groupId, request === 'focus-group' ? 'group' : 'page');
+        // Breadcrumbs switch context while keeping this editor and its draft open.
+        if (!editor.isDestroyed()) editor.showInactive();
+        return;
+      }
+      if (request === 'get') {
+        update(true);
+        return;
+      }
+      if (request === 'close') {
+        editor.close();
+        return;
+      }
+      if (request === 'expand') {
+        if (editor.isMaximized()) editor.unmaximize();
+        else editor.maximize();
+        return;
+      }
+      if (
+        !current() ||
+        !isBrowserCommand(request) ||
+        ![
+          'set-site-developer',
+          'clear-site-developer-logs',
+          'reload',
+          'activate-hook-notification',
+          'revoke-hook-notification',
+        ].includes(request.action)
+      )
+        return;
+      // Ignore caller-supplied tab and URL, always use the main-owned binding.
+      execute(event, {
+        id,
+        url: origin,
+        action: request.action,
+        ...(request.grantId ? { grantId: request.grantId } : {}),
+        ...(request.action === 'set-site-developer'
+          ? { developer: request.developer }
+          : {}),
+      });
+      update(true);
+    };
+    ipcMain.on('site-developer-command', receive);
+    const timer = setInterval(update, 500);
+    editors.set(key, { window: editor, update });
+    const documentURL = resolveHtmlPath('index.html', 'site-developer');
+    protectWindowNavigation(editor.webContents, documentURL, (url) =>
+      shell.openExternal(url)
+    );
+    editor.once('ready-to-show', () => {
+      editor.show();
+      update(true);
+    });
+    editor.once('closed', () => {
+      clearInterval(timer);
+      ipcMain.removeListener('site-developer-command', receive);
+      editors.delete(key);
+    });
+    editor.loadURL(documentURL).catch(() => editor.close());
+  };
+  return {
+    open,
+    update: () => editors.forEach((editor) => editor.update()),
+    dispose: () => {
+      editors.forEach((editor) => editor.window.destroy());
+      editors.clear();
+    },
+  };
+}

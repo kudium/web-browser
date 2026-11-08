@@ -1,0 +1,67 @@
+{
+  "recordedAt": "2026-11-07T09:26:00.498Z",
+  "valid": true,
+  "artifacts": {
+    "docs/benchmarks/private-navigation-dispatch.json": "9143f5bcfdda0145751a7eb12f9d004f9a1eb62972e51d8a88adc11a2bb2f768",
+    "docs/benchmarks/private-navigation-dispatch-2026-11-07.md": "641cbb3f50274e7ccab8a743870368a8448566e0c40b239de5034de825cb6ef0",
+    "docs/security/ipc-inventory-2026-11-07-private-navigation-dispatch.json": "9e56fdc19cb96bada3a02fb2c2795694c13de6f49695232216634d07ab1091f4",
+    "src/main/ai.ts": "1bce8e149bc2243c2bec99888bdb9e11561d040ec4bc2b0476baeb5e51a4b240",
+    "src/main/aiNavigation.ts": "e859e6fbe349e3c6af06053d58741167ab380e1b77f0a3f5e31712a4d0ff98b7",
+    "src/main/advancedPreferences.ts": "9c1ee2e41a23611b73d3089ffe5efddf732bebcdf43cf795bd705084a624b926",
+    "src/main/aiDialogs.ts": "dc760ff22218ab3f9c44d916a8f252895ea57156043227a19a3008719ed676ca",
+    "src/main/requestRules.ts": "36064c9c25e7b8f2b6c63793e8964c68baa82daa05c991ca0215e5f2e5d6116a",
+    "src/__tests__/requestRules.test.ts": "e437cb6d257125a0148e1d2ce7b7b629115d5321d314aaa98d48d0032691adcb",
+    "src/__tests__/aiNavigation.test.ts": "8d120fc08bc74e6a9dadd506aad65cf4f5a39d9159b096875955e285d8bb1c68",
+    ".erb/scripts/private-navigation-dispatch-smoke.cjs": "30db0263afb452f2bc74b92e3f4e13a48e00042a82705172d9fc84fd2a182d9f",
+    ".erb/scripts/checks.ts": "8c7c9832e51fcb1a86ff271a90b55e2c8c9f7465995f817681379c68744c68f7"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "aa814d9b57b271d2d1f6e8ad756598aa965d65d83d97e3a245a28f8fce881712",
+      "summary": "142 suites /726 tests pass on final source"
+    },
+    {
+      "name": "lint-types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Repository lint and TypeScript pass"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Production webpack build passes"
+    },
+    {
+      "name": "native-before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/private-navigation-dispatch-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "2e31d37a1e37ac5c0a1b5a0c5d8696a9ccb63dd9d729a7469e12fd04c3edd3d1",
+      "summary": "Retained source: three stale-authority destinations each receive one request"
+    },
+    {
+      "name": "native-after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/private-navigation-dispatch-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "740407c414e46e0f3a78355ac4e565eb3087c94280a8954766ee7283162edaa7",
+      "summary": "Three stale-authority destinations each receive zero requests; native private new-tab/history and public/approved behavior pass"
+    },
+    {
+      "name": "inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "abf75a109838f7ef97b9d2ad5e2fdb1edcd6b96d60f467df9062218a2f937984",
+      "summary": "Current inventory refreshed and immutable dispatch snapshot preserved"
+    }
+  ],
+  "limitations": [
+    "Actual registerAI/encrypted vault/MCP/native request callbacks and loopback HTTP socket counts. Before replaces AI, navigation and request-rule modules with retained pre-dispatch-guard files; other modules use current source. Controlled native reviews; synthetic values. Main-frame navigation only; no containment of descendants, fetch, workers, existing WebSocket/WebRTC channels or later sends after navigation completes. macOS native Electron only; no signed/cross-platform release claim.",
+    "createTab callback creates real native windows under fixture control; full renderer/extension new-tab handshake remains unverified. BackForwardCache is deliberately disabled to exercise history network requests.",
+    "Main-frame policy only. Revocation after the native allow callback cannot retract traffic. Descendants/workers/existing channels, payload provenance, native Enter, durability and signed/cross-platform release gates remain open."
+  ]
+}

@@ -1,0 +1,17 @@
+# Extension installation scope violation — November 7, 2026
+
+Result: **P0 release blocker reproduced.** No production source changed. This is diagnostic evidence, not a completed improvement benchmark.
+
+Actual installed `electron-chrome-extensions` and `electron-chrome-web-store` engines process native `chromeWebstore.beginInstall` IPC from a sandboxed, context-isolated store WebContentsView. A generated-key, permissionless local Manifest V3 package is placed in the disposable store cache, so the dependency takes its real cached-install path without remote store/download traffic. A controlled native review selects only “Approved Target A”.
+
+Observed native `extension-loaded` order is **store → A**. Reconciliation later unloads the store instance. Final loaded state is A=true, B=false, store=false. The final state looks correctly scoped but does not prove the extension never loaded in the unapproved store session. The probe measures native loads; it does not establish whether extension JavaScript ran before removal. The first native load itself contradicts selected-session installation ownership.
+
+The source explains the result: `beforeInstall` records selected-profile policy under the requesting profile; the dependency then invokes `installExtension` with that requesting session. The application's extension-loaded callback applies catalog policy only after native loading has occurred. Moving/removing an extension after load cannot establish pre-execution isolation.
+
+`.erb/scripts/extension-install-scope-smoke.cjs` reproduces the issue with actual dependency/native IPC, generated package identity and local cached package. Runtime/OS/architecture, source/dependency/probe hashes, approval details, reply, native load order and final state are in `extension-install-scope-diagnostic.json`. Check log and retained application baseline are recorded in `extension-install-scope-diagnostic-verification.json`. The diagnostic intentionally asserts the known violation; do not register it as a passing release gate or present its successful reproduction as repaired behavior.
+
+The earlier `extension-store-integration` evidence remains valid for uninstall. It does not cover this install branch. Full unit/build/lint checks were not repeated because production source did not change and those checks cannot prove this native scope invariant.
+
+Required repair: own the store installation pipeline before any native load. Bind native requester/main-frame/session/document, selected target and owner/revision, exact extension/package identity and permissions. Prepare/validate the package without loading it, review the actual package permissions, revalidate after download/extraction/review and at queued dispatch, then load directly into the approved target session. Treat All sessions as a distinct explicit grant. Deny unowned dependency fallback installation rather than relying on post-load reconciliation. Preserve approved remote/cache workflows and store installed-status/event semantics.
+
+Acceptance must count native first-load events as well as final state. Test selected/all grants, declined review, navigation and changed/restored target/owner before/during review, during stalled package preparation and between queueing and load. Verify actual cached/local package identity changes and permission changes, siblings, retries/failures and installer UI compatibility. Remote package download/authenticity and full live-store UI remain separately required. Private network containment and signed/platform gates remain open.

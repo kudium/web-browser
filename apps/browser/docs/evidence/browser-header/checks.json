@@ -1,0 +1,222 @@
+[
+  {
+    "width": 1000,
+    "theme": "light",
+    "state": "default",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 1000,
+    "theme": "light",
+    "state": "expanded",
+    "overflow": false,
+    "fieldWidth": 786,
+    "fieldRight": 888,
+    "aligned": true,
+    "expanded": true,
+    "value": "example.com"
+  },
+  {
+    "width": 1000,
+    "theme": "light",
+    "state": "focus",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": "https://example.com/a-long-page?query=hello"
+  },
+  {
+    "width": 1000,
+    "theme": "light",
+    "state": "loading",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 1000,
+    "theme": "light",
+    "state": "empty",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": ""
+  },
+  {
+    "width": 1000,
+    "theme": "dark",
+    "state": "default",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 1000,
+    "theme": "dark",
+    "state": "expanded",
+    "overflow": false,
+    "fieldWidth": 786,
+    "fieldRight": 888,
+    "aligned": true,
+    "expanded": true,
+    "value": "example.com"
+  },
+  {
+    "width": 1000,
+    "theme": "dark",
+    "state": "focus",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": "https://example.com/a-long-page?query=hello"
+  },
+  {
+    "width": 1000,
+    "theme": "dark",
+    "state": "loading",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 1000,
+    "theme": "dark",
+    "state": "empty",
+    "overflow": false,
+    "fieldWidth": 822,
+    "fieldRight": 924,
+    "aligned": true,
+    "expanded": false,
+    "value": ""
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "default",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "expanded",
+    "overflow": false,
+    "fieldWidth": 230,
+    "fieldRight": 296,
+    "aligned": true,
+    "expanded": true,
+    "value": "example.com"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "focus",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": "https://example.com/a-long-page?query=hello"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "loading",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "empty",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": ""
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "default",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "expanded",
+    "overflow": false,
+    "fieldWidth": 230,
+    "fieldRight": 296,
+    "aligned": true,
+    "expanded": true,
+    "value": "example.com"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "focus",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": "https://example.com/a-long-page?query=hello"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "loading",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": "example.com"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "empty",
+    "overflow": false,
+    "fieldWidth": 262,
+    "fieldRight": 328,
+    "aligned": true,
+    "expanded": false,
+    "value": ""
+  }
+]

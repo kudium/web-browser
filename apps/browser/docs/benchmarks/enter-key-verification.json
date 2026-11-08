@@ -1,0 +1,66 @@
+{
+  "recordedAt": "2026-11-07T09:43:18.835Z",
+  "valid": true,
+  "artifacts": {
+    "docs/benchmarks/enter-key.json": "8dd7ff71c22c64c5feb8b9968360b5d1ee9bbecb013afda6e6d5e123e4794a1d",
+    "docs/benchmarks/enter-key-2026-11-07.md": "359b64ee2e5f4e220db56e2b792f734a5b693fa0385d3aa506b67fa55eae2847",
+    "docs/security/ipc-inventory-2026-11-07-enter-key.json": "df4cfb6673f3c83e7cd0c25d95028b95cb2a4ddc11cc7eaf969688825d0223d6",
+    "src/browser/aiKeys.ts": "879734d32501b3a37289a52c19f047ae9eed6958d32c9a381403605587c793a8",
+    "src/main/ai.ts": "f9f5e11ec4b61feeab50aa83d7bc63c48824e38c45718bbc1431c23d296726d3",
+    "src/main/aiProtocol.ts": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+    "src/main/aiInterrupt.ts": "63eec02aab9bdb90cdccd2ce9ecd0c1b71fb809c474382545dece78f40422ee5",
+    "src/__tests__/aiKeys.test.ts": "90ff3e88ca0eb8d9aa1ecf8f7ab2e1b5ed62cbd3706139466db9d89f0613dce6",
+    "src/__tests__/ai.test.ts": "97da3ad7299fb0967de040b2c454c99468fb71f59c74a470d42ff28a38577fe0",
+    ".erb/scripts/enter-key-smoke.cjs": "7a5fefc79b2f6da0d8fe04cede3e087f7701eee9bb203aca5e1057412212c724",
+    ".erb/scripts/checks.ts": "8751378080a86c100322bd2f3d31816d708ca3d1161404c791c5b90d69e0d27f"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "c91b33c53b2deb48bb44205797d20ae08be1e0cd3c31177931cd695bab11551b",
+      "summary": "142 suites /727 tests pass on final source"
+    },
+    {
+      "name": "lint-types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Repository lint and TypeScript pass"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Production webpack build passes"
+    },
+    {
+      "name": "native-before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/enter-key-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "80c418de187c3446aa424509892ef5e692d2d56d7b16b216c84bb557ddba78cf",
+      "summary": "Retained source: 0/14 default submissions; changed-on-focus target still receives two key commands"
+    },
+    {
+      "name": "native-after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/enter-key-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "ddea91c8ca2084fa64d804259aaf438cda556a59f2c024534cff0bf132fbc6c6",
+      "summary": "14/14 default submissions; newline/cancellation/modifier/private-review and post-focus target validation pass"
+    },
+    {
+      "name": "inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "35ef32ec56d1372211a833992cefcfbb426358153d9c7d02722cb679d4cde98c",
+      "summary": "Current inventory refreshed; immutable Enter snapshot preserved"
+    }
+  ],
+  "limitations": [
+    "Actual registerAI/encrypted vault, official MCP SDK, hidden native WebContentsView, trusted Chromium key events and loopback POST bodies. Native reviews are controlled; page submit handler prevents navigation and fetches the synthetic form value. Baseline substitutes retained aiKeys.ts and ai.ts; other modules use current source. No physical keyboard, nested-frame coverage, original activity UnknownVizError fix, all-channel containment or signed/cross-platform claim.",
+    "One renderer evaluation added; two Input.dispatchKeyEvent commands remain. No universal timing guarantee or whole-app speedup claim.",
+    "Original pointer UnknownVizError, broader sidebar focus, all frame layouts, interruption/key-release behavior, physical input/OS authentication, downstream data containment and signed/platform validation remain open."
+  ]
+}

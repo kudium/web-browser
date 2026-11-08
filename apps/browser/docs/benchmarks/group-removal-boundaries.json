@@ -1,0 +1,176 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T07:57:50.204Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "3b003ddefd6084ac9a7f39e35c390bd4780cd919fe86d566d20090ed63f8d463",
+    "runtimeBundleSha256": "467136c15598bb8d693a38e7946823d16fbbd398bead687d2fcd9bc39e20efe0",
+    "sourceSha256": "5e9565873c7f88a1a66eeefbbebe92067ecf6ea358f973a4f2231e5d68c33c7b",
+    "dependencyHashes": {
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/browser/siteDeveloper.ts": "4f54feb516025d20d9b012d44a50e2a9531139190cfe75e29baabab747db93a8",
+      "src/main/browserRequests.ts": "cab3a668b4550f6d5a2623388a29df324dabe7d406d55d8b4e4bf05d8ee8931c",
+      "src/main/siteSettings.ts": "f78f1d2a27f8a422c0dfceec0ef86c427fb33db4955b2a086b3a974c9904aae8"
+    },
+    "overrides": [
+      "src/main/dialogs.ts",
+      "src/main/history.ts",
+      "src/main/groupLocks.ts",
+      "src/main/passwordManager/index.ts"
+    ],
+    "cases": [
+      {
+        "name": "dialogReload",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "retired": false
+      },
+      {
+        "name": "secondReadReload",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "retired": false
+      },
+      {
+        "name": "sameCountReplacement",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "retired": false
+      },
+      {
+        "name": "liveProfile",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "retired": false
+      },
+      {
+        "name": "secondaryProfile",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "secondaryCookies": 1,
+        "retired": false
+      },
+      {
+        "name": "ownerClosedAfterCommit",
+        "accepted": false,
+        "cookiesRetained": 0,
+        "retired": false,
+        "error": "Unload this group before removing it."
+      },
+      {
+        "name": "staleLayoutLastOwner",
+        "accepted": true,
+        "cookiesRetained": 1,
+        "retired": false
+      }
+    ],
+    "restart": {
+      "storageCalls": 2,
+      "first": {
+        "accepted": false,
+        "cookies": 0,
+        "journalExists": false,
+        "retired": false,
+        "error": "Synthetic cache failure"
+      },
+      "retry": {
+        "accepted": true,
+        "cookies": 0,
+        "journalExists": false,
+        "retired": false
+      }
+    },
+    "scope": "Actual group handler and native same-frame document identities; real cookies/storage/site-settings and two separate Electron processes for failed-cleanup retry. Native dialog completion, unloaded predicates, group locks, history dispatch and uninitialized vault are explicit controls. Actual application views/renderer/vault/history integration is checked separately by tests and group-close-removal-smoke. No physical OS auth, installed-extension writers, signed/cross-platform or whole-app performance claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T07:58:40.207Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "3b003ddefd6084ac9a7f39e35c390bd4780cd919fe86d566d20090ed63f8d463",
+    "runtimeBundleSha256": "39cd77d98cc99661a9873c0e2c60226729f3535df254663f429d6bac6c4a6583",
+    "sourceSha256": "d2362b5b8a144f2bc1cff37f743af5191fd189895e76411bc4aab843a713b51f",
+    "dependencyHashes": {
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/browser/siteDeveloper.ts": "4f54feb516025d20d9b012d44a50e2a9531139190cfe75e29baabab747db93a8",
+      "src/main/browserRequests.ts": "cab3a668b4550f6d5a2623388a29df324dabe7d406d55d8b4e4bf05d8ee8931c",
+      "src/main/siteSettings.ts": "f78f1d2a27f8a422c0dfceec0ef86c427fb33db4955b2a086b3a974c9904aae8",
+      "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+      "src/main/privateFile.ts": "7e872b56f63113b6bac9d20b9f9b5af28873cac4e4a4b81f0dd37944f4ba8e71",
+      "src/main/groupRemovalJournal.ts": "f7bd829c5ceeeb574f6eb3b260273d984a034ce4b4fe53bdefee09480184869c"
+    },
+    "overrides": [
+      "src/main/dialogs.ts",
+      "src/main/history.ts",
+      "src/main/groupLocks.ts",
+      "src/main/passwordManager/index.ts"
+    ],
+    "cases": [
+      {
+        "name": "dialogReload",
+        "accepted": false,
+        "cookiesRetained": 1,
+        "retired": false,
+        "error": "This window or its access changed. Try the action again."
+      },
+      {
+        "name": "secondReadReload",
+        "accepted": false,
+        "cookiesRetained": 1,
+        "retired": false,
+        "error": "This window or its access changed. Try the action again."
+      },
+      {
+        "name": "sameCountReplacement",
+        "accepted": false,
+        "cookiesRetained": 1,
+        "retired": false,
+        "error": "The group changed during confirmation. Try again."
+      },
+      {
+        "name": "liveProfile",
+        "accepted": false,
+        "cookiesRetained": 1,
+        "retired": false,
+        "error": "Unload every window using these login profiles before removing the group."
+      },
+      {
+        "name": "secondaryProfile",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "secondaryCookies": 0,
+        "retired": true
+      },
+      {
+        "name": "ownerClosedAfterCommit",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "retired": true
+      },
+      {
+        "name": "staleLayoutLastOwner",
+        "accepted": true,
+        "cookiesRetained": 0,
+        "retired": true
+      }
+    ],
+    "restart": {
+      "storageCalls": 1,
+      "first": {
+        "accepted": false,
+        "cookies": 0,
+        "journalExists": true,
+        "retired": false,
+        "error": "Group cleanup is incomplete. Some data may already have been deleted. Retry removal to finish. Synthetic cache failure"
+      },
+      "retry": {
+        "accepted": true,
+        "cookies": 0,
+        "journalExists": true,
+        "retired": true
+      }
+    },
+    "scope": "Actual group handler and native same-frame document identities; real cookies/storage/site-settings and two separate Electron processes for failed-cleanup retry. Native dialog completion, unloaded predicates, group locks, history dispatch and uninitialized vault are explicit controls. Actual application views/renderer/vault/history integration is checked separately by tests and group-close-removal-smoke. No physical OS auth, installed-extension writers, signed/cross-platform or whole-app performance claim."
+  }
+}

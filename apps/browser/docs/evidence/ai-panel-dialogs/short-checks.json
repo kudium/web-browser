@@ -1,0 +1,416 @@
+[
+  {
+    "label": "manage",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "form",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "scope",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "delete",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "empty",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 118.71875,
+      "bottom": 393.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "loading",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 127.71875,
+      "bottom": 384.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "error",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 103.71875,
+      "bottom": 408.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "rename",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 181.1328125,
+      "bottom": 330.859375
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "icon",
+    "width": 240,
+    "height": 480,
+    "theme": "light",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "manage",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "form",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "scope",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "delete",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "empty",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 118.71875,
+      "bottom": 393.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "loading",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 127.71875,
+      "bottom": 384.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "error",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 103.71875,
+      "bottom": 408.28125
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "rename",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 181.1328125,
+      "bottom": 330.859375
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  },
+  {
+    "label": "icon",
+    "width": 240,
+    "height": 480,
+    "theme": "dark",
+    "inside": true,
+    "dialogFits": true,
+    "overlayFits": true,
+    "selectFits": true,
+    "noOverflow": true,
+    "dialog": {
+      "left": 637,
+      "right": 843,
+      "top": 65,
+      "bottom": 447
+    },
+    "panel": {
+      "left": 620,
+      "right": 860,
+      "top": 48,
+      "bottom": 464
+    }
+  }
+]

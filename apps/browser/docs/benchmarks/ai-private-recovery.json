@@ -1,0 +1,600 @@
+{
+  "before": {
+    "measuredAt": "2026-11-07T00:45:22.154Z",
+    "results": [
+      {
+        "case": "private-denied",
+        "requests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": true,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+      },
+      {
+        "case": "private-approved",
+        "requests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": true,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+      },
+      {
+        "case": "legacy-denied",
+        "requests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": true,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+      },
+      {
+        "case": "public",
+        "requests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+      },
+      {
+        "case": "oversized",
+        "requests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": true,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+      }
+    ],
+    "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+  },
+  "after": {
+    "measuredAt": "2026-11-07T00:45:23.373Z",
+    "results": [
+      {
+        "case": "private-denied",
+        "requests": 0,
+        "reviews": 1,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "d0f908bc20077248ae7a3c43a82f0841ac9ae8e1cf932cdf7668815fd318feed"
+      },
+      {
+        "case": "private-approved",
+        "requests": 1,
+        "reviews": 1,
+        "privateFactDisclosed": true,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "d0f908bc20077248ae7a3c43a82f0841ac9ae8e1cf932cdf7668815fd318feed"
+      },
+      {
+        "case": "legacy-denied",
+        "requests": 0,
+        "reviews": 1,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "d0f908bc20077248ae7a3c43a82f0841ac9ae8e1cf932cdf7668815fd318feed"
+      },
+      {
+        "case": "public",
+        "requests": 1,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "d0f908bc20077248ae7a3c43a82f0841ac9ae8e1cf932cdf7668815fd318feed"
+      },
+      {
+        "case": "oversized",
+        "requests": 0,
+        "reviews": 0,
+        "privateFactDisclosed": false,
+        "resumable": false,
+        "electron": "45.0.0",
+        "platform": "darwin",
+        "mainSourceSHA256": "d0f908bc20077248ae7a3c43a82f0841ac9ae8e1cf932cdf7668815fd318feed"
+      }
+    ],
+    "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+  },
+  "confirmations": [
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T00:46:09.627Z",
+      "results": [
+        {
+          "case": "private-denied",
+          "requests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "explicitRetry": {
+            "requests": 1,
+            "privateFactDisclosed": true,
+            "resumable": false
+          }
+        },
+        {
+          "case": "private-approved",
+          "requests": 1,
+          "reviews": 1,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "legacy-denied",
+          "requests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "public",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "oversized",
+          "requests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "private-stopped",
+          "requests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T00:46:10.957Z",
+      "results": [
+        {
+          "case": "private-denied",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "private-approved",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "legacy-denied",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "public",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "oversized",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "private-stopped",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile.",
+      "validationNote": "The baseline had no native disclosure review, so its review-triggered Stop fixture did not run. That case demonstrates missing review only; it is not evidence of a baseline Stop failure. Later baseline runs omit this case."
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:12:08.829Z",
+      "results": [
+        {
+          "case": "private-denied",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "private-approved",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "legacy-denied",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "public",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        },
+        {
+          "case": "oversized",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533"
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:12:11.049Z",
+      "results": [
+        {
+          "case": "private-denied",
+          "requests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+          "explicitRetry": {
+            "requests": 1,
+            "privateFactDisclosed": true,
+            "resumable": false
+          }
+        },
+        {
+          "case": "private-approved",
+          "requests": 1,
+          "reviews": 1,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "legacy-denied",
+          "requests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "public",
+          "requests": 1,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "oversized",
+          "requests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        },
+        {
+          "case": "private-stopped",
+          "requests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124"
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:16:09.065Z",
+      "results": [
+        {
+          "case": "private-denied",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "explicitRetry": {
+            "requests": 1,
+            "privateFactDisclosed": true,
+            "resumable": false
+          }
+        },
+        {
+          "case": "private-approved",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "legacy-denied",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "public",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "oversized",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "private-stopped",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:17:19.873Z",
+      "results": [
+        {
+          "case": "private-denied",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011",
+          "explicitRetry": {
+            "requests": 1,
+            "privateFactDisclosed": true,
+            "resumable": false
+          }
+        },
+        {
+          "case": "private-approved",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": true,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "legacy-denied",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "public",
+          "requests": 1,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "oversized",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 0,
+          "privateFactDisclosed": false,
+          "resumable": true,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        },
+        {
+          "case": "private-stopped",
+          "requests": 0,
+          "auxiliaryRequests": 0,
+          "reviews": 1,
+          "privateFactDisclosed": false,
+          "resumable": false,
+          "electron": "45.0.0",
+          "platform": "darwin",
+          "arch": "arm64",
+          "supportingSourcesSHA256": {
+            "aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+            "aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+            "aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+            "aiDataDisclosure.ts": "2c37fc257180374911a58e8250415671fcda712c06ab741b5439c1060f37458e"
+          },
+          "mainSourceSHA256": "2e84f51517e24577f2ed4d755148a9265d87a42dabd063f754e5ad937ae4c011"
+        }
+      ],
+      "method": "Actual Electron registerAI, encrypted AICheckpointStore restored before registration, native review fixture and local HTTP provider. Each case runs in a separate disposable profile."
+    }
+  ]
+}

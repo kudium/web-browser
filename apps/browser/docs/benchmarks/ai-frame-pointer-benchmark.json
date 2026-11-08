@@ -1,0 +1,92 @@
+{
+  "baseline": "Disposable uncached frame helper with the same safety checks; repeated owner lookup/world/node resolution, focus setup and immediate reference release. Not an exact historical whole-file replay.",
+  "measurement": "One sequential run per variant. Includes MCP transport, native input, live geometry checks and settling; excludes model inference and human approval.",
+  "sourceSHA256": {
+    "src/main/aiFrames.ts": "6616948c665dbc745eb26af9137fa3d9d31b3b7f30bc1970876adfd4d7094ab0",
+    ".erb/scripts/mcp-smoke.cjs": "257ab6d03b0826e665577b865cb7a08b7a6e8a8528ee70e3226fb2bed48e62bb"
+  },
+  "runs": [
+    {
+      "frame": "main",
+      "fixture": "zigzag",
+      "pointerVariant": "uncached",
+      "milliseconds": 9012.922625,
+      "protocolCommands": 1020,
+      "protocolCounts": {
+        "Emulation.setFocusEmulationEnabled": 1,
+        "Input.dispatchMouseEvent": 1019
+      },
+      "platform": "darwin",
+      "arch": "arm64",
+      "electron": "45.0.0",
+      "chrome": "156.0.8078.48",
+      "error": false
+    },
+    {
+      "frame": "embedded",
+      "fixture": "zigzag",
+      "pointerVariant": "uncached",
+      "milliseconds": 9032.255624999998,
+      "protocolCommands": 8822,
+      "protocolCounts": {
+        "Target.setAutoAttach": 8,
+        "Page.getFrameTree": 8,
+        "Page.enable": 4,
+        "Page.createIsolatedWorld": 1151,
+        "Runtime.evaluate": 1020,
+        "Emulation.setFocusEmulationEnabled": 1020,
+        "DOM.getFrameOwner": 1148,
+        "DOM.resolveNode": 1148,
+        "Runtime.callFunctionOn": 1148,
+        "Runtime.releaseObject": 1148,
+        "Input.dispatchMouseEvent": 1019
+      },
+      "platform": "darwin",
+      "arch": "arm64",
+      "electron": "45.0.0",
+      "chrome": "156.0.8078.48",
+      "error": false
+    },
+    {
+      "frame": "main",
+      "fixture": "zigzag",
+      "pointerVariant": "cached",
+      "milliseconds": 8982.47925,
+      "protocolCommands": 1020,
+      "protocolCounts": {
+        "Emulation.setFocusEmulationEnabled": 1,
+        "Input.dispatchMouseEvent": 1019
+      },
+      "platform": "darwin",
+      "arch": "arm64",
+      "electron": "45.0.0",
+      "chrome": "156.0.8078.48",
+      "error": false
+    },
+    {
+      "frame": "embedded",
+      "fixture": "zigzag",
+      "pointerVariant": "cached",
+      "milliseconds": 9010.828458,
+      "protocolCommands": 3216,
+      "protocolCounts": {
+        "Target.setAutoAttach": 8,
+        "Page.getFrameTree": 8,
+        "Page.enable": 4,
+        "Page.createIsolatedWorld": 4,
+        "Runtime.evaluate": 1020,
+        "Emulation.setFocusEmulationEnabled": 2,
+        "DOM.getFrameOwner": 1,
+        "DOM.resolveNode": 1,
+        "Runtime.callFunctionOn": 1148,
+        "Input.dispatchMouseEvent": 1019,
+        "Runtime.releaseObject": 1
+      },
+      "platform": "darwin",
+      "arch": "arm64",
+      "electron": "45.0.0",
+      "chrome": "156.0.8078.48",
+      "error": false
+    }
+  ]
+}

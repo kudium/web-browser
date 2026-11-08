@@ -1,0 +1,106 @@
+// Real Preferences components and AI/MCP IPC with disposable agent configs.
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog } = require('electron');
+const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert'), net = require('net');
+const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
+const JSON5 = require('json5'), YAML = require('yaml'), esbuild = require('esbuild');
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-personal-agents-'));
+app.setPath('userData', path.join(root, 'user-data'));
+process.env.HERMES_HOME = path.join(root, 'hermes');
+process.env.OPENCLAW_STATE_DIR = path.join(root, 'openclaw');
+delete process.env.OPENCLAW_CONFIG_PATH;
+for (const folder of [process.env.HERMES_HOME, process.env.OPENCLAW_STATE_DIR]) fs.mkdirSync(folder);
+const hermesPath = path.join(process.env.HERMES_HOME, 'config.yaml');
+const openclawPath = path.join(process.env.OPENCLAW_STATE_DIR, 'openclaw.json');
+fs.writeFileSync(hermesPath, '# Preserve my preferences\nmodel: fixture-model\nmcp_servers:\n  other:\n    url: https://other.test/mcp\n');
+fs.writeFileSync(openclawPath, '// Preserve my preferences\n{ model: "fixture-model", mcp: { servers: { other: { url: "https://other.test/mcp" } } } }\n');
+esbuild.buildSync({ entryPoints: ['src/main/ai.ts'], bundle: true, platform: 'node', external: ['electron'], outfile: path.join(root, 'ai.cjs') });
+esbuild.buildSync({ entryPoints: ['src/main/preload.ts'], bundle: true, platform: 'node', external: ['electron'], outfile: path.join(root, 'preload.cjs') });
+fs.writeFileSync(path.join(root, 'entry.tsx'), `import React from 'react';import {createRoot} from 'react-dom/client';import {Theme} from '@radix-ui/themes';import '@radix-ui/themes/styles.css';import ${JSON.stringify(path.resolve('src/renderer/index.css'))};import {AISettingsPage} from ${JSON.stringify(path.resolve('src/components/View/Settings/AISettingsPage'))};function Page(){const [dark,setDark]=React.useState(false);window.setFixtureTheme=setDark;return <Theme appearance={dark?'dark':'light'}><div className="preferences-shell"><aside className="preferences-sidebar"><div className="preferences-brand">Preferences</div><div className="preferences-navigation">AI assistant</div></aside><main className="preferences-main"><header className="preferences-topbar">Browser preferences</header><section className="preference-section"><header><h1>AI assistant</h1></header><AISettingsPage/></section></main></div></Theme>}createRoot(document.getElementById('root')).render(<Page/>);`);
+esbuild.buildSync({ entryPoints: [path.join(root, 'entry.tsx')], bundle: true, platform: 'browser', nodePaths: [path.resolve('node_modules')], jsx: 'automatic', loader: { '.svg': 'dataurl', '.png': 'dataurl', '.jpg': 'dataurl', '.woff2': 'file', '.woff': 'file' }, outfile: path.join(root, 'ui.js') });
+fs.writeFileSync(path.join(root, 'index.html'), '<meta charset="utf-8"><link rel="stylesheet" href="ui.css"><div id="root"></div><script src="ui.js"></script>');
+const output = path.resolve('docs/evidence/personal-agents');
+fs.mkdirSync(output, { recursive: true });
+let host, website, dispose;
+const clients = [];
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+(async () => {
+  await app.whenReady();
+  const reserve = net.createServer();await new Promise(resolve => reserve.listen(0,'127.0.0.1',resolve));const port = reserve.address().port;await new Promise(resolve => reserve.close(resolve));
+  host = new BrowserWindow({ width: 1080, height: 760, show: true, webPreferences: { preload: path.join(root,'preload.cjs'), contextIsolation: true } });
+  website = new WebContentsView();await website.webContents.loadURL('data:text/html,<title>Fixture page</title><p>Personal agent target</p>');
+  const tabs = [{ id: 'fixture-tab', name: 'Fixture page', url: 'https://fixture.test', sessionId: 'fixture-group', icon: '' }];
+  dispose = require(path.join(root,'ai.cjs')).registerAI(host,{ tabs:()=>tabs, focused:()=>tabs[0].id, contents:id=>id===tabs[0].id?website.webContents:undefined });
+  await host.loadFile(path.join(root,'index.html'));
+  const evaluate = expression => host.webContents.executeJavaScript(expression);
+  const until = async expression => { for(let i=0;i<100;i++){if(await evaluate(expression))return;await wait(40);}throw new Error('Timed out: '+expression); };
+  const click = async label => { await until(`!!document.querySelector('[aria-label=${JSON.stringify(label)}]')&&!document.querySelector('[aria-label=${JSON.stringify(label)}]').disabled`);await evaluate(`document.querySelector('[aria-label=${JSON.stringify(label)}]').click();undefined`); };
+  await evaluate(`window.electron.ai.mcpUpdate({enabled:false,port:${port}})`);
+  await until("!!document.getElementById('ai-external-tab')");await evaluate("document.getElementById('ai-external-tab').click();undefined");
+  await until("!!document.querySelector('[aria-label=\"Connect Hermes\"]')");
+  const shot = async name => {await wait(160);fs.writeFileSync(path.join(output,name+'.png'),(await host.capturePage()).toPNG());};
+  await shot('available-light');
+  fs.renameSync(process.env.OPENCLAW_STATE_DIR,process.env.OPENCLAW_STATE_DIR+'.hold');
+  await evaluate("window.dispatchEvent(new Event('focus'));undefined");await until("!!document.querySelector('[aria-label=\"Locate OpenClaw\"]')");await shot('missing-openclaw');
+  fs.renameSync(process.env.OPENCLAW_STATE_DIR+'.hold',process.env.OPENCLAW_STATE_DIR);
+  await evaluate("window.dispatchEvent(new Event('focus'));undefined");await until("!!document.querySelector('[aria-label=\"Connect OpenClaw\"]')");
+  await click('Connect Hermes');await until("!!document.querySelector('[aria-label=\"Disconnect Hermes\"]')");
+  assert((await evaluate('window.electron.ai.mcpStatus()')).running,'quick setup enables browser control');
+  assert(!(await evaluate("document.querySelector('.ai-manual-connection').open")),'manual config remains collapsed');
+  assert.equal(await evaluate("document.querySelector('[aria-label=\"MCP configuration\"]').value"),'','quick setup does not load a token into the form');
+  await click('Connect OpenClaw');await until("!!document.querySelector('[aria-label=\"Disconnect OpenClaw\"]')");
+  const hermes = YAML.parse(fs.readFileSync(hermesPath,'utf8')).mcp_servers.touchbox;
+  const openclaw = JSON5.parse(fs.readFileSync(openclawPath,'utf8')).mcp.servers.touchbox;
+  assert.notEqual(hermes.headers.Authorization,openclaw.headers.Authorization,'agents have independent credentials');
+  for (const [name,entry] of [['Hermes',hermes],['OpenClaw',openclaw]]) {
+    const client = new Client({name:name+'-config-fixture',version:'1'});clients.push(client);
+    await client.connect(new StreamableHTTPClientTransport(new URL(entry.url),{requestInit:{headers:entry.headers}}));
+    const result = await client.callTool({name:'list_tabs',arguments:{}});assert(!result.isError);
+    assert(JSON.stringify(result.content).includes('fixture-tab'),'installed config reaches real browser tools');
+  }
+  const statuses = await evaluate("window.electron.ai.personalAgents({action:'list'})");assert(!JSON.stringify(statuses).includes('Bearer'),'status excludes tokens');
+  const handler = ipcMain._invokeHandlers.get('ai-personal-agents');
+  await assert.rejects(handler({sender:host.webContents,senderFrame:{}},{action:'connect',id:'hermes'}),/Untrusted/);
+  await assert.rejects(handler({sender:website.webContents,senderFrame:website.webContents.mainFrame},{action:'connect',id:'hermes'}),/Untrusted/);
+  await assert.rejects(evaluate("window.electron.ai.personalAgents({action:'connect',id:'arbitrary'})"),/Unknown/);
+  await shot('configured-light');
+  for(const [width,dark] of [[760,true],[480,false]]) {
+    host.setContentSize(width,720);await evaluate(`window.setFixtureTheme(${dark});undefined`);await wait(200);
+    assert(await evaluate("(()=>{const rows=[...document.querySelectorAll('.personal-agent-row')];return rows.every(row=>row.scrollWidth<=row.clientWidth&&[...row.querySelectorAll('button')].every(button=>{const b=button.getBoundingClientRect(),r=row.getBoundingClientRect();return b.left>=r.left+8&&b.right<=r.right-8;}))})()"),'narrow agent actions stay inside their rows with spacing');
+    await shot('configured-'+width+(dark?'-dark':'-light'));
+  }
+  host.setContentSize(1080,760);await evaluate('window.setFixtureTheme(false);undefined');
+  assert(await evaluate("document.querySelector('.personal-agent-notice').textContent.includes('Usually available automatically')"),'connection feedback explains expected discovery without restart instructions');
+  await click('About Hermes connection');await until("!!document.querySelector('.preference-hint-content')");
+  assert(await evaluate("document.querySelector('.preference-hint-content').textContent.includes('automatically, usually within a minute')"));
+  assert(await evaluate("document.querySelector('.preference-hint-content').textContent.includes('/reload-mcp')"));
+  await shot('hermes-help');await evaluate("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));undefined");await wait(200);
+  await click('About OpenClaw connection');await until("!!document.querySelector('.preference-hint-content')");
+  assert(await evaluate("document.querySelector('.preference-hint-content').textContent.includes('without restarting')"));
+  assert(await evaluate("document.querySelector('.preference-hint-content').textContent.includes('only if automatic reload is disabled')"));
+  await shot('openclaw-help');await evaluate("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));undefined");await wait(200);
+  // Revocation immediately blocks one agent while retaining the other.
+  await click('Disconnect Hermes');await until("!!document.querySelector('[aria-label=\"Connect Hermes\"]')");
+  await assert.rejects(clients[0].callTool({name:'list_tabs',arguments:{}}));assert(!(await clients[1].callTool({name:'list_tabs',arguments:{}})).isError);
+  assert(!YAML.parse(fs.readFileSync(hermesPath,'utf8')).mcp_servers.touchbox);assert(fs.readFileSync(hermesPath,'utf8').includes('Preserve my preferences'));
+  await click('Connect Hermes');await until("!!document.querySelector('[aria-label=\"Disconnect Hermes\"]')");
+  await evaluate("window.electron.ai.mcpUpdate({enabled:true,rotate:true})");await until("!!document.querySelector('[aria-label=\"Reconnect OpenClaw\"]')");
+  await assert.rejects(clients[1].callTool({name:'list_tabs',arguments:{}}));await shot('reconnect-after-reset');
+  await click('Reconnect OpenClaw');await until("!!document.querySelector('[aria-label=\"Disconnect OpenClaw\"]')");
+  // A user-edited connection requires explicit native review; Cancel preserves it.
+  const edited = JSON5.parse(fs.readFileSync(openclawPath,'utf8'));edited.mcp.servers.touchbox.url='https://custom.test/mcp';fs.writeFileSync(openclawPath,JSON.stringify(edited));
+  dialog.showMessageBox = async()=>({response:0});
+  const cancelled = await evaluate("window.electron.ai.personalAgents({action:'connect',id:'openclaw'})");assert.equal(cancelled.changed,false);assert.equal(JSON5.parse(fs.readFileSync(openclawPath,'utf8')).mcp.servers.touchbox.url,'https://custom.test/mcp');
+  // Native picker cancellation and a selected alternate config are both safe.
+  dialog.showOpenDialog = async()=>({canceled:true,filePaths:[]});await evaluate("window.electron.ai.personalAgents({action:'locate',id:'hermes'})");
+  dialog.showOpenDialog = async()=>({canceled:false,filePaths:[hermesPath]});await evaluate("window.electron.ai.personalAgents({action:'locate',id:'hermes'})");
+  await evaluate("document.querySelector('.ai-manual-connection > summary').click();undefined");await until("document.querySelector('.ai-manual-connection').open");
+  assert(await evaluate("!!document.querySelector('[aria-label=\"MCP configuration\"]')"),'manual setup remains available');
+  await evaluate("document.querySelector('.ai-manual-connection > summary').click();undefined");await until("!document.querySelector('.ai-manual-connection').open");
+  assert.equal(await evaluate("document.querySelector('[aria-label=\"MCP configuration\"]').value"),'');
+  fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({passed:true,widths:[1080,760,480],checks:['real Preferences components and AI IPC','automatic local setup for Hermes and OpenClaw','preserved JSON5/YAML settings and comments','real MCP connections from generated configs','per-agent revocation','token reset and reconnect','secret-free status and collapsed manual form','untrusted sender/frame rejection','native replacement review cancellation','native file picker selection/cancellation','responsive rows and help popover'],vendorAgents:'not installed or launched; documented configs verified with official MCP client'},null,2));
+  console.log('PASS: personal agent setup, live MCP browser access, per-agent revocation, reset/reconnect, native review/picker boundaries, and responsive Preferences UI');
+  await Promise.allSettled(clients.map(client=>client.close()));dispose();website.webContents.close();host.destroy();app.exit(0);
+})().catch(error=>{console.error(error);dispose?.();if(host&&!host.isDestroyed())host.destroy();app.exit(1);});
+app.on('will-quit',()=>fs.rmSync(root,{recursive:true,force:true}));
+setTimeout(()=>{console.error('Personal agent smoke timed out');app.exit(1);},60000).unref();

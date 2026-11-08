@@ -1,0 +1,53 @@
+{
+  "after": {
+    "selected": {
+      "phase": "after",
+      "scenario": "selected",
+      "runtime": {
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "node": "24.22.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "probeSha256": "13464d4730af767ccd1323d97024eb4c8f814b49c73c52bbbfa47339c6b89792",
+      "sourceSha256": "043ac752bbb1d2fee3ffe31900174249fa4d2033fb9d721ed57d41d95915793f",
+      "currentDependencySourceHashes": {
+        "src/main/extensionPackage.ts": "9d37e49c367ff06f69a232b66471b89664e38cf8ebdf9a308fda61ba23602689",
+        "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e"
+      },
+      "reply": {
+        "result": {
+          "result": "success"
+        }
+      },
+      "reviews": [
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All sessions, including future sessions",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        }
+      ],
+      "nativeLoadOrder": [
+        "a"
+      ],
+      "finalLoaded": {
+        "a": true,
+        "b": false,
+        "store": false
+      },
+      "navigationListeners": 0,
+      "stagingDirectories": [],
+      "scope": "Actual native beginInstall IPC and installed engines. Local cached MV3 package with controlled review/perturbations. Counts first native loads and final state. No remote store download, physical native-ack interruption or cross-platform claim."
+    }
+  }
+}

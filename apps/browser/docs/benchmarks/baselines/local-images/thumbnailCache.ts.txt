@@ -1,0 +1,49 @@
+/** Bounded LRU cache; invalidated in-flight work cannot repopulate it. */
+export class ThumbnailCache {
+  private values = new Map<string, string>();
+
+  private pending = new Map<string, Promise<string | null>>();
+
+  private capacity: number;
+
+  constructor(capacity = 128) {
+    this.capacity = capacity;
+  }
+
+  get(id: string, load: () => Promise<string | null>): Promise<string | null> {
+    const value = this.values.get(id);
+    if (value !== undefined) {
+      this.values.delete(id);
+      this.values.set(id, value);
+      return Promise.resolve(value);
+    }
+    const pending = this.pending.get(id);
+    if (pending) return pending;
+    const request = Promise.resolve()
+      .then(load)
+      .catch(() => null)
+      .then((data) => {
+        if (data !== null && this.pending.get(id) === request) {
+          this.values.set(id, data);
+          if (this.values.size > this.capacity)
+            this.values.delete(this.values.keys().next().value!);
+        }
+        return data;
+      })
+      .finally(() => {
+        if (this.pending.get(id) === request) this.pending.delete(id);
+      });
+    this.pending.set(id, request);
+    return request;
+  }
+
+  delete(id: string) {
+    this.values.delete(id);
+    this.pending.delete(id);
+  }
+
+  clear() {
+    this.values.clear();
+    this.pending.clear();
+  }
+}

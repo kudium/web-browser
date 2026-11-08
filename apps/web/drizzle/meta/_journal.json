@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794095218654,
+      "tag": "0000_moaning_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794095226362,
+      "tag": "0001_young_dakota_north",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794096043074,
+      "tag": "0002_greedy_menace",
+      "breakpoints": true
+    }
+  ]
+}

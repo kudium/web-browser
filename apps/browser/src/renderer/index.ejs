@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="<%= htmlWebpackPlugin.options.isDevelopment ? "script-src 'self' 'unsafe-inline'" : '__TOUCHBOX_PRODUCTION_CSP__' %>"
+    />
+    <title>Kudium Browser</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

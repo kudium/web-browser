@@ -1,0 +1,182 @@
+[
+  {
+    "width": 420,
+    "theme": "light",
+    "state": "single",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "light",
+    "state": "multiple",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "light",
+    "state": "hover",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "light",
+    "state": "keyboard-focus",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "light",
+    "state": "closed",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 26
+  },
+  {
+    "width": 420,
+    "theme": "dark",
+    "state": "single",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "dark",
+    "state": "multiple",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "dark",
+    "state": "hover",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "dark",
+    "state": "keyboard-focus",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 420,
+    "theme": "dark",
+    "state": "closed",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 26
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "single",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "multiple",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "hover",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "keyboard-focus",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "closed",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 26
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "single",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "multiple",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "hover",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "keyboard-focus",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 36.5
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "closed",
+    "overflow": false,
+    "terminalBottom": 628,
+    "disclosureFits": true,
+    "headerHeight": 26
+  }
+]
