@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-conditional-expect -- POSIX permissions are not represented by Windows file modes. */
 /** @jest-environment node */
 /* eslint-disable no-bitwise */
 import fs from 'fs';
@@ -54,9 +55,10 @@ test('stages before commit, retains ciphertext and wrapped key, and confirms lau
   expect(
     fs.readFileSync(retained('backup', 'secure-storage/key.json')).toString()
   ).toBe('OPAQUE-WRAPPED-KEY');
-  expect(fs.statSync(retained('backup', 'ai-tasks.bin')).mode & 0o777).toBe(
-    0o600
-  );
+  if (process.platform !== 'win32')
+    expect(fs.statSync(retained('backup', 'ai-tasks.bin')).mode & 0o777).toBe(
+      0o600
+    );
   expect(await migration.commit(validate)).toEqual([]);
   expect(fs.readFileSync(active)).toEqual(target);
   expect(readMigrationJournal(profile)!.state).toBe('complete');

@@ -39,3 +39,7 @@ Implement a native CloudKit connection and app-scoped key provisioning. Encrypt 
 Run `node .erb/scripts/check-apple-capabilities.cjs /path/to/Kudium.app` to inspect the main executable's signing capabilities. This is a configuration check, not a cloud round-trip test.
 
 Then verify on two signed Macs: opt-in/off, offline/reconnect, concurrent edits, key recovery, account switch, cloud quota errors, revoked devices, data deletion and tampered snapshots. Separately verify supported password extension pairing, autofill, generated passwords, OTPs and independent website sessions. Use synthetic accounts and credentials. Do not publish iCloud support until these pass.
+
+## CloudKit container registration
+
+On November 8, `iCloud.com.kudium.kudiumbrowser` was registered as Kudium Browser Sync under Kudium LTD and assigned to `com.kudium.kudiumbrowser`. The app capability change was saved in the developer portal. No native CloudKit transport or cloud schema deployment is implied by this registration. Provisioning, implementation and signed two-Mac acceptance remain pending.

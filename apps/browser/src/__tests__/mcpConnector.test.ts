@@ -25,17 +25,23 @@ it('requires approval, excludes website origins and revokes connector access', a
   });
   try {
     await controller.update({ enabled: true, port });
+    // Rotation restarts the listener; do not reuse a stale HTTP connection.
+    const request = (address: string, options: RequestInit) =>
+      fetch(address, {
+        ...options,
+        headers: { ...options.headers, Connection: 'close' },
+      });
     const url = `http://127.0.0.1:${port}`;
     expect(
       (
-        await fetch(`${url}/connect`, {
+        await request(`${url}/connect`, {
           method: 'POST',
           headers: { Origin: 'https://example.com' },
         })
       ).status
     ).toBe(403);
     expect(approve).not.toHaveBeenCalled();
-    const response = await fetch(`${url}/connect`, { method: 'POST' });
+    const response = await request(`${url}/connect`, { method: 'POST' });
     expect(response.status).toBe(200);
     expect(approve).toHaveBeenCalledTimes(1);
     const config = await response.json();
@@ -55,11 +61,11 @@ it('requires approval, excludes website origins and revokes connector access', a
       },
     });
     expect(
-      (await fetch(`${url}/mcp`, { method: 'POST', headers, body })).status
+      (await request(`${url}/mcp`, { method: 'POST', headers, body })).status
     ).toBe(200);
     await controller.update({ enabled: true, rotate: true });
     expect(
-      (await fetch(`${url}/mcp`, { method: 'POST', headers, body })).status
+      (await request(`${url}/mcp`, { method: 'POST', headers, body })).status
     ).toBe(401);
   } finally {
     await controller.dispose();

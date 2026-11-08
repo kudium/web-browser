@@ -1,3 +1,4 @@
+import path from 'path';
 import { explainSecureStorage } from '../main/storageWelcome';
 
 const showMessageBox = jest.fn();
@@ -35,7 +36,7 @@ test('accepting remembers identity', async () => {
   showMessageBox.mockResolvedValue({ response: 0 });
   expect(await explainSecureStorage(window)).toBe(true);
   expect(writeFileSync).toHaveBeenCalledWith(
-    '/profile/secure-storage-consent.json',
+    path.join('/profile', 'secure-storage-consent.json'),
     JSON.stringify({ identity: 'trusted-signature' }),
     { mode: 0o600 }
   );

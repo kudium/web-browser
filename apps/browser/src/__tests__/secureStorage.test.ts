@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-conditional-expect -- POSIX permissions are not represented by Windows file modes. */
 /** @jest-environment node */
 /* eslint-disable no-bitwise */
 import fs from 'fs';
@@ -47,9 +48,10 @@ test('uses async OS APIs once to protect a key, then authenticates local ciphert
   const tampered = Buffer.from(ciphertext);
   tampered[tampered.length - 1] ^= 1;
   expect(() => restarted.decryptString(tampered)).toThrow();
-  expect(
-    fs.statSync(path.join(root, 'secure-storage/key.json')).mode & 0o777
-  ).toBe(0o600);
+  if (process.platform !== 'win32')
+    expect(
+      fs.statSync(path.join(root, 'secure-storage/key.json')).mode & 0o777
+    ).toBe(0o600);
 });
 
 test('migrates every legacy store and embedded secret without altering other JSON fields', async () => {
@@ -88,7 +90,8 @@ test('migrates every legacy store and embedded secret without altering other JSO
     expect(storage.decryptString(fs.readFileSync(path.join(root, file)))).toBe(
       payload(file as keyof typeof fixtures.payloads)
     );
-    expect(fs.statSync(path.join(root, file)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32')
+      expect(fs.statSync(path.join(root, file)).mode & 0o777).toBe(0o600);
   });
   const settings = JSON.parse(
     fs.readFileSync(path.join(root, 'ai-settings.json'), 'utf8')
