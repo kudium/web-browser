@@ -2,7 +2,7 @@
 
 ## Current state
 
-Kudium Account sync has a working local implementation and passing two-device backend tests. It still needs the updated backend deployed and a signed desktop release. iCloud browser-data sync has no active CloudKit transport. Apple iCloud Passwords is a separate managed capability; its helper currently rejects Kudium's signing identity.
+Kudium Account sync is deployed at `browser.kudium.com`. Signed and notarized macOS beta `1.0.2-beta.1` was published on November 8 from commit `87ba8afea4a282dee1114d72d0f654ac59ffe181` (release workflow `42510833119`). Both Apple Silicon and Intel beta manifests were verified. Native iCloud integration is isolated in draft PR #2 and is not included in that beta. Apple iCloud Passwords is a separate managed capability; its helper currently rejects Kudium's signing identity.
 
 The browser already declares HTTP/HTTPS URL schemes in `package.json` and handles macOS `open-url` requests in `src/main/main.ts`. The older compatibility investigation's statement that these are missing is superseded.
 
@@ -55,3 +55,5 @@ The bridge is not loaded by normal builds or exposed through renderer IPC. The i
 Explicit integration packaging uses `.erb/configs/electron-builder.icloud.cjs`, which checks a provided production CloudKit profile and requires the universal module. The iCloud entitlement template does not request the unapproved Apple browser credential entitlement. Set `KUDIUM_ICLOUD_INTEGRATION=true` only for provisioned integration testing. Normal releases leave this flag unset and show iCloud unavailable.
 
 Remaining acceptance: obtain the distribution profile, deploy the CloudKit record schema/environment, verify a signed package on two Macs (including native account changes, conflicts, reconnects, deletion and quota errors), and then replace the integration-only flag with a verified release capability. Apple iCloud Passwords remains separately gated by managed entitlement approval and native credential tests.
+
+All browser and storage checks for the native integration PR passed on Linux, Windows and macOS. The user confirmed a second Mac using the same Apple account is available. Follow [the two-Mac acceptance checklist](icloud-two-mac-acceptance.md); no real cross-device result has been recorded yet.
