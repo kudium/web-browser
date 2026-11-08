@@ -1,6 +1,6 @@
 # Native iCloud two-Mac acceptance
 
-Status: awaiting a production CloudKit provisioning profile and signed integration installer. A second Mac is available. The published `1.0.2-beta.1` beta supports Kudium Account sync; it cannot run this iCloud test.
+Status: production CloudKit profile generated and schema deployed; awaiting a signed integration installer and real tests. A second Mac is available. The published `1.0.2-beta.1` beta supports Kudium Account sync; it cannot run this iCloud test.
 
 ## Prepare the integration installer
 

@@ -9,18 +9,18 @@ if (process.platform !== 'darwin' || process.env.KUDIUM_ICLOUD_INTEGRATION !== '
 const profile = process.env.KUDIUM_ICLOUD_PROFILE;
 if (!profile || !fs.existsSync(profile)) throw new Error('Supply the Kudium CloudKit provisioning profile.');
 const decoded = spawnSync('security', ['cms', '-D', '-i', path.resolve(profile)], { encoding: 'utf8' });
-const json = spawnSync('plutil', ['-convert', 'json', '-o', '-', '-'], { encoding: 'utf8', input: decoded.stdout });
-if (decoded.status !== 0 || json.status !== 0) throw new Error('Cannot verify the iCloud provisioning profile.');
-const info = JSON.parse(json.stdout);
-const entitlements = info.Entitlements || {};
+const json = spawnSync('plutil', ['-extract', 'Entitlements', 'json', '-o', '-', '-'], { encoding: 'utf8', input: decoded.stdout });
+const expiration = spawnSync('plutil', ['-extract', 'ExpirationDate', 'raw', '-o', '-', '-'], { encoding: 'utf8', input: decoded.stdout });
+if (decoded.status !== 0 || json.status !== 0 || expiration.status !== 0) throw new Error('Cannot verify the iCloud provisioning profile.');
+const entitlements = JSON.parse(json.stdout);
 const containers = entitlements['com.apple.developer.icloud-container-identifiers'];
 const services = entitlements['com.apple.developer.icloud-services'];
 const environment = entitlements['com.apple.developer.icloud-container-environment'];
-const expiresAt = new Date(info.ExpirationDate).getTime();
+const expiresAt = new Date(expiration.stdout.trim()).getTime();
 const identifier = entitlements['com.apple.application-identifier'] || entitlements['application-identifier'];
 if (identifier !== '79VCL28M9P.com.kudium.kudiumbrowser' ||
     !Array.isArray(containers) || !containers.includes('iCloud.com.kudium.kudiumbrowser') ||
-    !Array.isArray(services) || !services.includes('CloudKit') ||
+    !(services === '*' || (Array.isArray(services) && services.includes('CloudKit'))) ||
     !(environment === 'Production' || (Array.isArray(environment) && environment.includes('Production'))) ||
     !Number.isFinite(expiresAt) || expiresAt <= Date.now())
   throw new Error('The profile does not authorize the production Kudium CloudKit container.');
