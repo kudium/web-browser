@@ -88,7 +88,7 @@ jest.mock('electron', () => {
     `${jest.requireActual('os').tmpdir()}/touchbox-browser-test-`
   );
   return {
-    app: { getPath: () => directory },
+    app: Object.assign(new Emitter(), { getPath: () => directory }),
     nativeImage: {
       createFromBuffer: () => ({
         isEmpty: () => false,

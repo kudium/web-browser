@@ -21,6 +21,7 @@ Object.assign(global, {
 beforeEach(() => {
   localStorage.clear();
   jest.clearAllMocks();
+  Object.assign(window, { electron: { siteDeveloper: { project: jest.fn().mockResolvedValue(null) } } });
 });
 it('adds an independent app and preserves the group when editing', () => {
   render(
