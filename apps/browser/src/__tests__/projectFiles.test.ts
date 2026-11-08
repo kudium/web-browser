@@ -182,7 +182,7 @@ it('saves UTF-8 edits, preserves permissions and returns a new version', async (
     access
   );
   expect(fs.readFileSync(target, 'utf8')).toBe('const next = "✓";\n');
-  expect(fs.statSync(target).mode & 0o777).toBe(0o640);
+  if (process.platform !== 'win32') { expect(fs.statSync(target).mode & 0o777).toBe(0o640); }
   expect(result.file?.version).not.toBe(preview.file?.version);
   expect(result.file?.version).toBe(
     (await projectFiles(root, { action: 'preview', path: 'app.ts' }, access))

@@ -60,16 +60,16 @@ it.each(['hermes', 'openclaw'] as const)(
     expect(servers.touchbox.headers.Authorization).toBe(
       'Bearer fixture-private-token'
     );
-    expect(fs.statSync(filename).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') { expect(fs.statSync(filename).mode & 0o777).toBe(0o600); }
     const backup = fs
       .readdirSync(path.dirname(filename))
       .find((entry) => entry.includes('touchbox-backup'))!;
     expect(
       fs.readFileSync(path.join(path.dirname(filename), backup), 'utf8')
     ).toBe(text);
-    expect(
+    if (process.platform !== 'win32') { expect(
       fs.statSync(path.join(path.dirname(filename), backup)).mode & 0o777
-    ).toBe(0o600);
+    ).toBe(0o600); }
     expect(JSON.stringify(manager.list(connection))).not.toContain(
       'fixture-private-token'
     );

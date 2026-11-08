@@ -52,7 +52,7 @@ it('persists visits, strips credentials, deduplicates and clears only history', 
   expect(JSON.parse(fs.readFileSync(file(), 'utf8'))).toEqual(
     getBrowsingHistory()
   );
-  expect(fs.statSync(file()).mode % 0o1000).toBe(0o600);
+  if (process.platform !== 'win32') { expect(fs.statSync(file()).mode % 0o1000).toBe(0o600); }
   const copy = getBrowsingHistory();
   copy[0].title = 'Tampered';
   expect(getBrowsingHistory()[0].title).toBe('Work');

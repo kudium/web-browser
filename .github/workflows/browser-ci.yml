@@ -33,6 +33,12 @@ jobs:
           cache: npm
           cache-dependency-path: apps/browser/package-lock.json
       - run: npm install --global npm@12.2.0
+      - name: Use canonical Windows temporary paths
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: npm test -- --runInBand --roots src
+      - run: npm test -- --runInBand --roots src --config .erb/configs/jest.ci.cjs
