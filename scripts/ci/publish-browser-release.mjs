@@ -2,7 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHash } from "node:crypto";
+import { validateManifests } from "./browser-release-targets.mjs";
 const root = process.argv[2];
+const targets = process.argv[3] || "all";
 const origin = "https://browser.kudium.com";
 const token = process.env.RELEASE_PUBLISH_TOKEN;
 if (!root || !token)
@@ -30,12 +32,18 @@ async function request(route, options, acceptCompleted = false) {
   }
 }
 const manifests = [];
+const artifacts = [];
 for (const entry of await fs.readdir(root, { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
   const directory = path.join(root, entry.name);
   const manifest = JSON.parse(
     await fs.readFile(path.join(directory, "manifest.json"), "utf8")
   );
+  artifacts.push({ directory, manifest });
+  manifests.push(manifest);
+}
+validateManifests(manifests, targets);
+for (const { directory, manifest } of artifacts) {
   const prefix = `/internal/releases/uploads/${manifest.version}/${manifest.platform}/${manifest.arch}/`;
   for (const name of await fs.readdir(directory)) {
     if (name === "manifest.json") continue;
@@ -101,13 +109,7 @@ for (const entry of await fs.readdir(root, { withFileTypes: true })) {
     )
       throw new Error("Uploaded download is not publicly accessible");
   }
-  manifests.push(manifest);
 }
-if (
-  manifests.length !== 4 ||
-  new Set(manifests.map((m) => `${m.platform}/${m.arch}`)).size !== 4
-)
-  throw new Error("Require all four signed build targets before publication");
 await request("/internal/releases/manifests", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
