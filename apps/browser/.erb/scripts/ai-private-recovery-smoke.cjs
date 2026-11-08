@@ -5,22 +5,22 @@ const path = require('path');
 const crypto = require('crypto');
 const assert = require('assert');
 const { execFileSync } = require('child_process');
-const testCase = process.env.TOUCHBOX_RECOVERY_CASE;
-const control = process.env.TOUCHBOX_RECOVERY_CONTROL === '1' || process.argv.includes('--control');
+const testCase = process.env.KUDIUMBROWSER_RECOVERY_CASE;
+const control = process.env.KUDIUMBROWSER_RECOVERY_CONTROL === '1' || process.argv.includes('--control');
 const cases = control ? ['pause-resume', 'pause-chat', 'pause-task'] : ['private-denied', 'private-approved', 'legacy-denied', 'public', 'oversized', 'private-stopped'];
 if (!testCase) {
-  const selectedCases = process.env.TOUCHBOX_DISCLOSURE_PHASE === 'before'
+  const selectedCases = process.env.KUDIUMBROWSER_DISCLOSURE_PHASE === 'before'
     ? cases.filter((name) => name !== 'private-stopped') : cases;
   const results = selectedCases.map((name) => {
     const output = execFileSync(require('electron'), [__filename], {
-      env: { ...process.env, TOUCHBOX_RECOVERY_CASE: name, TOUCHBOX_RECOVERY_CONTROL: control ? '1' : '0' },
+      env: { ...process.env, KUDIUMBROWSER_RECOVERY_CASE: name, KUDIUMBROWSER_RECOVERY_CONTROL: control ? '1' : '0' },
       encoding: 'utf8', timeout: 20000,
     });
     return JSON.parse(output.split('\n').find((line) => line.startsWith('RESULT ')).slice(7));
   });
   const file = control ? 'docs/benchmarks/ai-control-isolation.json' : 'docs/benchmarks/ai-private-recovery.json';
   const saved = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
-  const phase = process.env.TOUCHBOX_DISCLOSURE_PHASE || 'after';
+  const phase = process.env.KUDIUMBROWSER_DISCLOSURE_PHASE || 'after';
   const report = { measuredAt: new Date().toISOString(), results,
     method: control
       ? 'Actual Electron registerAI, persisted external pause, built-in chat/resume/manual task, due scheduler, explicit external resume and local HTTP provider. Each case runs in a separate disposable profile.'
@@ -30,11 +30,11 @@ if (!testCase) {
   fs.writeFileSync(file, JSON.stringify(saved, null, 2) + '\n');
   console.log(control ? 'PASS AI control isolation' : 'PASS private checkpoint recovery', JSON.stringify(report));
 } else {
-  const { app, BrowserWindow, ipcMain, dialog, safeStorage } = require('electron');
+  const { app, BrowserWindow, ipcMain, dialog } = require('electron');
   const http = require('http');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-private-recovery-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-private-recovery-'));
   app.setPath('userData', root);
-  const mainSource = fs.readFileSync(process.env.TOUCHBOX_DISCLOSURE_SOURCE || 'src/main/ai.ts', 'utf8');
+  const mainSource = fs.readFileSync(process.env.KUDIUMBROWSER_DISCLOSURE_SOURCE || 'src/main/ai.ts', 'utf8');
   require('esbuild').buildSync({ stdin: {
     contents: mainSource + "\nexport {AICheckpointStore} from './aiCheckpoint';",
     resolveDir: path.resolve('src/main'), sourcefile: 'ai.ts', loader: 'ts',
@@ -59,6 +59,7 @@ if (!testCase) {
     const checkpoint = { messages: [{ role: 'user', content: 'Original fixture task' }, { role: 'assistant', content: sentinel + (testCase === 'oversized' ? 'x'.repeat(21000) : '') }], step: 1, endpoint, expires: Date.now() + 60000, accessMode: 'full' };
     if (testCase !== 'legacy-denied') checkpoint.privateData = privateCase;
     const ai = require(path.join(root, 'ai.cjs'));
+    const safeStorage = await ai.initializeLocalStorage();
     if (!control || testCase === 'pause-resume') {
       new ai.AICheckpointStore(path.join(root, 'ai-checkpoint.bin'), safeStorage).save(checkpoint);
       assert(!fs.readFileSync(path.join(root, 'ai-checkpoint.bin')).includes(Buffer.from(sentinel)));
@@ -90,7 +91,7 @@ if (!testCase) {
       await evaluate(`fixture.tasks('run',${JSON.stringify(id)})`);
     } else await evaluate('fixture.resume()');
     await done;
-    const baseline = process.env.TOUCHBOX_DISCLOSURE_PHASE === 'before';
+    const baseline = process.env.KUDIUMBROWSER_DISCLOSURE_PHASE === 'before';
     const permitted = baseline || control || ['private-approved', 'public'].includes(testCase);
     assert.equal(bodies.length, permitted ? 1 : 0);
     assert.equal(reviews, baseline || control || ['public', 'oversized'].includes(testCase) ? 0 : 1);

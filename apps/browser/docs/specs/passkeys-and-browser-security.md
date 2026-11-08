@@ -1,6 +1,6 @@
 # Passkeys and browser security implementation
 
-Owner: Kudium / TouchBox (`com.kudium.touchbox`). Updated November 4, 2026.
+Owner: Kudium / Kudium Browser (`com.kudium.kudiumbrowser`). Updated November 4, 2026.
 Apple entitlement request: `3PJLSLF88K`, submitted and pending.
 
 ## Goal and release boundary
@@ -112,9 +112,9 @@ template is `assets/entitlements.browser.mac.plist`; helpers retain ordinary JIT
 entitlements. After capability approval and profile issuance:
 
 ```sh
-export TOUCHBOX_BROWSER_PROVISIONING_PROFILE=/absolute/path/approved.provisionprofile
+export KUDIUMBROWSER_BROWSER_PROVISIONING_PROFILE=/absolute/path/approved.provisionprofile
 npx electron-builder --mac --config .erb/scripts/approved-browser-signing.cjs
-node .erb/scripts/verify-browser-signing.cjs /absolute/path/TouchBox.app
+node .erb/scripts/verify-browser-signing.cjs /absolute/path/Kudium Browser.app
 ```
 
 The verifier checks signature integrity, embedded profile presence and main

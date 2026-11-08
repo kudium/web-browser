@@ -1,11 +1,11 @@
 // Disposable native probe: determine which input origins reach Electron hooks.
 const {app,BrowserWindow,WebContentsView}=require('electron');
 const fs=require('fs'),os=require('os'),path=require('path'),assert=require('assert');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-input-origin-'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-input-origin-'));
 app.setPath('userData',root);
 (async()=>{
   await app.whenReady();
-  const host=new BrowserWindow({show:true,title:'TouchBox input origin fixture'});
+  const host=new BrowserWindow({show:true,title:'KudiumBrowser input origin fixture'});
   const view=new WebContentsView();host.contentView.addChildView(view);view.setBounds({x:0,y:0,width:500,height:300});
   await view.webContents.loadURL('data:text/html,<input autofocus><button>Test</button><script>window.received=[];for(const name of ["keydown","keyup","mousedown","mouseup"]){document.addEventListener(name,event=>received.push({type:event.type,trusted:event.isTrusted,key:event.key}));}</script>');
   const events=[];let origin='setup';
@@ -25,6 +25,6 @@ app.setPath('userData',root);
   const received=await view.webContents.executeJavaScript('window.received');
   assert(received.some(event=>event.trusted&&event.type==='keydown'),'CDP/native events must actually reach the page');
   const report={electron:process.versions.electron,platform:process.platform,events,received,limitations:'sendInputEvent is synthetic native input, not verified physical human input. Do not infer reliable human origin solely from this probe.'};
-  fs.writeFileSync('/tmp/touchbox-input-origin-probe.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+  fs.writeFileSync('/tmp/kudiumbrowser-input-origin-probe.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
   host.destroy();fs.rmSync(root,{recursive:true,force:true});app.exit(0);
 })().catch(error=>{console.error(error);app.exit(1);});

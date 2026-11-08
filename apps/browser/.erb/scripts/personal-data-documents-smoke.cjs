@@ -7,7 +7,7 @@ const os = require('os');
 const assert = require('assert');
 const JSZip = require('jszip');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-personal-docs-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-personal-docs-'));
 require('esbuild').buildSync({
   entryPoints: ['src/main/passwordManager/documents.ts'],
   bundle: true,

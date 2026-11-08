@@ -33,7 +33,7 @@ const host = {
 const context = vm.createContext({
   app,
   ipcMain,
-  process: { argv: ['TouchBox', 'https://example.com/cold?q=1#anchor'] },
+  process: { argv: ['KudiumBrowser', 'https://example.com/cold?q=1#anchor'] },
   URL,
   randomUUID: require('crypto').randomUUID,
   MAIN_WINDOW: {},
@@ -69,7 +69,7 @@ assert.equal(sent.length, 1);
 assert.equal(sent[0].action, 'open-external');
 assert.equal(sent[0].url, 'https://example.com/cold?q=1#anchor');
 ready = true;
-app.emit('second-instance', {}, ['TouchBox', 'https://example.com/running']);
+app.emit('second-instance', {}, ['KudiumBrowser', 'https://example.com/running']);
 setImmediate(() => {
   assert.equal(sent.length, 2);
   assert.equal(sent[1].action, 'open-external');

@@ -3,7 +3,7 @@ const fs=require('fs'),fsp=require('fs/promises'),path=require('path'),os=requir
 const {app,BrowserWindow,ipcMain,dialog,clipboard,ClipboardItem}=require('electron');
 app.on('window-all-closed',()=>{});
 const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after';assert(['before','after'].includes(phase));
-const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-capture-boundary-'));app.setPath('userData',path.join(temporary,'user-data'));
+const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-capture-boundary-'));app.setPath('userData',path.join(temporary,'user-data'));
 const files=['src/main/pageCapture.ts','src/browser/pageCapture.ts'];
 const source=file=>fs.readFileSync(path.join(root,phase==='before'?'docs/benchmarks/baselines/page-capture/'+(file.startsWith('src/browser/')?'pageCapture-request.ts':'pageCapture.ts')+'.txt':file),'utf8');
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
@@ -65,7 +65,7 @@ async function run(){
   assert.equal(result.accepted,phase==='before',name+': '+JSON.stringify(result));
   const changed=fs.readFileSync(destination,'utf8')!=='existing destination';
   if(name.includes('Dialog')||name.includes('BeforeCommit')||name==='pendingPDFHostReload')assert.equal(changed,phase==='before',name);
-  const retained=fs.readdirSync(temporary).filter(file=>file.startsWith('.touchbox-capture-')).length;assert.equal(retained,0);
+  const retained=fs.readdirSync(temporary).filter(file=>file.startsWith('.kudiumbrowser-capture-')).length;assert.equal(retained,0);
   if(name==='savedPreviewHostReload')assert.equal(clipboardWrites-clipboardStart,phase==='before'?1:0);
   cases.push({name,accepted:result.accepted,destinationChanged:changed,clipboardWrites:clipboardWrites-clipboardStart,retainedTemporaryFiles:retained,error:result.error});
  }

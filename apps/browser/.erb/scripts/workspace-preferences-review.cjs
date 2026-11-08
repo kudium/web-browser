@@ -23,12 +23,12 @@ import {Settings} from '${project}/src/components/View/Settings/Settings';
 import {defaultPreferences} from '${project}/src/browser/preferences';
 const params=new URLSearchParams(location.search);
 localStorage.setItem('user_apps',JSON.stringify(params.get('empty') ? [] : [
-{id:'one',name:'TouchBox',sessionId:'one',url:'https://example.com',spaceId:'default'},
+{id:'one',name:'KudiumBrowser',sessionId:'one',url:'https://example.com',spaceId:'default'},
 {id:'two',name:'Documentation',sessionId:'two',url:'https://example.com/docs',spaceId:'work'},
 {id:'old',name:'Archived research',sessionId:'old',url:'https://example.com/research',spaceId:'default',archived:true}]));
-localStorage.setItem('touchbox-spaces',JSON.stringify([{id:'default',name:'Personal',color:'blue',folders:[]},{id:'work',name:'Work',color:'gray',folders:[]}]));
+localStorage.setItem('kudiumbrowser-spaces',JSON.stringify([{id:'default',name:'Personal',color:'blue',folders:[]},{id:'work',name:'Work',color:'gray',folders:[]}]));
 const listeners=new Set();
-window.electron={platform:'darwin',ipcRenderer:{on:(channel,cb)=>{listeners.add(cb);return ()=>listeners.delete(cb);},sendMessage:(channel,data)=>{if(channel==='ipc-event-bus')listeners.forEach(cb=>cb(data));}},browser:{preferences:async()=>defaultPreferences,preferenceAction:async()=>({profiles:[],languages:['en-US'],versions:{touchbox:'1',engine:'1',chromium:'1'}}),onPreferences:()=>()=>{},onPreferenceSection:cb=>{if(!params.has('initial'))setTimeout(()=>cb(params.get('tab')||'apps'),30);return ()=>{};}}};
+window.electron={platform:'darwin',ipcRenderer:{on:(channel,cb)=>{listeners.add(cb);return ()=>listeners.delete(cb);},sendMessage:(channel,data)=>{if(channel==='ipc-event-bus')listeners.forEach(cb=>cb(data));}},browser:{preferences:async()=>defaultPreferences,preferenceAction:async()=>({profiles:[],languages:['en-US'],versions:{kudiumbrowser:'1',engine:'1',chromium:'1'}}),onPreferences:()=>()=>{},onPreferenceSection:cb=>{if(!params.has('initial'))setTimeout(()=>cb(params.get('tab')||'apps'),30);return ()=>{};}}};
 createRoot(document.getElementById('root')).render(<Theme appearance={params.get('theme')} accentColor="blue"><Settings/></Theme>);
 `);
 esbuild.buildSync({entryPoints:[path.join(root,'preview.tsx')],bundle:true,platform:'browser',jsx:'automatic',nodePaths:[path.join(project,'node_modules')],outfile:path.join(root,'preview.js')});

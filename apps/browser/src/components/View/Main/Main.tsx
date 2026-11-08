@@ -1,3 +1,4 @@
+import { AppUpdateBanner } from '../../UI/AppUpdateBanner';
 import {
   CSSProperties,
   useCallback,
@@ -41,6 +42,12 @@ import {
   Square,
   X,
 } from 'lucide-react';
+import { SpaceSettingsForm } from '../../UI/SpaceSettingsForm';
+import { EmptySpaceWelcome } from '../../UI/EmptySpaceWelcome';
+import { BrowserWelcome } from '../../UI/BrowserWelcome';
+import { AccountSyncPublisher } from '../../UI/AccountSyncPublisher';
+import { BrowserImportSuggestion } from '../../UI/BrowserImportSuggestion';
+import { FirstGroupSyncSuggestion } from '../../UI/FirstGroupSyncSuggestion';
 import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
 import {
   groupAccessAction,
@@ -57,20 +64,28 @@ import {
   newGroupName,
 } from '../../../utils/groups';
 import { commandDestination } from '../../../utils/commandNavigation';
+import {
+  rememberGroupTab,
+  rememberedGroupTab,
+} from '../../../browser/groupFocus';
 import { aiGroupId } from '../../../browser/aiGroups';
+import type { DownloadRecord } from '../../../browser/downloads';
 import type { AIContextReference } from '../../../browser/aiContext';
 import { AI_CONTEXT_MIME } from '../../../browser/aiContext';
 import { nextGroupTab, insertTabAfter } from '../../../utils/tabNeighbors';
-import { validTabDefaultURL } from '../../../browser/tabDefaults';
+import {
+  validTabDefaultURL,
+  savedNavigationURL,
+} from '../../../browser/tabDefaults';
 import { AISidebar } from '../../UI/AISidebar';
 import { ChromeIconButton } from '../../UI/ChromeIconButton';
+import { PictureInPictureButton } from '../../UI/PictureInPictureButton';
 import { useCollapsedItems } from '../../../utils/useCollapsedItems';
 import { folderLinks, moveFolder } from '../../../utils/folderActions';
 import {
   hasStorageRecovery,
   recoveryData,
 } from '../../../utils/storageRecovery';
-import { SpaceColorPicker } from '../../UI/SpaceColorPicker';
 import { AddressBar } from '../../UI/AddressBar';
 import { AnchoredTabPreview } from '../../UI/AnchoredTabPreview';
 import { useAnchoredPreview } from '../../../utils/useAnchoredPreview';
@@ -91,7 +106,7 @@ import {
   selectSplitTab,
   repairSplitView,
 } from '../../../utils/splitView';
-import { SpaceIcon, SpaceIconPicker } from '../../UI/SpaceIcon';
+import { SpaceIcon } from '../../UI/SpaceIcon';
 import type { SpaceIconName } from '../../../utils/SpaceManager';
 import {
   NativeContextMenu as ContextMenu,
@@ -107,6 +122,8 @@ import { Downloads } from '../Downloads/Downloads';
 import { smartTabLabels } from '../../../utils/smartTabLabels';
 import { GroupIcon } from '../../UI/GroupIcon';
 import { GroupPicker } from '../../UI/GroupPicker';
+import { SidebarFileDropHint } from '../../UI/SidebarFileDropHint';
+import type { SidebarDropResult } from '../../../browser/sidebarDrop';
 import { GroupEditor } from '../../UI/GroupEditor';
 import { PanelDialogHeader } from '../../UI/PanelDialog';
 import { PageStatus } from '../../UI/PageStatus';
@@ -141,12 +158,16 @@ import { useAIPagePreference } from '../../../utils/useAIPagePreference';
 export function Main() {
   const groupAccess = useGroupAccess();
   const [aiActivityTab, setAIActivityTab] = useState<string>();
+  const [aiWorkingTabIds, setAIWorkingTabIds] = useState<string[]>([]);
   useEffect(() => {
     let activityReceived = false;
     window.electron.ai
       .taskStatus()
       .then((status) => {
-        if (!activityReceived) setAIActivityTab(status.activeTabId);
+        if (!activityReceived) {
+          setAIActivityTab(status.activeTabId);
+          setAIWorkingTabIds(status.workingTabIds || []);
+        }
         return undefined;
       })
       .catch(() => {});
@@ -154,6 +175,7 @@ export function Main() {
       if (event.type === 'activity') {
         activityReceived = true;
         setAIActivityTab(event.active ? event.tabId : undefined);
+        setAIWorkingTabIds(event.workingTabIds || []);
       }
     });
   }, []);
@@ -177,7 +199,9 @@ export function Main() {
     }));
   };
   const [aiWidth, setAIWidth] = useState(() => {
-    const saved = Number(localStorage.getItem('touchbox-ai-sidebar-width'));
+    const saved = Number(
+      localStorage.getItem('kudiumbrowser-ai-sidebar-width')
+    );
     return saved >= 240 && Number.isFinite(saved) ? Math.min(saved, 1200) : 368;
   });
   const [aiResizing, setAIResizing] = useState(false);
@@ -187,7 +211,7 @@ export function Main() {
   const effectiveAIWidth = Math.min(aiWidth, aiMaxWidth);
   useEffect(() => {
     if (!aiResizing)
-      localStorage.setItem('touchbox-ai-sidebar-width', String(aiWidth));
+      localStorage.setItem('kudiumbrowser-ai-sidebar-width', String(aiWidth));
   }, [aiWidth, aiResizing]);
   useLayoutEffect(() => {
     const element = body.current;
@@ -199,6 +223,9 @@ export function Main() {
     return () => observer.disconnect();
   }, []);
   const { appList, lastIndex } = useAppList();
+  const aiWorkingTabs = appList.filter(
+    (tab) => !tab.archived && aiWorkingTabIds.includes(tab.id)
+  );
   const { spaces, active } = useSpaces();
   const [translucentChrome, setTranslucentChrome] = useState(true);
   const [showExtensionIcons, setShowExtensionIcons] = useState(true);
@@ -206,13 +233,14 @@ export function Main() {
     'horizontal' | 'hover' | 'click'
   >('horizontal');
   const [folderHoverPreviews, setFolderHoverPreviews] = useState(true);
+  const [showUnpinnedGroups, setShowUnpinnedGroups] = useState(false);
   const preview = useAnchoredPreview();
   const { target: previewTarget, close: closePreview } = preview;
   const [preferredAddressBarPlacement, setAddressBarPlacement] = useState<
     'sidebar' | 'header'
   >('sidebar');
   const [addressBarExtensionsExpanded, setAddressBarExtensionsExpanded] =
-    useState(true);
+    useState(false);
   const [extensionToolbarOrder, setExtensionToolbarOrder] = useState<
     string[] | null
   >(null);
@@ -220,10 +248,13 @@ export function Main() {
   const [recoveryCopyStatus, setRecoveryCopyStatus] =
     useState('Copy recovery data');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    if (paletteOpen) window.electron?.telemetry?.feature('command_opened');
+  }, [paletteOpen]);
   const [spaceDialog, setSpaceDialog] = useState(false);
   const [editingSpace, setEditingSpace] = useState<string>();
   const [collapsedSpaces, setCollapsedSpaces] = useCollapsedItems(
-    'touchbox-collapsed-spaces'
+    'kudiumbrowser-collapsed-spaces'
   );
   const [spaceName, setSpaceName] = useState('');
   const [spaceIcon, setSpaceIcon] = useState<SpaceIconName>('layers');
@@ -251,7 +282,7 @@ export function Main() {
     text: string;
   }>();
   const [collapsedFolders, setCollapsedFolders] = useCollapsedItems(
-    'touchbox-collapsed-folders'
+    'kudiumbrowser-collapsed-folders'
   );
   const favorites = useMemo(
     () =>
@@ -299,6 +330,11 @@ export function Main() {
   const [editingAddress, setEditingAddress] = useState(false);
   const [smartLabelsEnabled, setSmartLabelsEnabled] = useState(true);
   const [editingGroup, setEditingGroup] = useState<IApp>();
+  const [droppedProject, setDroppedProject] =
+    useState<Extract<SidebarDropResult, { kind: 'project' }>>();
+  const [fileDragging, setFileDragging] = useState(false);
+  const [newGroupSpace, setNewGroupSpace] = useState<string>();
+  const sidebarDropBusy = useRef(false);
   const [groupPersonalData, setGroupPersonalData] = useState(false);
   useEffect(() => setGroupPersonalData(false), [editingGroup?.id]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -321,6 +357,17 @@ export function Main() {
   }>();
   const [dropTarget, setDropTarget] = useState<string>();
   const [moveMessage, setMoveMessage] = useState('');
+  const [closedGroupUndo, setClosedGroupUndo] = useState<{
+    kind: 'group' | 'tab';
+    ids: string[];
+    selectedId: string;
+    name: string;
+  }>();
+  useEffect(() => {
+    if (!closedGroupUndo) return undefined;
+    const timer = setTimeout(() => setClosedGroupUndo(undefined), 10000);
+    return () => clearTimeout(timer);
+  }, [closedGroupUndo]);
   const [renameTarget, setRenameTarget] = useState<{
     id: string;
     axis: 'vertical' | 'horizontal';
@@ -331,10 +378,42 @@ export function Main() {
     'downloads'
   );
   const [downloadsOpen, setDownloadsOpen] = useState(false);
+  const [activeDownloadCount, setActiveDownloadCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    let updated = false;
+    const updateCount = (records: DownloadRecord[]) => {
+      if (alive) {
+        setActiveDownloadCount(
+          records.filter((record) => record.active).length
+        );
+      }
+    };
+    const stop = browser.onDownloads((records) => {
+      updated = true;
+      updateCount(records);
+    });
+    browser
+      .downloads('get')
+      .then((records) => {
+        if (!updated) updateCount(records);
+        return null;
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      stop();
+    };
+  }, []);
+  const systemSpacesLabel = activeDownloadCount
+    ? `System spaces — ${activeDownloadCount} active download${
+        activeDownloadCount === 1 ? '' : 's'
+      }`
+    : 'System spaces';
   const [compact, updateCompact] = useState(() => {
     try {
       return (
-        localStorage.getItem('touchbox-sidebar-visible-mode') === 'compact'
+        localStorage.getItem('kudiumbrowser-sidebar-visible-mode') === 'compact'
       );
     } catch {
       return false;
@@ -342,7 +421,7 @@ export function Main() {
   });
   const [sidebarHidden, setSidebarHidden] = useState(() => {
     try {
-      return localStorage.getItem('touchbox-sidebar-hidden') === 'true';
+      return localStorage.getItem('kudiumbrowser-sidebar-hidden') === 'true';
     } catch {
       return false;
     }
@@ -356,10 +435,13 @@ export function Main() {
   useEffect(() => {
     try {
       localStorage.setItem(
-        'touchbox-sidebar-visible-mode',
+        'kudiumbrowser-sidebar-visible-mode',
         compact ? 'compact' : 'expanded'
       );
-      localStorage.setItem('touchbox-sidebar-hidden', String(sidebarHidden));
+      localStorage.setItem(
+        'kudiumbrowser-sidebar-hidden',
+        String(sidebarHidden)
+      );
     } catch {
       /* Keep layout usable when storage is unavailable. */
     }
@@ -392,6 +474,7 @@ export function Main() {
     const choice = await browser.nativeMenu([
       { id: 'downloads', label: 'Downloads' },
       { id: 'history', label: 'History' },
+      { id: 'archive', label: 'Archive' },
       { type: 'separator' },
       { id: 'browse', label: 'Return to browsing', enabled: downloadsOpen },
       { id: 'new-tab', label: 'New tab or group' },
@@ -400,6 +483,8 @@ export function Main() {
     ]);
     if (choice === 'downloads') activateSidebarPage(DOWNLOADS_PAGE);
     if (choice === 'history') activateSidebarPage(HISTORY_PAGE);
+    if (choice === 'archive')
+      browser.preferences('open', { section: 'archive' });
     if (choice === 'browse') activateSidebarPage(active.id);
     if (choice === 'new-tab') setPaletteOpen(true);
     if (choice === 'new-space') openCreateSpace();
@@ -418,10 +503,9 @@ export function Main() {
   const [sidebarResizing, setSidebarResizing] = useState(false);
   useEffect(() => {
     if (!sidebarResizing)
-      localStorage.setItem('touchbox-sidebar-width', String(sidebarWidth));
+      localStorage.setItem('kudiumbrowser-sidebar-width', String(sidebarWidth));
   }, [sidebarWidth, sidebarResizing]);
   const viewport = useRef<HTMLDivElement>(null);
-  const [removingGroup, setRemovingGroup] = useState<string>();
   const [closedGroups, setClosedGroups] = useState<Set<string>>(
     () => new Set()
   );
@@ -568,7 +652,9 @@ export function Main() {
       setSplit((previous) =>
         previous ? selectSplitTab(previous, item.id, side) : null
       );
+      window.electron?.telemetry?.feature('tab_selected');
       setSelectedId(item.id);
+      rememberGroupTab(item);
       ScreenManager.saveLastAppUrl(item.url);
       ScreenManager.saveLastAppId(item.id);
       const destination = item.favorite ? active.id : item.spaceId || 'default';
@@ -589,32 +675,7 @@ export function Main() {
       select(selected);
     }
   }, [appList, selected, selectedId, select]);
-  const showSpaceMenu = async () => {
-    const choice = await browser.nativeMenu([
-      { id: 'icon', label: 'Change Space Icon…' },
-      { id: 'rename', label: 'Rename Space…' },
-      { id: 'color', label: 'Edit Theme Color…' },
-      { type: 'separator' },
-      { id: 'new-tab', label: 'New Tab…' },
-      { id: 'import-group', label: 'Import Group…' },
-      { id: 'folder', label: 'New Folder' },
-      { id: 'sort', label: 'Sort Groups by Name' },
-      {
-        id: 'archive',
-        label: 'Archive Unpinned Groups',
-        enabled: appList.some(
-          (item) =>
-            !item.archived &&
-            (item.spaceId || 'default') === active.id &&
-            item.pinned === false &&
-            !item.favorite
-        ),
-      },
-      { id: 'create', label: 'New Space…' },
-      { id: 'manage', label: 'Manage Spaces…' },
-      { type: 'separator' },
-      { id: 'delete', label: 'Delete Space…', enabled: spaces.length > 1 },
-    ]);
+  const applySpaceMenuChoice = async (choice: string) => {
     if (choice && ['icon', 'rename', 'color'].includes(choice)) {
       setEditingSpace(active.id);
       setSpaceName(active.name);
@@ -634,13 +695,27 @@ export function Main() {
         AppManager.set([...AppManager.getAll(), ...imported.tabs]);
         const first = imported.tabs[0];
         select(first);
+        setEditingGroup(first);
         if (imported.reviewHooks)
           window.dispatchEvent(
-            new CustomEvent('touchbox-open-group-developer', {
+            new CustomEvent('kudiumbrowser-open-group-developer', {
               detail: first.id,
             })
           );
       }
+    }
+    if (choice === 'new-group') {
+      setNewGroupSpace(active.id);
+      setEditingGroup({
+        id: crypto.randomUUID(),
+        sessionId: crypto.randomUUID(),
+        name: '',
+        sessionName: '',
+        url: 'about:blank',
+        icon: '',
+        spaceId: active.id,
+        pinned: true,
+      });
     }
     if (choice === 'new-tab') setPaletteOpen(true);
     if (choice === 'sort')
@@ -678,22 +753,63 @@ export function Main() {
         SpaceManager.remove(active.id);
     }
   };
-  const recentTabs = useRef<Record<string, string>>({});
+  const showSpaceMenu = async () => {
+    const choice = await browser.nativeMenu([
+      { id: 'icon', label: 'Change Space Icon…' },
+      { id: 'rename', label: 'Rename Space…' },
+      { id: 'color', label: 'Edit Theme Color…' },
+      { type: 'separator' },
+      { id: 'new-tab', label: 'New Tab…' },
+      { id: 'new-group', label: 'Create Group…' },
+      { id: 'import-group', label: 'Import Group…' },
+      { id: 'folder', label: 'New Folder' },
+      { id: 'sort', label: 'Sort Groups by Name' },
+      {
+        id: 'archive',
+        label: 'Archive Unpinned Groups',
+        enabled:
+          showUnpinnedGroups &&
+          appList.some(
+            (item) =>
+              !item.archived &&
+              (item.spaceId || 'default') === active.id &&
+              item.pinned === false &&
+              !item.favorite
+          ),
+      },
+      { id: 'create', label: 'New Space…' },
+      { id: 'manage', label: 'Manage Spaces…' },
+      { type: 'separator' },
+      { id: 'delete', label: 'Delete Space…', enabled: spaces.length > 1 },
+    ]);
+    if (choice) await applySpaceMenuChoice(choice);
+  };
+  const closePageTab = useCallback((item: IApp) => {
+    const current = AppManager.getBy('id', item.id);
+    if (!current || current.archived) return;
+    AppManager.update('id', current.id, { ...current, archived: true });
+    setClosedGroupUndo({
+      kind: 'tab',
+      ids: [current.id],
+      selectedId: current.id,
+      name: current.customName || current.name,
+    });
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '.horizontal-tab.active .horizontal-tab-select'
+        )
+        ?.focus();
+    });
+  }, []);
   const selectGroup = useCallback(
-    (item: IApp) =>
-      select(
-        appList.find(
-          (entry) =>
-            entry.id === recentTabs.current[groupKey(item)] &&
-            groupKey(entry) === groupKey(item) &&
-            !entry.archived &&
-            (entry.spaceId || 'default') === (item.spaceId || 'default')
-        ) || item
-      ),
+    (item: IApp) => select(rememberedGroupTab(appList, item)),
     [appList, select]
   );
 
-  if (selected) recentTabs.current[groupKey(selected)] = selected.id;
+  useEffect(() => {
+    if (selected) rememberGroupTab(selected);
+  }, [selected]);
   const [addressGroupPickerOpen, setAddressGroupPickerOpen] = useState(false);
   const nativeOverlayOpen = useNativeOverlay();
   const overlayOpen =
@@ -702,6 +818,8 @@ export function Main() {
     !!preview.target ||
     menuOpen ||
     !!editingGroup ||
+    !!droppedProject ||
+    !!newGroupSpace ||
     siteSettingsOpen ||
     !!pageCapture ||
     extensionPickerOpen ||
@@ -713,6 +831,10 @@ export function Main() {
     aiResizing ||
     !!dragged;
   const state = selected && states[selected.id];
+  useEffect(() => {
+    if (state?.pictureInPicture?.error)
+      setMoveMessage(state.pictureInPicture.error);
+  }, [state?.pictureInPicture?.error]);
   useEffect(() => {
     setSiteSettingsOpen(false);
     setExtensionPickerOpen(false);
@@ -726,6 +848,7 @@ export function Main() {
       showExtensionIcons?: boolean;
       tabDisplayMode?: 'horizontal' | 'hover' | 'click';
       folderHoverPreviews?: boolean;
+      showUnpinnedGroups?: boolean;
       addressBarPlacement?: 'sidebar' | 'header';
       addressBarExtensionsExpanded?: boolean;
       extensionToolbarOrder?: string[] | null;
@@ -733,6 +856,7 @@ export function Main() {
       setShowExtensionIcons(preferences.showExtensionIcons !== false);
       setTabDisplayMode(preferences.tabDisplayMode || 'horizontal');
       setFolderHoverPreviews(preferences.folderHoverPreviews !== false);
+      setShowUnpinnedGroups(preferences.showUnpinnedGroups === true);
       setAddressBarPlacement(preferences.addressBarPlacement || 'sidebar');
       setAddressBarExtensionsExpanded(
         preferences.addressBarExtensionsExpanded !== false
@@ -740,17 +864,37 @@ export function Main() {
       setExtensionToolbarOrder(preferences.extensionToolbarOrder ?? null);
       setTranslucentChrome(preferences.translucentChrome !== false);
       setSmartLabelsEnabled(preferences.smartTabLabels !== false);
-      localStorage.setItem('touchbox-search-engine', preferences.searchEngine);
       localStorage.setItem(
-        'touchbox-search-engines',
+        'kudiumbrowser-search-engine',
+        preferences.searchEngine
+      );
+      localStorage.setItem(
+        'kudiumbrowser-search-engines',
         JSON.stringify(preferences.searchEngines)
       );
     };
-    browser
-      .preferences('get')
-      .then(save)
+    let live = true;
+    Promise.all([
+      browser.preferences('get'),
+      browser.preferenceAction('info').catch(() => null),
+    ])
+      .then(([preferences, info]) => {
+        if (!live) return null;
+        save(preferences);
+        if (
+          info &&
+          'extensionCatalog' in info &&
+          info.extensionCatalog?.length === 0
+        )
+          setAddressBarExtensionsExpanded(false);
+        return null;
+      })
       .catch(() => {});
-    return browser.onPreferences(save);
+    const unsubscribe = browser.onPreferences(save);
+    return () => {
+      live = false;
+      unsubscribe();
+    };
   }, []);
   useEffect(() => browser.onSnapshots(setSnapshots), []);
   useEffect(() => {
@@ -798,9 +942,10 @@ export function Main() {
               if (!imported) return undefined;
               AppManager.set([...AppManager.getAll(), ...imported.tabs]);
               select(imported.tabs[0]);
+              setEditingGroup(imported.tabs[0]);
               if (imported.reviewHooks)
                 window.dispatchEvent(
-                  new CustomEvent('touchbox-open-group-developer', {
+                  new CustomEvent('kudiumbrowser-open-group-developer', {
                     detail: imported.tabs[0].id,
                   })
                 );
@@ -884,8 +1029,7 @@ export function Main() {
             select(next);
           }
         }
-        if (action === 'close-tab' && selected)
-          AppManager.update('id', selected.id, { ...selected, archived: true });
+        if (action === 'close-tab' && selected) closePageTab(selected);
         if (action === 'next-space' || action === 'previous-space') {
           swipeSidebar(action === 'next-space' ? 1 : -1);
         }
@@ -903,6 +1047,7 @@ export function Main() {
       swipeSidebar,
       setCompact,
       setAIOpen,
+      closePageTab,
     ]
   );
   useEffect(
@@ -912,14 +1057,14 @@ export function Main() {
         const item = AppManager.getBy('id', next.id);
         if (
           item &&
-          ((next.discarded && next.url && next.url !== item.url) ||
+          (savedNavigationURL(item, next) !== item.url ||
             (next.title && next.title !== item.name) ||
             (next.icon !== undefined && next.icon !== item.icon))
         ) {
           AppManager.update('id', item.id, {
             ...item,
             name: next.title || item.name,
-            url: next.discarded ? next.url || item.url : item.url,
+            url: savedNavigationURL(item, next),
             sessionName:
               !item.customName && item.sessionName === item.name
                 ? next.title || item.name
@@ -1106,26 +1251,81 @@ export function Main() {
           );
           if (group) selectGroup(group);
         }
-        if (item && request.action === 'close')
-          AppManager.update('id', item.id, { ...item, archived: true });
+        if (item && request.action === 'close') closePageTab(item);
       }),
-    [select, selectGroup, closedGroups, closeGroup]
+    [select, selectGroup, closedGroups, closeGroup, closePageTab]
   );
+  const closeGroupConfirming = useRef(new Set<string>());
   const closeGroupButton = async (item: IApp) => {
-    if (!closedGroups.has(aiGroupId(item))) {
+    const group = aiGroupId(item);
+    const name = item.sessionName || item.name;
+    if (closedGroups.has(group)) {
+      if (closeGroupConfirming.current.has(group)) return;
+      closeGroupConfirming.current.add(group);
+      try {
+        const result = await browser.removeGroup(item.id, true);
+        if (result.removed) {
+          AppManager.removeDeleted(result.ids || []);
+          setClosedGroupUndo(undefined);
+          return;
+        }
+        if (!result.archive) return;
+      } finally {
+        closeGroupConfirming.current.delete(group);
+      }
+    } else {
+      const ids = AppManager.getAll()
+        .filter((tab) => !tab.archived && aiGroupId(tab) === group)
+        .map((tab) => tab.id);
       closeGroup(item);
+      setClosedGroupUndo({
+        kind: 'group',
+        ids,
+        selectedId:
+          selected && ids.includes(selected.id) ? selected.id : item.id,
+        name,
+      });
       return;
     }
-    if (removingGroup) return;
-    setRemovingGroup(aiGroupId(item));
-    preview.close();
-    try {
-      const result = await browser.removeGroup(item.id);
-      if (result.removed && result.ids) AppManager.removeDeleted(result.ids);
-    } catch (error) {
-      setMoveMessage(String(error));
-    } finally {
-      setRemovingGroup(undefined);
+    const ids = AppManager.getAll()
+      .filter((tab) => !tab.archived && aiGroupId(tab) === aiGroupId(item))
+      .map((tab) => tab.id);
+    closeGroup(item);
+    AppManager.set(
+      AppManager.getAll().map((tab) =>
+        aiGroupId(tab) === aiGroupId(item) ? { ...tab, archived: true } : tab
+      )
+    );
+    setClosedGroupUndo({
+      kind: 'group',
+      ids,
+      selectedId: selected && ids.includes(selected.id) ? selected.id : item.id,
+      name: item.sessionName || item.name,
+    });
+  };
+  const undoCloseGroup = () => {
+    if (!closedGroupUndo) return;
+    const ids = new Set(closedGroupUndo.ids);
+    const restored = AppManager.getAll().map((tab) =>
+      ids.has(tab.id) && tab.archived
+        ? { ...tab, archived: false, restorationId: crypto.randomUUID() }
+        : tab
+    );
+    AppManager.set(restored);
+    const target = restored.find(
+      (tab) => tab.id === closedGroupUndo.selectedId && !tab.archived
+    );
+    setClosedGroupUndo(undefined);
+    if (target) {
+      select(target);
+      if (closedGroupUndo.kind === 'tab')
+        requestAnimationFrame(() => {
+          document
+            .querySelector<HTMLButtonElement>(
+              '.horizontal-tab.active .horizontal-tab-select'
+            )
+            ?.focus();
+        });
     }
   };
   const duplicate = (item: IApp, share: boolean) => {
@@ -1302,7 +1502,7 @@ export function Main() {
       event.preventDefault();
       return;
     }
-    event.dataTransfer.setData('application/x-touchbox-tab', item.id);
+    event.dataTransfer.setData('application/x-kudiumbrowser-tab', item.id);
     event.dataTransfer.setData(
       AI_CONTEXT_MIME,
       JSON.stringify({
@@ -1378,7 +1578,45 @@ export function Main() {
   }, [moveMessage]);
   const sectionOf = (item: IApp): SidebarSection => {
     if (item.favorite) return 'favorites';
-    return item.pinned === false ? 'regular' : 'pinned';
+    return showUnpinnedGroups && item.pinned === false ? 'regular' : 'pinned';
+  };
+  const dropSidebarFile = async (file: File) => {
+    if (sidebarDropBusy.current) return;
+    sidebarDropBusy.current = true;
+    try {
+      const result = await window.electron.siteDeveloper.drop(file, active.id);
+      if (result.kind === 'project') {
+        setDroppedProject(result);
+        setNewGroupSpace(active.id);
+        setEditingGroup({
+          id: crypto.randomUUID(),
+          sessionId: crypto.randomUUID(),
+          name: result.name,
+          sessionName: result.name,
+          sessionSlug: result.slug,
+          url: 'about:blank',
+          icon: '',
+          spaceId: active.id,
+          pinned: true,
+        });
+      } else if (result.imported) {
+        const { imported } = result;
+        AppManager.set([...AppManager.getAll(), ...imported.tabs]);
+        const first = imported.tabs[0];
+        select(first);
+        setEditingGroup(first);
+        if (imported.reviewHooks)
+          window.dispatchEvent(
+            new CustomEvent('kudiumbrowser-open-group-developer', {
+              detail: first.id,
+            })
+          );
+      }
+    } catch (error) {
+      setMoveMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      sidebarDropBusy.current = false;
+    }
   };
   const sectionDropProps = (section: SidebarSection) => ({
     'data-drop-target': dropTarget === `section-${section}` || undefined,
@@ -1394,7 +1632,8 @@ export function Main() {
       event.stopPropagation();
       if (
         dragged &&
-        event.dataTransfer.getData('application/x-touchbox-tab') === dragged.id
+        event.dataTransfer.getData('application/x-kudiumbrowser-tab') ===
+          dragged.id
       ) {
         AppManager.set(
           moveGroupToSection(
@@ -1417,7 +1656,8 @@ export function Main() {
     event.stopPropagation();
     if (
       !dragged ||
-      event.dataTransfer.getData('application/x-touchbox-tab') !== dragged.id
+      event.dataTransfer.getData('application/x-kudiumbrowser-tab') !==
+        dragged.id
     )
       return;
     const apps = AppManager.getAll();
@@ -1734,29 +1974,17 @@ export function Main() {
               <button
                 type="button"
                 className="sidebar-app-close"
-                aria-label={`${
-                  closedGroups.has(aiGroupId(item)) ? 'Remove' : 'Unload'
-                } ${item.sessionName || item.name}`}
+                aria-label={`Close ${item.sessionName || item.name}`}
                 title={
                   closedGroups.has(aiGroupId(item))
-                    ? 'Remove group and data…'
-                    : 'Unload group · Keep tabs saved'
-                }
-                disabled={
-                  !!removingGroup ||
-                  (closedGroups.has(aiGroupId(item)) &&
-                    appList.some(
-                      (tab) =>
-                        groupKey(tab) === groupKey(item) &&
-                        (tab.spaceId || 'default') ===
-                          (item.spaceId || 'default') &&
-                        states[tab.id] &&
-                        !states[tab.id].discarded
-                    ))
+                    ? 'Archive or delete group…'
+                    : 'Unload group'
                 }
                 onClick={(event) => {
                   event.stopPropagation();
-                  closeGroupButton(item);
+                  closeGroupButton(item).catch((error) =>
+                    setMoveMessage(String(error))
+                  );
                 }}
               >
                 <X size={13} />
@@ -1778,7 +2006,12 @@ export function Main() {
       <ChromeIconButton
         icon={Sparkles}
         className="ai-toolbar-toggle"
-        label="Toggle AI sidebar"
+        label={
+          aiWorkingTabs.length
+            ? `Toggle AI sidebar — ${aiWorkingTabs.length} active AI tabs`
+            : 'Toggle AI sidebar'
+        }
+        badgeCount={aiWorkingTabs.length}
         aria-expanded={aiOpen}
         onClick={() => {
           setAIMounted(true);
@@ -1790,6 +2023,13 @@ export function Main() {
   const renderAddressBar = () => (
     <AddressBar
       placement={addressBarPlacement}
+      mediaControl={
+        <PictureInPictureButton
+          state={state?.pictureInPicture}
+          disabled={!selected || lockedGroup(selected)}
+          onToggle={() => command('toggle-picture-in-picture')}
+        />
+      }
       groupBadge={
         (compact || sidebarHidden) && selected ? (
           <GroupPicker
@@ -1963,12 +2203,15 @@ export function Main() {
       setAIOpen(true);
       setDeveloperRequest((previous) => previous + 1);
     };
-    window.addEventListener('touchbox-ai-focus-tab', focus);
-    window.addEventListener('touchbox-open-group-developer', openDeveloper);
+    window.addEventListener('kudiumbrowser-ai-focus-tab', focus);
+    window.addEventListener(
+      'kudiumbrowser-open-group-developer',
+      openDeveloper
+    );
     return () => {
-      window.removeEventListener('touchbox-ai-focus-tab', focus);
+      window.removeEventListener('kudiumbrowser-ai-focus-tab', focus);
       window.removeEventListener(
-        'touchbox-open-group-developer',
+        'kudiumbrowser-open-group-developer',
         openDeveloper
       );
     };
@@ -2103,15 +2346,7 @@ export function Main() {
       <ContextMenu.Item onSelect={() => duplicate(item, false)}>
         {nativeMenuLabels.openInANewGroup}
       </ContextMenu.Item>
-      <ContextMenu.Item
-        color="red"
-        onSelect={() =>
-          AppManager.update('id', item.id, {
-            ...item,
-            archived: true,
-          })
-        }
-      >
+      <ContextMenu.Item color="red" onSelect={() => closePageTab(item)}>
         {nativeMenuLabels.closeTab}
       </ContextMenu.Item>
     </ContextMenu.Content>
@@ -2365,12 +2600,7 @@ export function Main() {
                       type="button"
                       aria-label={`Close ${item.name}`}
                       className="horizontal-tab-close"
-                      onClick={() =>
-                        AppManager.update('id', item.id, {
-                          ...item,
-                          archived: true,
-                        })
-                      }
+                      onClick={() => closePageTab(item)}
                     >
                       <X size={13} />
                     </button>
@@ -2402,6 +2632,22 @@ export function Main() {
   };
   return (
     <div
+      onKeyDownCapture={(event) => {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          !event.shiftKey &&
+          event.key.toLowerCase() === 'z' &&
+          closedGroupUndo &&
+          (event.target as HTMLElement).closest('.session-tab-strip') &&
+          !(event.target as HTMLElement).closest(
+            'input, textarea, [contenteditable="true"]'
+          )
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          undoCloseGroup();
+        }
+      }}
       className={`workspace space-${active.color} ${`${
         compact ? 'compact-sidebar' : ''
       } ${sidebarHidden ? 'hidden-sidebar' : ''}`} ${
@@ -2437,6 +2683,28 @@ export function Main() {
           event.stopPropagation();
           showSpaceMenu().catch((error) => setMoveMessage(String(error)));
         }}
+        onDragOverCapture={(event) => {
+          if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.dataTransfer.dropEffect = 'copy';
+          setFileDragging(true);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+            setFileDragging(false);
+        }}
+        onDropCapture={(event) => {
+          if (!event.dataTransfer.files.length) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setFileDragging(false);
+          if (event.dataTransfer.files.length !== 1) {
+            setMoveMessage('Drop one group file or project folder at a time.');
+            return;
+          }
+          dropSidebarFile(event.dataTransfer.files[0]);
+        }}
         onDragOver={(event) => {
           if (dragged?.axis === 'horizontal') {
             event.preventDefault();
@@ -2445,6 +2713,7 @@ export function Main() {
         }}
         onDrop={(event) => dropTab(event)}
       >
+        {fileDragging && <SidebarFileDropHint />}
         {dragged?.axis === 'horizontal' && (
           <div
             className="session-drop-zone"
@@ -2644,6 +2913,15 @@ export function Main() {
                 className="sidebar-apps"
                 hidden={collapsedSpaces.includes(active.id)}
               >
+                {tabGroups.length === 0 && (
+                  <EmptySpaceWelcome
+                    onAction={(action) => {
+                      applySpaceMenuChoice(action).catch((error) =>
+                        setMoveMessage(String(error))
+                      );
+                    }}
+                  />
+                )}
                 <div
                   className="sidebar-section"
                   aria-label="Pinned groups"
@@ -2654,11 +2932,17 @@ export function Main() {
                   onDrop={sectionDropProps('pinned').onDrop}
                 >
                   {tabGroups
-                    .filter((item) => item.pinned !== false && !item.folderId)
+                    .filter(
+                      (item) =>
+                        (!showUnpinnedGroups || item.pinned !== false) &&
+                        !item.folderId
+                    )
                     .map(renderApp)}
                   {dragged &&
                     !tabGroups.some(
-                      (item) => item.pinned !== false && !item.folderId
+                      (item) =>
+                        (!showUnpinnedGroups || item.pinned !== false) &&
+                        !item.folderId
                     ) && (
                       <span className="sidebar-section-hint">Drop to pin</span>
                     )}
@@ -2749,7 +3033,7 @@ export function Main() {
                                 source &&
                                 dragged?.axis === 'vertical' &&
                                 event.dataTransfer.getData(
-                                  'application/x-touchbox-tab'
+                                  'application/x-kudiumbrowser-tab'
                                 ) === source.id
                               ) {
                                 AppManager.set(
@@ -2913,62 +3197,79 @@ export function Main() {
                     </div>
                   </div>
                 ))}
-                <div className="session-list-tools">
-                  <span className="list-divider" />
-                  <Tooltip
-                    collisionBoundary={sidebarBoundary}
-                    collisionPadding={8}
-                    className="sidebar-tooltip"
-                    content="Sort groups by name"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        AppManager.set(
-                          [...appList].sort((a, b) =>
-                            (a.sessionName || a.name).localeCompare(
-                              b.sessionName || b.name
-                            )
-                          )
-                        )
-                      }
-                    >
-                      <Brush size={13} />
-                      Tidy
-                    </button>
-                  </Tooltip>
-                  <Tooltip
-                    collisionBoundary={sidebarBoundary}
-                    collisionPadding={8}
-                    className="sidebar-tooltip"
-                    content="Archive unpinned groups in this space"
-                  >
-                    <button
-                      type="button"
-                      disabled={
-                        !tabGroups.some((item) => item.pinned === false)
-                      }
-                      onClick={() => {
-                        const unpinned = new Set(
-                          tabGroups
-                            .filter((item) => item.pinned === false)
-                            .map(groupKey)
-                        );
-                        AppManager.set(
-                          appList.map((item) =>
-                            (item.spaceId || 'default') === active.id &&
-                            unpinned.has(groupKey(item))
-                              ? { ...item, archived: true }
-                              : item
-                          )
-                        );
-                      }}
-                    >
-                      <ArrowDownToLine size={13} />
-                      Clear
-                    </button>
-                  </Tooltip>
-                </div>
+                {showUnpinnedGroups && (
+                  <div className="session-list-tools">
+                    <span className="list-divider" />
+                    {!!tabGroups.length && (
+                      <>
+                        <Tooltip
+                          collisionBoundary={sidebarBoundary}
+                          collisionPadding={8}
+                          className="sidebar-tooltip"
+                          content="Sort groups by name"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              AppManager.set(
+                                [...appList].sort((a, b) =>
+                                  (a.sessionName || a.name).localeCompare(
+                                    b.sessionName || b.name
+                                  )
+                                )
+                              )
+                            }
+                          >
+                            <Brush size={13} />
+                            Tidy
+                          </button>
+                        </Tooltip>
+                        {showUnpinnedGroups && (
+                          <Tooltip
+                            collisionBoundary={sidebarBoundary}
+                            collisionPadding={8}
+                            className="sidebar-tooltip"
+                            content="Archive unpinned groups in this space"
+                          >
+                            <button
+                              type="button"
+                              disabled={
+                                !tabGroups.some((item) => item.pinned === false)
+                              }
+                              onClick={async () => {
+                                const unpinned = new Set(
+                                  tabGroups
+                                    .filter((item) => item.pinned === false)
+                                    .map(groupKey)
+                                );
+                                if (!unpinned.size) return;
+                                const approved = await browser.confirm({
+                                  message: 'Clear unpinned groups?',
+                                  detail: `Archive ${unpinned.size} group${
+                                    unpinned.size === 1 ? '' : 's'
+                                  } in this space. You can restore them from Archive.`,
+                                  confirm: 'Clear groups',
+                                });
+                                if (!approved) return;
+                                AppManager.set(
+                                  AppManager.getAll().map((item) =>
+                                    (item.spaceId || 'default') === active.id &&
+                                    unpinned.has(groupKey(item))
+                                      ? { ...item, archived: true }
+                                      : item
+                                  )
+                                );
+                              }}
+                            >
+                              <ArrowDownToLine size={13} />
+                              Clear
+                            </button>
+                          </Tooltip>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
                 <button
                   type="button"
                   className="new-tab-button"
@@ -2978,31 +3279,37 @@ export function Main() {
                   <Plus size={20} />
                   <span>New Tab</span>
                 </button>
-                <div
-                  className="sidebar-section"
-                  aria-label="Regular groups"
-                  data-drop-target={
-                    dropTarget === 'section-regular' || undefined
-                  }
-                  onDragOver={sectionDropProps('regular').onDragOver}
-                  onDrop={sectionDropProps('regular').onDrop}
-                >
-                  {tabGroups
-                    .filter((item) => item.pinned === false && !item.folderId)
-                    .map(renderApp)}
-                  {dragged &&
-                    !tabGroups.some(
-                      (item) => item.pinned === false && !item.folderId
-                    ) && (
-                      <span className="sidebar-section-hint">
-                        Drop to unpin
-                      </span>
-                    )}
-                </div>
+                {showUnpinnedGroups && (
+                  <div
+                    className="sidebar-section"
+                    aria-label="Unpinned groups"
+                    data-drop-target={
+                      dropTarget === 'section-regular' || undefined
+                    }
+                    onDragOver={sectionDropProps('regular').onDragOver}
+                    onDrop={sectionDropProps('regular').onDrop}
+                  >
+                    {tabGroups
+                      .filter((item) => item.pinned === false && !item.folderId)
+                      .map(renderApp)}
+                    {dragged &&
+                      !tabGroups.some(
+                        (item) => item.pinned === false && !item.folderId
+                      ) && (
+                        <span className="sidebar-section-hint">
+                          Drop to unpin
+                        </span>
+                      )}
+                  </div>
+                )}
               </nav>
             </>
           )}
         </SidebarPager>
+        <AccountSyncPublisher tabs={appList} states={states} />
+        <BrowserImportSuggestion />
+        <FirstGroupSyncSuggestion tabs={appList} />
+        <AppUpdateBanner compact={compact} />
         <div className="sidebar-bottom">
           <div
             className="system-space-switcher"
@@ -3013,11 +3320,12 @@ export function Main() {
               collisionBoundary={sidebarBoundary}
               collisionPadding={8}
               className="sidebar-tooltip"
-              content="System spaces"
+              content={systemSpacesLabel}
             >
               <IconButton
                 variant="ghost"
-                aria-label="System spaces"
+                aria-label={systemSpacesLabel}
+                className="system-space-button"
                 aria-pressed={downloadsOpen}
                 onClick={() => {
                   if (downloadsOpen) activateSidebarPage(active.id);
@@ -3031,6 +3339,14 @@ export function Main() {
                 }}
               >
                 <Library size={18} />
+                {activeDownloadCount > 0 && (
+                  <span
+                    className="system-space-download-badge"
+                    aria-hidden="true"
+                  >
+                    {activeDownloadCount > 99 ? '99+' : activeDownloadCount}
+                  </span>
+                )}
               </IconButton>
             </Tooltip>
           </div>
@@ -3130,6 +3446,7 @@ export function Main() {
               </ContextMenu.Content>
             </ContextMenu.Root>
           </div>
+          {sidebarHidden && <AppUpdateBanner compact />}
           {selected && tabDisplayMode === 'horizontal' && (
             <div
               className={`pane-tab-strips ${split ? 'split-tab-strips' : ''}`}
@@ -3180,6 +3497,21 @@ export function Main() {
               {recoveryCopyStatus}
             </button>
             <button type="button" onClick={() => setRecoveryDismissed(true)}>
+              Dismiss
+            </button>
+          </div>
+        )}
+        {closedGroupUndo && (
+          <div className="tab-move-message" role="status">
+            Closed “{closedGroupUndo.name}”.
+            <button type="button" onClick={undoCloseGroup}>
+              Undo
+            </button>
+            <button
+              type="button"
+              aria-label="Dismiss undo"
+              onClick={() => setClosedGroupUndo(undefined)}
+            >
               Dismiss
             </button>
           </div>
@@ -3294,7 +3626,7 @@ export function Main() {
                       event.preventDefault();
                       event.stopPropagation();
                       const id = event.dataTransfer.getData(
-                        'application/x-touchbox-tab'
+                        'application/x-kudiumbrowser-tab'
                       );
                       const item = appList.find(
                         (entry) => entry.id === id && id === dragged.id
@@ -3337,21 +3669,7 @@ export function Main() {
                 <span aria-hidden="true" />
               </GroupAccessGate>
             )}
-            {!selected && (
-              <div className="welcome-state">
-                <span className="welcome-symbol">
-                  <Sparkles size={32} />
-                </span>
-                <Heading size="7">Your space. Your pace.</Heading>
-                <Text as="p" size="2" color="gray">
-                  Enter a URL to start browsing.
-                </Text>
-                <Button size="3" onClick={() => setPaletteOpen(true)}>
-                  <Plus size={18} />
-                  Open a website
-                </Button>
-              </div>
-            )}
+            {!selected && <BrowserWelcome />}
           </div>
           {aiMounted && (
             <div
@@ -3372,12 +3690,21 @@ export function Main() {
                 onResizingChange={setAIResizing}
               />
               <AISidebar
+                workingTabs={aiWorkingTabs.map((tab) => ({
+                  id: tab.id,
+                  name: tab.customName || states[tab.id]?.title || tab.name,
+                  icon: tab.icon,
+                }))}
+                activeTabId={aiActivityTab}
                 developerRequest={developerRequest}
                 menuPaneRequest={menuPaneRequest}
                 focusedTabId={selected?.id}
                 onFocusTab={(id) => {
                   const target = appList.find((item) => item.id === id);
-                  if (target) select(target);
+                  if (target) {
+                    setDownloadsOpen(false);
+                    select(target);
+                  }
                 }}
                 contextRequest={aiContextRequest}
                 onTabContextMenu={showTabContextMenu}
@@ -3465,12 +3792,20 @@ export function Main() {
       <Dialog.Root
         open={!!editingGroup}
         onOpenChange={(open) => {
-          if (!open) setEditingGroup(undefined);
+          if (!open) {
+            setEditingGroup(undefined);
+            setNewGroupSpace(undefined);
+            setDroppedProject(undefined);
+          }
         }}
       >
         <Dialog.Content className="session-settings-dialog" maxWidth="540px">
           <PanelDialogHeader
-            title={groupPersonalData ? 'Personal Data' : 'Group settings'}
+            title={
+              newGroupSpace
+                ? 'New group'
+                : (groupPersonalData && 'Personal Data') || 'Group settings'
+            }
             actions={
               <Dialog.Close>
                 <IconButton
@@ -3493,23 +3828,55 @@ export function Main() {
               key={editingGroup.id}
               onPersonalDataChange={setGroupPersonalData}
               item={editingGroup}
-              close={() => setEditingGroup(undefined)}
+              creating={!!newGroupSpace}
+              droppedProject={droppedProject}
+              onCreated={(tab) => {
+                setNewGroupSpace(undefined);
+                setDroppedProject(undefined);
+                setEditingGroup(tab);
+                select(tab);
+              }}
+              close={() => {
+                setEditingGroup(undefined);
+                setNewGroupSpace(undefined);
+                setDroppedProject(undefined);
+              }}
             />
           )}
         </Dialog.Content>
       </Dialog.Root>
       <Dialog.Root open={spaceDialog} onOpenChange={setSpaceDialog}>
-        <Dialog.Content maxWidth="420px">
+        <Dialog.Content maxWidth="420px" className="space-settings-dialog">
           <Dialog.Title>
             {editingSpace ? 'Customize Space' : 'New Space'}
           </Dialog.Title>
-          <Dialog.Description>
-            Choose a name, icon, and color.
+          <Dialog.Description className="space-settings-description">
+            {editingSpace
+              ? 'Make this space feel like yours.'
+              : 'A separate space for work, life or a project.'}
           </Dialog.Description>
-          <form
-            className="tab-content"
-            onSubmit={(event) => {
-              event.preventDefault();
+          <SpaceSettingsForm
+            creating={!editingSpace}
+            value={{
+              name: spaceName,
+              icon: spaceIcon,
+              color: spaceColor,
+              iconImage: spaceIconImage,
+              iconEmoji: spaceEmoji,
+              customColor: spaceCustomColor,
+            }}
+            onChange={(patch) => {
+              if (patch.name !== undefined) setSpaceName(patch.name);
+              if (patch.icon) setSpaceIcon(patch.icon);
+              if (patch.color) setSpaceColor(patch.color);
+              if ('iconImage' in patch)
+                setSpaceIconImage(patch.iconImage || '');
+              if ('iconEmoji' in patch) setSpaceEmoji(patch.iconEmoji || '');
+              if ('customColor' in patch)
+                setSpaceCustomColor(patch.customColor || '');
+            }}
+            onCancel={() => setSpaceDialog(false)}
+            onSave={() => {
               if (spaceName.trim()) {
                 const targetId =
                   editingSpace ||
@@ -3526,39 +3893,7 @@ export function Main() {
                 setSpaceDialog(false);
               }
             }}
-          >
-            <TextField.Root
-              required
-              autoFocus
-              aria-label="Space name"
-              placeholder="Work, Personal, Side project…"
-              value={spaceName}
-              onChange={(event) => setSpaceName(event.target.value)}
-            />
-            <SpaceIconPicker
-              icon={spaceIcon}
-              image={spaceIconImage}
-              emoji={spaceEmoji}
-              label="Space icon"
-              onChange={(patch) => {
-                if (patch.icon) setSpaceIcon(patch.icon);
-                setSpaceIconImage(patch.iconImage || '');
-                setSpaceEmoji(patch.iconEmoji || '');
-              }}
-            />
-            <SpaceColorPicker
-              color={spaceColor}
-              customColor={spaceCustomColor}
-              label="Space color"
-              onChange={(patch) => {
-                if (patch.color) setSpaceColor(patch.color);
-                setSpaceCustomColor(patch.customColor || '');
-              }}
-            />
-            <Button type="submit">
-              {editingSpace ? 'Save changes' : 'Create space'}
-            </Button>
-          </form>
+          />
         </Dialog.Content>
       </Dialog.Root>
       {preview.target && previewItems.length > 0 && (

@@ -114,7 +114,7 @@ it('accepts a site-search name with Tab, encodes the query and uses the selected
     url: search,
   };
   localStorage.setItem(
-    'touchbox-search-engines',
+    'kudiumbrowser-search-engines',
     JSON.stringify([
       {
         id: 'jira-search',
@@ -168,7 +168,7 @@ it('accepts a partial engine name and lets Backspace or the clear button leave s
 });
 it('preserves fresh-group choice when performing a named site search', () => {
   const { input } = mount();
-  localStorage.setItem('touchbox-search-engine', 'google');
+  localStorage.setItem('kudiumbrowser-search-engine', 'google');
   fireEvent.change(input, { target: { value: 'google' } });
   fireEvent.keyDown(input, { key: 'Tab' });
   fireEvent.change(input, { target: { value: 'example.com' } });

@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-developer-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-developer-'));
 app.setPath('userData', path.join(root, 'profile'));
 // Bundle both modules together so their durable-settings cache is shared.
 fs.writeFileSync(path.join(root,'entry.ts'), `export * from ${JSON.stringify(path.resolve('src/main/siteDeveloper'))}; export * from ${JSON.stringify(path.resolve('src/main/siteSettings'))};`);
@@ -13,7 +13,7 @@ require('esbuild').buildSync({entryPoints:[path.join(root,'entry.ts')], bundle:t
 const api = require(path.join(root,'entry.cjs'));
 const wait = ms => new Promise(resolve=>setTimeout(resolve,ms));
 async function until(test) { for(let i=0;i<100;i++){if(test())return;await wait(50);}throw new Error('Timed out'); }
-const server = http.createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'unsafe-inline'; style-src 'self'");res.end(`<!doctype html><title>Developer fixture</title><script>document.dispatchEvent(new Event('touchbox-probe'));document.documentElement.dataset.beforeObserved=document.documentElement.dataset.before || 'missing';</script><h1>Fixture content</h1>${req.url==='/iframe'?'':'<iframe src="/iframe"></iframe>'}`);});
+const server = http.createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'unsafe-inline'; style-src 'self'");res.end(`<!doctype html><title>Developer fixture</title><script>document.dispatchEvent(new Event('kudiumbrowser-probe'));document.documentElement.dataset.beforeObserved=document.documentElement.dataset.before || 'missing';</script><h1>Fixture content</h1>${req.url==='/iframe'?'':'<iframe src="/iframe"></iframe>'}`);});
 app.whenReady().then(async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const origin=`http://127.0.0.1:${server.address().port}`;
@@ -23,7 +23,7 @@ app.whenReady().then(async()=>{
   const c=view.webContents;
   c.on('preload-error',(_,file,error)=>console.error('preload',file,error));
   api.registerDeveloperPage(c,'work',()=>{});
-  const config={enabled:true,before:"log('before', document.readyState, typeof require); document.addEventListener('touchbox-probe', () => {document.documentElement.dataset.before='yes'});",after:"await Promise.resolve(); log('after', url, content.includes('Fixture content')); log('title', document.title);",css:'h1 { color: rgb(12, 34, 56); }'};
+  const config={enabled:true,before:"log('before', document.readyState, typeof require); document.addEventListener('kudiumbrowser-probe', () => {document.documentElement.dataset.before='yes'});",after:"await Promise.resolve(); log('after', url, content.includes('Fixture content')); log('title', document.title);",css:'h1 { color: rgb(12, 34, 56); }'};
   api.updateSiteSettings('work',origin,{developer:config});
   await c.loadURL(origin+'/page');
   await until(()=>api.developerState(c,origin).status==='success').catch(error=>{console.log(api.developerState(c,origin));throw error});

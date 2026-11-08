@@ -31,7 +31,7 @@ function fixture({ stalled = false } = {}) {
     stdin: input, stdout: new EventEmitter(), stderr: new EventEmitter(), kill() { kills++; },
   });
   const context = vm.createContext({
-    Buffer, setTimeout, clearTimeout, touchboxNativeCrypto: { randomUUID }, d7() {}, getExtensionManifest: () => extension.manifest,
+    Buffer, setTimeout, clearTimeout, kudiumbrowserNativeCrypto: { randomUUID }, d7() {}, getExtensionManifest: () => extension.manifest,
     EventEmitter3: EventEmitter, fs2: { stat: async () => ({ isFile: () => true }) },
     spawn2() { spawns++; return child; },
     import_node_events3: { EventEmitter }, import_node_crypto: { randomUUID },

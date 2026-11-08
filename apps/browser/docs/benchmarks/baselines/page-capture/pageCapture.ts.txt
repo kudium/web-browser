@@ -61,7 +61,7 @@ async function saveExport(file: string, bytes: Buffer) {
       );
     if (code === 'EACCES' || code === 'EPERM')
       throw new Error(
-        'TouchBox can’t save to this folder. Choose a folder you can write to.'
+        'KudiumBrowser can’t save to this folder. Choose a folder you can write to.'
       );
     throw new Error(
       'Could not save this file. Choose another location and try again.'

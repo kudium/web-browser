@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const esbuild = require('esbuild');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-tool-schemas-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-tool-schemas-'));
 try {
   const filename = path.join(root, 'schemas.cjs');
   esbuild.buildSync({ entryPoints: ['src/browser/aiToolSchemas.ts'], bundle: true, platform: 'node', outfile: filename });

@@ -13,10 +13,10 @@ if (process.argv.includes('--tab-discard-only')) global.setInterval = (callback,
   return realInterval(callback, milliseconds, ...args);
 };
 const runtimeDir = fs.mkdtempSync(
-  path.join(require('os').tmpdir(), 'touchbox-desktop-smoke-')
+  path.join(require('os').tmpdir(), 'kudiumbrowser-desktop-smoke-')
 );
 const out =
-  process.env.TOUCHBOX_SMOKE_OUTPUT || path.join(runtimeDir, 'screenshots');
+  process.env.KUDIUMBROWSER_SMOKE_OUTPUT || path.join(runtimeDir, 'screenshots');
 fs.mkdirSync(out, { recursive: true });
 for (const [source, target] of [
   
@@ -125,8 +125,8 @@ app
           res.end(`<script>navigator.geolocation.getCurrentPosition(()=>parent.postMessage('permission-allowed','*'),()=>parent.postMessage('permission-denied','*'));</script>`);return;
         }
         if (req.url === '/download-fixture') {
-          res.setHeader('Content-Disposition', 'attachment; filename="touchbox-download-test.txt"');
-          res.end('TouchBox download fixture'); return;
+          res.setHeader('Content-Disposition', 'attachment; filename="kudiumbrowser-download-test.txt"');
+          res.end('KudiumBrowser download fixture'); return;
         }
         if (req.url === '/new-tab-icon.png') {res.setHeader('Content-Type','image/png');res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALUlEQVR4nO3OIQEAAAgDsOckJ/0gxs3E/JKdqxIQEBAQEBAQEBAQEBAQEGgHHuoPNHkTKkJmAAAAAElFTkSuQmCC','base64'));return;}
         if (req.url.startsWith('/active-download-child')) {activeDownloadPageHits+=1;res.end('<title>Active download child</title><a id="file" href="/active-child-file" download>Download</a><script>if(!localStorage.getItem("active-child-started:"+location.search)){localStorage.setItem("active-child-started:"+location.search,"yes");document.getElementById("file").click();}</script>');return;}
@@ -158,7 +158,7 @@ app
         res.end(
           `<html><meta name="viewport" content="width=device-width, initial-scale=1"><title>${
             req.url.includes('message') ? 'Messages' : 'Home'
-          }</title><style>body{font:15px -apple-system;background:#f6f8fc;color:#283048;margin:0;padding:60px}small{color:#747d91}h1{letter-spacing:-1px;font-size:32px}.card{margin-top:32px;background:white;border:1px solid #e2e6ef;border-radius:15px;padding:28px;max-width:550px}</style><small>TOUCHBOX · LOCAL BROWSER VERIFICATION</small><h1>Your pages, one session.</h1><p>This local page is used to verify session isolation and tab navigation.</p><div class=card>Each horizontal tab shares this session.<br><br>Other sidebar sessions keep their cookies separate.</div></html>`
+          }</title><style>body{font:15px -apple-system;background:#f6f8fc;color:#283048;margin:0;padding:60px}small{color:#747d91}h1{letter-spacing:-1px;font-size:32px}.card{margin-top:32px;background:white;border:1px solid #e2e6ef;border-radius:15px;padding:28px;max-width:550px}</style><small>KUDIUMBROWSER · LOCAL BROWSER VERIFICATION</small><h1>Your pages, one session.</h1><p>This local page is used to verify session isolation and tab navigation.</p><div class=card>Each horizontal tab shares this session.<br><br>Other sidebar sessions keep their cookies separate.</div></html>`
         );
       })
       .listen(0, '127.0.0.1');
@@ -202,7 +202,7 @@ app
       session.downloadURL(url + '/download-fixture');
       await done; await wait(500);
       assert.equal(downloads.getDownloadHistory()[0].state, 'completed');
-      assert(await evaluate(library, "document.querySelector('.download-library-list').textContent.includes('touchbox-download-test.txt')"));
+      assert(await evaluate(library, "document.querySelector('.download-library-list').textContent.includes('kudiumbrowser-download-test.txt')"));
       await input(library, '[aria-label="Search downloads"]', 'no match'); await wait(100);
       assert.equal(await evaluate(library, "document.querySelectorAll('.download-library-row').length"), 0);
       await input(library, '[aria-label="Search downloads"]', ''); await wait(100);
@@ -217,7 +217,7 @@ app
       await evaluate(library, "Array.from(document.querySelectorAll('[role=dialog] button')).find(button => button.textContent.includes('Clear history')).click();undefined");
       await wait(300);
       assert.equal(downloads.getDownloadHistory().length, 0);
-      assert(fs.existsSync(path.join(runtimeDir, 'touchbox-download-test.txt')));
+      assert(fs.existsSync(path.join(runtimeDir, 'kudiumbrowser-download-test.txt')));
       console.log('Download library passed: real download, search, clear preserves file, desktop and narrow layouts. Screenshots: ' + out);
       server.close(); app.exit(0); return;
     }
@@ -236,7 +236,7 @@ app
       const shot=async(name)=>{await wait(160);fs.writeFileSync(path.join(out,name+'.png'),(await main.webContents.capturePage()).toPNG());};
       let saveMode='cancel';const saveCalls=[];dialog.showSaveDialog=async(_host,options)=>{saveCalls.push(options);return saveMode==='cancel'?{canceled:true}:{canceled:false,filePath:saveMode==='error'?path.join(runtimeDir,'missing','page.png'):path.join(runtimeDir,options.filters[0].extensions[0]==='pdf'?'page.pdf':'page.png')}};
       for(const theme of ['light','dark']) {
-        await evaluate(main,`localStorage.setItem('touchbox-appearance','${theme}');window.dispatchEvent(new Event('touchbox-appearance-change'));undefined`);
+        await evaluate(main,`localStorage.setItem('kudiumbrowser-appearance','${theme}');window.dispatchEvent(new Event('kudiumbrowser-appearance-change'));undefined`);
         for(const width of [1160,480]) {
           main.setSize(width,720);await wait(200);await openSettings();await shot(`capture-menu-${theme}-${width}`);await evaluate(main,`document.querySelector('[aria-label="Capture page"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));undefined`);await wait(100);await shot(`capture-options-${theme}-${width}`);await clickText('Capture area');await until(`!!document.querySelector('.page-capture-stage img')&&document.querySelector('.page-capture-stage img').naturalWidth>0`);
           await evaluate(main,`document.querySelector('.page-capture-stage').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));undefined`);await wait(80);
@@ -287,7 +287,7 @@ app
       const saved=await evaluate(main,`JSON.parse(localStorage.getItem('user_apps')).map(({id,sessionId,url})=>({id,sessionId,url}))`);
       const sourceDrop=async(selector,kind,id)=>{
         await evaluate(main,`(()=>{const source=document.querySelector(${JSON.stringify(selector)});window.contextTransfer=new DataTransfer();source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,cancelable:true,dataTransfer:window.contextTransfer}));})()`);await wait(100);
-        const payload=await evaluate(main,`JSON.parse(window.contextTransfer.getData('application/x-touchbox-ai-context'))`);assert.deepEqual(payload,{kind,id});
+        const payload=await evaluate(main,`JSON.parse(window.contextTransfer.getData('application/x-kudiumbrowser-ai-context'))`);assert.deepEqual(payload,{kind,id});
         await evaluate(main,`(()=>{const ai=document.querySelector('.ai-sidebar');ai.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:window.contextTransfer}));ai.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:window.contextTransfer}));document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:window.contextTransfer}));})()`);await wait(220);
         assert.deepEqual(await evaluate(main,`JSON.parse(localStorage.getItem('user_apps')).map(({id,sessionId,url})=>({id,sessionId,url}))`),saved,'Context drop must not move or remove tabs');
         assert(await evaluate(main,`!document.querySelector('.tab-drag-preview')`),'Drag preview cleaned up');
@@ -310,7 +310,7 @@ app
         {id:'other-tab',name:'Other',sessionName:'Other',sessionId:'other-group',sessionProfileId:'shared-login',spaceId:'default',url:url+'/external-one',icon:''},
       ];
       const seed = async (apps, selectedId) => {
-        await evaluate(main, `localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(apps))});localStorage.setItem('user_last_app_id',${JSON.stringify(selectedId)});localStorage.setItem('touchbox-active-space','default');localStorage.setItem('touchbox-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[{id:'reading',name:'Reading'}],selectedAppId:selectedId}]))});undefined`);
+        await evaluate(main, `localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(apps))});localStorage.setItem('user_last_app_id',${JSON.stringify(selectedId)});localStorage.setItem('kudiumbrowser-active-space','default');localStorage.setItem('kudiumbrowser-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[{id:'reading',name:'Reading'}],selectedAppId:selectedId}]))});undefined`);
         await main.reload(); await wait(600);
       };
       await seed(fixture,'work-tab');
@@ -390,7 +390,7 @@ app
       fs.writeFileSync(path.join(out,'ai-external-preferences.png'),(await aiPreferences.capturePage()).toPNG());
       const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
       const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
-      const connection = (await evaluate(main, `window.electron.ai.mcpConnection()`)).mcpServers.touchbox;
+      const connection = (await evaluate(main, `window.electron.ai.mcpConnection()`)).mcpServers.kudiumbrowser;
       const agent = new Client({name:'real-renderer-tab-test',version:'1'},{capabilities:{}});
       await agent.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
       const initialApproval = dialog.showMessageBox;
@@ -545,7 +545,7 @@ app
       main.webContents.sendInputEvent({type:'mouseMove',modifiers:['leftButtonDown'],x:grip.x+30,y:grip.y});await wait(80);
       main.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,x:grip.x+30,y:grip.y});await wait(280);
       assert.equal(await evaluate(main, `document.querySelector('.ai-sidebar').getBoundingClientRect().width`),Math.max(240,resizeStart-30),'Dragging right must shrink the AI panel');
-      assert.equal(await evaluate(main, `Number(localStorage.getItem('touchbox-ai-sidebar-width'))`),Math.max(240,resizeStart-30),'AI width must persist');
+      assert.equal(await evaluate(main, `Number(localStorage.getItem('kudiumbrowser-ai-sidebar-width'))`),Math.max(240,resizeStart-30),'AI width must persist');
       await evaluate(main, `document.querySelector('[aria-label="Resize AI sidebar"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}));undefined`);await wait(280);
       assert.equal(await evaluate(main, `document.querySelector('.ai-sidebar').getBoundingClientRect().width`),240);
       await evaluate(main, `document.querySelector('[aria-label="Resize AI sidebar"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));undefined`);await wait(280);
@@ -568,9 +568,9 @@ app
       await evaluate(settings, `document.querySelector('[aria-label="Sync open tabs"]').click();undefined`);await wait(200);
       assert.equal(prefs.getBrowserPreferences().cloudSync.categories.openTabs,false);
       await evaluate(settings, `document.querySelector('[aria-label="Sync provider"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));undefined`);await wait(100);
-      await evaluate(settings, `Array.from(document.querySelectorAll('[role="option"]')).find(option=>option.textContent==='TouchBox account').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));undefined`);await wait(200);
-      assert.equal(prefs.getBrowserPreferences().cloudSync.provider,'touchbox');
-      assert(await evaluate(settings, `document.querySelector('.cloud-sync-settings').textContent.includes('TouchBox account sync is planned')`));
+      await evaluate(settings, `Array.from(document.querySelectorAll('[role="option"]')).find(option=>option.textContent==='KudiumBrowser account').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));undefined`);await wait(200);
+      assert.equal(prefs.getBrowserPreferences().cloudSync.provider,'kudiumbrowser');
+      assert(await evaluate(settings, `document.querySelector('.cloud-sync-settings').textContent.includes('KudiumBrowser account sync is planned')`));
       for (const width of [1080,760,480]) {
         settings.setSize(width,700);await wait(150);
         assert(await evaluate(settings, `document.documentElement.scrollWidth<=innerWidth+1`), `Sync page overflows at ${width}`);
@@ -579,7 +579,7 @@ app
       }
       await evaluate(settings, `document.querySelector('[aria-label="Enable sync"]').click();undefined`);await wait(100);
       assert.equal(prefs.getBrowserPreferences().cloudSync.enabled,false);
-      console.log('PASS: iCloud Mac default, enable intent/category persistence, TouchBox provider selection, truthful disconnected status, disable and responsive settings');
+      console.log('PASS: iCloud Mac default, enable intent/category persistence, KudiumBrowser provider selection, truthful disconnected status, disable and responsive settings');
       Object.values(windows).forEach(win=>win.close());server.close();app.quit();return;
     }
     if (process.argv.includes('--performance-settings-only')) {
@@ -685,7 +685,7 @@ app
       main,
       `localStorage.setItem('user_apps',${JSON.stringify(
         JSON.stringify(tabs)
-      )});localStorage.setItem('touchbox-appearance','light');localStorage.setItem('touchbox-spaces',${JSON.stringify(
+      )});localStorage.setItem('kudiumbrowser-appearance','light');localStorage.setItem('kudiumbrowser-spaces',${JSON.stringify(
         JSON.stringify([
           {
             id: 'default',
@@ -775,7 +775,7 @@ app
       const out=path.resolve('docs/evidence/developer-sidebar');fs.mkdirSync(out,{recursive:true});
       const headerOut=path.resolve('docs/evidence/ai-header');fs.mkdirSync(headerOut,{recursive:true});
       for(const [sideWidth,theme,paused] of [[600,'light',false],[368,'dark',false],[300,'light',true],[240,'dark',true]]) {
-        await evaluate(main,`(()=>{document.querySelector('.ai-sidebar').style.width='${sideWidth}px';document.querySelector('.ai-panel-slot').style.width='${sideWidth+8}px';localStorage.setItem('touchbox-appearance','${theme}');window.dispatchEvent(new Event('storage'));})();undefined`);
+        await evaluate(main,`(()=>{document.querySelector('.ai-sidebar').style.width='${sideWidth}px';document.querySelector('.ai-panel-slot').style.width='${sideWidth+8}px';localStorage.setItem('kudiumbrowser-appearance','${theme}');window.dispatchEvent(new Event('storage'));})();undefined`);
         main.webContents.send('ai-mcp-changed',{running:paused,paused});await wait(300);
         for(const tab of ['assistant','tasks','developer']) {
           await evaluate(main,`document.getElementById('ai-${tab}-tab').click();undefined`);await wait(150);
@@ -791,7 +791,7 @@ app
       await evaluate(main,"document.querySelector('.ai-sidebar').style.removeProperty('width');document.querySelector('.ai-panel-slot').style.removeProperty('width');document.getElementById('ai-developer-tab').click();undefined");await wait(200);
 
       for(const [width,theme] of [[1160,'light'],[740,'dark']]) {
-        main.setContentSize(width,700);await evaluate(main,`localStorage.setItem('touchbox-appearance',${JSON.stringify(theme)});window.dispatchEvent(new Event('storage'));undefined`);await wait(300);
+        main.setContentSize(width,700);await evaluate(main,`localStorage.setItem('kudiumbrowser-appearance',${JSON.stringify(theme)});window.dispatchEvent(new Event('storage'));undefined`);await wait(300);
         const bounds=await evaluate(main,"(()=>{const panel=document.querySelector('.developer-sidebar'),picker=panel.querySelector('.group-picker-trigger'),tabs=document.querySelector('.ai-sidebar-tabs');return {width:panel.clientWidth,overflow:panel.scrollWidth>panel.clientWidth,picker:picker.getBoundingClientRect().width,tabsOverflow:tabs.scrollWidth>tabs.clientWidth,tabHeights:[...tabs.querySelectorAll('button')].map(button=>button.getBoundingClientRect().height),labelLines:picker.querySelector('.group-picker-label').getBoundingClientRect().height}})()");assert(!bounds.overflow&&!bounds.tabsOverflow,'narrow panel has no horizontal overflow');assert(bounds.picker<=bounds.width);assert(bounds.tabHeights.every(height=>height<=36),'tabs remain single-line');assert(bounds.labelLines<=20,'group label remains single-line');fs.writeFileSync(path.join(out,`${width}-${theme}.png`),(await main.capturePage()).toPNG());
       }
       await evaluate(main,"document.querySelector('[aria-label=\"Developer group\"]').click();undefined");await until("!!document.querySelector('.group-picker [role=option]')");assert(await evaluate(main,"!!document.querySelector('.group-picker .group-icon-slot')"),'picker reuses GroupIcon');
@@ -814,7 +814,7 @@ app
       await evaluate(main,`window.electron.browser.sync({apps:${JSON.stringify(tabs)},visible:[{id:'personal-home',x:310,y:80,width:700,height:500}],focusedId:'personal-home'})`);await wait(300);assert.equal(views().length,0,'forged layout cannot reveal locked group');
       const {Client}=require('@modelcontextprotocol/sdk/client/index.js');const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
       const reserve=http.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
-      await evaluate(main,`window.electron.ai.mcpUpdate({enabled:true,port:${port}})`);const connection=(await evaluate(main,'window.electron.ai.mcpConnection()')).mcpServers.touchbox;
+      await evaluate(main,`window.electron.ai.mcpUpdate({enabled:true,port:${port}})`);const connection=(await evaluate(main,'window.electron.ai.mcpConnection()')).mcpServers.kudiumbrowser;
       const agent=new Client({name:'group-lock-boundary',version:'1'},{capabilities:{}});await agent.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
       const listed=await agent.callTool({name:'list_tabs',arguments:{}});assert(!JSON.stringify(listed.content).includes('personal-home'),'MCP must not list locked tabs');
       const read=await agent.callTool({name:'read_page',arguments:{tabId:'personal-home'}});assert(read.isError,'MCP cannot read a locked page');await agent.close();
@@ -825,7 +825,7 @@ app
       await lock('unlock');assert.equal(groupAuthenticationCalls,2,'reuse session grant');
       main.reload();await wait(1000);assert(!api.getGroupLocks().locked('personal'),'renderer reload retains browser-session grant');
       require('electron').powerMonitor.emit('lock-screen');await until("!!document.querySelector('.group-access-gate')");assert(api.getGroupLocks().locked('personal'));assert.equal(views().length,0);
-      await evaluate(main,"localStorage.setItem('touchbox-appearance','dark');window.dispatchEvent(new Event('storage'))");main.setContentSize(640,600);await wait(300);fs.writeFileSync(path.join(out,'locked-dark-narrow.png'),(await main.capturePage()).toPNG());
+      await evaluate(main,"localStorage.setItem('kudiumbrowser-appearance','dark');window.dispatchEvent(new Event('storage'))");main.setContentSize(640,600);await wait(300);fs.writeFileSync(path.join(out,'locked-dark-narrow.png'),(await main.capturePage()).toPNG());
       finishGroupAuthentication=()=>{};const pending=attemptLock('unlock');for(let i=0;i<30&&groupAuthenticationCalls<3;i++)await wait(50);require('electron').powerMonitor.emit('suspend');finishGroupAuthentication();assert((await pending).error.includes('locked during authentication'));finishGroupAuthentication=undefined;assert(api.getGroupLocks().locked('personal'));
       await lock('unlock');await lock('unprotect');assert(!api.getGroupLocks().snapshot().protected.includes('personal'));
       const longSlug='personal-group-with-a-long-reference-for-tooltip-checking';
@@ -843,7 +843,7 @@ app
       await web.executeJavaScript(`(()=>{const source=document.createElement('div');source.setAttribute('role','button');source.setAttribute('aria-label','Native HTML source');source.draggable=true;source.style='position:fixed;left:20px;top:40px;width:80px;height:40px;background:lightblue;z-index:9999';source.ondragstart=event=>{window.nativeHTMLStarted=event.isTrusted;event.dataTransfer.setData('text/plain','Native browser HTML payload');event.dataTransfer.effectAllowed='copy';};const target=document.createElement('div');target.setAttribute('role','button');target.setAttribute('aria-label','Native HTML target');target.style='position:fixed;left:220px;top:40px;width:100px;height:40px;background:lightgreen;z-index:9999';target.ondragover=event=>{event.preventDefault();event.dataTransfer.dropEffect='copy';};target.ondrop=event=>{event.preventDefault();window.nativeHTMLDrop={trusted:event.isTrusted,text:event.dataTransfer.getData('text/plain')};};document.body.append(source,target);})()`);
       const {Client}=require('@modelcontextprotocol/sdk/client/index.js');const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
       const reserve=http.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
-      await evaluate(main,`window.electron.ai.mcpUpdate({enabled:true,port:${port}})`);const connection=(await evaluate(main,'window.electron.ai.mcpConnection()')).mcpServers.touchbox;
+      await evaluate(main,`window.electron.ai.mcpUpdate({enabled:true,port:${port}})`);const connection=(await evaluate(main,'window.electron.ai.mcpConnection()')).mcpServers.kudiumbrowser;
       const agent=new Client({name:'native-html-drag',version:'1'},{capabilities:{}});await agent.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
       const decode=result=>{assert(!result.isError,JSON.stringify(result));return JSON.parse(result.content[0].text);};
       const savedApproval=dialog.showMessageBox;dialog.showMessageBox=async()=>({response:1});
@@ -873,7 +873,7 @@ app
       const {Client}=require('@modelcontextprotocol/sdk/client/index.js');const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
       const reserve=http.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
       await evaluate(main,`window.electron.ai.mcpUpdate({enabled:true,port:${port}})`);
-      const connection=(await evaluate(main,'window.electron.ai.mcpConnection()')).mcpServers.touchbox;
+      const connection=(await evaluate(main,'window.electron.ai.mcpConnection()')).mcpServers.kudiumbrowser;
       const agent=new Client({name:'native-file-chooser',version:'1'},{capabilities:{}});await agent.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
       const decode=result=>{assert(!result.isError,JSON.stringify(result));return JSON.parse(result.content[0].text);};
       const file=path.join(runtimeDir,'native-artifact.txt');fs.writeFileSync(file,'Native chooser fixture');
@@ -1240,12 +1240,12 @@ app
     }
     if (process.argv.includes('--storage-recovery-only')) {
       const original=JSON.stringify([{id:'recovered-tab',name:'Recovery',url:url+'/',sessionId:'recovery-account',spaceId:'work',folderId:'reading',icon:''},null]);
-      await evaluate(main, `localStorage.setItem('user_apps',${JSON.stringify(original)});localStorage.setItem('touchbox-spaces','{broken');localStorage.setItem('touchbox-active-space','work');localStorage.setItem('user_last_app_id','recovered-tab');undefined`);
+      await evaluate(main, `localStorage.setItem('user_apps',${JSON.stringify(original)});localStorage.setItem('kudiumbrowser-spaces','{broken');localStorage.setItem('kudiumbrowser-active-space','work');localStorage.setItem('user_last_app_id','recovered-tab');undefined`);
       await main.reload();await wait(700);
       assert(await evaluate(main, `document.querySelector('.folder-heading')?.textContent.includes('Recovered folder')`), 'Missing folder did not recover visibly');
       assert(await evaluate(main, `(()=>{const row=document.querySelector('.tab-folder [data-tab-motion="sidebar-recovered-tab"] .sidebar-app');return !!row && row.getBoundingClientRect().height>0;})()`), 'Valid session not reachable inside recovered folder');
       assert.equal(await evaluate(main, "localStorage.getItem('user_apps.recovery')"), original, 'Original apps were not preserved');
-      assert.equal(await evaluate(main, "localStorage.getItem('touchbox-spaces.recovery')"), '{broken', 'Original spaces were not preserved');
+      assert.equal(await evaluate(main, "localStorage.getItem('kudiumbrowser-spaces.recovery')"), '{broken', 'Original spaces were not preserved');
       assert(await evaluate(main, `Array.from(document.querySelectorAll('[role=status]')).some(item=>item.textContent.includes('saved layout data needed recovery'))`), 'Recovery notice missing');
       assert(await evaluate(main, `Array.from(document.querySelectorAll('button')).some(item=>item.textContent==='Copy recovery data')`), 'Recovery data control missing');
       assert.equal(await evaluate(main, "JSON.parse(localStorage.getItem('user_apps'))[0].sessionId"), 'recovery-account');
@@ -1256,7 +1256,7 @@ app
     if (process.argv.includes('--folder-actions-only')) {
       const folderTabs=[{id:'folder-one',name:'First page',sessionName:'Reading',url:url+'/first',icon:'',spaceId:'default',folderId:'reading',sessionId:'reader',sessionProfileId:'shared-reader',pinned:true},{id:'folder-two',name:'Second page',url:url+'/second',icon:'',spaceId:'default',folderId:'reading',sessionId:'reader',sessionProfileId:'shared-reader',pinned:true}];
       const folderSpaces=[{id:'default',name:'Personal',color:'iris',folders:[{id:'reading',name:'Reading'}]},{id:'work',name:'Work',color:'blue',folders:[{id:'reading',name:'Existing folder'}]}];
-      await evaluate(main,`localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(folderTabs))});localStorage.setItem('touchbox-spaces',${JSON.stringify(JSON.stringify(folderSpaces))});localStorage.setItem('touchbox-active-space','default');undefined`);
+      await evaluate(main,`localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(folderTabs))});localStorage.setItem('kudiumbrowser-spaces',${JSON.stringify(JSON.stringify(folderSpaces))});localStorage.setItem('kudiumbrowser-active-space','default');undefined`);
       await main.reload();await wait(700);
       const openFolderMenu=async()=>{nativeContextMenu=undefined;await evaluate(main,`document.querySelector('.folder-heading').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}));undefined`);await wait(100);assert(nativeContextMenu,'Folder native menu missing');};
       await openFolderMenu();
@@ -1278,9 +1278,9 @@ app
       const moved=await evaluate(main,`JSON.parse(localStorage.getItem('user_apps'))`);
       assert(moved.every(tab=>tab.spaceId==='work'&&tab.folderId!=='reading'));
       assert.deepEqual(moved.map(tab=>[tab.id,tab.sessionId,tab.sessionProfileId]),folderTabs.map(tab=>[tab.id,tab.sessionId,tab.sessionProfileId]));
-      const savedSpaces=await evaluate(main,`JSON.parse(localStorage.getItem('touchbox-spaces'))`);
+      const savedSpaces=await evaluate(main,`JSON.parse(localStorage.getItem('kudiumbrowser-spaces'))`);
       assert.equal(savedSpaces[0].folders.length,0);assert.equal(savedSpaces[1].folders.length,2);
-      await evaluate(main,`localStorage.setItem('touchbox-active-space','work');undefined`);await main.reload();await wait(500);
+      await evaluate(main,`localStorage.setItem('kudiumbrowser-active-space','work');undefined`);await main.reload();await wait(500);
       assert(await evaluate(main,`!!document.querySelector('.tab-folder [data-tab-motion="sidebar-folder-one"]')`),'Moved session missing in destination folder');
       fs.writeFileSync(path.join(out,'folder-actions.png'),(await main.capturePage()).toPNG());
       console.log('PASS: native folder copy/menu feedback and cross-space move preserve shared login identities and resolve folder ID collision');
@@ -1288,7 +1288,7 @@ app
     }
     if (process.argv.includes('--organization-only')) {
       const favoriteTabs = Array.from({length:25},(_,index)=>({id:`favorite-${index}`,name:`Favorite ${index}`,sessionName:`Favorite ${index}`,url:url+`/favorite-${index}`,icon:'',sessionId:`favorite-${index}`,spaceId:'default',favorite:true,pinned:true}));
-      await evaluate(main, `localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify([...tabs,...favoriteTabs]))});localStorage.setItem('touchbox-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[{id:'reading',name:'Reading'}],selectedAppId:'personal-home'}]))});undefined`);
+      await evaluate(main, `localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify([...tabs,...favoriteTabs]))});localStorage.setItem('kudiumbrowser-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[{id:'reading',name:'Reading'}],selectedAppId:'personal-home'}]))});undefined`);
       await main.reload(); await wait(700);
       const metrics = await evaluate(main, `(()=>{const grid=document.querySelector('.favorites-grid');return {count:grid.querySelectorAll('.sidebar-app').length,columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,scroll:grid.scrollHeight>grid.clientHeight};})()`);
       assert.equal(metrics.count,26); assert.equal(metrics.columns,4); assert(metrics.scroll, 'Large favorites collection is not scrollable');
@@ -1331,7 +1331,7 @@ app
         const registration = await web.executeJavaScript(`(async()=>{
           if(!isSecureContext || !window.PublicKeyCredential) throw new Error('WebAuthn unavailable');
           const challenge=crypto.getRandomValues(new Uint8Array(32));
-          window.testCredential=await navigator.credentials.create({publicKey:{challenge,rp:{id:'localhost',name:'TouchBox test'},user:{id:new Uint8Array([1,2,3,4]),name:'test-user',displayName:'Test user'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{residentKey:'required',userVerification:'required'},timeout:10000}});
+          window.testCredential=await navigator.credentials.create({publicKey:{challenge,rp:{id:'localhost',name:'KudiumBrowser test'},user:{id:new Uint8Array([1,2,3,4]),name:'test-user',displayName:'Test user'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{residentKey:'required',userVerification:'required'},timeout:10000}});
           return {id:testCredential.id,type:testCredential.type,client:JSON.parse(new TextDecoder().decode(testCredential.response.clientDataJSON))};
         })()`,true);
         assert.equal(registration.type,'public-key');assert.equal(registration.client.type,'webauthn.create');
@@ -1370,7 +1370,7 @@ app
       assert(stored.find(item=>item.id==='personal-home').sessionId==='work');
       assert(stored.find(item=>item.id==='personal-messages').sessionId==='personal');
       const current=main.contentView.children.filter(view => view instanceof WebContentsView && view.webContents.session !== main.webContents.session).find(view=>view.getVisible());
-      assert.equal(current.webContents.session,require('electron').session.fromPartition('persist:touchbox-work'));
+      assert.equal(current.webContents.session,require('electron').session.fromPartition('persist:kudiumbrowser-work'));
       main.webContents.send('browser-tab-request',{action:'create',background:true,app:{id:'shared-target',name:'Shared group',sessionName:'Shared group',sessionId:'shared-group',sessionProfileId:'work',spaceId:'default',url:url+'/shared',icon:'',pinned:true}});await wait(150);
       await drag('Shared group');
       stored=await evaluate(main,"JSON.parse(localStorage.getItem('user_apps'))");
@@ -1384,7 +1384,7 @@ app
     }
     if (process.argv.includes('--shared-login-only')) {
       const { session }=require('electron');
-      const target=session.fromPartition('persist:touchbox-work');
+      const target=session.fromPartition('persist:kudiumbrowser-work');
       await target.cookies.set({url,name:'shared-login-test',value:'work-account'});
       const before=await evaluate(main,"JSON.parse(localStorage.getItem('user_apps'))");
       await evaluate(main,`document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}));undefined`);await wait(100);
@@ -1448,7 +1448,7 @@ app
       fs.writeFileSync(path.join(out,'all-groups-closed.png'),(await main.capturePage()).toPNG());
       await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').click();undefined`);await wait(400);
       for (const appearance of ['light','dark']) {
-        await evaluate(main, `localStorage.setItem('touchbox-appearance',${JSON.stringify(appearance)});undefined`);
+        await evaluate(main, `localStorage.setItem('kudiumbrowser-appearance',${JSON.stringify(appearance)});undefined`);
         main.reload();await wait(1000);
         for (const width of [1080,480]) {
           main.setSize(width,720);await wait(200);
@@ -1493,7 +1493,7 @@ app
       const visible = main.contentView.children.filter(view=>view instanceof WebContentsView && view.webContents.session!==main.webContents.session).find(view=>view.getVisible());
       assert.equal(visible.webContents.getURL(), groupHomeURL);
       for (const appearance of ['light','dark']) {
-        await evaluate(main, `localStorage.setItem('touchbox-appearance',${JSON.stringify(appearance)});undefined`);
+        await evaluate(main, `localStorage.setItem('kudiumbrowser-appearance',${JSON.stringify(appearance)});undefined`);
         main.reload();await wait(1200);
         for (const width of [1080,480]) {
           main.setSize(width,720); await wait(250);
@@ -1544,7 +1544,7 @@ app
       prefs.updateBrowserPreferences({tabDisplayMode:'hover',folderHoverPreviews:true,addressBarPlacement:'header'});
       const bulk=Array.from({length:2000},(_,i)=>({id:'bulk-'+i,name:'Page '+i,url:url+'/page/'+i,icon:'',sessionId:'bulk',sessionName:'Bulk session',spaceId:'default',pinned:true}));
       const data=[...bulk,{id:'single',name:'Only page',sessionName:'Single session',url:url+'/single',icon:'',sessionId:'single',spaceId:'default',pinned:true},...['a','b'].map(id=>({id:'folder-'+id,name:'Folder page '+id,sessionName:'Folder app',url:url+'/folder/'+id,icon:'',sessionId:'folder-app',spaceId:'default',folderId:'preview-folder',pinned:true}))];
-      await evaluate(main,`localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(data))});localStorage.setItem('touchbox-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[{id:'preview-folder',name:'Preview folder'}],selectedAppId:'bulk-0'}]))});localStorage.setItem('touchbox-collapsed-folders','["preview-folder"]');localStorage.setItem('user_last_app_id','bulk-0');undefined`);
+      await evaluate(main,`localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(data))});localStorage.setItem('kudiumbrowser-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[{id:'preview-folder',name:'Preview folder'}],selectedAppId:'bulk-0'}]))});localStorage.setItem('kudiumbrowser-collapsed-folders','["preview-folder"]');localStorage.setItem('user_last_app_id','bulk-0');undefined`);
       main.reload();await wait(1400);
       for(let attempt=0;attempt<40;attempt++) {
         if(await evaluate(main,`!document.querySelector('.horizontal-tabs') && !document.querySelector('.browser-chrome') && !!document.querySelector('.sidebar-app[aria-label="Bulk session"]')`)) break;
@@ -1568,7 +1568,7 @@ app
       await input(main,'input[aria-label="Search preview"]','Page 1999');await wait(100);
       assert(await evaluate(main,`document.querySelectorAll('.tab-preview-row').length===1`));
       await evaluate(main,`document.querySelector('input[aria-label="Search preview"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));undefined`);await wait(200);
-      assert(await evaluate(main,`JSON.parse(localStorage.getItem('touchbox-spaces'))[0].selectedAppId==='bulk-1999'`));
+      assert(await evaluate(main,`JSON.parse(localStorage.getItem('kudiumbrowser-spaces'))[0].selectedAppId==='bulk-1999'`));
       assert(await evaluate(main,`!document.querySelector('.anchored-tab-preview')`));
       await hover('.sidebar-app[aria-label="Single session"]');await wait(300);assert(await evaluate(main,`!document.querySelector('.anchored-tab-preview')`),'Single page must not create redundant popup');
       prefs.updateBrowserPreferences({tabDisplayMode:'click'});await wait(150);
@@ -1623,7 +1623,7 @@ app
         await evaluate(main,`document.querySelector('[aria-label="Toggle address bar extensions"]').click();undefined`);await wait(150);
         assert(await evaluate(main,`!!document.querySelector('.extension-toolbar [aria-label="Extensions"]')`),'Expanded group must restore picker');
       }
-      main.setSize(1160,700);await evaluate(main,"localStorage.setItem('touchbox-appearance','dark');undefined");main.reload();await wait(1200);
+      main.setSize(1160,700);await evaluate(main,"localStorage.setItem('kudiumbrowser-appearance','dark');undefined");main.reload();await wait(1200);
       fs.writeFileSync(path.join(out,'address-header-dark.png'),(await main.capturePage()).toPNG());
       const settings=await create('settings',1080,800);
       await tab(settings,'Appearance');await wait(150);
@@ -1665,7 +1665,7 @@ app
       assert(await evaluate(main,`(()=>{const tab=document.getElementById('page-tab-layout-6').getBoundingClientRect(),list=document.querySelector('.horizontal-tabs').getBoundingClientRect();return tab.left>=list.left-1 && tab.right<=list.right+1;})()`),'Selected overflow tab must scroll into view');
       await evaluate(main,"document.getElementById('page-tab-layout-6').focus();document.getElementById('page-tab-layout-6').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));undefined");await wait(150);
       assert(await evaluate(main,"document.getElementById('page-tab-layout-5').getAttribute('aria-selected')==='true'"),'Arrow keys must select neighboring tab');
-      main.setSize(1280,700);await evaluate(main,"localStorage.setItem('touchbox-appearance','dark');undefined");main.reload();await wait(1200);
+      main.setSize(1280,700);await evaluate(main,"localStorage.setItem('kudiumbrowser-appearance','dark');undefined");main.reload();await wait(1200);
       fs.writeFileSync(path.join(out,'horizontal-tabs-dark.png'),(await main.capturePage()).toPNG());
       console.log('PASS: compact tabs, adjacent new-tab action, separate tools, 1280/900/600/480 layouts, overflow selection and keyboard navigation. Screenshots: '+out);
       Object.values(windows).forEach(win=>win.close());server.close();app.quit();return;
@@ -1773,7 +1773,7 @@ app
       nativeContextMenu.items.find(item=>item.label==='Rename Space…').click();nativeContextMenu.closePopup(main);await wait(150);
       await input(main,'[aria-label="Space name"]','Personal renamed');
       await evaluate(main,"Array.from(document.querySelectorAll('[role=dialog] button')).find(button=>button.textContent==='Save changes').click();undefined");await wait(200);
-      const saved=await evaluate(main,"JSON.parse(localStorage.getItem('touchbox-spaces'))");
+      const saved=await evaluate(main,"JSON.parse(localStorage.getItem('kudiumbrowser-spaces'))");
       assert.equal(saved.length,2);assert.equal(saved.find(space=>space.id==='default').name,'Personal renamed');
       assert(await evaluate(main,"document.querySelector('.space-title-toggle').textContent.includes('Personal renamed')"));
       for(const width of [1160,480]) { main.setSize(width,700);await wait(150);assert(await evaluate(main,"document.querySelector('.space-title-toggle').scrollWidth <= document.querySelector('.space-title-toggle').clientWidth + 1"));fs.writeFileSync(path.join(out,'space-title-'+width+'.png'),(await main.capturePage()).toPNG()); }
@@ -1817,7 +1817,7 @@ app
       assert(await evaluate(main, `!!Array.from(document.querySelectorAll('button')).find(button=>button.textContent==='Emoji picker…')`));
       fs.writeFileSync(path.join(out,'space-customization-dialog.png'),(await main.capturePage()).toPNG());
       await evaluate(main, `Array.from(document.querySelectorAll('[role=dialog] button')).find(button=>button.textContent==='Create space').click();undefined`);await wait(300);
-      const created = await evaluate(main, `JSON.parse(localStorage.getItem('touchbox-spaces')).find(space=>space.name==='Creative')`);
+      const created = await evaluate(main, `JSON.parse(localStorage.getItem('kudiumbrowser-spaces')).find(space=>space.name==='Creative')`);
       assert.equal(created.iconEmoji,'🎨');assert.equal(created.customColor,'#446688');
       assert(await evaluate(main,"document.querySelector('.space-heading .space-symbol-emoji').textContent==='🎨'"));
       assert(await evaluate(main,"document.querySelector('.workspace').style.getPropertyValue('--sidebar-material').includes('#446688')"));
@@ -1929,7 +1929,7 @@ app
       const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
       const reserve=http.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
       await evaluate(main, `window.electron.ai.mcpUpdate({enabled:true,port:${port}})`);
-      const connection=(await evaluate(main,`window.electron.ai.mcpConnection()`)).mcpServers.touchbox;
+      const connection=(await evaluate(main,`window.electron.ai.mcpConnection()`)).mcpServers.kudiumbrowser;
       const agent=new Client({name:'native-opener-handoff',version:'1'},{capabilities:{}});
       await agent.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
       const decode = result=>{assert(!result.isError,JSON.stringify(result));return JSON.parse(result.content[0].text);};
@@ -1950,7 +1950,7 @@ app
         assert(submitted.text.includes('Form received'),'Agent must continue in the same adopted child after submission');
         await runtime(web,'blankRef.close();undefined');await wait(300);
         assert(blank.isDestroyed(),'Closing the child reference must close its tab');
-        assert(!main.isDestroyed(),'Closing a child must preserve the TouchBox window');
+        assert(!main.isDestroyed(),'Closing a child must preserve the KudiumBrowser window');
         assert(!decode(await agent.callTool({name:'list_tabs',arguments:{}})).some(tab=>tab.id===blankTab.id));
       } finally {dialog.showMessageBox=originalApproval;await agent.close();}
       // Hold actual renderer acknowledgement to exercise pre-adoption lifecycle.
@@ -2327,7 +2327,7 @@ app
       session.downloadURL(url + '/download-fixture'); await done; await wait(300);
       const count = BrowserWindow.getAllWindows().length;
       await evaluate(main, `document.querySelector('.system-space-switcher button').click();undefined`); await wait(250);
-      assert(await evaluate(main, "document.querySelector('.workspace-sidebar .download-sidebar-panel').textContent.includes('touchbox-download-test.txt')"));
+      assert(await evaluate(main, "document.querySelector('.workspace-sidebar .download-sidebar-panel').textContent.includes('kudiumbrowser-download-test.txt')"));
       const thumbnailId=downloads.getDownloadHistory()[0].id;
       const iconResults=await evaluate(main,`Promise.all(Array.from({length:3},()=>window.electron.browser.downloadThumbnail(${JSON.stringify(thumbnailId)})))`);
       assert(iconResults.every(icon=>typeof icon==='string'&&icon.startsWith('data:image/')&&icon===iconResults[0]),'Native download thumbnail missing or inconsistent');
@@ -2358,7 +2358,7 @@ app
       await evaluate(main, `Array.from(document.querySelectorAll('.download-inline-confirm button')).find(button => button.textContent === 'Clear').click();undefined`); await wait(150);
       assert.equal(downloads.getDownloadHistory().length, 0);
       assert.equal(await evaluate(main,`window.electron.browser.downloadThumbnail(${JSON.stringify(thumbnailId)})`),null,'Cleared record retained a usable thumbnail');
-      assert(fs.existsSync(path.join(runtimeDir, 'touchbox-download-test.txt')));
+      assert(fs.existsSync(path.join(runtimeDir, 'kudiumbrowser-download-test.txt')));
       assert(await evaluate(main, `document.querySelectorAll('[aria-label="Close library"]').length === 0 && !document.querySelector('[aria-label="Close downloads"]')`));
       fs.writeFileSync(path.join(out, 'downloads-sidebar-empty.png'), (await main.capturePage()).toPNG());
       await evaluate(main, `document.querySelector('.system-space-switcher button').click();undefined`); await wait(100);
@@ -2533,7 +2533,7 @@ app
     );
     if (process.argv.includes('--popup-only')) {
       const fixture=path.join(runtimeDir,'popup-extension');fs.mkdirSync(fixture);
-      fs.writeFileSync(path.join(fixture,'manifest.json'),JSON.stringify({manifest_version:3,name:'Touchbox Popup Test',version:'1.0',permissions:['storage','tabs'],action:{default_title:'Popup test',default_popup:'popup.html'}}));
+      fs.writeFileSync(path.join(fixture,'manifest.json'),JSON.stringify({manifest_version:3,name:'KudiumBrowser Popup Test',version:'1.0',permissions:['storage','tabs'],action:{default_title:'Popup test',default_popup:'popup.html'}}));
       fs.writeFileSync(path.join(fixture,'popup.html'),`<!doctype html><style>body{box-sizing:border-box;width:320px;height:220px;margin:0;padding:20px;font:14px system-ui}input{display:block;width:260px;margin:8px 0;padding:8px}button{padding:8px 16px}</style><label for="note">Note</label><input id="note"><button id="save">Save</button><button id="info">Open help</button><p id="result"></p><script src="popup.js"></script>`);
       fs.writeFileSync(path.join(fixture,'popup.js'),`document.querySelector('#save').onclick=async()=>{await chrome.storage.local.set({note:document.querySelector('#note').value});document.querySelector('#result').textContent='Saved'};document.querySelector('#info').onclick=()=>chrome.tabs.create({url:${JSON.stringify(url.replace('127.0.0.1','localhost')+'/extension-help')}});`);
       const manager=require(path.join(runtimeDir,'extensions.js'));
@@ -2574,7 +2574,7 @@ app
       assert.equal(helpWindow.webContents.getLastWebPreferences().sandbox,true);
       helpWindow.close();
       if(!actionPopup.isDestroyed()) actionPopup.destroy();
-      const installedPath=process.env.TOUCHBOX_TEST_INSTALLED_EXTENSION;
+      const installedPath=process.env.KUDIUMBROWSER_TEST_INSTALLED_EXTENSION;
       if(installedPath) {
         const workerErrors=[];
         views[0].webContents.session.serviceWorkers.on('console-message',(_event,details)=>{if(details.level>=3)workerErrors.push(details.message);});
@@ -2622,7 +2622,7 @@ app
       views[2].webContents.sendInputEvent({type:'mouseUp',x:point.x,y:point.y,button:'left',clickCount:1});
       await wait(200);
       assert.equal(await evaluate(main, `document.querySelector('.pane-tab-strip.focused').dataset.pane`),'right');
-      assert.equal(await evaluate(main, `JSON.parse(localStorage.getItem('touchbox-spaces')).find(space=>space.id==='default').selectedAppId`),'work-home');
+      assert.equal(await evaluate(main, `JSON.parse(localStorage.getItem('kudiumbrowser-spaces')).find(space=>space.id==='default').selectedAppId`),'work-home');
       // Native shortcuts cycle only the focused account's tabs.
       await evaluate(main, `document.getElementById('page-tab-left-personal-messages').click();undefined`);
       views[1].webContents.focus();
@@ -2703,7 +2703,7 @@ app
     for (const appearance of ['light', 'dark']) {
       await evaluate(
         main,
-        `localStorage.setItem('touchbox-appearance','${appearance}');window.dispatchEvent(new Event('touchbox-appearance-change'));undefined`
+        `localStorage.setItem('kudiumbrowser-appearance','${appearance}');window.dispatchEvent(new Event('kudiumbrowser-appearance-change'));undefined`
       );
       await wait(150);
       await evaluate(
@@ -2743,7 +2743,7 @@ app
     main.webContents.sendInputEvent({type:'mouseUp',...reloadButton,button:'left',clickCount:1});
     await wait(300);
     assert((await views[0].webContents.executeJavaScript('window.performance.timeOrigin'))>reloads);
-    assert.equal(await evaluate(main, `localStorage.getItem('touchbox-sidebar-width')`),'240');
+    assert.equal(await evaluate(main, `localStorage.getItem('kudiumbrowser-sidebar-width')`),'240');
     await evaluate(main, `document.querySelector('.sidebar-resize-handle').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));undefined`);
     await wait(350);
     // Resize across the native website region, then collapse/restore and reset.
@@ -2758,7 +2758,7 @@ app
     await wait(200);
     const resizedWidth = await evaluate(main, `document.querySelector('.workspace-sidebar').getBoundingClientRect().width`);
     assert.equal(resizedWidth,420);
-    assert.equal(await evaluate(main, `localStorage.getItem('touchbox-sidebar-width')`),'420');
+    assert.equal(await evaluate(main, `localStorage.getItem('kudiumbrowser-sidebar-width')`),'420');
     assert.equal(views[0].getBounds().x,420);
     await evaluate(main, `document.querySelector('button[aria-label="Collapse sidebar"]').click();undefined`);
     await wait(350);
@@ -2771,11 +2771,11 @@ app
     assert.equal(await evaluate(main, `document.querySelector('.workspace-sidebar').getBoundingClientRect().width`),300);
     await evaluate(
       main,
-      `localStorage.setItem('touchbox-appearance','light');window.dispatchEvent(new Event('touchbox-appearance-change'));undefined`
+      `localStorage.setItem('kudiumbrowser-appearance','light');window.dispatchEvent(new Event('kudiumbrowser-appearance-change'));undefined`
     );
     await wait(150);
     fs.writeFileSync(
-      path.join(out, 'touchbox-hybrid.png'),
+      path.join(out, 'kudiumbrowser-hybrid.png'),
       (await main.capturePage()).toPNG()
     );
     const beforeCommandWindows = BrowserWindow.getAllWindows().length;
@@ -2801,7 +2801,7 @@ app
       1
     );
     fs.writeFileSync(
-      path.join(out, 'touchbox-command.png'),
+      path.join(out, 'kudiumbrowser-command.png'),
       (await main.capturePage()).toPNG()
     );
     await input(
@@ -2848,7 +2848,7 @@ app
     assert.equal(
       await evaluate(
         main,
-        `JSON.parse(localStorage.getItem('touchbox-spaces')).length`
+        `JSON.parse(localStorage.getItem('kudiumbrowser-spaces')).length`
       ),
       3
     );
@@ -2864,7 +2864,7 @@ app
       )
     );
     fs.writeFileSync(
-      path.join(out, 'touchbox-custom.png'),
+      path.join(out, 'kudiumbrowser-custom.png'),
       (await add.capturePage()).toPNG()
     );
     const settings = await create('settings', 1080, 800);
@@ -2901,7 +2901,7 @@ app
       )
     );
     fs.writeFileSync(
-      path.join(out, 'touchbox-spaces.png'),
+      path.join(out, 'kudiumbrowser-spaces.png'),
       (await settings.capturePage()).toPNG()
     );
     await tab(settings, 'Appearance');
@@ -2918,7 +2918,7 @@ app
       )
     );
     fs.writeFileSync(
-      path.join(out, 'touchbox-appearance-dark.png'),
+      path.join(out, 'kudiumbrowser-appearance-dark.png'),
       (await settings.capturePage()).toPNG()
     );
     settings.setSize(760,600);
@@ -2929,7 +2929,7 @@ app
     }
     fs.writeFileSync(path.join(out,'preferences-narrow.png'),(await settings.capturePage()).toPNG());
     settings.setSize(1080,800);
-    if (process.env.TOUCHBOX_SMOKE_OUTPUT) {
+    if (process.env.KUDIUMBROWSER_SMOKE_OUTPUT) {
       const catalog = require('../fixtures/sidebar-preview-apps.json');
       const icon = (slug) =>
         catalog.find((item) => item.slug === slug)?.iconFilled128Png || '';
@@ -2981,7 +2981,7 @@ app
           pinned: false,
         },
         {
-          name: 'Build 5bee0087 — touchbox',
+          name: 'Build 5bee0087 — kudiumbrowser',
           icon: icon('github'),
           pinned: false,
         },
@@ -2996,7 +2996,7 @@ app
         main,
         `localStorage.setItem('user_apps',${JSON.stringify(
           JSON.stringify([...favoriteTabs, ...rows])
-        )});localStorage.setItem('touchbox-active-space','default');localStorage.setItem('touchbox-appearance','dark');localStorage.setItem('touchbox-spaces',${JSON.stringify(
+        )});localStorage.setItem('kudiumbrowser-active-space','default');localStorage.setItem('kudiumbrowser-appearance','dark');localStorage.setItem('kudiumbrowser-spaces',${JSON.stringify(
           JSON.stringify([
             {
               id: 'default',
@@ -3021,7 +3021,7 @@ app
         height: 850,
       });
       fs.writeFileSync(
-        path.join(out, 'touchbox-sidebar-refined.png'),
+        path.join(out, 'kudiumbrowser-sidebar-refined.png'),
         sidebar.toPNG()
       );
     }

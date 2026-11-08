@@ -1,8 +1,9 @@
-export type SyncProvider = 'icloud' | 'touchbox';
+export type SyncProvider = 'icloud' | 'kudiumbrowser';
 export interface SyncCategories {
   workspace: boolean;
   openTabs: boolean;
   preferences: boolean;
+  passwords?: boolean;
 }
 export interface SyncSettings {
   enabled: boolean;
@@ -18,7 +19,8 @@ export const syncCategories = [
   {
     id: 'openTabs',
     title: 'Open tabs',
-    description: 'Find tabs from your other Macs and choose where to continue.',
+    description:
+      'Find tabs from your other devices and choose where to continue.',
   },
   {
     id: 'preferences',
@@ -29,7 +31,7 @@ export const syncCategories = [
 export function defaultSyncSettings(platform = 'darwin'): SyncSettings {
   return {
     enabled: false,
-    provider: platform === 'darwin' ? 'icloud' : 'touchbox',
+    provider: platform === 'darwin' ? 'icloud' : 'kudiumbrowser',
     categories: { workspace: true, openTabs: true, preferences: true },
   };
 }
@@ -42,11 +44,16 @@ export function validateSyncSettings(value: unknown): SyncSettings {
       (key) => !['enabled', 'provider', 'categories'].includes(key)
     ) ||
     typeof settings.enabled !== 'boolean' ||
-    !['icloud', 'touchbox'].includes(settings.provider) ||
+    !['icloud', 'kudiumbrowser'].includes(settings.provider) ||
     !settings.categories ||
     typeof settings.categories !== 'object' ||
     Array.isArray(settings.categories) ||
-    Object.keys(settings.categories).length !== 3 ||
+    Object.keys(settings.categories).some(
+      (key) =>
+        !['workspace', 'openTabs', 'preferences', 'passwords'].includes(key)
+    ) ||
+    (settings.categories.passwords !== undefined &&
+      typeof settings.categories.passwords !== 'boolean') ||
     syncCategories.some(
       (category) => typeof settings.categories[category.id] !== 'boolean'
     )
@@ -73,9 +80,9 @@ export function cloudSyncStatus(
 ): CloudSyncStatus {
   let message = 'Your sync choices are saved. Sync is off.';
   if (settings.enabled) {
-    if (settings.provider === 'touchbox')
+    if (settings.provider === 'kudiumbrowser')
       message =
-        'Kudium Browser account sync is planned. Your choices are saved; no data is uploaded.';
+        'Connect your Kudium account and enroll your recovery key in Sync settings to start encrypted sync.';
     else if (platform !== 'darwin')
       message =
         'iCloud sync is available only on Mac. Choose Kudium Browser for other platforms.';

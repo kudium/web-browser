@@ -1,4 +1,4 @@
-# TouchBox Personal Data
+# Kudium Browser Personal Data
 
 Personal Data extends the original Password Manager rather than introducing another store. Browser Preferences and Group Settings share the `PersonalData` component and GroupIcon. The old `PasswordManager` export, IPC channel, storage directory, OS credential and login tools remain compatible.
 

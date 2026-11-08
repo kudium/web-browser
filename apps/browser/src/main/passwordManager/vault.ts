@@ -24,6 +24,7 @@ import type {
   DataOverride,
 } from '../../browser/passwordManager';
 
+import { validateSyncedLogins } from '../sync/passwords';
 import type { HookNotificationGrant } from '../../browser/siteDeveloper';
 
 interface Data {
@@ -96,7 +97,8 @@ export class PasswordVault {
     file: string,
     now?: () => number,
     private summaryProtection?: SummaryProtection,
-    private assertScopeWritable: (scope?: string) => void = () => {}
+    private assertScopeWritable: (scope?: string) => void = () => {},
+    private assertStoreWritable: () => void = () => {}
   ) {
     this.file = file;
     this.now = now || Date.now;
@@ -289,6 +291,7 @@ export class PasswordVault {
   }
 
   private persist() {
+    this.assertStoreWritable();
     const data = this.requireData();
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key!, iv);
@@ -518,6 +521,40 @@ export class PasswordVault {
       this.requireData().overrides || [],
       scope
     );
+  }
+
+  importSyncedLogins(value: unknown) {
+    const items = validateSyncedLogins(value);
+    const data = this.requireData();
+    const existing = new Set(
+      data.items
+        .filter((item) => !item.scope && item.kind === 'login')
+        .map((item) =>
+          JSON.stringify([item.origin, item.username, item.password])
+        )
+    );
+    const added = items.filter((item) => {
+      const key = JSON.stringify([item.origin, item.username, item.password]);
+      if (existing.has(key)) return false;
+      existing.add(key);
+      return true;
+    });
+    if (data.items.length + added.length > 1000)
+      throw new Error(
+        'Your vault is full. Remove unused items before importing.'
+      );
+    this.mutate(() => {
+      data.items.push(
+        ...added.map((item) => ({
+          ...item,
+          id: randomUUID(),
+          kind: 'login' as const,
+          fields: [],
+          allowAI: false,
+        }))
+      );
+    });
+    return added.length;
   }
 
   hookNotifications(scope?: string, origin?: string) {

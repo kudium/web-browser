@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "migrationId": "os-ciphertext-to-local-aes-gcm-v1",
+  "osIdentity": "Kudium Browser",
+  "format": {
+    "key": 1,
+    "encryption": 1,
+    "schema": 1
+  },
+  "requiredTargets": [
+    "darwin-arm64",
+    "darwin-x64",
+    "win32-x64",
+    "linux-x64"
+  ],
+  "supportedSourceVersions": [],
+  "requiredCases": [
+    "populated-upgrade",
+    "restart",
+    "interrupted-before-commit",
+    "interrupted-after-commit",
+    "unavailable-os-key",
+    "corrupt-record",
+    "corrupt-key",
+    "disk-full",
+    "concurrent-writer",
+    "identity-rename",
+    "rollback-export",
+    "future-format",
+    "cookie-persistence",
+    "browser-state-preservation",
+    "privacy-log-redaction"
+  ],
+  "minimumSuccessfulLaunches": 2,
+  "minimumBackupRetentionDays": 14,
+  "fixtureOrigin": "previous-release-ui",
+  "requireSignedArtifacts": true
+}

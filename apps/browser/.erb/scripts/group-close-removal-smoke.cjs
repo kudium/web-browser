@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 process.argv.push('--group-close-only');
-process.env.TOUCHBOX_SMOKE_OUTPUT = path.resolve('docs/evidence/group-close-removal');
+process.env.KUDIUMBROWSER_SMOKE_OUTPUT = path.resolve('docs/evidence/group-close-removal');
 let source = fs.readFileSync(path.resolve('.erb/scripts/browser-ui-smoke.cjs'),'utf8');
 const marker="      console.log('PASS: group menu and button unload views, preserve metadata and cookies, restore tabs lazily, protect cancelled unsaved changes, keep other groups resident');";
 if(!source.includes(marker))throw new Error('Group-close fixture changed; update this extension.');
@@ -20,7 +20,7 @@ source=source.replace(marker, String.raw`
 
       for(const appearance of ['light','dark'])for(const width of [800,400]) {
         nativeTheme.themeSource=appearance;
-        await evaluate(main, 'localStorage.setItem("touchbox-appearance",'+JSON.stringify(appearance)+');undefined');main.reload();await wait(1200);
+        await evaluate(main, 'localStorage.setItem("kudiumbrowser-appearance",'+JSON.stringify(appearance)+');undefined');main.reload();await wait(1200);
         main.setSize(width,600);await wait(200);
         require(path.join(runtimeDir,'dialogs.js')).showBrowserDialog=actualDialog;
         const click=()=>evaluate(main, 'document.querySelector(\'.sidebar-app[aria-label="Facebook · Personal"]\').closest(".sidebar-app-row").querySelector(".sidebar-app-close").click();undefined');

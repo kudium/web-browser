@@ -7,7 +7,7 @@ const { execFileSync } = require('child_process');
 const esbuild = require('esbuild');
 async function run() {
   const temporary = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-history-recovery-')
+    path.join(os.tmpdir(), 'kudiumbrowser-history-recovery-')
   );
   const ref = 'de2eae3bdf2f346d66dc91a6ef5aeda9581c0603';
   const baseline = execFileSync('git', ['show', `${ref}:src/main/history.ts`], {

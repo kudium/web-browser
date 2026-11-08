@@ -11,7 +11,7 @@ describe('Password Manager vault', () => {
   let now: number;
   let vault: PasswordVault;
   beforeEach(() => {
-    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-vault-'));
+    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-vault-'));
     file = path.join(directory, 'vault.json');
     now = 1000;
     vault = new PasswordVault(file, () => now);
@@ -31,6 +31,27 @@ describe('Password Manager vault', () => {
       allowAI: true,
       fields: [{ name: 'tel', value: '5551234', secret: false }],
     });
+  it('preserves the encrypted store when migration marks writes unavailable', () => {
+    let writable = true;
+    vault = new PasswordVault(
+      file,
+      () => now,
+      undefined,
+      undefined,
+      () => {
+        if (!writable) throw new Error('Recovery required');
+      }
+    );
+    vault.unlock(password, true);
+    save();
+    const original = fs.readFileSync(file);
+    writable = false;
+    expect(() => vault.settings(false, false, false)).toThrow(
+      'Recovery required'
+    );
+    expect(fs.readFileSync(file)).toEqual(original);
+    expect(vault.status().items).toHaveLength(1);
+  });
   it('encrypts the entire payload and returns only safe summaries', () => {
     vault.unlock(password, true);
     save();

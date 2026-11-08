@@ -51,6 +51,8 @@ const configuration: webpack.Configuration = {
   plugins: [
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'production',
+      KUDIUM_POSTHOG_KEY: '',
+      KUDIUM_POSTHOG_HOST: 'https://us.i.posthog.com',
     }),
   ],
 };

@@ -41,11 +41,11 @@ function archive(name = 'manifest.json', content) {
 (async () => {
   const { default: Pbf } = await import('pbf');
   const context = vm.createContext({ Buffer, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
-    require, Pbf, AdmZip, createHash: crypto.createHash, touchboxCrypto: crypto, touchboxZlib: zlib, import_adm_zip: { default: AdmZip },
+    require, Pbf, AdmZip, createHash: crypto.createHash, kudiumbrowserCrypto: crypto, kudiumbrowserZlib: zlib, import_adm_zip: { default: AdmZip },
     fs2: fs, path3: path, os, crypto, d2() {}, getChromeVersion: () => '145.0.0.0', fetch: globalThis.fetch });
   vm.runInContext(source.slice(source.indexOf('// src/browser/crx3.ts'), source.indexOf('// src/browser/loader.ts')).replace(/^import .*;$/gm, ''), context);
   vm.runInContext(source.slice(source.indexOf('function getExtensionCrxURL('), source.indexOf('async function installExtension(')), context);
-  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'touchbox-transport-test-'));
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'kudiumbrowser-transport-test-'));
   let cases = 0;
   async function test(name, operation) { await operation(); cases++; console.log('PASS ' + name); }
   try {

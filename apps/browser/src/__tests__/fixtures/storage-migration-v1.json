@@ -1,0 +1,12 @@
+{
+  "fixtureOrigin": "unit-transport",
+  "description": "Synthetic unversioned schema-1 values. Not data captured from a signed public release.",
+  "payloads": {
+    "ai-checkpoint.bin": {"messages":[{"role":"user","content":"Synthetic checkpoint"}],"step":2,"endpoint":"https://example.test/v1","expires":1700000000000,"privateData":true},
+    "ai-conversations.bin": {"selectedId":"fixture-chat","chats":[{"id":"fixture-chat","title":"Synthetic chat","draft":"Retain this draft","updatedAt":1700000000000,"history":[{"type":"user","text":"Synthetic conversation"}],"attachmentIds":[],"privateData":true,"futureOptionalField":{"preserve":true}}]},
+    "ai-tasks.bin": [{"id":"fixture-task","name":"Synthetic task","instructions":"Synthetic task instructions","schedule":{"kind":"manual"},"enabled":false,"privateData":true,"runs":[{"id":"fixture-run","startedAt":1700000000000,"endedAt":1700000000100,"state":"completed","summary":"Synthetic task outcome"}]}],
+    "password-manager/os-key": "synthetic-credential-for-unit-tests-only",
+    "ai-settings.json": "synthetic-provider-key-for-unit-tests-only",
+    "password-manager/vault.json": {"items":[{"id":"fixture-item","title":"Synthetic item","kind":"profile","origin":"","username":"","allowAI":false,"fieldCount":1}],"enabled":true,"autofill":false,"ai":false}
+  }
+}

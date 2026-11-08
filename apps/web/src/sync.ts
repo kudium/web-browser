@@ -30,7 +30,7 @@ export function syncStore(db: Database) {
     },
     async get(account: string, id: string) {
       const [row] = await db.select().from(records).where(and(eq(records.accountId, account), eq(records.id, id)));
-      if (!row || !row.envelope) throw new HTTPException(404, { message: 'record_not_found' });
+      if (!row) throw new HTTPException(404, { message: 'record_not_found' });
       return row;
     },
     async write(account: string, id: string, expected: number, envelope: Envelope | null) {

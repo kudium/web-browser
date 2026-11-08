@@ -17,6 +17,8 @@ import {
   ListTodo,
   Code2,
 } from 'lucide-react';
+import { AIStarterActions } from './AIStarterActions';
+import { AIWorkingTabsBadge, AIWorkingTab } from './AIWorkingTabsBadge';
 import { useAIPagePreference } from '../../utils/useAIPagePreference';
 import { AIChatSwitcher } from './AIChatSwitcher';
 import type {
@@ -62,6 +64,8 @@ const accessIcon = () => <ShieldCheck size={14} />;
 const noPickerIcon = () => null;
 
 export function AISidebar({
+  workingTabs = [],
+  activeTabId,
   contextRequest,
   developerRequest = 0,
   menuPaneRequest,
@@ -71,6 +75,8 @@ export function AISidebar({
   onGroupContextMenu,
   onManageGroup,
 }: {
+  workingTabs?: AIWorkingTab[];
+  activeTabId?: string;
   focusedTabId?: string;
   developerRequest?: number;
   menuPaneRequest?: {
@@ -141,7 +147,6 @@ export function AISidebar({
   const [prompt, setPrompt] = useState('');
   const [attachments, setAttachments] = useState<AIComposerAttachment[]>([]);
   const [sentFiles, setSentFiles] = useState<AIComposerAttachment[]>([]);
-  const [preview, setPreview] = useAIPagePreference('preview', false);
   const [contexts, setContexts] = useState<AIContextAttachment[]>([]);
   const groupAccess = useGroupAccess();
   const allContextTabs = AppManager.getAll();
@@ -1061,10 +1066,22 @@ export function AISidebar({
                   {external?.running ? 'External AI ready' : 'How can I help?'}
                 </h3>
                 {!settings.hasKey && (
-                  <button type="button" onClick={openSettings}>
+                  <button
+                    className="ai-connect-button"
+                    type="button"
+                    onClick={openSettings}
+                  >
                     Connect AI
                   </button>
                 )}
+                <AIStarterActions
+                  disabled={changingChat || busy}
+                  onChoose={(text) => {
+                    setPrompt(text);
+                    setCursor(text.length);
+                    requestAnimationFrame(() => taskInput.current?.focus());
+                  }}
+                />
               </div>
             )}
             {events
@@ -1198,6 +1215,11 @@ export function AISidebar({
               submit();
             }}
           >
+            <AIWorkingTabsBadge
+              tabs={workingTabs}
+              activeTabId={activeTabId}
+              onSelect={(id) => onFocusTab?.(id)}
+            />
             {(blockedMention || blockedContext) && (
               <div className="ai-scope-notice">
                 {blockedContext
@@ -1404,24 +1426,6 @@ export function AISidebar({
                     onGroupContextMenu={onGroupContextMenu}
                   />
                 ))}
-              </div>
-            )}
-            {!!prompt && (
-              <button
-                type="button"
-                className="ai-preview-toggle"
-                onClick={() => setPreview(!preview)}
-              >
-                {preview ? 'Hide preview' : 'Preview'}
-              </button>
-            )}
-            {preview && !!prompt && (
-              <div className="ai-draft-preview">
-                <AIMessage
-                  text={prompt}
-                  groups={groups}
-                  onReference={addReference}
-                />
               </div>
             )}
             {!!suggestions.length && (

@@ -14,7 +14,7 @@ let clients: Client[];
 const connect = async (connection: MCPConnection) => {
   const client = new Client({ name: 'personal-agent-fixture', version: '1' });
   clients.push(client);
-  const entry = connection.mcpServers.touchbox;
+  const entry = connection.mcpServers.kudiumbrowser;
   await client.connect(
     new StreamableHTTPClientTransport(new URL(entry.url), {
       requestInit: { headers: entry.headers },
@@ -25,7 +25,7 @@ const connect = async (connection: MCPConnection) => {
 const call = (client: Client) =>
   client.callTool({ name: 'list_tabs', arguments: {} });
 beforeEach(async () => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-agent-mcp-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-agent-mcp-'));
   clients = [];
   controller = createMCPController({
     filename: path.join(root, 'mcp.json'),
@@ -52,8 +52,8 @@ afterEach(async () => {
 it('uses separate credentials and revokes one agent without invalidating the other or manual clients', async () => {
   const hermesConfig = controller.agentConnection('hermes', true)!;
   const openclawConfig = controller.agentConnection('openclaw', true)!;
-  expect(hermesConfig.mcpServers.touchbox.headers.Authorization).not.toBe(
-    openclawConfig.mcpServers.touchbox.headers.Authorization
+  expect(hermesConfig.mcpServers.kudiumbrowser.headers.Authorization).not.toBe(
+    openclawConfig.mcpServers.kudiumbrowser.headers.Authorization
   );
   const hermes = await connect(hermesConfig);
   const openclaw = await connect(openclawConfig);

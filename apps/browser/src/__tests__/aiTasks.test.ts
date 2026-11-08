@@ -287,7 +287,7 @@ it('retains private instructions when tasks are created and toggled', () => {
 
 it('preserves task privacy through encrypted reload and treats legacy instructions conservatively', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-task-privacy-')
+    path.join(os.tmpdir(), 'kudiumbrowser-task-privacy-')
   );
   const file = path.join(directory, 'tasks.bin');
   const storage = {

@@ -65,7 +65,7 @@ export type Channels =
   | 'ipc-create-window'
   | 'ipc-event-bus';
 
-// This preload is assigned only to trusted Touchbox UI windows.
+// This preload is assigned only to trusted KudiumBrowser UI windows.
 injectBrowserAction();
 contextBridge.executeInMainWorld({ func: retainExtensionIcons });
 
@@ -144,7 +144,7 @@ const electronHandler = {
       return ipcRenderer.invoke('ai-mcp', 'update', patch);
     },
     mcpStdio(): Promise<{
-      mcpServers: { touchbox: { command: string; args: string[] } };
+      mcpServers: { kudiumbrowser: { command: string; args: string[] } };
     }> {
       return ipcRenderer.invoke('ai-mcp', 'stdio');
     },

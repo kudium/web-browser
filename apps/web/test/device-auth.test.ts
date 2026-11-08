@@ -1,0 +1,33 @@
+import { beforeAll, afterAll, describe, expect, test } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { connect } from '../src/db';
+import { createAuth } from '../src/auth';
+import { createApp } from '../src/app';
+import { authUser } from '../src/schema';
+const url=process.env.TEST_DATABASE_URL;
+const testIP=`2001:db8:${randomUUID().slice(0,4)}::1`;
+describe.skipIf(!url)('desktop device authorization',()=>{
+ const {db,client}=connect(url!);const base='https://browser.kudium.com';
+ const auth=createAuth(db,{baseURL:base,secret:'device-auth-integration-test-secret-32-characters'});
+ const app=createApp({db,auth,assetOrigins:[]});let userId:string;
+ const call=(path:string,body?:unknown,cookie?:string)=>app.request(base+path,{method:body?'POST':'GET',headers:{'x-forwarded-for':testIP,Origin:base,...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});
+ beforeAll(async()=>{await migrate(db,{migrationsFolder:new URL('../drizzle',import.meta.url).pathname});});
+ afterAll(async()=>{if(userId)await db.delete(authUser).where(eq(authUser.id,userId));await client.end();});
+ test('binds approval to account and redeems a signed, single-use desktop session',async()=>{
+  const signup=await call('/api/auth/sign-up/email',{name:'Device test',email:`device-${randomUUID()}@example.com`,password:'device integration password 123'});const account=await signup.json();userId=account.user.id;const cookie=signup.headers.get('set-cookie')!.split(';')[0];
+  expect((await call('/api/auth/device/code',{client_id:'untrusted-client'})).status).toBe(400);
+  const authorization=await call('/api/auth/device/code',{client_id:'kudium-desktop',scope:'sync'});expect(authorization.status).toBe(200);const grant=await authorization.json();
+  const polling={grant_type:'urn:ietf:params:oauth:grant-type:device_code',client_id:'kudium-desktop',device_code:grant.device_code};
+  const pending=await call('/api/auth/device/token',polling);expect((await pending.json()).error).toBe('authorization_pending');
+  expect((await call('/api/auth/device/approve',{userCode:grant.user_code})).status).toBe(401);
+  const review=await call(`/api/auth/device?user_code=${grant.user_code}`,undefined,cookie);expect(review.status).toBe(200);expect((await review.json()).client_id).toBe('kudium-desktop');
+  expect((await call('/api/auth/device/approve',{userCode:grant.user_code},cookie)).status).toBe(200);
+  await new Promise(resolve=>setTimeout(resolve,5100));
+  const redeemed=await call('/api/auth/device/token',polling);expect(redeemed.status).toBe(200);
+  const token=redeemed.headers.get('set-auth-token');expect(token).toBeTruthy();const raw=(await redeemed.json()).access_token;expect(token).not.toBe(raw);
+  expect((await app.request(base+'/v1/sync/status',{headers:{'x-forwarded-for':testIP,Authorization:`Bearer ${token}`}})).status).toBe(200);
+  expect((await call('/api/auth/device/token',polling)).status).not.toBe(200);
+ },15000);
+});

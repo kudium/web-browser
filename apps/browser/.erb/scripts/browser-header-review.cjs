@@ -1,7 +1,7 @@
 const {app,BrowserWindow}=require('electron');
 const fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert');
 const project=path.resolve(__dirname,'../..');process.chdir(project);
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-header-'));const out=path.join(project,'docs/evidence/browser-header');fs.mkdirSync(out,{recursive:true});app.setPath('userData',path.join(root,'profile'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-header-'));const out=path.join(project,'docs/evidence/browser-header');fs.mkdirSync(out,{recursive:true});app.setPath('userData',path.join(root,'profile'));
 fs.writeFileSync(path.join(root,'preview.tsx'),`
 import React,{useState} from ${JSON.stringify(require.resolve(project+'/node_modules/react'))};
 import {createRoot} from ${JSON.stringify(require.resolve(project+'/node_modules/react-dom/client'))};

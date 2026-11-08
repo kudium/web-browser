@@ -51,6 +51,7 @@ import { registerAI } from './ai';
 import { registerPageCapture } from './pageCapture';
 import { AINewTabs } from './aiTabs';
 import { WebsiteTabRecovery } from './websiteTabRecovery';
+import { PictureInPictureController } from './pictureInPicture';
 import { isBrowserCommand, isBrowserLayout } from './browserRequests';
 import { clearSessionSiteData } from './siteData';
 import { recordVisit } from './history';
@@ -69,6 +70,7 @@ import { showBrowserContextMenu } from './browserContextMenu';
 import { showBrowserDialog, permissionSummary } from './dialogs';
 import {
   applyBrowserPreferences,
+  enablePagePinchZoom,
   getBrowserPreferences,
   isAISettingsWindow,
 } from './preferences';
@@ -197,6 +199,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
   >();
   const loaded = new Set<string>();
   const lastStates = new Map<string, BrowserState>();
+  const pictureInPicture = new Map<string, PictureInPictureController>();
   const sleeping = new Map<
     string,
     { history: RestoreOptions; x: number; y: number }
@@ -239,8 +242,9 @@ export function registerElectronBrowser(window: BrowserWindow) {
       muted: contents.isAudioMuted(),
       audible: contents.isCurrentlyAudible(),
       mediaPlaying: playingMedia.has(id),
+      pictureInPicture: pictureInPicture.get(id)?.state,
       extensionContext: {
-        profile: `persist:touchbox-${loginProfileKey(
+        profile: `persist:kudiumbrowser-${loginProfileKey(
           configurations.get(id) || ({} as IApp)
         )}`,
         tab: String(contents.id),
@@ -293,6 +297,8 @@ export function registerElectronBrowser(window: BrowserWindow) {
       faviconLoader.cancel(id);
       icons.delete(id);
       playingMedia.delete(id);
+      pictureInPicture.get(id)?.dispose();
+      pictureInPicture.delete(id);
     }
     configurations.delete(id);
     hiddenSince.delete(id);
@@ -423,7 +429,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
           new WebContentsView({
             webPreferences: {
               preload: siteDeveloperPreload(),
-              partition: `persist:touchbox-${loginProfileKey(item)}`,
+              partition: `persist:kudiumbrowser-${loginProfileKey(item)}`,
               sandbox: true,
               contextIsolation: true,
               nodeIntegration: false,
@@ -710,6 +716,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
                 if (pending) pending.favicons = urls;
               };
               const childContents = child.webContents;
+              enablePagePinchZoom(childContents);
               registerDeveloperPage(
                 childContents,
                 profileId,
@@ -798,6 +805,14 @@ export function registerElectronBrowser(window: BrowserWindow) {
           if (!validURL(url) && url !== 'about:blank')
             navigation.preventDefault();
         });
+        const pip = new PictureInPictureController(
+          contents,
+          () => visible.has(item.id) && !suspended,
+          () => {
+            if (views.get(item.id) === browserView) publish(item.id, browserView);
+          }
+        );
+        pictureInPicture.set(item.id, pip);
         contents.on('context-menu', (_, params) => {
           showBrowserContextMenu(
             window,
@@ -836,7 +851,8 @@ export function registerElectronBrowser(window: BrowserWindow) {
             getExtensionProfile(profileId)?.api.getContextMenuItems(
               contents,
               params
-            ) || []
+            ) || [],
+            pip.contextAction(params)
           );
         });
         const permissionProfile = profileId;
@@ -1073,6 +1089,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
       discarded: true,
       audible: false,
       mediaPlaying: false,
+      pictureInPicture: undefined,
       loading: false,
       canGoBack: false,
       canGoForward: false,
@@ -1143,6 +1160,8 @@ export function registerElectronBrowser(window: BrowserWindow) {
       contents.removeListener('will-prevent-unload', prevented);
       retiringTabs.delete(contents.id);
       if (views.get(id) !== view) return;
+      pictureInPicture.get(id)?.dispose();
+      pictureInPicture.delete(id);
       views.delete(id);
       window.contentView.removeChildView(view);
       const ownedPopups = popups.get(id);
@@ -1174,6 +1193,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
           discarded: true,
           audible: false,
           mediaPlaying: false,
+          pictureInPicture: undefined,
           loading: false,
         };
         lastStates.set(id, next);
@@ -1365,6 +1385,10 @@ export function registerElectronBrowser(window: BrowserWindow) {
     }
     if (!contents || contents.isDestroyed()) return;
     switch (request.action) {
+      case 'toggle-picture-in-picture':
+        if (request.id === focusedId && visible.has(request.id) && !suspended)
+          pictureInPicture.get(request.id)?.toggle();
+        break;
       case 'back':
         if (contents.navigationHistory.canGoBack())
           contents.navigationHistory.goBack();
@@ -1754,6 +1778,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
         ) &&
         !edited.has(id) &&
         !playingMedia.has(id) &&
+        !pictureInPicture.get(id)?.state.active &&
         !popups.get(id)?.size &&
         !contents.isDestroyed() &&
         !contents.isLoading() &&
@@ -1792,6 +1817,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
           views.get(id) !== view ||
           edited.has(id) ||
           playingMedia.has(id) ||
+          pictureInPicture.get(id)?.state.active ||
           contents.isDestroyed() ||
           contents.isCurrentlyAudible() ||
           contents.isLoading() ||
@@ -2043,6 +2069,8 @@ export function registerElectronBrowser(window: BrowserWindow) {
     aiNewTabs.dispose();
     releaseExtensionOwner(window);
     clearInterval(discardTimer);
+    pictureInPicture.forEach((controller) => controller.dispose());
+    pictureInPicture.clear();
     keyboardCleanup.forEach((cleanup) => cleanup());
     pendingTabCleanup.forEach((cleanup) => cleanup());
     window.removeListener('closed', dispose);

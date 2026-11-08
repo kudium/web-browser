@@ -21,7 +21,7 @@ const hash = (value: unknown) =>
 const LIMIT = 2 * 1024 * 1024;
 const empty = (id: PersonalAgentId) => (id === 'hermes' ? '' : '{}\n');
 
-/** Format-preserving adapters; only the TouchBox server entry is edited. */
+/** Format-preserving adapters; only the KudiumBrowser server entry is edited. */
 export function agentConfig(id: PersonalAgentId, text: string) {
   const yaml =
     id === 'hermes' ? parseDocument(text, { merge: true }) : undefined;
@@ -35,14 +35,14 @@ export function agentConfig(id: PersonalAgentId, text: string) {
   const servers = id === 'hermes' ? root.mcp_servers : parent?.servers;
   if (servers !== undefined && !object(servers))
     throw new Error('Invalid MCP servers');
-  const entry = object(servers) ? servers.touchbox : undefined;
+  const entry = object(servers) ? servers.kudiumbrowser : undefined;
   const set = (next?: RecordValue) => {
     if (yaml) {
       const existing = yaml.get('mcp_servers', true);
       if (existing !== undefined && !isMap(existing))
         throw new Error('MCP servers must be a mapping');
-      if (next) yaml.setIn(['mcp_servers', 'touchbox'], next);
-      else yaml.deleteIn(['mcp_servers', 'touchbox']);
+      if (next) yaml.setIn(['mcp_servers', 'kudiumbrowser'], next);
+      else yaml.deleteIn(['mcp_servers', 'kudiumbrowser']);
       const result = yaml.toString();
       const check = parseDocument(result, { merge: true });
       if (check.errors.length) throw new Error('Invalid updated configuration');
@@ -51,8 +51,8 @@ export function agentConfig(id: PersonalAgentId, text: string) {
     }
     const updated = { ...root, mcp: { ...(parent as RecordValue) } };
     updated.mcp.servers = { ...(servers as RecordValue) };
-    if (next) (updated.mcp.servers as RecordValue).touchbox = next;
-    else delete (updated.mcp.servers as RecordValue).touchbox;
+    if (next) (updated.mcp.servers as RecordValue).kudiumbrowser = next;
+    else delete (updated.mcp.servers as RecordValue).kudiumbrowser;
     return updateJSON5(text, updated, {
       reserved_keys: 'replace',
       null_prototype: true,
@@ -132,10 +132,10 @@ export class PersonalAgentConnections {
           else if (
             expected &&
             (!object(entry) ||
-              entry.url !== expected.mcpServers.touchbox.url ||
+              entry.url !== expected.mcpServers.kudiumbrowser.url ||
               !object(entry.headers) ||
               entry.headers.Authorization !==
-                expected.mcpServers.touchbox.headers.Authorization)
+                expected.mcpServers.kudiumbrowser.headers.Authorization)
           )
             state = 'outdated';
           else state = 'configured';
@@ -204,14 +204,14 @@ export class PersonalAgentConnections {
       !(await confirm(
         `${
           connection ? 'Replace' : 'Remove'
-        } the existing TouchBox connection in ${agent.name}?`,
+        } the existing KudiumBrowser connection in ${agent.name}?`,
         filename
       ))
     )
       return false;
     const next = connection
       ? {
-          ...connection.mcpServers.touchbox,
+          ...connection.mcpServers.kudiumbrowser,
           enabled: true,
           ...(id === 'hermes'
             ? { skip_preflight: true }
@@ -236,7 +236,7 @@ export class PersonalAgentConnections {
       throw new Error('The configuration changed during setup. Try again.');
     if (before.stat)
       fs.writeFileSync(
-        `${filename}.touchbox-backup-${randomUUID()}`,
+        `${filename}.kudiumbrowser-backup-${randomUUID()}`,
         before.text,
         { mode: 0o600, flag: 'wx' }
       );

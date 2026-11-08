@@ -16,7 +16,7 @@ Implemented November 4, 2026.
 - [x] Trusted main-frame IPC; URL credentials removed and non-web URLs excluded.
 - [x] Responsive sidebar with website view retained.
 
-History starts recording with this implementation; Chromium does not provide an API for recovering visits previously unrecorded by TouchBox. The local history file is private to the app user but is not encrypted. Cloud synchronization is outside this feature.
+History starts recording with this implementation; Chromium does not provide an API for recovering visits previously unrecorded by Kudium Browser. The local history file is private to the app user but is not encrypted. Cloud synchronization is outside this feature.
 
 Verification: 80 tests pass; production build, TypeScript and focused lint pass. Electron history smoke verifies real visits, search, revisit, clear and narrow sidebar layout:
 `npx electron .erb/scripts/browser-ui-smoke.cjs --history-only`

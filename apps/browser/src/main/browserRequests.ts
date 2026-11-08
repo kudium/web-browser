@@ -110,6 +110,7 @@ const commands = new Set<BrowserCommand['action']>([
   'find',
   'clear-data',
   'toggle-mute',
+  'toggle-picture-in-picture',
   'set-permission',
   'reset-permissions',
   'close-group',

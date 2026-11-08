@@ -3,15 +3,15 @@
 const fs = require('fs');
 const path = require('path');
 function patchSource(source) {
-  if (source.includes('// TouchBox: native authority v4')) return source;
-  if (source.includes('// TouchBox: native authority v3')) {
+  if (source.includes('// KudiumBrowser: native authority v4')) return source;
+  if (source.includes('// KudiumBrowser: native authority v3')) {
     const esm = source.includes('import { randomUUID }');
-    return (esm ? 'import * as touchboxNativeCrypto from "node:crypto";\n' : 'const touchboxNativeCrypto = require("node:crypto");\n') +
-      source.replace('// TouchBox: native authority v3', '// TouchBox: native authority v4')
-        .replace('const connectionId = (0, import_node_crypto.randomUUID)();', 'const connectionId = touchboxNativeCrypto.randomUUID();');
+    return (esm ? 'import * as kudiumbrowserNativeCrypto from "node:crypto";\n' : 'const kudiumbrowserNativeCrypto = require("node:crypto");\n') +
+      source.replace('// KudiumBrowser: native authority v3', '// KudiumBrowser: native authority v4')
+        .replace('const connectionId = (0, import_node_crypto.randomUUID)();', 'const connectionId = kudiumbrowserNativeCrypto.randomUUID();');
   }
-  if (source.includes('// TouchBox: native authority v2')) {
-    source = source.replace('// TouchBox: native authority v2', '// TouchBox: native authority v3')
+  if (source.includes('// KudiumBrowser: native authority v2')) {
+    source = source.replace('// KudiumBrowser: native authority v2', '// KudiumBrowser: native authority v3')
       .replace('    this.ready = this.launch(application, extensionId);',
         '    const canceled = new Promise(resolve => { this.cancelLaunch = resolve; });\n    this.ready = Promise.race([this.launch(application, extensionId), canceled]);')
       .replace('    this.closed = true;\n    this.connected = false;',
@@ -20,8 +20,8 @@ function patchSource(source) {
         '      const timer = setTimeout(() => host.destroy(), 30000);\n      timer.unref?.();\n      try {\n        await host.ready;\n        if (!host.connected) throw new Error("Native host unavailable");\n      } catch (error) { host.destroy(); throw error; }\n      finally { clearTimeout(timer); }');
     return patchSource(source);
   }
-  if (source.includes('// TouchBox: native authority v1')) {
-    return patchSource(source.replace('// TouchBox: native authority v1', '// TouchBox: native authority v2').replace(
+  if (source.includes('// KudiumBrowser: native authority v1')) {
+    return patchSource(source.replace('// KudiumBrowser: native authority v1', '// KudiumBrowser: native authority v2').replace(
       '(frame && frame !== this.frame) ||',
       '(this.frame && (event.type !== "frame" || frame !== this.frame || event.sender !== this.sender)) ||\n          (!this.frame && (event.type !== "service-worker" || event.serviceWorker !== this.sender)) ||'
     ));
@@ -30,7 +30,7 @@ function patchSource(source) {
     if (!source.includes(before)) throw new Error('Native authority patch needs dependency review: ' + before.slice(0, 80));
     source = source.replace(before, after);
   };
-  replace('    this.hostMap = {};', '    // TouchBox: native authority v1\n    this.hostMap = new Map();');
+  replace('    this.hostMap = {};', '    // KudiumBrowser: native authority v1\n    this.hostMap = new Map();');
   const start = source.indexOf('    this.connectNative = async (event, connectionId, application) => {');
   const end = source.indexOf('    this.openOptionsPage = ', start);
   if (start < 0 || end < 0) throw new Error('Native runtime patch needs review');

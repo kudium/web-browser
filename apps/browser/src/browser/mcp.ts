@@ -7,7 +7,9 @@ export interface MCPStatus {
   error?: string;
 }
 export interface MCPConnection {
-  mcpServers: { touchbox: { url: string; headers: { Authorization: string } } };
+  mcpServers: {
+    kudiumbrowser: { url: string; headers: { Authorization: string } };
+  };
 }
 
 export const PERSONAL_DATA_GUIDE =

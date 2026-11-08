@@ -20,7 +20,7 @@ An Arc-inspired downloads panel toggles inside the browser sidebar, replacing th
 
 ## Storage and boundaries
 
-History is stored in userData/download-history.json with atomic replacement and private file permissions. Records contain local filenames, paths, byte counts, type and timestamps. Records from unfinished downloads become interrupted on restart; they cannot resume without a live Electron DownloadItem. Files moved outside TouchBox may no longer open from history.
+History is stored in userData/download-history.json with atomic replacement and private file permissions. Records contain local filenames, paths, byte counts, type and timestamps. Records from unfinished downloads become interrupted on restart; they cannot resume without a live Electron DownloadItem. Files moved outside Kudium Browser may no longer open from history.
 
 Previously completed downloads cannot be reconstructed from the old in-memory-only implementation. Recording begins with this implementation. The library is local; cloud synchronization and file deletion are outside this feature.
 

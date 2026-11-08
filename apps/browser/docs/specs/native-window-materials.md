@@ -1,6 +1,6 @@
 # Native window materials
 
-TouchBox uses macOS sidebar vibrancy through Electron's native window API.
+Kudium Browser uses macOS sidebar vibrancy through Electron's native window API.
 Electron 45 does not expose a macOS Liquid Glass API; this feature is native
 vibrancy with translucent chrome, not a claim of Apple's newer material.
 

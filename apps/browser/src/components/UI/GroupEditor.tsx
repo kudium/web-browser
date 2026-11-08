@@ -1,31 +1,47 @@
 /* Optional view notifications keep standalone group editors supported. */
 /* eslint-disable react/require-default-props */
 import { Button, TextField, Text, Select, Callout } from '@radix-ui/themes';
-import { useState, useEffect, useRef } from 'react';
-import { ChevronRight, Shield, ArrowLeft } from 'lucide-react';
+import { useState, useEffect, useRef, useId } from 'react';
+import { ChevronRight, Shield, ArrowLeft, FolderPlus } from 'lucide-react';
+import { GroupTabsSettings, GroupTabChanges } from './GroupTabsSettings';
+import { PreferenceHint } from './PreferenceHint';
 import { GroupAccessGate } from './GroupAccessGate';
 import { IApp } from '../../types';
 import { browser } from '../../browser/client';
 import { AppManager } from '../../utils/AppManager';
 import { SpaceManager } from '../../utils/SpaceManager';
 import { GroupSettings, updateGroupSettings } from '../../utils/groupSettings';
-import { groupKey, loginProfileKey } from '../../utils/groups';
+import { groupKey, loginProfileKey, groupTabs } from '../../utils/groups';
 import { GroupPicker } from './GroupPicker';
-import { aiGroups, aiGroupId } from '../../browser/aiGroups';
+import { aiGroups, aiGroupId, groupSlug } from '../../browser/aiGroups';
 import { PersonalData } from '../View/Settings/PasswordManager';
 import { GroupIcon } from './GroupIcon';
 import { IconPicker } from './IconPicker';
+import type { SidebarDropResult } from '../../browser/sidebarDrop';
 import { DeveloperProjectSection } from './DeveloperProjectSection';
 
 function GroupEditorContent({
   item,
   close,
   onPersonalDataChange,
+  creating = false,
+  onCreated,
+  droppedProject,
 }: {
   item: IApp;
   close: () => void;
   onPersonalDataChange?: (open: boolean) => void;
+  creating?: boolean;
+  onCreated?: (tab: IApp) => void;
+  droppedProject?: Extract<SidebarDropResult, { kind: 'project' }>;
 }) {
+  const [tabChanges, setTabChanges] = useState<GroupTabChanges>({
+    edits: {},
+    added: [],
+    removed: [],
+  });
+  const referenceId = useId();
+  const nameId = useId();
   const [showPersonalData, setShowPersonalData] = useState(false);
   useEffect(
     () => onPersonalDataChange?.(showPersonalData),
@@ -53,16 +69,22 @@ function GroupEditorContent({
   const [draft, setDraft] = useState<GroupSettings>({
     loginProfileId: loginProfileKey(item),
     name: item.sessionName || item.name,
-    slug: aiGroups(AppManager.getAll()).find(
-      (group) => group.id === aiGroupId(item)
-    )?.slug,
+    slug:
+      aiGroups(AppManager.getAll()).find(
+        (group) => group.id === aiGroupId(item)
+      )?.slug || item.sessionSlug,
     emoji: item.sessionIconEmoji || '',
     image: item.sessionIconImage || '',
-    homeURL: item.sessionHomeURL || '',
+    homeURL: '',
     spaceId: item.spaceId || 'default',
     folderId: item.folderId || '',
     placement: item.favorite ? 'favorite' : defaultPlacement,
   });
+  const [projectFolder, setProjectFolder] = useState(
+    droppedProject?.folder || ''
+  );
+  const [linking, setLinking] = useState(false);
+  const slugEdited = useRef(false);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -94,16 +116,6 @@ function GroupEditorContent({
       onSubmit={async (event) => {
         event.preventDefault();
         try {
-          let home: URL | undefined;
-          if (draft.homeURL.trim()) {
-            try {
-              home = new URL(draft.homeURL.trim());
-            } catch {
-              throw new Error('Enter a full home-page URL, or leave it blank.');
-            }
-          }
-          if (home && !['https:', 'http:'].includes(home.protocol))
-            throw new Error('Use an HTTP or HTTPS home page.');
           if (
             !draft.slug ||
             !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug) ||
@@ -135,14 +147,83 @@ function GroupEditorContent({
             });
             if (!approved) return;
           }
-          AppManager.set(
-            updateGroupSettings(AppManager.getAll(), item, {
-              ...draft,
-              name: draft.name.trim(),
-              homeURL: home?.href || '',
-            })
+          let source =
+            creating && droppedProject
+              ? (
+                  await window.electron.siteDeveloper.createDroppedGroup({
+                    token: droppedProject.token,
+                    name: draft.name.trim(),
+                    slug: draft.slug,
+                  })
+                ).tab
+              : item;
+          const additions = tabChanges.added.map((tab) => ({
+            ...source,
+            ...tab,
+            customName: tab.name,
+            archived: false,
+          }));
+          additions.forEach((tab) => {
+            const url = new URL(tab.url);
+            if (!['http:', 'https:'].includes(url.protocol))
+              throw new Error('Use an HTTP or HTTPS tab address.');
+          });
+          if (creating && additions.length)
+            source = { ...additions.shift()!, id: source.id };
+          const current = AppManager.getAll().map((tab) => {
+            const patch = tabChanges.edits[tab.id];
+            if (patch?.url !== undefined && tab.url !== patch.url) {
+              const url = new URL(patch.url);
+              if (!['http:', 'https:'].includes(url.protocol))
+                throw new Error('Use an HTTP or HTTPS tab address.');
+            }
+            return tabChanges.removed.includes(tab.id)
+              ? { ...tab, archived: true }
+              : { ...tab, ...patch };
+          });
+          if (
+            !creating &&
+            !groupTabs(current, source).some((tab) => !tab.archived) &&
+            !additions.length
+          )
+            current.push({
+              ...source,
+              id: crypto.randomUUID(),
+              name: 'New tab',
+              customName: undefined,
+              url: 'about:blank',
+              archived: false,
+            });
+          const updated = updateGroupSettings(
+            creating
+              ? [...current, source, ...additions]
+              : [...current, ...additions],
+            source,
+            { ...draft, name: draft.name.trim(), homeURL: '' }
           );
-          close();
+          AppManager.set(updated);
+          if (creating) {
+            const created = updated.find((tab) => tab.id === source.id)!;
+            if (projectFolder && projectFolder !== droppedProject?.folder) {
+              try {
+                await window.electron.siteDeveloper.project(
+                  created.id,
+                  'link',
+                  undefined,
+                  projectFolder
+                );
+              } catch (reason) {
+                AppManager.set(
+                  AppManager.getAll().filter(
+                    (tab) => tab.sessionId !== source.sessionId
+                  )
+                );
+                throw reason;
+              }
+            }
+            window.electron?.telemetry?.feature('group_created');
+            onCreated?.(created);
+          } else close();
         } catch (reason) {
           setError(String(reason instanceof Error ? reason.message : reason));
         }
@@ -184,37 +265,83 @@ function GroupEditorContent({
             )}
           />
           <div className="group-editor-identity-fields">
-            <Text as="label" size="2">
-              Group name
+            <div className="group-identity-field">
+              <div className="group-reference-label">
+                <Text as="label" size="2" htmlFor={nameId}>
+                  Group name
+                </Text>
+              </div>
               <TextField.Root
+                id={nameId}
                 aria-label="Group name"
                 required
                 value={draft.name}
-                onChange={(event) => change({ name: event.target.value })}
+                autoFocus={creating}
+                onChange={(event) =>
+                  change({
+                    name: event.target.value,
+                    ...(creating && !slugEdited.current
+                      ? { slug: groupSlug(event.target.value) }
+                      : {}),
+                  })
+                }
               />
-            </Text>
-            <Text as="label" size="2">
-              AI reference
+            </div>
+            <div className="group-identity-field">
+              <div className="group-reference-label">
+                <Text as="label" size="2" htmlFor={referenceId}>
+                  AI reference
+                </Text>
+                <PreferenceHint label="AI reference">
+                  Mention this group in an AI request with @
+                  {draft.slug || 'work'}, for example “@{draft.slug || 'work'}{' '}
+                  update the website and test it.” The reference identifies the
+                  group’s tabs and linked project. Use lowercase letters,
+                  numbers and hyphens.
+                </PreferenceHint>
+              </div>
               <TextField.Root
+                id={referenceId}
                 aria-label="Group slug"
-                title="Use this reference to identify the group in AI requests."
+                maxLength={60}
                 required
                 spellCheck={false}
                 autoCapitalize="none"
                 autoComplete="off"
                 value={draft.slug || ''}
-                onChange={(event) => change({ slug: event.target.value })}
+                onChange={(event) => {
+                  slugEdited.current = true;
+                  change({
+                    slug: event.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9-]/g, '')
+                      .replace(/-+/g, '-')
+                      .replace(/^-/, '')
+                      .slice(0, 60),
+                  });
+                }}
               >
                 <TextField.Slot>@</TextField.Slot>
               </TextField.Root>
-            </Text>
+            </div>
           </div>
         </div>
-        <section
+        <GroupTabsSettings
+          tabs={
+            creating
+              ? []
+              : groupTabs(AppManager.getAll(), item).filter(
+                  (tab) => !tab.archived
+                )
+          }
+          changes={tabChanges}
+          onChange={setTabChanges}
+        />
+        <details
           className="group-editor-organization"
           aria-label="Organization"
         >
-          <div className="group-editor-section-label">Organization</div>
+          <summary>Organization</summary>
           <div className="group-editor-grouping">
             <Text as="label" size="2">
               Space
@@ -269,63 +396,92 @@ function GroupEditorContent({
               </Select.Root>
             </Text>
           </div>
-        </section>
-        <DeveloperProjectSection
-          sourceId={item.id}
-          active
-          settingsOnly
-          onOpenDeveloper={() => {
-            window.dispatchEvent(
-              new CustomEvent('touchbox-open-group-developer', {
-                detail: item.id,
-              })
-            );
-            close();
-          }}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          color="gray"
-          className="group-editor-personal-data"
-          onClick={() => setShowPersonalData(true)}
-        >
-          <Shield size={16} aria-hidden="true" />
-          <span>Personal Data</span>
-          <ChevronRight size={15} aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          color="gray"
-          className="group-editor-personal-data"
-          disabled={exporting}
-          onClick={() => {
-            setExporting(true);
-            setError('');
-            window.electron.siteDeveloper
-              .transfer('export', item.id)
-              .finally(() => setExporting(false))
-              .catch((reason) => setError(String(reason)));
-          }}
-        >
-          <span>{exporting ? 'Exporting…' : 'Export Group…'}</span>
-          <ChevronRight size={15} aria-hidden="true" />
-        </Button>
+        </details>
+        {creating && (
+          <section className="group-project-folder">
+            <div className="group-project-folder-header">
+              <strong>Project folder</strong>
+            </div>
+            {projectFolder && (
+              <Text as="div" size="2" style={{ overflowWrap: 'anywhere' }}>
+                {projectFolder}
+              </Text>
+            )}
+            <Button
+              type="button"
+              variant="soft"
+              color="gray"
+              disabled={linking}
+              onClick={async () => {
+                setLinking(true);
+                setError('');
+                try {
+                  const folder = await window.electron.siteDeveloper.project(
+                    item.id,
+                    'choose-folder'
+                  );
+                  if (folder) setProjectFolder(folder.path);
+                } catch (reason) {
+                  setError(String(reason));
+                } finally {
+                  setLinking(false);
+                }
+              }}
+            >
+              <FolderPlus size={16} />
+              {projectFolder ? 'Change folder…' : 'Link folder…'}
+            </Button>
+          </section>
+        )}
+        {!creating && (
+          <>
+            <DeveloperProjectSection
+              sourceId={item.id}
+              active
+              settingsOnly
+              onOpenDeveloper={() => {
+                window.dispatchEvent(
+                  new CustomEvent('kudiumbrowser-open-group-developer', {
+                    detail: item.id,
+                  })
+                );
+                close();
+              }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              color="gray"
+              className="group-editor-personal-data"
+              onClick={() => setShowPersonalData(true)}
+            >
+              <Shield size={16} aria-hidden="true" />
+              <span>Personal Data</span>
+              <ChevronRight size={15} aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              color="gray"
+              className="group-editor-personal-data"
+              disabled={exporting}
+              onClick={() => {
+                setExporting(true);
+                setError('');
+                window.electron.siteDeveloper
+                  .transfer('export', item.id)
+                  .finally(() => setExporting(false))
+                  .catch((reason) => setError(String(reason)));
+              }}
+            >
+              <span>{exporting ? 'Exporting…' : 'Export Group…'}</span>
+              <ChevronRight size={15} aria-hidden="true" />
+            </Button>
+          </>
+        )}
         <details className="group-editor-advanced">
-          <summary>Website &amp; session</summary>
+          <summary>Browser session</summary>
           <div className="group-editor-advanced-content">
-            <Text as="label" size="2">
-              Home page
-              <TextField.Root
-                aria-label="Group home page"
-                placeholder="https://example.com"
-                title="Saved as the first tab in this group. Leave blank to disable."
-                inputMode="url"
-                value={draft.homeURL}
-                onChange={(event) => change({ homeURL: event.target.value })}
-              />
-            </Text>
             <div className="group-editor-login">
               <Text size="2" weight="medium">
                 Browser session
@@ -354,7 +510,9 @@ function GroupEditorContent({
         <Button type="button" variant="soft" color="gray" onClick={close}>
           Cancel
         </Button>
-        <Button type="submit">Save changes</Button>
+        <Button type="submit" disabled={linking}>
+          {creating ? 'Create group' : 'Save changes'}
+        </Button>
       </div>
     </form>
   );
@@ -364,10 +522,16 @@ export function GroupEditor({
   item,
   close,
   onPersonalDataChange,
+  creating = false,
+  onCreated,
+  droppedProject,
 }: {
   item: IApp;
   close: () => void;
   onPersonalDataChange?: (open: boolean) => void;
+  creating?: boolean;
+  onCreated?: (tab: IApp) => void;
+  droppedProject?: Extract<SidebarDropResult, { kind: 'project' }>;
 }) {
   return (
     <GroupAccessGate item={item}>
@@ -375,6 +539,9 @@ export function GroupEditor({
         item={item}
         close={close}
         onPersonalDataChange={onPersonalDataChange}
+        creating={creating}
+        onCreated={onCreated}
+        droppedProject={droppedProject}
       />
     </GroupAccessGate>
   );

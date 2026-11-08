@@ -1,9 +1,9 @@
 // Actual production renderer and preload, synthetic injections, disposable profile.
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs'), os = require('os'), path = require('path'), http = require('http'), crypto = require('crypto'), assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-renderer-csp-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-renderer-csp-'));
 app.setPath('userData', path.join(root, 'profile'));
-const renderer = path.resolve(process.env.TOUCHBOX_CSP_RENDERER || 'release/app/dist/renderer');
+const renderer = path.resolve(process.env.KUDIUMBROWSER_CSP_RENDERER || 'release/app/dist/renderer');
 const documentDir = path.join(root, 'renderer'); fs.mkdirSync(documentDir);
 for (const entry of fs.readdirSync(renderer)) fs.symlinkSync(path.join(renderer, entry), path.join(documentDir, entry));
 fs.writeFileSync(path.join(documentDir, 'untrusted-local.js'), "window.cspEffects.push('local-script');window.electron.ipcRenderer.sendMessage('ipc-event-bus',{fixture:'injected-local'});");
@@ -33,7 +33,7 @@ ipcMain.on('ipc-event-bus', (_event, value) => { if (value?.fixture?.startsWith(
     undefined;`);
   await new Promise(resolve => setTimeout(resolve, 500));
   const result = await evaluate("({effects:window.cspEffects,violations:window.cspViolations,baseChanged:document.baseURI.startsWith('http:'),inputs:document.querySelectorAll('input').length,policy:document.querySelector('meta[http-equiv=\"Content-Security-Policy\"]').content})");
-  const before = process.env.TOUCHBOX_CSP_PHASE === 'before';
+  const before = process.env.KUDIUMBROWSER_CSP_PHASE === 'before';
   for (const effect of ['inline-script','event-handler','local-script']) assert.equal(result.effects.includes(effect), before);
   assert.equal(result.baseChanged, before);
   assert.equal(injectedIPC.length, before ? 3 : 0);
@@ -55,7 +55,7 @@ ipcMain.on('ipc-event-bus', (_event, value) => { if (value?.fixture?.startsWith(
     probeSourceSHA256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'), htmlSHA256: crypto.createHash('sha256').update(fs.readFileSync(path.join(renderer,'index.html'))).digest('hex'), rendererSHA256: crypto.createHash('sha256').update(fs.readFileSync(path.join(renderer,'renderer.js'))).digest('hex'), rendered, ...result, received, injectedIPC, tamperExecuted, integrityErrors, errors,
     method: 'Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service.' };
   const file = 'docs/benchmarks/renderer-csp.json'; const saved = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file,'utf8')) : {};
-  const phase = process.env.TOUCHBOX_CSP_PHASE || 'after'; if (saved[phase]) saved.confirmations=[...(saved.confirmations||[]),{phase,...report}]; else saved[phase]=report;
+  const phase = process.env.KUDIUMBROWSER_CSP_PHASE || 'after'; if (saved[phase]) saved.confirmations=[...(saved.confirmations||[]),{phase,...report}]; else saved[phase]=report;
   fs.writeFileSync(file,JSON.stringify(saved,null,2)+'\n'); console.log('PASS renderer CSP',JSON.stringify(report));
   host.destroy();server.close();fs.rmSync(root,{recursive:true,force:true});app.exit(0);
 })().catch(error=>{console.error(error);host?.destroy();server?.close();app.exit(1);});

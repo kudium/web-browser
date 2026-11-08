@@ -4,10 +4,16 @@ import os from 'os';
 import path from 'path';
 import { GroupLockService } from '../main/groupLocks';
 
+jest.mock('../main/localStorage', () => ({
+  safeStorage: jest.requireMock('electron').safeStorage,
+}));
+
 jest.mock('electron', () => ({ app: {}, ipcMain: {}, powerMonitor: {} }));
 let root: string;
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-group-lock-test-'));
+  root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kudiumbrowser-group-lock-test-')
+  );
 });
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 const create = (authenticate = jest.fn().mockResolvedValue(undefined)) =>

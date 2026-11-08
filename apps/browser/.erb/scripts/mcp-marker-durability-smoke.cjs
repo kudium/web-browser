@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '../..'),
   phase = process.argv[2] || 'after';
 assert(['before', 'after'].includes(phase));
 const temporary = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'touchbox-mcp-marker-')
+  path.join(os.tmpdir(), 'kudiumbrowser-mcp-marker-')
 );
 const source = (file) =>
   fs.readFileSync(

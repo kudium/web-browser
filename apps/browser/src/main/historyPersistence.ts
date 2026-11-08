@@ -19,7 +19,7 @@ function save(next) {
   if (Buffer.byteLength(text) > 16 * 1024 * 1024)
     throw new Error('Browsing history exceeds its storage limit.');
   fs.mkdirSync(path.dirname(workerData.file), { recursive: true });
-  const temporary = workerData.file + '.touchbox-' + randomUUID() + '.tmp';
+  const temporary = workerData.file + '.kudiumbrowser-' + randomUUID() + '.tmp';
   let descriptor;
   try {
     descriptor = fs.openSync(temporary, 'wx', 0o600);

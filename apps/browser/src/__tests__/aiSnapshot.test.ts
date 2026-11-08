@@ -1,6 +1,14 @@
 import { compactAIPage } from '../browser/aiSnapshot';
 import { readAIPage, actAIPage } from '../main/ai';
 
+jest.mock('../main/preferences', () => ({
+  getBrowserPreferences: () =>
+    jest.requireActual('../browser/preferences').defaultPreferences,
+}));
+jest.mock('../main/localStorage', () => ({
+  safeStorage: jest.requireMock('electron').safeStorage,
+}));
+
 jest.mock('../main/mcp', () => ({ createMCPController: jest.fn() }));
 jest.mock('electron', () => ({}));
 

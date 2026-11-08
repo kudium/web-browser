@@ -4,6 +4,7 @@ import {
   WebContents,
   IpcMainInvokeEvent,
 } from 'electron';
+import { registerSidebarDrop } from './sidebarDrop';
 import { transferGroup } from './groupTransfer';
 import type { IApp } from '../types';
 import type { SiteDeveloperPageSummary } from '../browser/siteDeveloper';
@@ -15,7 +16,7 @@ import {
 } from './siteSettings';
 import { developerState } from './siteDeveloper';
 import { isGroupLocked, getGroupLocks } from './groupLocks';
-import { aiGroupId } from '../browser/aiGroups';
+import { aiGroupId, aiGroups } from '../browser/aiGroups';
 import { projectAction, linkedProjectFolder } from './developerProject';
 import { installedEditors, chooseProjectEditor } from './projectEditors';
 import {
@@ -83,7 +84,11 @@ const projects = new Map<
 >();
 const transfers = new Map<
   number,
-  (action: unknown, id: unknown) => ReturnType<typeof transferGroup>
+  (
+    action: unknown,
+    id: unknown,
+    filePath?: string
+  ) => ReturnType<typeof transferGroup>
 >();
 const projectHosts = new Map<
   number,
@@ -106,13 +111,16 @@ export function registerSiteDeveloperLibrary(
         throw new Error('Untrusted group transfer.');
       return handler(action, id);
     });
+  const offDrop = registerSidebarDrop(host, tabs, (space, file) =>
+    transfers.get(host.webContents.id)!('import', space, file)
+  );
   let transferring = false;
-  transfers.set(host.webContents.id, async (action, id) => {
+  transfers.set(host.webContents.id, async (action, id, filePath) => {
     if (transferring)
       throw new Error('Finish the current group transfer first.');
     transferring = true;
     try {
-      return await transferGroup(host, tabs, action, id);
+      return await transferGroup(host, tabs, action, id, filePath);
     } finally {
       transferring = false;
     }
@@ -225,6 +233,7 @@ export function registerSiteDeveloperLibrary(
           id.length > 1024 ||
           typeof action !== 'string' ||
           ![
+            'choose-folder',
             'get',
             'link',
             'unlink',
@@ -242,7 +251,7 @@ export function registerSiteDeveloperLibrary(
           throw new Error('Invalid editor.');
         if (
           folderPath !== undefined &&
-          (action !== 'folder' ||
+          (!['folder', 'link'].includes(action as string) ||
             typeof folderPath !== 'string' ||
             folderPath.length > 4096)
         )
@@ -297,8 +306,32 @@ export function registerSiteDeveloperLibrary(
   const offLocks = getGroupLocks().subscribe(audit);
   const terminalAudit = setInterval(audit, 2000);
   terminalAudit.unref();
+  let chosenFolder: string | undefined;
   projects.set(hostId, async (id, action, editorId, folderPath) => {
-    const source = tabs().find((tab) => tab.id === id && !tab.archived);
+    if (action === 'choose-folder') {
+      const selection = await projectAction(host, '', action, () => {
+        if (host.isDestroyed()) throw new Error('Window closed.');
+      });
+      chosenFolder = selection?.path;
+      return selection;
+    }
+    if (action === 'link' && folderPath !== undefined) {
+      if (folderPath !== chosenFolder)
+        throw new Error('Choose the project folder again.');
+      chosenFolder = undefined;
+    }
+    const synchronizedSource = async (
+      attempt = 0
+    ): Promise<IApp | undefined> => {
+      const source = tabs().find((tab) => tab.id === id && !tab.archived);
+      if (source || attempt >= 10 || host.isDestroyed()) return source;
+      // Imports can open settings before their renderer layout sync arrives.
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 25);
+      });
+      return synchronizedSource(attempt + 1);
+    };
+    const source = await synchronizedSource();
     if (!source) throw new Error('This group is no longer available.');
     const key = aiGroupId(source);
     const result = await projectAction(
@@ -313,7 +346,8 @@ export function registerSiteDeveloperLibrary(
           throw new Error('Unlock this group to use its project.');
       },
       editorId,
-      folderPath
+      folderPath,
+      aiGroups(tabs()).find((group) => group.id === key)
     );
     if (action === 'link' || action === 'unlink') terminals.prune();
     return result;
@@ -332,6 +366,7 @@ export function registerSiteDeveloperLibrary(
       host.webContents.send('site-developer-library-changed');
   });
   return () => {
+    offDrop();
     offChanges();
     libraries.delete(hostId);
     transfers.delete(hostId);

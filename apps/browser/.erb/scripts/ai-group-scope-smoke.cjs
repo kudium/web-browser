@@ -16,7 +16,7 @@ const fs = require('fs'),
   http = require('http'),
   net = require('net'),
   assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-group-scope-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-group-scope-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/ai.ts'],
@@ -71,6 +71,7 @@ let approval = 0,
     views.set(tab.id, view);
     await view.webContents.loadURL(url);
   }
+  await require(path.join(root, 'ai.cjs')).initializeLocalStorage();
   dispose = require(path.join(root, 'ai.cjs')).registerAI(host, {
     tabs: () => tabs,
     focused: () => 'home-tab',
@@ -99,7 +100,7 @@ let approval = 0,
   await new Promise((r) => reserve.close(r));
   await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);
   const connection = (await evaluate("test.mcp('connection')")).mcpServers
-    .touchbox;
+    .kudiumbrowser;
   client = new Client({ name: 'scope-fixture', version: '1' });
   await client.connect(
     new StreamableHTTPClientTransport(new URL(connection.url), {

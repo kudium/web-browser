@@ -1,7 +1,7 @@
 /* eslint-disable max-classes-per-file */
 import fs from 'fs';
 import { randomUUID } from 'crypto';
-import type { safeStorage } from 'electron';
+import type { SynchronousSecureStorage } from './secureStorage';
 import { nextDailyTaskRun } from '../browser/aiTasks';
 import type {
   AITaskInput,
@@ -71,17 +71,30 @@ export function validateAITask(input: AITaskInput): AITaskInput {
 
 export class AITaskStore {
   // eslint-disable-next-line no-useless-constructor, no-empty-function
-  constructor(private filename: string, private storage: typeof safeStorage) {}
+  constructor(
+    private filename: string,
+    private storage: SynchronousSecureStorage
+  ) {
+    // Dependencies remain synchronous after OS-key initialization.
+  }
 
   private available() {
     return (
       this.storage.isEncryptionAvailable() &&
-      this.storage.getSelectedStorageBackend?.() !== 'basic_text'
+      this.storage.getSelectedStorageBackend?.() !== 'basic_text' &&
+      this.storage.isFileAvailable?.(this.filename) !== false
     );
   }
 
   load(): SavedAITask[] {
     if (!fs.existsSync(this.filename)) return [];
+    if (
+      this.storage.isEncryptionAvailable() &&
+      this.storage.isFileAvailable?.(this.filename) === false
+    )
+      throw new Error(
+        'Saved AI tasks need recovery. Their encrypted file has been preserved.'
+      );
     if (!this.available())
       throw new Error('Unlock OS encryption to load AI tasks.');
     if (fs.statSync(this.filename).size > 16 * 1024 * 1024)

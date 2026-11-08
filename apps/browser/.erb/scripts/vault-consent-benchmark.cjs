@@ -6,7 +6,7 @@ const esbuild=require('esbuild');
 const ref='de2eae3bdf2f346d66dc91a6ef5aeda9581c0603';
 const files=['src/main/passwordManager/vault.ts','src/main/passwordManager/records.ts','src/browser/passwordManager.ts'];
 const password='disposable synthetic vault credential';
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-consent-benchmark-'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-consent-benchmark-'));
 const record={id:'record',title:'Synthetic profile',kind:'profile',origin:'',username:'',password:'',notes:'synthetic confidential fact',fields:[{name:'email',value:'fixture@example.test',secret:false}],allowAI:false};
 const report={measuredAt:new Date().toISOString(),runtime:process.version,platform:process.platform,arch:process.arch,baselineRef:ref,method:'Bundle exact original Git vault/editor source and current source, create disposable encrypted files, save/edit/restart and rewrite one synthetic legacy envelope with omitted/false consents; count effective grants and public AI availability.',phases:{},limitations:['This proves record consent preservation, not per-task provider/client or downstream data-release approval.','Previously persisted automatically forced true values cannot be distinguished from intentional user grants.','Local hook/fill permission and provider disclosure are separate boundaries.']};
 try {

@@ -22,7 +22,8 @@ export function showBrowserContextMenu(
   contents: WebContents,
   params: ContextMenuParams,
   openTab: (url: string, newSession?: boolean) => void,
-  extensions: MenuItem[] = []
+  extensions: MenuItem[] = [],
+  pictureInPicture: (() => void) | undefined = undefined
 ) {
   const items: (MenuItemConstructorOptions | MenuItem)[] = [];
   const group = (entries: (MenuItemConstructorOptions | MenuItem)[]) => {
@@ -89,6 +90,21 @@ export function showBrowserContextMenu(
   }
   if (['video', 'audio'].includes(params.mediaType) && params.srcURL) {
     group(openingActions(params.mediaType, params.srcURL));
+  }
+  if (
+    params.mediaType === 'video' &&
+    pictureInPicture &&
+    (params.mediaFlags?.canShowPictureInPicture ||
+      params.mediaFlags?.isShowingPictureInPicture)
+  ) {
+    group([
+      {
+        label: params.mediaFlags.isShowingPictureInPicture
+          ? 'Exit Picture in Picture'
+          : 'Picture in Picture',
+        click: pictureInPicture,
+      },
+    ]);
   }
   if (params.isEditable) {
     const flags = params.editFlags;

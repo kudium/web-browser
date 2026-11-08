@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
 import { betterAuth } from 'better-auth';
-import { bearer } from 'better-auth/plugins';
+import { bearer, deviceAuthorization } from 'better-auth/plugins';
+import { createAuthMiddleware } from 'better-auth/api';
+import { setSessionCookie } from 'better-auth/cookies';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import nodemailer from 'nodemailer';
 import type { Database } from './db';
 import type { AuthConfig } from './config';
-import { authUser, authSession, authAccount, authVerification, authRateLimit } from './schema';
+import { authUser, authSession, authAccount, authVerification, authRateLimit, authDeviceCode } from './schema';
 export type Authenticate = (token: string) => Promise<string>;
 export function syncAccountId(userId: string) {
   return createHash('sha256').update(`better-auth\0${userId}`).digest('hex');
@@ -17,7 +19,7 @@ export function createAuth(db: Database, config: AuthConfig, delivery?: MailDeli
   const auth = betterAuth({
     appName: 'Kudium Browser', secret: config.secret, baseURL: config.baseURL, basePath: '/api/auth',
     trustedOrigins: [config.baseURL],
-    database: drizzleAdapter(db, { provider: 'pg', schema: { user: authUser, session: authSession, account: authAccount, verification: authVerification, rateLimit: authRateLimit } }),
+    database: drizzleAdapter(db, { provider: 'pg', schema: { user: authUser, session: authSession, account: authAccount, verification: authVerification, rateLimit: authRateLimit, deviceCode: authDeviceCode } }),
     emailAndPassword: {
       enabled: true, minPasswordLength: 12, maxPasswordLength: 128,
       requireEmailVerification: Boolean(sendMail),
@@ -34,7 +36,11 @@ export function createAuth(db: Database, config: AuthConfig, delivery?: MailDeli
     } } : {}),
     session: { expiresIn: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60, cookieCache: { enabled: false } },
     advanced: { useSecureCookies: new URL(config.baseURL).protocol === 'https:', cookiePrefix: 'kudium', defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' } },
-    plugins: [bearer({ requireSignature: true })],
+    plugins: [
+      deviceAuthorization({ expiresIn: '10m', interval: '5s', deviceCodeLength: 64, validateClient: clientId => clientId === 'kudium-desktop', verificationUri: `${config.baseURL}/device` }),
+      { id: 'desktop-signed-session', hooks: { after: [{ matcher: ctx => ctx.path === '/device/token', handler: createAuthMiddleware(async ctx => { if (ctx.context.newSession) await setSessionCookie(ctx, ctx.context.newSession); }) }] } },
+      bearer({ requireSignature: true }),
+    ],
     rateLimit: { enabled: true, storage: 'database', window: 60, max: 100, customRules: { '/sign-in/email': { window: 60, max: 10 }, '/sign-up/email': { window: 60, max: 5 }, '/request-password-reset': { window: 60, max: 5 } } },
     logger: { disabled: true },
   });

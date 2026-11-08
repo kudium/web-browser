@@ -30,6 +30,18 @@ home you can return to.
 | Help with the page or project in front of you | The **AI sidebar** keeps your page visible while you bring selected browsing context and file references into a conversation. |
 | A place to build as well as browse | **Link a local project** to a group and work with its file manager, editor, scripts, and terminal beside your web pages. |
 
+## Watch while you work
+
+Play a video and click **Picture in picture** in the address bar to open the
+native floating player. With multiple videos, Kudium chooses the largest playing
+video. You can also right-click a supported video and choose **Picture in Picture**
+to open that specific player, including an embedded player.
+
+The video stays above your other windows when you switch tabs. Click the address-bar
+button again from its source tab, or close the floating player, to return it to the
+page. The shortcut stays available while a floating video is paused. Website PiP
+restrictions are respected; unsupported videos do not show the action.
+
 ## Keep your everyday tools close
 
 Favorites are for tools you use across contexts. Pinned groups are for the work
@@ -272,6 +284,21 @@ bumps, signing configuration and retrying publication. `npm run package:web` is 
 alternative local packaging command for the update feed at
 `https://browser.kudium.com`; ordinary `npm run package` retains the GitHub feed.
 
+### How installed users receive updates
+
+Installed release builds check their configured stable or beta feed at startup
+and every four hours. **Preferences → Updates** also offers **Check for updates**.
+New versions download in the background by default. A banner above the sidebar’s
+space switcher shows **Update available**, download progress, then **Restart to
+update**. Compact and hidden sidebars keep an accessible update button.
+
+Users can keep browsing without a forced restart. By default, a downloaded update
+installs when they quit normally, without reopening the browser. To choose every
+installation themselves, turn off **Install downloaded updates when I quit**.
+Turning off **Automatically download updates** makes the banner offer **Download
+update** instead. Both preferences are enabled by default and take effect
+immediately. Updates are unavailable in development and unpackaged builds.
+
 ## Browser instances and sessions
 
 Websites run in sandboxed Electron `WebContentsView` instances managed by the
@@ -306,6 +333,11 @@ macOS-inspired material treatment rather than Apple's Liquid Glass API.
 disposable profile and local websites. It checks the hybrid tab layout, shared
 and isolated cookies, command palette, space creation, settings, and appearance.
 It opens test windows briefly and prints the location of its UI captures.
+
+To verify native picture-in-picture playback, run
+`npx electron .erb/scripts/picture-in-picture-smoke.cjs` from `apps/browser`.
+It uses a disposable profile and local video fixtures to check entry, exit,
+embedded players, website restrictions, and tab switching.
 
 ## Browser adapters and extensions
 
@@ -376,7 +408,7 @@ picker. Inline renaming uses transparent styling and a subtle underline.
 
 ## Integrations and implementation notes
 
-The application bundle ID is `com.kudium.touchbox`. Contact: [hello@kudium.com](mailto:hello@kudium.com).
+The application bundle ID is `com.kudium.kudiumbrowser`. Contact: [hello@kudium.com](mailto:hello@kudium.com).
 
 ## Web service
 

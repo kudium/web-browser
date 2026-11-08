@@ -81,9 +81,9 @@ data, IPC inventory and other-platform release gates remain open.
 Reproduce after building current production bundles:
 
 ```sh
-node .erb/scripts/packaged-debugging-smoke.cjs before /path/to/previous/TouchBox.app
-node node_modules/electron-builder/out/cli/cli.js --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-debugging-package
-npm run test:packaged-security -- /tmp/touchbox-debugging-package/mac-arm64/TouchBox.app
+node .erb/scripts/packaged-debugging-smoke.cjs before /path/to/previous/Kudium Browser.app
+node node_modules/electron-builder/out/cli/cli.js --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/kudiumbrowser-debugging-package
+npm run test:packaged-security -- /tmp/kudiumbrowser-debugging-package/mac-arm64/Kudium Browser.app
 ```
 
 The before reference must precede the debugging restriction; an arbitrary old

@@ -11,7 +11,7 @@ async function run() {
   if (!['before', 'after', 'confirmation'].includes(phase))
     throw new Error('Expected before, after or confirmation');
   const temporary = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-history-bench-')
+    path.join(os.tmpdir(), 'kudiumbrowser-history-bench-')
   );
   const read = fs.readFileSync;
   const write = fs.writeFileSync;

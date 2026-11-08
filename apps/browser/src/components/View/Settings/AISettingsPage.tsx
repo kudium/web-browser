@@ -3,7 +3,11 @@ import { useEffect, useState } from 'react';
 import { Button, Callout, Switch } from '@radix-ui/themes';
 import { AISkillsSettings } from './AISkillsSettings';
 import { ExternalAISettings } from './ExternalAISettings';
-import { AI_PROVIDERS, providerFor } from '../../../browser/aiProviders';
+import {
+  AI_PROVIDERS,
+  AI_MODEL_EXAMPLES,
+  providerFor,
+} from '../../../browser/aiProviders';
 import { AI_DEFAULTS, AISettings } from '../../../browser/ai';
 
 const providers = AI_PROVIDERS;
@@ -276,7 +280,13 @@ export function AISettingsPage() {
                         setModel(event.target.value);
                     }}
                   >
-                    {[...new Set([model, ...models])]
+                    {[
+                      ...new Set([
+                        model,
+                        ...(AI_MODEL_EXAMPLES[provider] || []),
+                        ...models,
+                      ]),
+                    ]
                       .filter(Boolean)
                       .map((id) => (
                         <option key={id} value={id}>

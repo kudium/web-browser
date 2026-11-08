@@ -89,7 +89,7 @@
     "sources": {
       "src/main/aiActivityLayer.ts": "bec762c6107d327178b9e0214c17c9121603af331374a9ca8a1166138a6e9174",
       "src/main/aiActivityPresentation.ts": "4e200071bed00bc47949e2aae0336ded1db15e8c222ca492cca2c7c6966e31bc",
-      "/Users/samsonoyetola/workspace/touchbox/.erb/scripts/ai-activity-lifecycle-smoke.cjs": "dc3f7d9cd30236cd03e2badbcbb9b5f0ffc9dd192ba1ec0a29a5d6792b6e4ee7"
+      "/Users/samsonoyetola/workspace/kudiumbrowser/.erb/scripts/ai-activity-lifecycle-smoke.cjs": "dc3f7d9cd30236cd03e2badbcbb9b5f0ffc9dd192ba1ec0a29a5d6792b6e4ee7"
     },
     "layerSha256": "bec762c6107d327178b9e0214c17c9121603af331374a9ca8a1166138a6e9174",
     "probeSha256": "dc3f7d9cd30236cd03e2badbcbb9b5f0ffc9dd192ba1ec0a29a5d6792b6e4ee7"
@@ -144,7 +144,7 @@
       "sources": {
         "src/main/aiActivityLayer.ts": "bec762c6107d327178b9e0214c17c9121603af331374a9ca8a1166138a6e9174",
         "src/main/aiActivityPresentation.ts": "4e200071bed00bc47949e2aae0336ded1db15e8c222ca492cca2c7c6966e31bc",
-        "/Users/samsonoyetola/workspace/touchbox/.erb/scripts/ai-activity-smoke.cjs": "79be0d857f24269d03a789515d5b6ba696da05457d9a750d94cb484c7cd92267"
+        "/Users/samsonoyetola/workspace/kudiumbrowser/.erb/scripts/ai-activity-smoke.cjs": "79be0d857f24269d03a789515d5b6ba696da05457d9a750d94cb484c7cd92267"
       }
     }
   ]

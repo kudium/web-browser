@@ -713,7 +713,7 @@
         "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
         "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
         "src/utils/hooks/useAppList.ts": "628b2f11fbdba9742f04ac47e657be0a048951d956c784103212a28c0438276d",
-        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-2CxDSG/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-state-bench-2CxDSG/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
       },
       "workloads": [
         {
@@ -887,7 +887,7 @@
         "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
         "src/utils/AppManager.ts": "1698b25fbc438b6423f5c265fb807c5ffc20aec9219afa5061861f4cb1010fb8",
         "src/utils/hooks/useAppList.ts": "6678ead5578f24b706cba49ec679ce4b10eafbd16ffc5f9724f0304c2786bde5",
-        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-H439Px/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-state-bench-H439Px/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
       },
       "workloads": [
         {
@@ -1061,7 +1061,7 @@
         "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
         "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
         "src/utils/hooks/useAppList.ts": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
-        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-y39QGb/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-state-bench-y39QGb/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
       },
       "workloads": [
         {
@@ -1235,7 +1235,7 @@
         "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
         "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
         "src/utils/hooks/useAppList.ts": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
-        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-m3SHer/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-state-bench-m3SHer/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
       },
       "workloads": [
         {

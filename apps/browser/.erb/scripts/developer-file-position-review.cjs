@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs'), path = require('path'), os = require('os'), assert = require('assert');
 const project = path.resolve(__dirname, '../..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-file-editor-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-file-editor-'));
 const output = path.join(project, 'docs/evidence/developer-file-position');
 fs.mkdirSync(output, { recursive: true });
 app.setPath('userData', path.join(temp, 'profile'));
@@ -17,7 +17,7 @@ fs.writeFileSync(path.join(folder, 'src', 'nested.ts'), 'export const nested = t
 for (let i=0;i<100;i++) fs.writeFileSync(path.join(folder, 'file-'+i+'.ts'), '');
 fs.writeFileSync(path.join(temp, 'preload.cjs'), `const { contextBridge, ipcRenderer } = require('electron'); contextBridge.exposeInMainWorld('electron', { siteDeveloper: { files: (...args) => ipcRenderer.invoke('files', ...args) } });`);
 fs.writeFileSync(path.join(temp, 'preview.tsx'), `import React from 'react'; import {createRoot} from 'react-dom/client'; import {Theme} from '@radix-ui/themes'; import '@radix-ui/themes/styles.css'; import ${JSON.stringify(path.join(project, 'src/renderer/index.css'))}; import {DeveloperFiles} from ${JSON.stringify(path.join(project, 'src/components/UI/DeveloperFiles'))}; import {EditorView} from '@uiw/react-codemirror';
-const theme = new URLSearchParams(location.search).get('theme'); localStorage.setItem('touchbox-appearance', theme); window.editFile = value => {const view = EditorView.findFromDOM(document.querySelector('.cm-editor')); view.dispatch({changes:{from:0,to:view.state.doc.length,insert:value}})};
+const theme = new URLSearchParams(location.search).get('theme'); localStorage.setItem('kudiumbrowser-appearance', theme); window.editFile = value => {const view = EditorView.findFromDOM(document.querySelector('.cm-editor')); view.dispatch({changes:{from:0,to:view.state.doc.length,insert:value}})};
 createRoot(document.getElementById('root')).render(<Theme appearance={theme}><aside className="ai-sidebar" style={{position:'relative',width:'100%',height:'100vh',padding:16,boxSizing:'border-box'}}><header style={{marginBottom:12}}>Project files</header><DeveloperFiles sourceId="review" projectName="hocasa" projectPath=${JSON.stringify(folder)} onClose={()=>{window.closedFiles=true}} /></aside></Theme>);`);
 esbuild.buildSync({entryPoints:[path.join(temp,'preview.tsx')],bundle:true,platform:'browser',jsx:'automatic',outfile:path.join(temp,'preview.js'),nodePaths:[path.join(project,'node_modules')]});
 fs.writeFileSync(path.join(temp,'index.html'), '<html><head><link rel="stylesheet" href="preview.css"></head><body><div id="root"></div><script src="preview.js"></script></body></html>');
@@ -52,12 +52,12 @@ app.whenReady().then(async()=>{
     await wait("!!document.querySelector('[title=\"src/nested.ts\"]')");
     await pause(100);
     await js("document.querySelector('.developer-files-tree [role=tree]').firstElementChild.scrollTop=300");
-    await wait("[...Object.keys(localStorage)].some(key=>key.startsWith('touchbox-file-position:')&&JSON.parse(localStorage.getItem(key)).scroll===300)");
+    await wait("[...Object.keys(localStorage)].some(key=>key.startsWith('kudiumbrowser-file-position:')&&JSON.parse(localStorage.getItem(key)).scroll===300)");
     await w.loadFile(path.join(temp,'index.html'),{query:{theme}});
     await wait("!!document.querySelector('.cm-content')");
     await wait("document.querySelector('.developer-files-tree [role=tree]').firstElementChild.scrollTop===300");
     assert.equal(await js("document.querySelector('.cm-content').textContent"),'export const saved = true;');
-    const remembered = await js("JSON.parse(localStorage.getItem(Object.keys(localStorage).find(key=>key.startsWith('touchbox-file-position:'))))");
+    const remembered = await js("JSON.parse(localStorage.getItem(Object.keys(localStorage).find(key=>key.startsWith('kudiumbrowser-file-position:'))))");
     assert(remembered.expanded.includes('src')&&remembered.openFile==='app.ts');
     await pause(100); fs.writeFileSync(path.join(output,`${width}-${theme}-restored.png`),(await w.webContents.capturePage()).toPNG());
   }

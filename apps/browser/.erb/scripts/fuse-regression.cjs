@@ -16,8 +16,8 @@ assert(packagePath.endsWith('.app') && fs.existsSync(packagePath), 'Supply an ex
 const config = JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).build.electronFuses;
 const mapping = { runAsNode: 0, enableNodeOptionsEnvironmentVariable: 2, enableNodeCliInspectArguments: 3, enableEmbeddedAsarIntegrityValidation: 4, onlyLoadAppFromAsar: 5 };
 const hash = (data) => crypto.createHash('sha256').update(data).digest('hex');
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-fuses-'));
-const fixtureCode = `const {app}=require('electron');const fs=require('fs'),path=require('path');const {Worker}=require('worker_threads');const directory=process.env.TOUCHBOX_FUSE_PROFILE;app.setPath('userData',directory);app.whenReady().then(()=>{fs.writeFileSync(path.join(directory,'FIXTURE_MARKER_SAFE'),'ran');fs.writeFileSync(path.join(directory,'http-header-size'),String(require('http').maxHeaderSize));const worker=new Worker("require('fs').writeFileSync(require('worker_threads').workerData,'ran')",{eval:true,workerData:path.join(directory,'worker-ran')});worker.on('error',error=>{console.error(error);app.exit(1)});worker.on('exit',code=>setTimeout(()=>app.exit(code),200));});`;
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-fuses-'));
+const fixtureCode = `const {app}=require('electron');const fs=require('fs'),path=require('path');const {Worker}=require('worker_threads');const directory=process.env.KUDIUMBROWSER_FUSE_PROFILE;app.setPath('userData',directory);app.whenReady().then(()=>{fs.writeFileSync(path.join(directory,'FIXTURE_MARKER_SAFE'),'ran');fs.writeFileSync(path.join(directory,'http-header-size'),String(require('http').maxHeaderSize));const worker=new Worker("require('fs').writeFileSync(require('worker_threads').workerData,'ran')",{eval:true,workerData:path.join(directory,'worker-ran')});worker.on('error',error=>{console.error(error);app.exit(1)});worker.on('exit',code=>setTimeout(()=>app.exit(code),200));});`;
 const packagedWire = async () => {
   const wire = await getCurrentFuseWire(packagePath);
   assert.equal(wire.version, '1');
@@ -70,11 +70,11 @@ async function run() {
     await flipFuses(appPath, target);
     const executable = path.join(appPath, 'Contents/MacOS', info.CFBundleExecutable);
     const attack = path.join(temporary, 'attack.cjs');
-    fs.writeFileSync(attack, "require('fs').writeFileSync(require('path').join(process.env.TOUCHBOX_FUSE_PROFILE,'attack-ran'),'ran');");
+    fs.writeFileSync(attack, "require('fs').writeFileSync(require('path').join(process.env.KUDIUMBROWSER_FUSE_PROFILE,'attack-ran'),'ran');");
     const cases = {};
     const runCase = async (name, args = [], env = {}, signal = false) => {
       const profile = path.join(temporary, `${phase}-${name}`); fs.mkdirSync(profile);
-      cases[name] = await launch(executable, args, { TOUCHBOX_FUSE_PROFILE: profile, ...env }, profile, signal);
+      cases[name] = await launch(executable, args, { KUDIUMBROWSER_FUSE_PROFILE: profile, ...env }, profile, signal);
       console.log(`${phase}/${name}: exit=${cases[name].exitCode} signal=${cases[name].signal} timeout=${cases[name].timedOut}`);
       return cases[name];
     };

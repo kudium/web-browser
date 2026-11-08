@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-snapshot-benchmark-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-snapshot-benchmark-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({ entryPoints: ['src/main/ai.ts'], bundle: true, platform: 'node', external: ['electron'], outfile: path.join(root, 'ai.cjs') });
 (async () => {
@@ -51,7 +51,7 @@ require('esbuild').buildSync({ entryPoints: ['src/main/ai.ts'], bundle: true, pl
     baseline: stats(result.samples.baseline), bounded: stats(result.samples.bounded),
     coverage: result.coverage,
   };
-  const output = process.env.TOUCHBOX_BENCHMARK_OUTPUT || path.join(root, 'snapshot-benchmark.json');
+  const output = process.env.KUDIUMBROWSER_BENCHMARK_OUTPUT || path.join(root, 'snapshot-benchmark.json');
   fs.writeFileSync(output, JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ ...report, output }, null, 2));
   win.destroy(); app.exit(0);

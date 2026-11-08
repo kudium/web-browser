@@ -1,7 +1,7 @@
 import { IApp } from '../types';
 import { aiGroups, scopedAITabs } from './aiGroups';
 
-export const AI_CONTEXT_MIME = 'application/x-touchbox-ai-context';
+export const AI_CONTEXT_MIME = 'application/x-kudiumbrowser-ai-context';
 export const AI_CONTEXT_LIMIT = 8;
 export const AI_CONTEXT_BUDGET = 4000;
 export interface AIContextReference {

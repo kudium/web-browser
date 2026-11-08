@@ -67,7 +67,7 @@ export function DeveloperSidebar({
   const [views, setViews] = useState<Record<string, 'pages' | 'files'>>(() => {
     try {
       const saved = JSON.parse(
-        localStorage.getItem('touchbox.developer.views') || '{}'
+        localStorage.getItem('kudiumbrowser.developer.views') || '{}'
       );
       return Object.fromEntries(
         Object.entries(saved).filter(
@@ -83,7 +83,7 @@ export function DeveloperSidebar({
     const updated = { ...views, [selectedGroup]: next };
     setViews(updated);
     try {
-      localStorage.setItem('touchbox.developer.views', JSON.stringify(updated));
+      localStorage.setItem('kudiumbrowser.developer.views', JSON.stringify(updated));
     } catch {
       /* Keep the view usable if storage is unavailable. */
     }

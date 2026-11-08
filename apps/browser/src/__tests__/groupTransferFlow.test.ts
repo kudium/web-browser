@@ -40,7 +40,7 @@ beforeEach(() => {
   fs.writeFileSync(
     file,
     JSON.stringify({
-      format: 'touchbox-group',
+      format: 'kudiumbrowser-group',
       version: 1,
       name: 'Work',
       pages: [{ name: 'Example', url: source.url }],
@@ -123,4 +123,24 @@ test('export includes hooks without profile, cookies or local project paths', as
   expect(data.developer[0].config.before).toBe('original()');
   expect(data.pages[0].url).toBe(source.url);
   expect(data.sessionProfileId).toBeUndefined();
+});
+
+it('imports a dropped file without reopening the chooser and preserves hooks review', async () => {
+  (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 0 });
+  const result = await transferGroup(
+    host,
+    () => [source],
+    'import',
+    'space',
+    file
+  );
+  expect(dialog.showOpenDialog).not.toHaveBeenCalled();
+  expect(showBrowserDialog).toHaveBeenCalledWith(
+    host,
+    expect.objectContaining({
+      importReview: expect.objectContaining({ hooks: expect.any(Array) }),
+    })
+  );
+  expect(result?.tabs[0].spaceId).toBe('space');
+  expect(result?.reviewHooks).toBe(true);
 });

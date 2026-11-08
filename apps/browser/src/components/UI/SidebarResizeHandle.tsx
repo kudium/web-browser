@@ -6,7 +6,7 @@ export const defaultSidebarWidth = 300;
 const minimum = 240;
 const maximum = () => Math.max(minimum, Math.min(480, window.innerWidth - 360));
 export function savedSidebarWidth() {
-  const saved = Number(localStorage.getItem('touchbox-sidebar-width'));
+  const saved = Number(localStorage.getItem('kudiumbrowser-sidebar-width'));
   return Number.isFinite(saved) && saved >= minimum
     ? Math.min(saved, maximum())
     : defaultSidebarWidth;

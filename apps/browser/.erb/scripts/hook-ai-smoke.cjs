@@ -15,7 +15,7 @@ const os = require('os');
 const http = require('http');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-hook-ai-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-hook-ai-'));
 app.setPath('userData', root);
 fs.writeFileSync(
   path.join(root, 'entry.ts'),
@@ -178,6 +178,7 @@ const server = http.createServer(async (req, res) => {
   await app.whenReady();
   api = require(path.join(root, 'entry.cjs'));
   const credential = 'long disposable fixture credential';
+  await api.initializeLocalStorage();
   api.writeOSCredential(credential);
   const vault = new api.PasswordVault(
     path.join(root, 'password-manager', 'vault.json'),
@@ -265,6 +266,7 @@ const server = http.createServer(async (req, res) => {
       await view.webContents.loadURL(`${origin}/other`);
     return { response: 1 };
   };
+  await api.initializeLocalStorage();
   const dispose = api.registerAI(host, {
     tabs: () => tabs,
     focused: () => 'page',

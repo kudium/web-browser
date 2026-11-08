@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-auth-smoke-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-auth-smoke-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/passwordManager/index.ts'],
@@ -34,6 +34,7 @@ fs.writeFileSync(
   await app.whenReady();
   const keeper = new BrowserWindow({ show: false });
   const keyProtection = require(path.join(root, 'authentication.cjs'));
+  await keyProtection.initializeLocalStorage();
   keyProtection.writeOSCredential('native-key-storage-test');
   assert.equal(keyProtection.readOSCredential(), 'native-key-storage-test');
   assert(
@@ -49,6 +50,7 @@ fs.writeFileSync(
   let prompts = 0;
   let cancel = false;
   const manager = require(path.join(root, 'manager.cjs'));
+  await manager.initializeLocalStorage();
   manager.registerPasswordManager((c) => trusted.has(c), {
     canUseOSAuthentication: async () => true,
     usesOSAuthentication: () => !!credential,

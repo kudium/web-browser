@@ -16,7 +16,7 @@ if (!process.versions.electron) {
 const { app } = require('electron');
 const root = path.resolve(__dirname, '../..');
 const baseline = 'de2eae3bdf2f346d66dc91a6ef5aeda9581c0603';
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-preferences-'));
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-preferences-'));
 app.setPath('userData', temporary);
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const source = phase === 'before'

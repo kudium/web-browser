@@ -1,4 +1,4 @@
-# TouchBox browser and AI security review
+# Kudium Browser browser and AI security review
 
 Reviewed November 6, 2026. Scope: current working tree, including uncommitted changes. Source review, isolated DOM/policy probes, eight targeted unit suites and production npm dependency audit. No live account attacks, packaged binary inspection, network penetration test, or Chromium exploit assessment. Original findings describe the reviewed baseline; dated follow-ups and corrections below describe subsequent work; exploit chains requiring prompt injection were not demonstrated end to end.
 

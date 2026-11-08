@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '../..');
 const phase = process.argv[2] || 'after';
 const sourcePath = phase === 'before' ? 'docs/benchmarks/baselines/image-preflight/aiComposer.ts.txt' : 'src/main/aiComposer.ts';
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-image-preflight-'));
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-image-preflight-'));
 const original = nativeImage.createFromBuffer.bind(nativeImage);
 let dispatches = 0;
 let controlled = true;

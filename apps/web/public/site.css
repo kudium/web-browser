@@ -345,69 +345,100 @@ nav a[aria-current="page"] {
 }
 .campaign-download {
   background: var(--surface);
-  padding: 75px max(24px, calc((100vw - 1000px) / 2)) 55px;
-  text-align: center;
-}
-.download-heading img {
-  width: 37px;
-  height: 41px;
-  object-fit: contain;
-  margin: 0 auto 20px;
+  padding: 52px max(24px, calc((100vw - 960px) / 2)) 32px;
+  text-align: left;
 }
 .download-heading h2 {
-  font-size: clamp(36px, 4.5vw, 54px);
-  line-height: 1.08;
-  font-weight: 650;
+  font-size: clamp(28px, 3vw, 36px);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.035em;
 }
 .download-heading p {
-  font-size: 19px;
-  margin-top: 15px;
+  font-size: 16px;
+  margin-top: 10px;
 }
 .platform-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 45px;
-  margin: 50px auto 30px;
+  gap: 32px;
+  margin: 30px auto 22px;
 }
 .platform-grid article {
-  border-top: 1px solid var(--line);
-  padding-top: 24px;
+  min-width: 0;
 }
 .platform-grid h3 {
-  font-size: 26px;
+  font-size: 18px;
   font-weight: 600;
-}
-.platform-grid p {
-  font-size: 13px;
-  margin: 12px 0 20px;
+  margin-bottom: 12px;
 }
 .platform-link {
-  display: block;
+  display: table;
   color: var(--teal-ink);
-  font-size: 15px;
-  margin: 12px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 3px 0;
+  margin-top: 4px;
+  text-underline-offset: 4px;
 }
-.platform-link span {
-  margin-left: 5px;
+.platform-link:hover {
+  text-decoration: underline;
+}
+.platform-link:focus-visible {
+  outline: 2px solid var(--teal-ink);
+  outline-offset: 4px;
+  border-radius: 2px;
 }
 .availability {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .availability a {
   color: var(--teal-ink);
   white-space: nowrap;
+  margin-left: 8px;
 }
 footer {
   max-width: 1100px;
   margin: auto;
   padding: 28px 24px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
   color: var(--muted);
   font-size: 11px;
+}
+.community-section {
+  max-width: 1008px;
+  margin: auto;
+  padding: 36px 24px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 32px;
+  align-items: center;
+}
+.community-section h2 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.community-section p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.community-links {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+}
+.community-links .text-link {
+  font-size: 14px;
 }
 footer .brand {
   color: var(--ink);
@@ -707,15 +738,15 @@ th {
     margin-top: 35px;
   }
   .campaign-download {
-    padding: 55px 24px 40px;
+    padding: 36px 24px 28px;
   }
   .download-heading h2 {
-    font-size: 39px;
+    font-size: 28px;
   }
   .platform-grid {
     grid-template-columns: 1fr;
-    gap: 26px;
-    margin-top: 35px;
+    gap: 22px;
+    margin-top: 26px;
   }
   footer span {
     display: none;
@@ -1361,4 +1392,9 @@ th {
   :root {
     scroll-behavior: auto;
   }
+}
+
+@media (max-width: 800px) {
+  .community-section { grid-template-columns: 1fr; gap: 10px; }
+  .community-links { grid-column: 1; grid-row: auto; margin-top: 8px; }
 }

@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "targetVersion": "REPLACE_WITH_CANDIDATE_VERSION",
+  "migrationId": "os-ciphertext-to-local-aes-gcm-v1",
+  "osIdentity": "Kudium Browser",
+  "targets": [
+    {
+      "target": "darwin-arm64",
+      "status": "not-run",
+      "runtime": "signed-packaged-app",
+      "runner": { "native": false, "target": "darwin-arm64", "runUrl": "" },
+      "artifact": { "path": "installers/candidate.dmg", "sha256": "", "appVersion": "REPLACE_WITH_CANDIDATE_VERSION" },
+      "signature": { "verified": false, "signer": "", "notarized": false, "gatekeeper": false },
+      "fixtures": [
+        {
+          "sourceVersion": "REPLACE_WITH_ACTUAL_PREVIOUS_RELEASE",
+          "origin": "previous-release-ui",
+          "sourceSigned": false,
+          "sourceSigner": "",
+          "sourceReleaseUrl": "",
+          "sourceArtifactPath": "installers/previous.dmg",
+          "sourceArtifactSha256": "",
+          "originalsPreserved": false,
+          "readBackValidated": false,
+          "countsBefore": {},
+          "countsAfter": {},
+          "cases": [
+            { "name": "populated-upgrade", "status": "not-run", "evidencePath": "receipts/upgrade.json", "evidenceSha256": "" }
+          ]
+        }
+      ]
+    }
+  ]
+}

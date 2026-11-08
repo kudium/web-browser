@@ -348,7 +348,7 @@ it('restores expanded folders, selected file and open editor after reopening Fil
 
 it('falls back to the project root when the remembered folder was removed', async () => {
   localStorage.setItem(
-    'touchbox-file-position:removed:/removed',
+    'kudiumbrowser-file-position:removed:/removed',
     JSON.stringify({ folder: 'deleted', expanded: [], selected: [], scroll: 0 })
   );
   files.mockRejectedValueOnce(Error('Folder was removed.'));

@@ -1,4 +1,10 @@
 import type { IApp } from '../types';
+import type { BrowserState } from './contracts';
+
+/** Ignore the temporary empty page while a restored tab starts loading. */
+export function savedNavigationURL(tab: IApp, state: BrowserState): string {
+  return !state.initialLoading && state.url ? state.url : tab.url;
+}
 
 /** Only destinations supported by the browser may become saved tab defaults. */
 export function validTabDefaultURL(value: unknown): string | undefined {

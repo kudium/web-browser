@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { notarize } from '@electron/notarize';
 
 jest.mock('@electron/notarize', () => ({ notarize: jest.fn() }));
@@ -40,7 +41,7 @@ it('uses the supported notarytool credential fields and propagates submission fa
   });
   await hook(context);
   expect(notarize).toHaveBeenCalledWith({
-    appPath: '/release fixture/Kudium Browser.app',
+    appPath: path.join(context.appOutDir, 'Kudium Browser.app'),
     appleId: 'release@example.test',
     appleIdPassword: 'dummy-test-password',
     teamId: 'TESTTEAM01',
@@ -73,7 +74,8 @@ it('uses a protected temporary API key and removes it after success or failure',
   const submission = async (options: { appleApiKey: string }) => {
     keyPath = options.appleApiKey;
     expect(await fs.readFile(keyPath, 'utf8')).toBe('dummy-api-key');
-    expect((await fs.stat(keyPath)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32')
+      expect((await fs.stat(keyPath)).mode & 0o777).toBe(0o600);
   };
   (notarize as jest.Mock).mockImplementationOnce(submission);
   await hook(context);

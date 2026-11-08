@@ -69,8 +69,7 @@ Browser account pages read their cookie session on the server and show storage u
 The previous OIDC verifier is replaced; existing OIDC identities/records are not
 silently linked by email. If this service was previously deployed with OIDC, a
 reviewed identity migration is required. Desktop browser-mediated authorization,
-credential handoff, secure encryption-key enrollment and device recovery still
-need integration; adding website login alone does not activate desktop sync.
+credential handoff, secure encryption-key enrollment and device recovery are now implemented in the desktop account-sync client. Website login alone still does not activate desktop sync; the app requires explicit enrollment and category consent.
 
 The `/v1/sync` API accepts the exact envelope from `apps/browser/src/main/sync/encryption.ts`:
 AES-256-GCM version 1, opaque recordId, positive keyVersion, base64 nonce (12 bytes),
@@ -111,12 +110,11 @@ accounts to proceed concurrently. Change events retain payloads so interrupted
 pagination never skips an intervening revision. Remote tabs must not replace,
 navigate or close active local tabs automatically.
 
-**Desktop integration remains separate:** account connection UI, browser-mediated authorization,
-secure key enrollment, recovery/rotation, device credentials/revocation, category
-consent, retry queue and application of remote records. No device-enrollment API
-is exposed because its key-provisioning protocol is not yet finalized. This backend
-does not make the desktop's existing setup-placeholder into working two-device sync.
-Do not claim production end-to-end sync until those flows are implemented and tested.
+**Desktop integration:** Preferences → Sync starts Better Auth’s RFC 8628 device authorization flow. `/device` requires a signed-in account and code comparison; the main process polls `/api/auth/device/token` and retains only the signed credential in OS-encrypted local storage. The first device creates a random 256-bit recovery key and an encrypted account key-check record. Other devices must provide the same key. There is no server-side recovery or automatic key rotation.
+
+Each device uploads its own encrypted snapshot every 30 seconds, with digest-based change detection, conditional revisions, and bounded retry backoff. Incoming snapshots are validated and listed separately; explicit restore creates fresh local spaces/groups/login partitions. Portable preferences are applied only after confirmation. Disable, category changes, and disconnect invalidate pending uploads. Revoked sessions cannot make new API requests; already downloaded data remains on devices.
+
+Deploy migration `0003_messy_falcon.sql` with the web update before distributing the new desktop build. Native iCloud sync is not implemented. The integration suite tests device approval and two clients against a dedicated PostgreSQL database.
 
 ## Releases
 

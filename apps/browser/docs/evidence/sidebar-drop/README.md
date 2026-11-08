@@ -1,0 +1,7 @@
+# Sidebar drop review
+
+The isolated Electron fixture `.erb/scripts/sidebar-drop-review.cjs` exercises the production sidebar-drop IPC handlers with actual local files. Successful submission creates a fresh browser group, persists its project directory, and creates BROWSER.md and AGENTS.md inside the linked directory. Unit tests cover exported-file classification, hooks import review, cancellation, duplicate slugs, one-use proposals and trusted-frame checks.
+
+Reviewed the production creation dialog at 620 × 600 and 360 × 500 in light and dark appearance: prefilled/default focus, empty name and disabled Create, pending creation, duplicate-reference error, and Cancel. Screenshots were inspected individually and in review-grid.png. Fields share typography, paths wrap, footer controls remain reachable, and narrow errors scroll into view. The production drop hint was reviewed in normal and compact sidebars in both themes. Existing Group settings was also exercised at 620 and 360 px, light/dark, collapsed/expanded, and export loading/error states.
+
+Thirty-one focused tests pass. TypeScript, targeted ESLint and diff whitespace checks pass. The native Finder-to-Kudium file drag gesture has not been exercised; the file classification, native IPC handlers, creation and linking have been tested in Electron. Full production-window drop/import routing was checked in code, not through a live native drag.

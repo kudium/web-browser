@@ -1,7 +1,7 @@
 const { app, BrowserWindow, nativeTheme } = require('electron');
 const fs = require('fs'), path = require('path'), os = require('os'), assert = require('assert'), esbuild = require('esbuild');
 const project = path.resolve(__dirname, '../..');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-native-dialog-design-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-native-dialog-design-'));
 const out = path.join(project, 'docs/evidence/browser-dialog-design');
 fs.mkdirSync(out, { recursive: true }); app.setPath('userData', root);
 app.on('window-all-closed', () => {});
@@ -21,14 +21,14 @@ async function capture(win, name, width, theme, native = true) {
 }
 const cases = [
   ['remove', { message: 'Remove “1 new message”?', detail: 'This removes the group and its 2 saved tabs. Unshared login profiles, cookies, website storage, cache, browsing history, and site settings will be deleted. Shared login profiles will be kept.\nPersonal Data saved locally for this group will be deleted; browser-wide originals are kept. This cannot be undone.', buttons: ['Cancel', 'Remove Group & Data'], cancelId: 0, destructive: true }],
-  ['restart', { message: 'Restart TouchBox?', detail: 'TouchBox will reopen your saved groups and pages.', buttons: ['Cancel', 'Restart'], cancelId: 0 }],
+  ['restart', { message: 'Restart KudiumBrowser?', detail: 'KudiumBrowser will reopen your saved groups and pages.', buttons: ['Cancel', 'Restart'], cancelId: 0 }],
   ['error', { message: 'Could not import this group', detail: 'The file could not be read. Choose a valid group export and try again.', buttons: ['OK'] }],
   ['website', websitePermissionDialog('https://example.com', 'geolocation')],
   ['extension', { message: 'Install “Developer tools”?', detail: 'Review the requested access before installing.', buttons: ['Cancel', 'Install', 'Install'], cancelId: 0, defaultId: 2, scope: [{ label: 'This group', response: 1 }, { label: 'All groups', response: 2 }], permissions: ['tabs', 'storage', 'cookies', 'clipboardRead', 'downloads', '*://*/*'], technicalDetail: 'tabs\nstorage\ncookies\n*://*/*' }],
   ['import', { message: 'Import “Workspace”?', detail: '3 pages will be added as a new group. Logins and private data are not included.', buttons: ['Import & Review', 'Cancel'], cancelId: 1, importReview: { pages: [{ name: 'Project documentation', url: 'example.com/docs', hooks: true }, { name: 'Preview', url: 'localhost:3000', hooks: true }, { name: 'Repository', url: 'github.com/example/project', hooks: false }], hooks: [{ origin: 'https://example.com', source: 'console.log("Local preview");\n'.repeat(30) }] } }],
 ];
 app.whenReady().then(async () => {
-  const owner = new BrowserWindow({ show: true, width: 720, height: 700 }); await owner.loadURL('data:text/html,<body style="background:%23262628;color:white;font:14px sans-serif;padding:24px">TouchBox dialog review</body>');
+  const owner = new BrowserWindow({ show: true, width: 720, height: 700 }); await owner.loadURL('data:text/html,<body style="background:%23262628;color:white;font:14px sans-serif;padding:24px">KudiumBrowser dialog review</body>');
   if(!process.argv.includes('--in-app-only'))for (const width of [440, 320]) for (const theme of ['light', 'dark']) for (const [name, options] of cases) {
     nativeTheme.themeSource = theme;
     const answer = showBrowserDialog(owner, options);

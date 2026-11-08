@@ -1,6 +1,6 @@
 # Advanced browser preferences
 
-TouchBox now exposes Network, Compatibility, Website behavior and Startup preferences, plus additional Privacy, Languages and Performance controls. Standard controls save immediately; advanced controls are edited as a draft and require **Save advanced settings**. Discard cancels the draft. Reset advanced defaults selects a draft that must be saved.
+Kudium Browser now exposes Network, Compatibility, Website behavior and Startup preferences, plus additional Privacy, Languages and Performance controls. Standard controls save immediately; advanced controls are edited as a draft and require **Save advanced settings**. Discard cancels the draft. Reset advanced defaults selects a draft that must be saved.
 
 ## Scope and application
 
@@ -21,7 +21,7 @@ Basic tracking protection uses a deliberately small built-in domain list: Double
 
 Referrer controls affect HTTP Referer headers. WebRTC controls use Chromium's IP-handling policy, including disabling non-proxied UDP. Restrictive policies can affect calling websites.
 
-Clear-on-exit removes website cookies, localStorage, IndexedDB and service workers from TouchBox session partitions on normal Quit, preserving extension storage. A failed cleanup keeps the app open and reports the failure. Forced termination cannot run cleanup. Storage inspection reports HTTP cache bytes and cookie count, not total IndexedDB/localStorage disk usage.
+Clear-on-exit removes website cookies, localStorage, IndexedDB and service workers from Kudium Browser session partitions on normal Quit, preserving extension storage. A failed cleanup keeps the app open and reports the failure. Forced termination cannot run cleanup. Storage inspection reports HTTP cache bytes and cookie count, not total IndexedDB/localStorage disk usage.
 
 Network logs use the default capture mode and are saved through a native file picker. They can contain visited URLs. Authenticated proxy credentials are not supported; credentials embedded in proxy rules or PAC URLs are rejected. Arbitrary custom user agents do not change the browser engine or all JavaScript browser metadata and can affect verification.
 

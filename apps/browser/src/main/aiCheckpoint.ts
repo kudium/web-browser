@@ -1,5 +1,5 @@
 import fs from 'fs';
-import type { safeStorage } from 'electron';
+import type { SynchronousSecureStorage } from './secureStorage';
 import type { AIAccessMode } from '../browser/aiPermissions';
 
 export interface AICheckpoint {
@@ -18,16 +18,23 @@ export interface AICheckpoint {
 export class AICheckpointStore {
   // Parameter properties initialize the store dependencies.
   // eslint-disable-next-line no-useless-constructor, no-empty-function
-  constructor(private filename: string, private storage: typeof safeStorage) {}
+  constructor(
+    private filename: string,
+    private storage: SynchronousSecureStorage
+  ) {
+    // Dependencies remain synchronous after OS-key initialization.
+  }
 
   private available() {
     return (
       this.storage.isEncryptionAvailable() &&
-      this.storage.getSelectedStorageBackend?.() !== 'basic_text'
+      this.storage.getSelectedStorageBackend?.() !== 'basic_text' &&
+      this.storage.isFileAvailable?.(this.filename) !== false
     );
   }
 
   clear() {
+    if (this.storage.isFileAvailable?.(this.filename) === false) return;
     fs.rmSync(this.filename, { force: true });
   }
 

@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 
 /** Write private connection settings atomically, with owner-only permissions. */
 export function writePrivateFile(filename: string, text: string) {
-  const temporary = `${filename}.touchbox-${randomUUID()}.tmp`;
+  const temporary = `${filename}.kudiumbrowser-${randomUUID()}.tmp`;
   let descriptor: number | undefined;
   try {
     descriptor = fs.openSync(temporary, 'wx', 0o600);

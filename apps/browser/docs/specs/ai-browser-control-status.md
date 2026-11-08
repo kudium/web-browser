@@ -1,4 +1,4 @@
-# TouchBox AI browser control — implementation handoff
+# Kudium Browser AI browser control — implementation handoff
 
 Updated: November 5, 2026.
 
@@ -6,7 +6,7 @@ Updated: November 5, 2026.
 
 The current implementation is built and its targeted native regressions pass. The user has authorized a final implementation and validation pass. Full Ego parity and general performance superiority are **not established**. Resume future work from this document and the existing checkout; preserve unrelated staged and unstaged edits.
 
-No commit, pull request, deployment, or replacement of the user's running TouchBox instance was requested. The existing service on port 43187 was left intact. At the user’s request, the running Gemini configuration was switched to `gemini-3.5-flash-lite` through Preferences; the key was not read or copied. Native fixtures use disposable profiles and separate ports.
+No commit, pull request, deployment, or replacement of the user's running Kudium Browser instance was requested. The existing service on port 43187 was left intact. At the user’s request, the running Gemini configuration was switched to `gemini-3.5-flash-lite` through Preferences; the key was not read or copied. Native fixtures use disposable profiles and separate ports.
 
 ## Implemented
 
@@ -16,7 +16,7 @@ No commit, pull request, deployment, or replacement of the user's running TouchB
 | Sidebar | Right-side AI panel below the tab strip; collapse animation, resizing, shared left-sidebar motion, clean controls, settings shortcut, no duplicate in-page panel. |
 | Preferences | Dedicated AI page with model and external-control tabs; visible HTTP/stdio connection configuration and practical copy/enable/retry/resume controls. |
 | Providers | OpenAI-compatible providers, Gemini, Claude, common Chinese provider presets and custom endpoints. Main-process keys; optional remembered keys use OS encryption. Live provider/model compatibility still needs broader validation. |
-| External AI | Authenticated localhost MCP using the official SDK, dependency-free stdio bridge and agent guide. **40 MCP tools**; external control requires no model API key in TouchBox. |
+| External AI | Authenticated localhost MCP using the official SDK, dependency-free stdio bridge and agent guide. **40 MCP tools**; external control requires no model API key in Kudium Browser. |
 | Permissions | Footer Ask first / Standard (default) / Full access; shared built-in/MCP approvals; temporary direct-human chat grants; get_access / confirmed request_access. Scope, takeover and target validation remain enforced. See ai-permissions.md. |
 | AI context | All-groups/default or group scope in composer; enforced for built-in and MCP tools; editable unique group slugs, @group/page autocomplete, stable reference IDs, scoped tasks/checkpoints and same-provider model picker. See ai-group-context.md. |
 | Browser sessions | Tab listing/selection/creation/navigation/history/reload/closure, shared signed-in sessions, website-created child tabs and lifecycle recovery. |
@@ -36,17 +36,17 @@ No commit, pull request, deployment, or replacement of the user's running TouchB
 
 ## Latest validation
 
-Final pass: all 82 unit suites and 359 tests passed, including checkpoint encryption, takeover recovery, renderer reply history and capture-loss resize regressions. TypeScript and targeted ESLint passed. The general native browser smoke now passes after repairing stale test selectors and the real capture-loss bug. The extension observer leak was traced to the dependency, patched, and verified with a 100-cycle listener-count regression; native smoke no longer emits the observer warning. Final production build, unit checks and all desktop component scripts passed. Refreshed unsigned macOS arm64 package succeeded at `release/build/mac-arm64/TouchBox.app`; log: `/tmp/touchbox-final-package.log`. The full desktop command encountered foreground typing in the address fixture; the corrected general smoke was rerun successfully at `/tmp/touchbox-browser-final-confirmation.log`. Component results and build are in `/tmp/touchbox-release-final-checks.log`. Do not describe that earlier combined command as exit 0.
+Final pass: all 82 unit suites and 359 tests passed, including checkpoint encryption, takeover recovery, renderer reply history and capture-loss resize regressions. TypeScript and targeted ESLint passed. The general native browser smoke now passes after repairing stale test selectors and the real capture-loss bug. The extension observer leak was traced to the dependency, patched, and verified with a 100-cycle listener-count regression; native smoke no longer emits the observer warning. Final production build, unit checks and all desktop component scripts passed. Refreshed unsigned macOS arm64 package succeeded at `release/build/mac-arm64/Kudium Browser.app`; log: `/tmp/kudiumbrowser-final-package.log`. The full desktop command encountered foreground typing in the address fixture; the corrected general smoke was rerun successfully at `/tmp/kudiumbrowser-browser-final-confirmation.log`. Component results and build are in `/tmp/kudiumbrowser-release-final-checks.log`. Do not describe that earlier combined command as exit 0.
 
 | Check | Evidence |
 | --- | --- |
-| User-requested external resume | `.erb/scripts/mcp-smoke.cjs --resume-only`: declined/approved resume, preserved pause, stale actions refused before approval, fresh read and original action completion. `/tmp/touchbox-external-resume-native.log` |
-| Full native MCP regression | `--oop-frames`: official client, real page actions, OOP frames, files/dialogs, cancellation, auth and stdio. `/tmp/touchbox-external-resume-regression.log` — exit 0 |
-| Built-in handoff/recovery | `.erb/scripts/ai-smoke.cjs --handoff`. `/tmp/touchbox-external-resume-provider.log` — exit 0 |
+| User-requested external resume | `.erb/scripts/mcp-smoke.cjs --resume-only`: declined/approved resume, preserved pause, stale actions refused before approval, fresh read and original action completion. `/tmp/kudiumbrowser-external-resume-native.log` |
+| Full native MCP regression | `--oop-frames`: official client, real page actions, OOP frames, files/dialogs, cancellation, auth and stdio. `/tmp/kudiumbrowser-external-resume-regression.log` — exit 0 |
+| Built-in handoff/recovery | `.erb/scripts/ai-smoke.cjs --handoff`. `/tmp/kudiumbrowser-external-resume-provider.log` — exit 0 |
 | Unit checks | Recovery, tool schemas and protocol: 18 tests passed. Separate interrupt/protocol/dialog milestone: 22 tests passed. These are targeted checks, not a claim that the entire repository suite ran. |
-| Static/build | TypeScript, targeted ESLint and production build passed. `/tmp/touchbox-external-resume-build.log` — exit 0 |
-| Escape boundary | AI CDP Escape does not self-interrupt; native Escape interrupts a drag. Pending website dialogs can block the hook on macOS; trusted Take over cancels them. `/tmp/touchbox-escape-interrupt-native.log`, `/tmp/touchbox-escape-dialog-native.log` |
-| Extraction limits | Main/OOP nested components and a real 50,000-node traversal limit. `/tmp/touchbox-shadow-extraction-native.log`, `/tmp/touchbox-shadow-extraction-budget.log` |
+| Static/build | TypeScript, targeted ESLint and production build passed. `/tmp/kudiumbrowser-external-resume-build.log` — exit 0 |
+| Escape boundary | AI CDP Escape does not self-interrupt; native Escape interrupts a drag. Pending website dialogs can block the hook on macOS; trusted Take over cancels them. `/tmp/kudiumbrowser-escape-interrupt-native.log`, `/tmp/kudiumbrowser-escape-dialog-native.log` |
+| Extraction limits | Main/OOP nested components and a real 50,000-node traversal limit. `/tmp/kudiumbrowser-shadow-extraction-native.log`, `/tmp/kudiumbrowser-shadow-extraction-budget.log` |
 
 Temporary logs may disappear. Reproduction scripts and the detailed milestone history are retained in the repository.
 
@@ -57,7 +57,7 @@ The user configured the Gemini key. Refreshed the provider model list successful
 ## Measured optimization
 
 - Historical 31-tool schema measurement: 103,829 → 15,429 serialized bytes (85.14% reduction), 992 → 104 parameter occurrences. Tool additions change current numbers. This is not a token, billing or inference-speed measurement. Report: `docs/benchmarks/ai-tool-schema-benchmark.json`.
-- Controlled asynchronous form, 20 interleaved workflows per browser: TouchBox median/p95 122.0/131.1 ms; Ego 1031.9/1147.4 ms. Five public calls each; local fixture, approval stubbed, inference/startup excluded. This proves an advantage on that workload only. Report: `docs/benchmarks/ai-ego-comparison-dynamic-compact-wait.json`.
+- Controlled asynchronous form, 20 interleaved workflows per browser: Kudium Browser median/p95 122.0/131.1 ms; Ego 1031.9/1147.4 ms. Five public calls each; local fixture, approval stubbed, inference/startup excluded. This proves an advantage on that workload only. Report: `docs/benchmarks/ai-ego-comparison-dynamic-compact-wait.json`.
 
 ## Remaining work
 
@@ -65,7 +65,7 @@ The user configured the Gemini key. Refreshed the provider model list successful
 | --- | --- | --- |
 | P1 | Live-model completion across supported providers, including visual tasks | Real selected models complete representative DOM/vision tasks and verify results; transport fixtures alone are insufficient. |
 | P1 | Automatic human-input arbitration | Physical keyboard/mouse tests, safe interruption during held pointers and approvals, no false interruption from AI input. Native keyboard arbitration is implemented. CDP/native mouse hooks still lack a reliable origin distinction. |
-| Implemented; QA remains | Full app-process restart recovery | Encrypted checkpoints and external pause markers persist. Two fresh Electron processes verified native OS-encrypted save/restore. Actual installed-app end-to-end task continuation remains to be verified; paused storage save/restore passed in two fresh native Electron processes at `/tmp/touchbox-final-restart.log`. |
+| Implemented; QA remains | Full app-process restart recovery | Encrypted checkpoints and external pause markers persist. Two fresh Electron processes verified native OS-encrypted save/restore. Actual installed-app end-to-end task continuation remains to be verified; paused storage save/restore passed in two fresh native Electron processes at `/tmp/kudiumbrowser-final-restart.log`. |
 | P1 | Practical login/CAPTCHA/native-prompt handoff | End-to-end human handoff/resume in representative workflows; no password entry or CAPTCHA bypass by AI. |
 | P1 | Packaged/release and platform QA | Validate the packaged app, actual installed build, supported platforms and required repository checks. Existing macOS fixtures do not prove cross-platform behavior. |
 | P2 | Broader control surface | Cross-frame/document/external-file drag, unsupported 3D/perspective transforms, rich clipboard input, arbitrary evaluate/request APIs and closed-root access remain open. |

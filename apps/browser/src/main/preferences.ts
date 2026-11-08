@@ -74,7 +74,9 @@ function freezePreferences(value: BrowserPreferences) {
   freeze(snapshot);
   return Object.freeze(snapshot);
 }
-let openPage: ((section?: 'ai') => void) | undefined;
+let openPage:
+  | ((section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords') => void)
+  | undefined;
 let aiSettingsWindow: (contents: WebContents) => boolean = () => false;
 export const isAISettingsWindow = (contents: WebContents) =>
   aiSettingsWindow(contents);
@@ -208,13 +210,21 @@ function apply(
       : systemLanguages.get(contents.session)!
   );
 }
+export function enablePagePinchZoom(contents: WebContents) {
+  if (contents.isDestroyed()) return;
+  contents.setVisualZoomLevelLimits(1, 5).catch(() => {
+    // Closing a page while its zoom limits are being set needs no recovery.
+  });
+}
 export function applyBrowserPreferences(contents: WebContents, profile = '') {
+  enablePagePinchZoom(contents);
   browsers.add(contents);
   contents.once('destroyed', () => browsers.delete(contents));
   const preferences = getBrowserPreferences();
   applyAdvancedContents(contents, preferences.advanced, profile);
   apply(contents, preferences);
 }
+
 function persist(preferences: BrowserPreferences) {
   const previous = getBrowserPreferences();
   const snapshot = freezePreferences(preferences);
@@ -239,11 +249,16 @@ export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
     throw new Error('Choose a default search engine from the list.');
   return persist(next);
 }
-export function showBrowserPreferences(_owner: BrowserWindow) {
-  openPage?.();
+export function showBrowserPreferences(
+  _owner: BrowserWindow,
+  section?: 'archive' | 'sync' | 'import' | 'passwords'
+) {
+  openPage?.(section);
 }
 export function registerPreferences(
-  opener?: (section?: 'ai') => void,
+  opener?: (
+    section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords'
+  ) => void,
   isTrusted: (contents: WebContents) => boolean = () => false,
   isSettings: (contents: WebContents) => boolean = () => false
 ) {
@@ -266,9 +281,24 @@ export function registerPreferences(
   });
   ipcMain.handle(
     'browser-preferences',
-    (event, action: string, patch?: Partial<BrowserPreferences>) => {
+    (
+      event,
+      action: string,
+      patch?: Partial<BrowserPreferences> & {
+        section?: 'archive' | 'sync' | 'import' | 'passwords';
+      }
+    ) => {
       const owner = ownerOf(event);
-      if (action === 'open') showBrowserPreferences(owner);
+      if (action === 'open')
+        showBrowserPreferences(
+          owner,
+          patch?.section === 'archive' ||
+            patch?.section === 'sync' ||
+            patch?.section === 'import' ||
+            patch?.section === 'passwords'
+            ? patch.section
+            : undefined
+        );
       if (action === 'update') {
         const result = updateBrowserPreferences(patch!);
         return Promise.all(
@@ -341,7 +371,7 @@ export function registerPreferences(
             })),
             languages: session.defaultSession.availableSpellCheckerLanguages,
             versions: {
-              touchbox: app.isPackaged ? app.getVersion() : projectVersion,
+              kudiumbrowser: app.isPackaged ? app.getVersion() : projectVersion,
               engine: process.versions.electron,
               chromium: process.versions.chrome,
             },

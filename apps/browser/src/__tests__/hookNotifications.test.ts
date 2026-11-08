@@ -41,7 +41,7 @@ describe('reviewed hook notification permissions', () => {
   let locked: boolean;
   const send = jest.fn();
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-hook-test-'));
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-hook-test-'));
     vault = new PasswordVault(path.join(root, 'vault.json'));
     vault.unlock(password, true);
     vault.settings(true, true, true);

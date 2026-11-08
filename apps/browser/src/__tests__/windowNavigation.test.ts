@@ -14,7 +14,7 @@ it('limits external launches to web/mail URLs without embedded credentials', () 
     // eslint-disable-next-line no-script-url
     'javascript:alert(1)',
     'data:text/html,test',
-    'touchbox:run',
+    'kudiumbrowser:run',
     'bad url',
     'https://user:secret@example.com',
   ].forEach((value) => {

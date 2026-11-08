@@ -4,9 +4,9 @@
 const fs = require('fs');
 const path = require('path');
 function patchSource(source) {
-  if (source.includes('// Touchbox: native framing v2')) return source;
+  if (source.includes('// KudiumBrowser: native framing v2')) return source;
   const alreadyPatched = source.includes(
-    '// Touchbox: handle native host pipe disconnects'
+    '// KudiumBrowser: handle native host pipe disconnects'
   );
   const launch = '    this.process.stdout.on("data", this.receive);';
   const write = '    this.process.stdin.write(buffer);';
@@ -22,7 +22,7 @@ function patchSource(source) {
     source = source
       .replace(
         launch,
-        `    // Touchbox: handle native host pipe disconnects
+        `    // KudiumBrowser: handle native host pipe disconnects
     this.process.stdin.on("error", (error) => {
       d7("native host input disconnected: %s", error);
       this.destroy();
@@ -54,7 +54,7 @@ ${launch}`
     throw new Error('Native receive patch requires review');
   source =
     source.slice(0, receiveStart) +
-    `    // Touchbox: native framing v2
+    `    // KudiumBrowser: native framing v2
     this.incoming = Buffer.alloc(0);
     this.receive = (data) => {
       if (!this.connected) return;

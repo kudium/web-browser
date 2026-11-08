@@ -385,7 +385,7 @@ shadow roots. Images retain self/data/blob and the local crx icon scheme; HTTP/H
 remain permitted for legacy/custom icon URLs. Fonts allow self/data. Consequently
 this is not a claim that the renderer can make no network requests: image requests
 remain allowed. Website WebContentsViews and extension popup documents have their
-own policies; this policy belongs to the privileged TouchBox UI document.
+own policies; this policy belongs to the privileged Kudium Browser UI document.
 
 The integrity probe changes only script bytes while retaining the original HTML.
 It does not authenticate a release against an attacker who can replace both HTML

@@ -199,15 +199,41 @@ export function dialogDocument(options: BrowserDialogOptions) {
         )}</summary><pre>${escapeHtml(options.technicalDetail)}</pre></details>`
       : ''
   }${importReview}</div><footer>${
-    buttons.length > 1
-      ? `<button id="cancel">${escapeHtml(buttons[cancel])}</button>`
-      : ''
-  }<button class="primary${
-    options.destructive ? ' destructive' : ''
-  }" id="confirm">${escapeHtml(primary)}</button></footer><script>
+    options.scope
+      ? `${
+          buttons.length > 1
+            ? `<button id="cancel" data-response="${cancel}">${escapeHtml(
+                buttons[cancel]
+              )}</button>`
+            : ''
+        }<button class="primary" id="confirm">${escapeHtml(primary)}</button>`
+      : buttons
+          .map((label, index) => {
+            const destructive =
+              options.destructive &&
+              index === buttons.length - 1 &&
+              index !== cancel;
+            const id =
+              index === primaryResponse
+                ? 'confirm'
+                : index === cancel
+                ? 'cancel'
+                : `choice-${index}`;
+            return `<button id="${id}" data-response="${index}"${
+              index !== cancel
+                ? ` class="primary${destructive ? ' destructive' : ''}"`
+                : ''
+            }>${escapeHtml(label)}</button>`;
+          })
+          .join('')
+  }</footer><script>
   window.dialogResult=new Promise(resolve=>{window.finish=resolve});
-  document.getElementById('confirm').onclick=()=>window.finish(Number(document.getElementById('scope')?.value??${primaryResponse}));
-  document.getElementById('cancel')?.addEventListener('click',()=>window.finish(${cancel}));
+  document.querySelectorAll('button[data-response]').forEach(button=>button.addEventListener('click',()=>window.finish(Number(button.dataset.response))));
+  ${
+    options.scope
+      ? `document.getElementById('confirm').onclick=()=>window.finish(Number(document.getElementById('scope').value));`
+      : ''
+  }
   document.addEventListener('keydown',event=>{if(event.key==='Escape')window.finish(${cancel});if(event.key==='Enter'&&event.target===document.body)document.getElementById('confirm').click()});
   document.getElementById('${initialFocus}')?.focus();
   document.querySelectorAll('details').forEach(section=>section.addEventListener('toggle',()=>{if(section.open)(section.classList.contains('hook-review') ? section.querySelector('summary') : section).scrollIntoView({block:section.classList.contains('hook-review')?'start':'nearest'})}));

@@ -5,7 +5,7 @@ const fs = require('fs'),
   path = require('path'),
   http = require('http'),
   assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-task-create-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-task-create-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/ai.ts'],
@@ -72,9 +72,10 @@ const server = http.createServer(async (req, res) => {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const host = new BrowserWindow({
     show: true,
-    title: 'TouchBox task creation fixture',
+    title: 'KudiumBrowser task creation fixture',
     webPreferences: { preload: path.join(root, 'preload.cjs') },
   });
+  await require(path.join(root, 'ai.cjs')).initializeLocalStorage();
   const dispose = require(path.join(root, 'ai.cjs')).registerAI(host, {
     tabs: () => [],
     focused: () => undefined,

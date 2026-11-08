@@ -14,12 +14,12 @@ const os = require('os');
 const http = require('http');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-personal-ai-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-personal-ai-'));
 app.setPath('userData', root);
 const aiEntry = path.join(root, 'ai-entry.ts');
 fs.writeFileSync(
   aiEntry,
-  `export {registerAI} from ${JSON.stringify(path.resolve('src/main/ai'))};
+  `export {registerAI, initializeLocalStorage} from ${JSON.stringify(path.resolve('src/main/ai'))};
    export {registerPasswordManager} from ${JSON.stringify(
      path.resolve('src/main/passwordManager')
    )};`
@@ -162,6 +162,7 @@ const server = http.createServer(async (req, res) => {
   await app.whenReady();
   const seedModule = require(path.join(root, 'seed.cjs'));
   const credential = 'long local fixture credential';
+  await seedModule.initializeLocalStorage();
   seedModule.writeOSCredential(credential);
   const vault = new seedModule.PasswordVault(
     path.join(root, 'password-manager', 'vault.json'),
@@ -240,6 +241,7 @@ const server = http.createServer(async (req, res) => {
       authentications += 1;
     },
   });
+  await aiModule.initializeLocalStorage();
   const dispose = aiModule.registerAI(host, {
     tabs: () => tabs,
     focused: () => 'first',

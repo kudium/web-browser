@@ -28,7 +28,7 @@ npm-debug.log.*
 *.sass.d.ts
 *.scss.d.ts
 
-apps/browser/assets/native/touchbox-password-auth
+apps/browser/assets/native/kudiumbrowser-password-auth
 
 # Local environment configuration
 .env

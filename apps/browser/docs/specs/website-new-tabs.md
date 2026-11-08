@@ -1,6 +1,6 @@
 # Website links stay in tabs
 
-Website requests for new pages belong inside TouchBox. Plugin and extension windows retain their separate popup behavior.
+Website requests for new pages belong inside Kudium Browser. Plugin and extension windows retain their separate popup behavior.
 
 - [x] Route HTTP/HTTPS website window requests into tabs in the source session and space.
 - [x] Command-click opens a background tab without changing selection.
