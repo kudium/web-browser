@@ -18,7 +18,11 @@ it('generates a draft from plain language and saves only after review', async ()
     createTask: jest.fn().mockResolvedValue('task'),
   };
   Object.assign(window, { electron: { ai } });
-  render(<Theme><AITasksPanel busy={false} resumable={false} /></Theme>);
+  render(
+    <Theme>
+      <AITasksPanel busy={false} resumable={false} />
+    </Theme>
+  );
   fireEvent.click(screen.getByRole('button', { name: 'New AI task' }));
   expect(screen.getByLabelText('Name')).not.toBeVisible();
   fireEvent.change(screen.getByLabelText('What should Kudium Browser do?'), {
@@ -65,7 +69,11 @@ it('blocks another run while paused and exposes Continue and Stop', async () => 
     stop: jest.fn().mockResolvedValue(undefined),
   };
   Object.assign(window, { electron: { ai } });
-  render(<Theme><AITasksPanel busy={false} resumable /></Theme>);
+  render(
+    <Theme>
+      <AITasksPanel busy={false} resumable />
+    </Theme>
+  );
   expect(await screen.findByRole('button', { name: 'Run' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Delete Staging' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -96,7 +104,11 @@ it('offers the task actions on right click with the same paused-state restrictio
     },
   });
   (browser.nativeMenu as jest.Mock).mockResolvedValue(null);
-  render(<Theme><AITasksPanel busy={false} resumable /></Theme>);
+  render(
+    <Theme>
+      <AITasksPanel busy={false} resumable />
+    </Theme>
+  );
   const row = await screen.findByText('Watch prices');
   fireEvent.contextMenu(row);
   await waitFor(() => expect(browser.nativeMenu).toHaveBeenCalled());
