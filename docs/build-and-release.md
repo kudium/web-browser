@@ -23,19 +23,27 @@ GitHub workflow names: **Web checks and deployment**, **Browser checks**, and
 After pushing code to `main`, open **Actions → Browser release → Run workflow**:
 
 1. Keep the branch set to `main`.
-2. Enter the base version, such as `1.0.2`.
-3. Choose `beta` or `stable` in the channel dropdown.
-4. Leave targets as `macos` and click **Run workflow**.
+2. Choose `beta` or `stable` in the channel dropdown.
+3. Leave version bump as `auto` and targets as `macos`.
+4. Click **Run workflow**.
 
 That single action creates a tag for the main commit selected when the run starts,
 runs tests, builds both Mac architectures, signs and notarizes the apps, verifies
 them, and publishes the installers and chosen update feed.
 
-For `beta`, the pipeline automatically creates `v1.0.2-beta.1`, then
-`v1.0.2-beta.2` on your next run with the same base version. For `stable`, it
-creates `v1.0.2`. Choose a base version newer than existing stable tags. Tags and
-published artifacts are immutable. The pipeline checks credentials before creating
-a tag, and publishes only after both signed builds pass.
+Version numbers are automatic. Starting from stable `1.0.1`, beta runs create
+`1.0.2-beta.1`, then `1.0.2-beta.2`. Choosing stable releases `1.0.2`; the next
+beta starts `1.0.3-beta.1`. A stable run with no pending beta increments the patch.
+Automatic mode continues the highest pending beta version, including minor or
+major betas, and stable uses that same base version.
+
+For a deliberate version jump, select `patch`, `minor` or `major`. These calculate
+from the latest stable tag: `1.0.1` becomes `1.0.2`, `1.1.0` or `2.0.0` respectively.
+Existing beta numbers for that base version continue incrementing. Tags and
+published artifacts are immutable; failed attempts can consume a tag number.
+The pipeline checks credentials before creating a tag, and publishes only after
+both signed builds pass. Releases always build the selected main commit; selecting
+stable does not reuse an older beta's binaries.
 
 Selecting `stable` and clicking **Run workflow** requests production publication;
 there is no separate publish checkbox or tag creation step. GitHub environment
@@ -44,7 +52,7 @@ downloads live on the server's persistent release volume.
 
 Advanced developers can still push beta tags to publish automatically. Pushing a
 stable tag runs an inspection build; use the one-action release flow above with a
-new version for signed publication. Windows x64 and Linux x64 remain available
+automatically selected version for signed publication. Windows x64 and Linux x64 remain available
 through the optional `all` target once Windows signing is configured.
 
 ## Secrets
@@ -88,7 +96,7 @@ Both macOS architectures must succeed before either feed advances.
 The same one-action flow is available from the command line:
 
 ```sh
-gh workflow run browser-release.yml --ref main -f version=1.0.2 -f channel=stable -f targets=macos
+gh workflow run browser-release.yml --ref main -f channel=stable -f bump=auto -f targets=macos
 ```
 
 Windows and Linux ARM builds are not included. Keep old installers and blockmaps;
