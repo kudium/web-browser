@@ -27,8 +27,8 @@ git tag v1.1.0-beta.1
 git push origin v1.1.0-beta.1
 ```
 
-The release workflow builds and signs macOS Apple Silicon and Intel, Windows x64,
-and Linux x64. Only after every target succeeds does it publish installers and
+The release workflow builds and signs macOS Apple Silicon and Intel. Only after
+both Mac targets succeed does it publish installers and
 advance the beta feed. Installing a beta web-feed build opts into beta updates;
 stable installations continue using stable updates. Increment the beta number for
 each new build. Tags and published artifacts must never be rewritten.
@@ -43,7 +43,9 @@ artifacts for inspection; it does not publish to users. To publish, run **Browse
 release** manually on `main`, enter that tag, and enable `publish`. This explicit
 run rebuilds, signs, notarizes macOS, and publishes the selected targets together.
 Select `macos` for both Mac architectures, or `all` when Windows signing is configured.
-The default manual target is `macos`. Tag-triggered beta builds still select all platforms.
+The default target is `macos`, including tag-triggered beta builds.
+Windows x64 and Linux x64 remain available through the manual `all` option once
+Windows signing credentials are configured.
 
 The manual `publish` input is the approval step. GitHub environment reviewer rules
 are not configured; this is not a second-person review gate. Anyone with workflow
