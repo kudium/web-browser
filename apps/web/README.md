@@ -120,8 +120,13 @@ Do not claim production end-to-end sync until those flows are implemented and te
 
 ## Releases
 
-Upload actual signed installers, updater archives and blockmaps first. Then publish
-metadata from a trusted CI/release job with database access:
+The GitHub pipeline uploads installers through the authenticated chunk publisher,
+verifies their checksums, and registers all targets atomically. It needs no
+production database credentials. See [build and release](../../docs/build-and-release.md)
+for beta/stable tags, signing secrets, and deployment setup.
+
+For a manual alternative, upload actual signed installers, updater archives and
+blockmaps first. Then publish metadata from a trusted host with database access:
 
 ```sh
 bun run release:publish manifest.json
