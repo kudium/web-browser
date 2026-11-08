@@ -84,8 +84,19 @@ export class AccountSyncClient {
       enable: () => void;
       open: (url: string) => Promise<void>;
       request?: typeof syncRequest;
+      provider?: 'kudiumbrowser' | 'icloud';
+      nativeAccount?: () => Promise<{
+        id: string;
+        email: string;
+        token: string;
+      }>;
     }
   ) {
+    if (
+      options.provider === 'icloud' &&
+      (!options.nativeAccount || !options.request)
+    )
+      throw new Error('iCloud requires its native account and transport.');
     this.saved = options.load();
     this.saved.cursor = undefined;
     if (this.saved.credential) {
@@ -157,6 +168,11 @@ export class AccountSyncClient {
     }
     this.cancel();
     const { generation } = this;
+    if (this.options.nativeAccount) {
+      const account = await this.options.nativeAccount();
+      await this.enroll(account.token, account, generation);
+      return;
+    }
     const { body } = await this.request('/api/auth/device/code', undefined, {
       client_id: clientId,
       scope: 'sync',
@@ -229,14 +245,39 @@ export class AccountSyncClient {
         await this.request('/api/auth/sign-out', token, {}).catch(() => {});
         return;
       }
+      await this.enroll(token, session.user, generation);
+    } catch (error) {
+      if (generation !== this.generation) return;
+      if (
+        error instanceof SyncHTTPError &&
+        error.code === 'authorization_pending'
+      )
+        return;
+      if (error instanceof SyncHTTPError && error.code === 'slow_down') {
+        pending.interval += 5000;
+        return;
+      }
+      this.phase = 'error';
+      this.message =
+        error instanceof SyncHTTPError && error.status === 401
+          ? 'Account connection expired. Connect again.'
+          : 'Unable to connect. Please try again.';
+      this.pending = undefined;
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async enroll(token: string, user: { id: string; email: string }, generation: number) {
+    if (generation !== this.generation) return;
       const accountId = createHash('sha256')
-        .update(`better-auth\0${session.user.id}`)
+        .update(`${this.options.provider === 'icloud' ? 'icloud' : 'better-auth'}\0${user.id}`)
         .digest('hex');
       const previous = this.saved.credential;
       this.saved = {
         credential: {
           token,
-          email: session.user.email,
+          email: user.email,
           accountId,
           deviceId:
             previous?.accountId === accountId
@@ -298,26 +339,6 @@ export class AccountSyncClient {
         this.message =
           'Save this recovery key. You will need it on your other devices.';
       }
-    } catch (error) {
-      if (generation !== this.generation) return;
-      if (
-        error instanceof SyncHTTPError &&
-        error.code === 'authorization_pending'
-      )
-        return;
-      if (error instanceof SyncHTTPError && error.code === 'slow_down') {
-        pending.interval += 5000;
-        return;
-      }
-      this.phase = 'error';
-      this.message =
-        error instanceof SyncHTTPError && error.status === 401
-          ? 'Account connection expired. Connect again.'
-          : 'Unable to connect. Please try again.';
-      this.pending = undefined;
-    } finally {
-      this.busy = false;
-    }
   }
 
   pollingInterval() {
@@ -333,6 +354,7 @@ export class AccountSyncClient {
   }
 
   async recoverAccountKey(recoveryKey?: string): Promise<boolean> {
+    if (this.options.provider === 'icloud') return false;
     const { credential } = this.saved;
     if (!credential) throw new Error('Connect your account first.');
     const { generation } = this;
@@ -494,7 +516,7 @@ export class AccountSyncClient {
       !credential?.enrolled ||
       !credential.key ||
       !preferences.cloudSync.enabled ||
-      preferences.cloudSync.provider !== 'kudiumbrowser' ||
+      preferences.cloudSync.provider !== (this.options.provider || 'kudiumbrowser') ||
       !this.input
     )
       return;
@@ -505,7 +527,7 @@ export class AccountSyncClient {
     const active = () =>
       generation === this.generation &&
       this.options.preferences().cloudSync.enabled &&
-      this.options.preferences().cloudSync.provider === 'kudiumbrowser';
+      this.options.preferences().cloudSync.provider === (this.options.provider || 'kudiumbrowser');
     try {
       const root = (
         await this.request(`/v1/sync/records/${keyRecord}`, credential.token)
@@ -641,7 +663,7 @@ export class AccountSyncClient {
     if (
       !this.saved.credential?.enrolled ||
       !settings.enabled ||
-      settings.provider !== 'kudiumbrowser' ||
+      settings.provider !== (this.options.provider || 'kudiumbrowser') ||
       !settings.categories.passwords
     )
       throw new Error('Enable password sync and unlock your account first.');
@@ -654,7 +676,7 @@ export class AccountSyncClient {
       !credential?.enrolled ||
       !credential.key ||
       !settings.enabled ||
-      settings.provider !== 'kudiumbrowser' ||
+      settings.provider !== (this.options.provider || 'kudiumbrowser') ||
       !settings.categories[category]
     )
       throw new Error(
@@ -734,7 +756,7 @@ export class AccountSyncClient {
         generation !== this.generation ||
         !current() ||
         !this.options.preferences().cloudSync.enabled ||
-        this.options.preferences().cloudSync.provider !== 'kudiumbrowser' ||
+        this.options.preferences().cloudSync.provider !== (this.options.provider || 'kudiumbrowser') ||
         !this.options.preferences().cloudSync.categories[category]
       )
         throw new Error('Private data sync was paused.');
@@ -778,7 +800,7 @@ export class AccountSyncClient {
       if (
         generation !== this.generation ||
         !this.options.preferences().cloudSync.enabled ||
-        this.options.preferences().cloudSync.provider !== 'kudiumbrowser' ||
+        this.options.preferences().cloudSync.provider !== (this.options.provider || 'kudiumbrowser') ||
         !this.options.preferences().cloudSync.categories[category] ||
         data.version !== 1 ||
         `${category}_${data.deviceId}` !== recordId ||

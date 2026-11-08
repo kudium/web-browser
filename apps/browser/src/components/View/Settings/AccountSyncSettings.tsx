@@ -23,11 +23,13 @@ import { SpaceManager } from '../../../utils/SpaceManager';
 
 export function AccountSyncSettings({
   enabled,
+  provider,
   onEnabled,
   passwordsEnabled = false,
   notesEnabled = false,
 }: {
   enabled: boolean;
+  provider: 'icloud' | 'kudiumbrowser';
   onEnabled: () => void;
   passwordsEnabled: boolean;
   notesEnabled?: boolean;
@@ -93,11 +95,11 @@ export function AccountSyncSettings({
       {!status?.connected ? (
         <section
           className="preference-card sync-account-sign-in"
-          aria-label="Kudium account"
+          aria-label={provider === 'icloud' ? 'iCloud account' : 'Kudium account'}
         >
           <div className="preference-row">
             <div>
-              <p>Sign in to start syncing.</p>
+              <p>{provider === 'icloud' ? 'Connect the iCloud account on this Mac.' : 'Sign in to start syncing.'}</p>
             </div>
             <div className="sync-sign-in-actions">
               <Button
@@ -105,16 +107,16 @@ export function AccountSyncSettings({
                 disabled={busy || !status || status.phase === 'connecting'}
                 onClick={() => action('connect', { authMode: 'sign-in' })}
               >
-                Sign in to Kudium
+                {provider === 'icloud' ? 'Connect iCloud' : 'Sign in to Kudium'}
               </Button>
-              <Button
+              {provider !== 'icloud' && <Button
                 size="2"
                 variant="ghost"
                 disabled={busy || !status || status.phase === 'connecting'}
                 onClick={() => action('connect', { authMode: 'sign-up' })}
               >
                 Create account
-              </Button>
+              </Button>}
             </div>
           </div>
         </section>

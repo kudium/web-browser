@@ -50,7 +50,7 @@ export function defaultSyncSettings(_platform = 'darwin'): SyncSettings {
     },
   };
 }
-export function validateSyncSettings(value: unknown): SyncSettings {
+export function validateSyncSettings(value: unknown, icloudAvailable = false): SyncSettings {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid sync settings');
   const settings = value as SyncSettings;
@@ -88,8 +88,8 @@ export function validateSyncSettings(value: unknown): SyncSettings {
   if (settings.enabled && !Object.values(settings.categories).some(Boolean))
     throw new Error('Select at least one category to sync');
   return {
-    enabled: settings.provider === 'kudiumbrowser' && settings.enabled,
-    provider: 'kudiumbrowser',
+    enabled: (settings.provider === 'kudiumbrowser' || icloudAvailable) && settings.enabled,
+    provider: icloudAvailable ? settings.provider : 'kudiumbrowser',
     icloud:
       settings.icloud ?? (settings.provider === 'icloud' && settings.enabled),
     categories: { notes: true, passwords: true, ...settings.categories },
@@ -97,6 +97,7 @@ export function validateSyncSettings(value: unknown): SyncSettings {
 }
 export interface CloudSyncStatus {
   provider: SyncProvider;
+  icloudAvailable?: boolean;
   state: 'off' | 'setup-required';
   connected: false;
   message: string;
@@ -104,7 +105,8 @@ export interface CloudSyncStatus {
 }
 export function cloudSyncStatus(
   settings: SyncSettings,
-  platform: string
+  platform: string,
+  icloudAvailable = false
 ): CloudSyncStatus {
   const accountEnabled =
     settings.enabled && settings.provider === 'kudiumbrowser';
@@ -118,6 +120,8 @@ export function cloudSyncStatus(
     else if (platform !== 'darwin')
       message =
         'iCloud sync is available only on Mac. Choose Kudium Browser for other platforms.';
+    else if (icloudAvailable)
+      message = 'Connect the iCloud account on this Mac to set up encrypted sync.';
     else
       message =
         'iCloud connection is not available in this build. Your choices are saved; no data is uploaded.';
@@ -125,6 +129,7 @@ export function cloudSyncStatus(
   return {
     provider: !accountEnabled && icloudEnabled ? 'icloud' : settings.provider,
     state: accountEnabled || icloudEnabled ? 'setup-required' : 'off',
+    icloudAvailable: platform === 'darwin' && icloudAvailable,
     connected: false,
     message,
     lastSyncedAt: null,

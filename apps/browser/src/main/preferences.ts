@@ -13,6 +13,7 @@ import {
 } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { cloudKitAvailable } from './sync/nativeICloudRuntime';
 import { validActivitySound } from '../browser/activitySound';
 import { version as projectVersion } from '../../package.json';
 import { watchIPCRequest } from './ipcRequestBinding';
@@ -135,7 +136,7 @@ export function validatePreferences(
       return;
     }
     if (key === 'cloudSync') {
-      validated.cloudSync = validateSyncSettings(value);
+      validated.cloudSync = validateSyncSettings(value, cloudKitAvailable());
       return;
     }
     if (key === 'shortcuts') {
@@ -468,7 +469,8 @@ export function registerPreferences(
         if (action === 'sync-status')
           return cloudSyncStatus(
             getBrowserPreferences().cloudSync,
-            process.platform
+            process.platform,
+            cloudKitAvailable()
           );
         if (action === 'info')
           return {

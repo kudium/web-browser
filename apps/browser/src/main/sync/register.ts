@@ -8,6 +8,8 @@ import {
   personalDataRevision,
   passwordVault,
 } from '../passwordManager';
+import { cloudKitAvailable, loadCloudKitBridge } from './nativeICloudRuntime';
+import { nativeICloudClient } from './nativeICloudClient';
 import { AccountSyncClient } from './accountClient';
 import { PasswordSyncScheduler } from './passwordScheduler';
 import { safeStorage } from '../localStorage';
@@ -25,24 +27,33 @@ export function registerAccountSync(
   trusted: (window: BrowserWindow) => boolean,
   main: (window: BrowserWindow) => boolean
 ) {
-  let client: AccountSyncClient | undefined;
   const passwordScheduler = new PasswordSyncScheduler();
-  const filename = () => path.join(app.getPath('userData'), 'account-sync.bin');
-  const get = () => {
+  const clients = new Map<'icloud' | 'kudiumbrowser', AccountSyncClient>();
+  const filename = (provider: 'icloud' | 'kudiumbrowser') =>
+    path.join(
+      app.getPath('userData'),
+      provider === 'icloud' ? 'icloud-sync.bin' : 'account-sync.bin'
+    );
+  const get = (provider = getBrowserPreferences().cloudSync.provider) => {
+    let client = clients.get(provider);
+    if (provider === 'icloud' && !cloudKitAvailable())
+      throw new Error(
+        'iCloud is unavailable outside a provisioned integration build.'
+      );
     if (!safeStorage.isEncryptionAvailable())
       throw new Error(
         'Enable secure local storage before connecting sync. Restart the browser to enable it.'
       );
-    if (!client)
-      client = new AccountSyncClient({
+    if (!client) {
+      const options: ConstructorParameters<typeof AccountSyncClient>[0] = {
         load: () => {
-          if (!fs.existsSync(filename())) return {};
+          if (!fs.existsSync(filename(provider))) return {};
           return JSON.parse(
-            safeStorage.decryptString(fs.readFileSync(filename()))
+            safeStorage.decryptString(fs.readFileSync(filename(provider)))
           );
         },
         save: (value) => {
-          const file = filename();
+          const file = filename(provider);
           fs.writeFileSync(
             `${file}.tmp`,
             safeStorage.encryptString(JSON.stringify(value)),
@@ -57,17 +68,23 @@ export function registerAccountSync(
             cloudSync: {
               ...cloudSync,
               enabled: true,
-              provider: 'kudiumbrowser',
+              provider,
             },
           });
         },
         open: (url) => shell.openExternal(url),
-      });
+      };
+      client =
+        provider === 'icloud'
+          ? nativeICloudClient(options, loadCloudKitBridge())
+          : new AccountSyncClient(options);
+      clients.set(provider, client);
+    }
     return client;
   };
-  setHookPublisher((data) => get().publishHook(data));
+  setHookPublisher((data) => get('kudiumbrowser').publishHook(data));
   setHookAccountStatus(() => {
-    const status = get().status();
+    const status = get('kudiumbrowser').status();
     return { signedIn: status.connected, email: status.email };
   });
   ipcMain.handle(
@@ -86,6 +103,21 @@ export function registerAccountSync(
         throw new Error('Open Sync Preferences to manage your account.');
       if (!input || typeof input !== 'object' || Array.isArray(input))
         throw new Error('Invalid sync request');
+      if (
+        getBrowserPreferences().cloudSync.provider === 'icloud' &&
+        !cloudKitAvailable()
+      ) {
+        if (action === 'status' || action === 'snapshot')
+          return {
+            phase: 'off',
+            connected: false,
+            message: 'iCloud requires a provisioned integration build.',
+            remote: [],
+          };
+        throw new Error(
+          'Choose Kudium Account or use a provisioned iCloud integration build.'
+        );
+      }
       const instance = get();
       let operationMessage: string | undefined;
       if (action === 'status' && !main(owner)) await instance.autoUnlock();
@@ -187,7 +219,7 @@ export function registerAccountSync(
           detail: 'This permanently deletes the cloud backups for this account and prepares cloud sync for a fresh backup. Local tabs, groups, notes, passwords and browsing data will not be changed or deleted. Your current local data can be uploaded when you enable sync again. Other devices must reconnect. Backups encrypted with a lost key cannot be recovered.',
         });
         if (answer.response !== 1) return instance.status();
-        if (owner.isDestroyed() || !trusted(owner) || client !== instance || revision !== instance.connectionRevision()) throw new Error('Your account changed. Try resetting again.');
+        if (owner.isDestroyed() || !trusted(owner) || clients.get(getBrowserPreferences().cloudSync.provider) !== instance || revision !== instance.connectionRevision()) throw new Error('Your account changed. Try resetting again.');
         passwordScheduler.reset();
         updateBrowserPreferences({ cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false } });
         await instance.resetSync(true);
@@ -228,6 +260,7 @@ export function registerAccountSync(
   let lastPoll = 0;
   let lastSync = 0;
   const timer = setInterval(() => {
+    const client = clients.get(getBrowserPreferences().cloudSync.provider);
     if (!client) return;
     const now = Date.now();
     if (now - lastPoll >= client.pollingInterval()) {
@@ -242,11 +275,11 @@ export function registerAccountSync(
         const settings = getBrowserPreferences().cloudSync;
         const status = instance.status();
         return (
-          client === instance &&
+          clients.get(getBrowserPreferences().cloudSync.provider) === instance &&
           status.connected &&
           status.phase === 'ready' &&
           settings.enabled &&
-          settings.provider === 'kudiumbrowser' &&
+          (settings.provider === 'kudiumbrowser' || cloudKitAvailable()) &&
           Boolean(settings.categories.passwords) &&
           personalDataRevision() === revision &&
           !passwordVault().status().locked
@@ -285,11 +318,11 @@ export function registerAccountSync(
   timer.unref();
   onBrowserPreferencesChanged(() => {
     passwordScheduler.reset();
-    client?.pause();
+    clients.forEach((client) => client.pause());
   });
   app.once('will-quit', () => {
     passwordScheduler.reset();
     clearInterval(timer);
-    client?.pause();
+    clients.forEach((client) => client.pause());
   });
 }
