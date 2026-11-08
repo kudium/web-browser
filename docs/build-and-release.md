@@ -41,7 +41,9 @@ To build a beta without publishing, use **Browser release → Run workflow** on
 Push an existing main-branch commit as `v1.1.0`. Pushing a stable tag builds unsigned
 artifacts for inspection; it does not publish to users. To publish, run **Browser
 release** manually on `main`, enter that tag, and enable `publish`. This explicit
-run rebuilds, signs, notarizes macOS, and publishes all targets together.
+run rebuilds, signs, notarizes macOS, and publishes the selected targets together.
+Select `macos` for both Mac architectures, or `all` when Windows signing is configured.
+The default manual target is `macos`. Tag-triggered beta builds still select all platforms.
 
 The manual `publish` input is the approval step. GitHub environment reviewer rules
 are not configured; this is not a second-person review gate. Anyone with workflow
@@ -56,14 +58,18 @@ Already connected:
 - `COOLIFY_API_TOKEN` (Read, Write, Deploy; scoped to the website application)
 - `RELEASE_PUBLISH_TOKEN` (shared with the backend runtime)
 
-Add these through **Settings → Secrets and variables → Actions** before signed
-beta or stable publication:
+macOS signing and notarization are connected for Kudium LTD (team `79VCL28M9P`).
+The dedicated App Store Connect key **Kudium Browser macOS CI** has Developer access.
+The Developer ID Application certificate expires December 8, 2027.
+
+Signing secrets in **Settings → Secrets and variables → Actions**:
 
 - `MAC_CSC_LINK`: base64-encoded macOS Developer ID Application certificate (.p12).
 - `MAC_CSC_KEY_PASSWORD`: its certificate password.
-- `APPLE_ID`, `APPLE_ID_PASS`, `APPLE_TEAM_ID`: Apple account, app-specific password, and team ID for notarization.
+- `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`: dedicated App Store Connect team key for notarization. The private `.p8` is materialized with mode 0600 only during notarization and removed afterward.
+- `APPLE_TEAM_ID`: Kudium Apple team. `APPLE_ID` and `APPLE_ID_PASS` remain a supported fallback when API credentials are absent.
 - `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`: Windows signing certificate and password
-  supported by electron-builder. A hardware/cloud signing service requires adapting
+  required only for `all` publication, and not yet connected. A hardware/cloud signing service requires adapting
   the signing step to that provider.
 
 Publication fails before building when required secrets are missing. Do not put
@@ -72,12 +78,22 @@ checksums; macOS and Windows installers also use operating-system code signing.
 
 ## Downloads and updates
 
-Installers are uploaded in verified chunks, completed immutably, then all four
+Installers are uploaded in verified chunks, completed immutably, then the selected targets’
 manifests are registered atomically in PostgreSQL. Public downloads do not require
 GitHub access. The server exposes `/updates/stable/<platform>/<arch>/latest*.yml`
 and `/updates/beta/<platform>/<arch>/beta*.yml` for electron-updater.
 
 macOS publication includes ZIPs for updates and DMGs for manual installation.
+CI extracts the update ZIP and verifies Kudium Developer ID signing, hardened
+runtime, the stapled notarization ticket, and Gatekeeper acceptance before upload.
+Both macOS architectures must succeed before either feed advances.
+
+To publish a Mac release after tagging a tested main commit:
+
+```sh
+gh workflow run browser-release.yml --ref main -f tag=v1.0.0 -f targets=macos -f publish=true
+```
+
 Windows and Linux ARM builds are not included. Keep old installers and blockmaps;
 back up the release volume and database together. Backend checks verify API and
 checksum behavior; release acceptance still needs actual OS installation/update tests.

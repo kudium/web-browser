@@ -17,7 +17,13 @@ module.exports = {
   artifactName: 'Kudium-Browser-${version}-${arch}.${ext}',
   forceCodeSigning: signed,
   afterSign: signed ? build.afterSign : null,
-  mac: { ...build.mac, target: ['dmg', 'zip'], publish: publishFor('darwin') },
+  mac: {
+    ...build.mac,
+    identity: signed ? 'Kudium LTD' : null,
+    notarize: false,
+    target: ['dmg', 'zip'],
+    publish: publishFor('darwin'),
+  },
   win: { ...build.win, publish: publishFor('win32') },
   linux: { ...build.linux, publish: publishFor('linux') },
 };
