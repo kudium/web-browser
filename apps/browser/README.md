@@ -106,15 +106,120 @@ has no native dependencies in `release/app`, so those scripts are unnecessary.
 Electron Builder handles native dependency preparation during packaging if
 native dependencies are added later.
 
-## Packaging
+## Packaging locally
 
-Build an installer for the current platform with:
+Run the following commands from `apps/browser`. Local packaging creates installers
+on your computer; it does not upload them or change the public update feeds.
+Local builds use the checked-in package versions. Automatic version calculation
+runs in the GitHub release workflow.
 
-```bash
-npm run package
+### Build prerequisites
+
+Use Node.js 24.15.0 and npm 12.2.0 to match CI, then install dependencies:
+
+```sh
+cd apps/browser
+npm ci
 ```
 
-Packaged artifacts are written to `release/build`.
+Build on the operating system you are targeting. The documented local targets are
+macOS Apple Silicon and Intel, Windows x64, and Linux x64. Windows and Linux ARM
+installers are not currently part of the release pipeline.
+
+| Host OS | Native build prerequisites | Installer output |
+| --- | --- | --- |
+| macOS | Xcode Command Line Tools, including `xcrun`, Swift and the macOS SDK. Install with `xcode-select --install`. | `.dmg` and `.zip` |
+| Windows | Python 3 and Visual Studio Build Tools with the Desktop development with C++ workload if native modules need compilation. Use PowerShell for the commands below. | NSIS `.exe` |
+| Linux | Python 3, `make` and a C/C++ compiler for native modules. On Debian/Ubuntu, install `python3` and `build-essential`. Building and running Electron requires a compatible Linux environment. | `.AppImage` |
+
+### macOS
+
+Build for Apple Silicon:
+
+```sh
+CSC_IDENTITY_AUTO_DISCOVERY=false npm run package -- --mac --arm64
+```
+
+Build for Intel:
+
+```sh
+CSC_IDENTITY_AUTO_DISCOVERY=false npm run package -- --mac --x64
+```
+
+To retain both architectures in the same output folder, build them in one command:
+
+```sh
+CSC_IDENTITY_AUTO_DISCOVERY=false npm run package -- --mac --arm64 --x64
+```
+
+These commands disable automatic signing identity discovery for local testing.
+They do not require an Apple account or notarization credentials.
+
+### Windows
+
+Run in PowerShell on Windows:
+
+```powershell
+npm run package -- --win --x64
+```
+
+Signing credentials are not required for an ordinary local test installer. A public
+Windows release requires a configured signing certificate; that is separate from
+building locally.
+
+### Linux
+
+Run on an x64 Linux host:
+
+```sh
+npm run package -- --linux --x64
+```
+
+To run the resulting AppImage:
+
+```sh
+chmod +x "release/build/your-installer.AppImage"
+"./release/build/your-installer.AppImage"
+```
+
+Replace the filename with the generated artifact. AppImage execution may require
+FUSE support on your Linux distribution.
+
+### Output and cleaning
+
+Installers are written to `release/build`. Production JavaScript bundles are
+written to `release/app/dist`.
+
+Every `npm run package` and `npm run package:web` first deletes both folders and
+then rebuilds them. Copy installers you want to keep elsewhere before starting
+another packaging command. In particular, two separate Mac packaging commands
+will leave only the second command's output; use the combined command above to
+keep both architectures.
+
+To clean those generated folders without building, run on any supported OS:
+
+```sh
+npx ts-node .erb/scripts/clean.js
+```
+
+Cleaning removes generated bundles and installers. It preserves source files,
+package manifests, dependencies, and the installed browser's profile and saved data.
+It does not clear Electron Builder's download cache. If dependencies need a fresh
+install, run `npm ci` again; it reinstalls them using the existing lockfile.
+
+### Publish stable or beta releases
+
+For public Mac distribution, push your code to `main`, then open
+[Browser release → Run workflow](https://github.com/kudium/web-browser/actions/workflows/browser-release.yml).
+Choose `beta` or `stable`, keep version mode as `auto` and targets as `macos`, and
+run the workflow. It calculates the version, runs tests, creates both Mac installers,
+signs and notarizes them, and publishes the selected update feed. A local build is
+not automatically uploaded when you push code.
+
+See [the release pipeline guide](../../docs/build-and-release.md) for version
+bumps, signing configuration and retrying publication. `npm run package:web` is the
+alternative local packaging command for the update feed at
+`https://browser.kudium.com`; ordinary `npm run package` retains the GitHub feed.
 
 ## Browser instances and sessions
 
