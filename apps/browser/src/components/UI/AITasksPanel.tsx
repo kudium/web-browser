@@ -1,3 +1,4 @@
+import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Play, Pause, Trash2, Square } from 'lucide-react';
 import { NativeContextMenu as ContextMenu } from './NativeContextMenu';
@@ -237,6 +238,7 @@ export function AITasksPanel({
       {error && (
         <p role="alert" className="ai-error">
           {error}
+          <StorageRecoveryAction message={error} />
         </p>
       )}
       {!tasks.length && !creating && (
@@ -379,7 +381,8 @@ export function AITasksPanel({
         );
       })}
       <small className="ai-task-footnote">
-        Schedules run while Kudium Browser is open. Browser approvals still apply.
+        Schedules run while Kudium Browser is open. Browser approvals still
+        apply.
       </small>
     </section>
   );

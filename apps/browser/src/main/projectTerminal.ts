@@ -7,6 +7,7 @@ import type { IPty } from 'node-pty';
 import type {
   ProjectTerminalRequest,
   ProjectTerminalState,
+  ProjectCommandReceipt,
 } from '../browser/developerProject';
 import { writePrivateFile } from './privateFile';
 
@@ -20,6 +21,8 @@ type Session = {
   sequence: number;
   restored: boolean;
   pty?: IPty;
+  command?: ProjectCommandReceipt;
+  commandText?: string;
 };
 type Workspace = {
   folder: string;
@@ -88,6 +91,32 @@ export class ProjectTerminals {
             running: false,
             restored: true,
             sequence: 0,
+            command:
+              tab.command &&
+              typeof tab.command.id === 'string' &&
+              tab.command.id.length > 0 &&
+              tab.command.id.length <= 100 &&
+              Number.isFinite(tab.command.startedAt) &&
+              ['running', 'completed', 'interrupted'].includes(
+                tab.command.status
+              )
+                ? {
+                    id: tab.command.id,
+                    startedAt: tab.command.startedAt,
+                    finishedAt: Number.isFinite(tab.command.finishedAt)
+                      ? tab.command.finishedAt
+                      : undefined,
+                    status:
+                      tab.command.status === 'running'
+                        ? ('interrupted' as const)
+                        : tab.command.status,
+                    exitCode:
+                      tab.command.status === 'completed' &&
+                      Number.isInteger(tab.command.exitCode)
+                        ? tab.command.exitCode
+                        : undefined,
+                  }
+                : undefined,
           }));
         this.groups.set(group, {
           folder: value.folder,
@@ -144,7 +173,7 @@ export class ProjectTerminals {
           group,
           {
             ...workspace,
-            tabs: workspace.tabs.map(({ pty, ...tab }) => tab),
+            tabs: workspace.tabs.map(({ pty, commandText, ...tab }) => tab),
           },
         ])
       )
@@ -167,6 +196,10 @@ export class ProjectTerminals {
     const { pty } = session;
     session.pty = undefined;
     session.running = false;
+    if (session.command?.status === 'running') {
+      session.command.status = 'interrupted';
+      session.command.finishedAt = Date.now();
+    }
     session.sequence += 1;
     session.data = `${session.data}\r\nTerminal stopped.\r\n`.slice(
       -MAX_OUTPUT
@@ -260,12 +293,19 @@ export class ProjectTerminals {
       )
         throw new Error('Choose a folder inside the linked project.');
     }
+    let shellArgs = process.platform === 'win32' ? ['-NoLogo'] : ['-l'];
+    if (session.commandText !== undefined)
+      shellArgs =
+        process.platform === 'win32'
+          ? ['-NoLogo', '-NonInteractive', '-Command', session.commandText]
+          : ['-l', '-c', session.commandText];
     const pty = (require('node-pty') as typeof import('node-pty')).spawn(
       shellPath,
-      process.platform === 'win32' ? ['-NoLogo'] : ['-l'],
+      shellArgs,
       { cwd, cols, rows, name: 'xterm-256color', env }
     );
     session.pty = pty;
+    session.commandText = undefined;
     session.running = true;
     session.restored = false;
     pty.onData((data) => {
@@ -288,6 +328,11 @@ export class ProjectTerminals {
       if (session.pty !== pty) return;
       session.running = false;
       session.pty = undefined;
+      if (session.command?.status === 'running') {
+        session.command.status = 'completed';
+        session.command.exitCode = exitCode;
+        session.command.finishedAt = Date.now();
+      }
       session.sequence += 1;
       session.data =
         `${session.data}\r\nProcess exited (${exitCode}).\r\n`.slice(
@@ -303,13 +348,32 @@ export class ProjectTerminals {
     name: string,
     command: string
   ): ProjectTerminalState {
-    const state = this.request(group, { action: 'create' });
-    this.request(group, { action: 'rename', tab: state.selected, name });
-    this.request(group, {
-      action: 'write',
-      tab: state.selected,
-      data: `${command}\r`,
-    });
+    this.request(group, { action: 'list' });
+    const workspace = this.groups.get(group)!;
+    if (workspace.tabs.length >= 8)
+      throw new Error('Each group can have up to eight terminals.');
+    const session: Session = {
+      id: randomUUID(),
+      name: name.slice(0, 60),
+      folder: workspace.folder,
+      data: '',
+      running: false,
+      sequence: 0,
+      restored: false,
+      command: { id: randomUUID(), status: 'running', startedAt: Date.now() },
+      commandText: command,
+    };
+    workspace.tabs.push(session);
+    workspace.selected = session.id;
+    workspace.open = true;
+    try {
+      this.start(group, session, 80, 24);
+    } catch (error) {
+      workspace.tabs.pop();
+      workspace.selected = workspace.tabs.at(-1)?.id || '';
+      throw error;
+    }
+    this.save();
     return this.request(group, { action: 'list' });
   }
 
@@ -469,6 +533,7 @@ export class ProjectTerminals {
       }
     }
     return {
+      ...(session?.command ? { command: { ...session.command } } : {}),
       data: ['open', 'attach', 'restart', 'read'].includes(request.action)
         ? session?.data || ''
         : '',
@@ -479,6 +544,7 @@ export class ProjectTerminals {
         name: tab.name,
         running: tab.running,
         restored: tab.restored,
+        ...(tab.command ? { command: { ...tab.command } } : {}),
       })),
       selected: workspace.selected,
       open: workspace.open,

@@ -5,6 +5,7 @@ import { SearchEngine, defaultSearchEngines } from './searchEngines';
 
 /** Shared, engine-neutral preferences. Add controls to the registry below. */
 export interface BrowserPreferences {
+  setupCompleted: boolean;
   advanced: AdvancedPreferences;
   automaticallyDownloadUpdates: boolean;
   automaticallyInstallUpdates: boolean;
@@ -38,6 +39,7 @@ export interface BrowserPreferences {
   downloadDirectory: string;
 }
 export const defaultPreferences: BrowserPreferences = {
+  setupCompleted: false,
   advanced: defaultAdvanced,
   automaticallyDownloadUpdates: true,
   automaticallyInstallUpdates: true,
@@ -295,6 +297,9 @@ export interface PreferenceProfile {
 }
 export interface PreferenceInfo {
   defaultBrowser?: boolean;
+  platform?: string;
+  openAtLogin?: boolean;
+  systemSetupAvailable?: boolean;
   extensionCatalog?: { id: string; name: string }[];
   profiles: PreferenceProfile[];
   languages: string[];
@@ -307,6 +312,8 @@ export type PreferenceAction =
   | 'storage-info'
   | 'performance-info'
   | 'set-default-browser'
+  | 'enable-open-at-login'
+  | 'reveal-app-for-dock'
   | 'sync-status'
   | 'shortcut-capture-start'
   | 'shortcut-capture-end'

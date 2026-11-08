@@ -1,10 +1,13 @@
 {
-  "name": "kudium-monorepo",
+  "name": "kudium-browser-monorepo",
   "version": "1.0.0",
   "private": true,
   "description": "Kudium Browser and its Bun/Hono web service",
   "packageManager": "npm@12.2.0",
   "scripts": {
+    "release:test": "node scripts/local-release.mjs test",
+    "release:beta": "node scripts/local-release.mjs beta",
+    "release:stable": "node scripts/local-release.mjs stable",
     "dev": "npm run dev:browser",
     "dev:browser": "npm --prefix apps/browser run dev --",
     "dev:web": "bun run --cwd apps/web dev",

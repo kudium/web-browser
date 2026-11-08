@@ -2,12 +2,17 @@ name: Browser checks
 on:
   pull_request:
     paths:
-      ["apps/browser/**", ".github/workflows/browser-*.yml", "scripts/ci/**"]
+      ["apps/browser/**", ".github/workflows/browser-*.yml", "scripts/ci/**", "scripts/local-release*", "package.json"]
   push:
     branches: [main]
     paths:
-      ["apps/browser/**", ".github/workflows/browser-*.yml", "scripts/ci/**"]
+      ["apps/browser/**", ".github/workflows/browser-*.yml", "scripts/ci/**", "scripts/local-release*", "package.json"]
   workflow_dispatch:
+    inputs:
+      include_macos:
+        description: "Also run paid hosted macOS checks"
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -19,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-15-intel]
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.include_macos && '["ubuntu-latest","windows-latest","macos-15-intel"]' || '["ubuntu-latest","windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -40,5 +45,6 @@ jobs:
           "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
           "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - run: npm ci
+      - run: node --test ../../scripts/local-release.test.mjs ../../scripts/ci/select-browser-release.test.mjs
       - run: npx tsc --noEmit
       - run: npm test -- --runInBand --roots src --config .erb/configs/jest.ci.cjs

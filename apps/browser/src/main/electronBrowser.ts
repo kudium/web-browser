@@ -1,5 +1,8 @@
+/* Native menus and commands deliberately resolve their current host window. */
+/* eslint no-shadow: ["error", {"allow": ["window"]}] */
 import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
+import log from 'electron-log';
 import {
   BrowserWindow,
   Input,
@@ -50,6 +53,7 @@ import { siteRule } from '../browser/advancedPreferences';
 import { registerAI } from './ai';
 import { registerPageCapture } from './pageCapture';
 import { AINewTabs } from './aiTabs';
+import { getBrowserWindows } from './browserWindows';
 import { WebsiteTabRecovery } from './websiteTabRecovery';
 import { PictureInPictureController } from './pictureInPicture';
 import { isBrowserCommand, isBrowserLayout } from './browserRequests';
@@ -101,8 +105,19 @@ import {
 import { BrowserCommand, BrowserLayout, BrowserState, IApp } from '../types';
 
 /** Only the trusted workspace renderer can manage embedded browsers. */
-export function registerElectronBrowser(window: BrowserWindow) {
+export function registerElectronBrowser(
+  window: BrowserWindow,
+  storageReady?: Promise<void>
+) {
   const removals = getGroupRemovalJournal();
+  const windows = getBrowserWindows();
+  const hostFor = (id: string) => windows?.host(id) || window;
+  const removeView = (view: WebContentsView) =>
+    windows ? windows.remove(view) : window.contentView.removeChildView(view);
+  const sendState = (state: BrowserState) =>
+    windows
+      ? windows.updateState(state)
+      : window.webContents.send('browser-state', state);
   let developerWindows: ReturnType<typeof registerSiteDeveloperWindows>;
   let synchronizingExtensions = false;
   const retiringTabs = new Set<number>();
@@ -179,7 +194,15 @@ export function registerElectronBrowser(window: BrowserWindow) {
       }
       if (action) {
         event.preventDefault();
-        window.webContents.send('browser-shortcut', action);
+        const target = [...views].find(
+          ([, view]) => view.webContents === contents
+        )?.[0];
+        const host = target
+          ? hostFor(target)
+          : BrowserWindow.fromWebContents(contents) || window;
+        if (action === 'new-window' && windows)
+          windows.open(host, 'workspace').catch(() => {});
+        else host.webContents.send('browser-shortcut', action);
       }
     };
     contents.on('before-input-event', listener);
@@ -259,7 +282,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
       initialLoading,
     };
     lastStates.set(id, state);
-    window.webContents.send('browser-state', state);
+    sendState(state);
     developerWindows.update();
   };
   const validURL = (url: string) => {
@@ -273,7 +296,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
     websiteTabRecovery.close(id, configurations.get(id)?.restorationId);
     const view = views.get(id);
     if (view) {
-      window.contentView.removeChildView(view);
+      removeView(view);
       const ownedPopups = popups.get(id);
       ownedPopups?.forEach((popup) => {
         if (!popup.isDestroyed()) popup.close();
@@ -308,14 +331,8 @@ export function registerElectronBrowser(window: BrowserWindow) {
     failures.delete(id);
     loaded.delete(id);
   };
-  const sync = (event: IpcMainEvent, incomingLayout: BrowserLayout) => {
+  const applyLayout = (incomingLayout: BrowserLayout) => {
     let layout = incomingLayout;
-    if (
-      event.sender !== window.webContents ||
-      event.senderFrame !== window.webContents.mainFrame ||
-      !isBrowserLayout(layout)
-    )
-      return;
     if (removals.hasRestrictions()) {
       const retired = layout.apps.filter((item) => removals.removed(item.id));
       if (retired.length)
@@ -472,7 +489,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
             // Retire its native view now; never access a destroyed view's contents.
             views.delete(item.id);
             if (!window.isDestroyed()) {
-              window.contentView.removeChildView(browserView);
+              removeView(browserView);
               window.webContents.send('browser-tab-request', {
                 action: 'close',
                 id: item.id,
@@ -665,6 +682,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
           }
         );
         contents.setWindowOpenHandler(({ url, disposition }) => {
+          const window = hostFor(item.id);
           const behavior = siteRule(
             getBrowserPreferences().advanced,
             contents.getURL()
@@ -809,11 +827,13 @@ export function registerElectronBrowser(window: BrowserWindow) {
           contents,
           () => visible.has(item.id) && !suspended,
           () => {
-            if (views.get(item.id) === browserView) publish(item.id, browserView);
+            if (views.get(item.id) === browserView)
+              publish(item.id, browserView);
           }
         );
         pictureInPicture.set(item.id, pip);
         contents.on('context-menu', (_, params) => {
+          const window = hostFor(item.id);
           showBrowserContextMenu(
             window,
             contents,
@@ -860,7 +880,17 @@ export function registerElectronBrowser(window: BrowserWindow) {
           websitePermissionCheckHandler(permissionProfile)
         );
         contents.session.setPermissionRequestHandler(
-          websitePermissionHandler(window, permissionProfile)
+          (requesting, permission, callback, details) => {
+            const target =
+              requesting &&
+              [...views].find(
+                ([, candidate]) => candidate.webContents === requesting
+              )?.[0];
+            websitePermissionHandler(
+              target ? hostFor(target) : window,
+              permissionProfile
+            )(requesting, permission, callback, details);
+          }
         );
         const applySiteMute = () => {
           const origin = siteOrigin(contents.getURL());
@@ -935,6 +965,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
           });
         });
         contents.on('focus', () => {
+          const window = hostFor(item.id);
           if (browserView.getVisible() && !window.isDestroyed())
             window.webContents.send('browser-tab-request', {
               action: 'select',
@@ -1031,6 +1062,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
         item.extensionInstallTarget
       );
       configurations.set(item.id, item);
+      if (windows) windows.place(item.id, view);
       const slot = layout.visible.find((entry) => entry.id === item.id);
       if (slot || focusedId === item.id) hiddenSince.delete(item.id);
       else if (!hiddenSince.has(item.id)) hiddenSince.set(item.id, Date.now());
@@ -1043,7 +1075,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
       if (slot) {
         const profileId = loginProfileKey(item);
         if ((layout.focusedId || layout.visible[0]?.id) === item.id)
-          setActiveExtensionProfile(window, profileId);
+          setActiveExtensionProfile(hostFor(item.id), profileId);
         const profile = getExtensionProfile(profileId);
         if (
           profile &&
@@ -1099,7 +1131,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
     };
     failures.delete(id);
     lastStates.set(id, next);
-    window.webContents.send('browser-state', next);
+    sendState(next);
   };
   const unloadTab = (
     id: string,
@@ -1163,7 +1195,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
       pictureInPicture.get(id)?.dispose();
       pictureInPicture.delete(id);
       views.delete(id);
-      window.contentView.removeChildView(view);
+      removeView(view);
       const ownedPopups = popups.get(id);
       ownedPopups?.forEach((popup) => {
         if (!popup.isDestroyed()) popup.close();
@@ -1197,20 +1229,28 @@ export function registerElectronBrowser(window: BrowserWindow) {
           loading: false,
         };
         lastStates.set(id, next);
-        window.webContents.send('browser-state', next);
+        sendState(next);
       }
     };
     contents.once('will-prevent-unload', prevented);
     contents.once('destroyed', unloaded);
     contents.close({ waitForBeforeUnload: true });
   };
+  const rootWindow = window;
   const command = (event: IpcMainEvent, request: BrowserCommand) => {
+    const requestWindow =
+      windows?.trusted(event) ||
+      (event.sender === rootWindow.webContents &&
+      event.senderFrame === rootWindow.webContents.mainFrame
+        ? rootWindow
+        : undefined);
     if (
-      event.sender !== window.webContents ||
-      event.senderFrame !== window.webContents.mainFrame ||
-      !isBrowserCommand(request)
+      !requestWindow ||
+      !isBrowserCommand(request) ||
+      (windows && request.id && !windows.allows(requestWindow, request.id))
     )
       return;
+    const window = requestWindow;
     const targetGroup = configurations.get(request.id);
     if (
       targetGroup &&
@@ -1229,6 +1269,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
         )
           return;
         const view = views.get(id);
+        if (windows?.visibleElsewhere(window, id)) return;
         if (view) unloadTab(id, view, { x: 0, y: 0 }, true);
         else resetUnloadedHistory(id, item, lastStates.get(id));
       });
@@ -1854,55 +1895,71 @@ export function registerElectronBrowser(window: BrowserWindow) {
       });
   }, 60000);
   discardTimer.unref?.();
-  const disposeAI = registerAI(window, {
-    settingsWindow: (contents) => isAISettingsWindow?.(contents) || false,
-    tabs: () =>
-      [...configurations.values()].filter(
-        (item) => !isGroupLocked(item) && !removals.blocks(item)
-      ),
-    focused: () => focusedId,
-    activityBounds: (id) => {
-      const view = views.get(id);
-      return view?.getVisible() ? view.getBounds() : undefined;
-    },
-    contents: (id) => {
-      const item = configurations.get(id);
-      return item && !isGroupLocked(item) && !removals.blocks(item)
-        ? views.get(id)?.webContents
-        : undefined;
-    },
-    createTab: (item, signal) =>
-      aiNewTabs.request(item.id, signal, () => {
-        if (removals.blocks(item))
-          throw new Error('This group is being removed.');
-        window.webContents.send('browser-tab-request', {
-          action: 'create',
-          app: item,
-        });
-      }),
-    prepareClose: (contents) => {
-      const sourceURL = contents.getURL();
-      let used = false;
-      const permit = (event: Event) => {
-        if (
-          !used &&
-          !contents.isDestroyed() &&
-          contents.getURL() === sourceURL
-        ) {
-          used = true;
-          event.preventDefault();
-        }
-      };
-      approvedAIClose.add(contents);
-      contents.on('will-prevent-unload', permit);
-      return () => {
-        approvedAIClose.delete(contents);
-        contents.removeListener('will-prevent-unload', permit);
-      };
-    },
-    downloads: getDownloadsForContents,
-    downloadAction: controlTabDownload,
-  });
+  let disposed = false;
+  const attachAI = () =>
+    registerAI(window, {
+      settingsWindow: (contents) => isAISettingsWindow?.(contents) || false,
+      tabs: () =>
+        [...configurations.values()].filter(
+          (item) => !isGroupLocked(item) && !removals.blocks(item)
+        ),
+      focused: () => focusedId,
+      activityBounds: (id) => {
+        const view = views.get(id);
+        return view?.getVisible() ? view.getBounds() : undefined;
+      },
+      contents: (id) => {
+        const item = configurations.get(id);
+        return item && !isGroupLocked(item) && !removals.blocks(item)
+          ? views.get(id)?.webContents
+          : undefined;
+      },
+      createTab: (item, signal) =>
+        aiNewTabs.request(item.id, signal, () => {
+          if (removals.blocks(item))
+            throw new Error('This group is being removed.');
+          (focusedId ? hostFor(focusedId) : window).webContents.send(
+            'browser-tab-request',
+            {
+              action: 'create',
+              app: item,
+            }
+          );
+        }),
+      prepareClose: (contents) => {
+        const sourceURL = contents.getURL();
+        let used = false;
+        const permit = (event: Event) => {
+          if (
+            !used &&
+            !contents.isDestroyed() &&
+            contents.getURL() === sourceURL
+          ) {
+            used = true;
+            event.preventDefault();
+          }
+        };
+        approvedAIClose.add(contents);
+        contents.on('will-prevent-unload', permit);
+        return () => {
+          approvedAIClose.delete(contents);
+          contents.removeListener('will-prevent-unload', permit);
+        };
+      },
+      downloads: getDownloadsForContents,
+      downloadAction: controlTabDownload,
+    });
+  // Tabs and chrome are usable while Keychain initializes. Do not construct
+  // encrypted AI stores until initialization (or the user's decline) finishes.
+  let disposeAI: (() => void) | undefined;
+  if (storageReady) {
+    storageReady
+      .then(() => {
+        if (!disposed && !window.isDestroyed()) disposeAI = attachAI();
+        return undefined;
+      })
+      .catch((error) => log.error('AI startup failed.', error));
+  } else disposeAI = attachAI();
   const disposeCapture = registerPageCapture(window, (id) => {
     const item = configurations.get(id);
     return item && !isGroupLocked(item) && !removals.blocks(item)
@@ -2002,6 +2059,43 @@ export function registerElectronBrowser(window: BrowserWindow) {
     });
     developerWindows.update();
   });
+  const sync = (event: IpcMainEvent, layout: BrowserLayout) => {
+    const source =
+      windows?.trusted(event) ||
+      (event.sender === window.webContents &&
+      event.senderFrame === window.webContents.mainFrame
+        ? window
+        : undefined);
+    if (!source || !isBrowserLayout(layout)) return;
+    if (windows) windows.setLayout(source, layout);
+    else applyLayout(layout);
+  };
+  const stopWindows = windows?.subscribe(() =>
+    applyLayout(windows.mergedLayout())
+  );
+  const stopRuntime = windows?.attach({
+    view: (id) => views.get(id),
+    state: (id) => lastStates.get(id),
+    chrome: (host) => {
+      keyboard(host.webContents);
+      const capture = registerPageCapture(host, (id) =>
+        windows.allows(host, id) ? views.get(id)?.webContents : undefined
+      );
+      const library = registerSiteDeveloperLibrary(
+        host,
+        () =>
+          [...configurations.values()].filter((item) =>
+            windows.allows(host, item.id)
+          ),
+        (id) =>
+          windows.allows(host, id) ? views.get(id)?.webContents : undefined
+      );
+      host.once('closed', () => {
+        capture();
+        library();
+      });
+    },
+  });
   ipcMain.on('browser-sync', sync);
   ipcMain.on('browser-command', command);
   const disposeGroupRemoval = registerGroupRemoval(
@@ -2055,13 +2149,14 @@ export function registerElectronBrowser(window: BrowserWindow) {
       );
     }
   );
-  let disposed = false;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
     faviconLoader.clear();
     disposeGroupRemoval();
-    disposeAI();
+    stopWindows?.();
+    stopRuntime?.();
+    disposeAI?.();
     disposeCapture();
     developerWindows.dispose();
     disposeDeveloperLibrary();

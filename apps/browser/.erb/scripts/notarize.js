@@ -5,8 +5,8 @@ const path = require('node:path');
 
 exports.default = async function notarizeMacos(context) {
   if (context.electronPlatformName !== 'darwin') return;
-  if (process.env.CI !== 'true') {
-    console.warn('Skipping notarizing step. Packaging is not running in CI');
+  if (process.env.CI !== 'true' && process.env.RELEASE_SIGNING_REQUIRED !== 'true') {
+    console.warn('Skipping notarizing step for an unsigned local build');
     return;
   }
   const appName = context.packager.appInfo.productFilename;
@@ -39,7 +39,7 @@ exports.default = async function notarizeMacos(context) {
   const required = ['APPLE_ID', 'APPLE_ID_PASS', 'APPLE_TEAM_ID'];
   if (required.some((name) => !process.env[name]?.trim()))
     throw new Error(
-      'CI macOS releases require Apple API credentials or APPLE_ID, APPLE_ID_PASS and APPLE_TEAM_ID for notarization.'
+      'Signed macOS releases require Apple API credentials or APPLE_ID, APPLE_ID_PASS and APPLE_TEAM_ID for notarization.'
     );
   await notarize({
     appPath,

@@ -36,8 +36,6 @@ export function PageStatus({
   return (
     <TerminalStatus
       tone="error"
-      title="CONNECTION"
-      badge="FAILED"
       label={message.title}
     >
       <TerminalDestination>
@@ -62,11 +60,6 @@ export function PageStatus({
         <p>{state.error}</p>
         {state.errorCode !== undefined && <p>Error code: {state.errorCode}</p>}
       </details>
-      <footer>
-        <span className="terminal-error-dot" aria-hidden="true" />
-        Connection interrupted
-        <span className="connection-simulation">Ready to retry</span>
-      </footer>
     </TerminalStatus>
   );
 }

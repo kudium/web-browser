@@ -1,11 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
+import { importBrowsers } from '../browser/browserImport';
+import { ImportOrganizationChoices } from '../components/View/Settings/ImportOrganizationChoices';
 import { BrowserImportSettings } from '../components/View/Settings/BrowserImportSettings';
 
 const save = jest.fn();
 jest.mock('../utils/AppManager', () => ({
   AppManager: {
-    getAll: () =>
+    getAll: () => [],
+    getStored: () =>
       save.mock.calls.at(-1)?.[0] || [
         {
           id: 'existing',
@@ -25,6 +28,7 @@ jest.mock('../utils/SpaceManager', () => ({
 }));
 beforeEach(() => {
   save.mockClear();
+  HTMLElement.prototype.scrollIntoView = jest.fn();
   /* eslint-disable class-methods-use-this -- jsdom observer stub */
   global.ResizeObserver = class {
     observe = () => {};
@@ -41,6 +45,7 @@ test('reviews links before saving and preserves existing tabs in a fresh group',
       <BrowserImportSettings />
     </Theme>
   );
+  fireEvent.click(screen.getByRole('tab', { name: 'From export' }));
   fireEvent.change(screen.getByLabelText('Links to import'), {
     target: { value: 'https://example.com\nhttps://other.example' },
   });
@@ -53,4 +58,67 @@ test('reviews links before saving and preserves existing tabs in a fresh group',
   expect(items[1].sessionId).toBe(items[2].sessionId);
   expect(items[1].spaceId).toBe('default');
   expect(screen.getByRole('status').textContent).toContain('Imported 2 links');
+});
+
+test('Arc organization choices default on and can be changed', () => {
+  const change = jest.fn();
+  render(
+    <ImportOrganizationChoices
+      source="Arc"
+      options={{ foldersAsGroups: true, spacesAsFolders: true }}
+      onChange={change}
+      disabled={false}
+    />
+  );
+  expect(
+    (screen.getByLabelText('Folders as tab groups') as HTMLInputElement).checked
+  ).toBe(true);
+  expect(
+    (screen.getByLabelText('Spaces as folders') as HTMLInputElement).checked
+  ).toBe(true);
+  fireEvent.click(screen.getByLabelText('Spaces as folders'));
+  expect(change).toHaveBeenCalledWith({
+    foldersAsGroups: true,
+    spacesAsFolders: false,
+  });
+});
+
+test.each(importBrowsers)(
+  '%s shows the default folder mapping option',
+  (source) => {
+    render(
+      <ImportOrganizationChoices
+        source={source}
+        options={{ foldersAsGroups: true, spacesAsFolders: true }}
+        onChange={jest.fn()}
+        disabled={false}
+      />
+    );
+    expect(
+      (screen.getByLabelText('Folders as tab groups') as HTMLInputElement)
+        .checked
+    ).toBe(true);
+  }
+);
+
+test('rolls back stored tabs when an export save fails', () => {
+  save.mockImplementationOnce(() => {
+    throw new Error('Storage unavailable');
+  });
+  render(
+    <Theme>
+      <BrowserImportSettings />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('tab', { name: 'From export' }));
+  fireEvent.change(screen.getByLabelText('Links to import'), {
+    target: { value: 'https://example.com' },
+  });
+  fireEvent.click(screen.getByText('Review links'));
+  fireEvent.click(screen.getByText('Import 1 links'));
+  expect(save).toHaveBeenCalledTimes(2);
+  expect(save.mock.calls[1][0].map((tab: any) => tab.id)).toEqual(['existing']);
+  expect(screen.getByRole('status').textContent).toContain(
+    'Storage unavailable'
+  );
 });

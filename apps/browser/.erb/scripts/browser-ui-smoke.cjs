@@ -25,6 +25,7 @@ for (const [source, target] of [
   
 
   ['src/main/dialogs.ts', 'dialogs.js'],
+  ['src/main/browserDialogStyles.ts', 'browserDialogStyles.js'],
   ['src/main/siteSettings.ts', 'siteSettings.js'],
   ['src/utils/EventBus.ts', 'EventBus.js'],
   ['src/utils/constant.ts', 'constant.js'],
@@ -42,7 +43,7 @@ for (const [source, target] of [
 require('esbuild').buildSync({entryPoints:['src/main/siteSettings.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(runtimeDir,'siteSettings.js')});
 require('esbuild').buildSync({entryPoints:['src/main/downloads.ts'],bundle:true,platform:'node',external:['electron','./preferences'],outfile:path.join(runtimeDir,'downloads.js')});
 require('esbuild').buildSync({entryPoints:['src/main/websitePermissions.ts'],bundle:true,platform:'node',external:['electron','./preferences','./dialogs','./siteSettings'],outfile:path.join(runtimeDir,'websitePermissions.js')});
-fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};`);
+fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};`);
 require('esbuild').buildSync({entryPoints:[path.join(runtimeDir,'browser-entry.ts')],bundle:true,platform:'node',external:['electron','./extensions','./preferences','./downloads','./dialogs','./siteSettings','./history'],outfile:path.join(runtimeDir,'electronBrowser.js')});
 require('fs').copyFileSync(require.resolve('electron-chrome-extensions/preload'),path.join(runtimeDir,'chrome-extension-api.preload.js'));
 require('fs').copyFileSync(require.resolve('electron-chrome-web-store/preload'),path.join(runtimeDir,'chrome-web-store.preload.js'));
@@ -182,7 +183,13 @@ app
       win.webContents.on('console-message', (event) => {
         if (event.level === 'error') console.error('RENDER', event.message);
       });
-      if (view === 'main') registerBrowser(win);
+      if (view === 'main') {
+        const api = require(path.join(runtimeDir, 'electronBrowser.js'));
+        const coordinator = api.getBrowserWindows() || api.registerBrowserWindows(() => create('main-secondary', 1160, 900));
+        coordinator.register(win);
+        registerBrowser(win);
+      }
+      if (view === 'main-secondary') { win.loadFile(path.resolve('release/app/dist/renderer/index.html'), { query: { view: 'main' } }).catch(console.error); return win; }
       await win.loadFile(path.resolve('release/app/dist/renderer/index.html'), {
         query: { view },
       });
@@ -222,6 +229,56 @@ app
       server.close(); app.exit(0); return;
     }
     const main = await create('main', 1160, 850);
+
+    if (process.argv.includes('--windows-only')) {
+      const api = require(path.join(runtimeDir, 'electronBrowser.js'));
+      const coordinator = api.getBrowserWindows();
+      const tabs = [
+        { id:'window-one', name:'Research', sessionId:'window-research', sessionName:'Research', url:url+'/window-one', icon:'' },
+        { id:'window-two', name:'Reference', sessionId:'window-research', sessionName:'Research', url:url+'/window-two', icon:'' },
+      ];
+      await evaluate(main, `localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(tabs))});localStorage.setItem('user_last_app_id','window-one');undefined`);
+      main.reload(); await wait(900);
+      const untilUI = async (win, expression) => { for(let i=0;i<100;i++){ if(await evaluate(win,expression))return; await wait(60); } throw new Error('Timed out: '+expression); };
+      await untilUI(main, `!!document.querySelector('[id="page-tab-window-one"]')`);
+      await evaluate(main, `document.getElementById('page-tab-window-one').click();undefined`);
+      await wait(300);
+      const live = main.contentView.children.find(view=>view.webContents?.getURL().endsWith('/window-one'));
+      assert(live, 'Live page created');
+      const originalId=live.webContents.id;
+      await live.webContents.executeJavaScript(`window.retainedMarker=42;const field=document.createElement('input');field.id='draft';field.value='Retain this draft';document.body.append(field);undefined`);
+      await evaluate(main, `window.electron.browser.windowRequest({action:'open-tab',id:'window-one'});undefined`);
+      await wait(700);
+      const detached=windows['main-secondary'];
+      await untilUI(detached, `!!document.getElementById('page-tab-window-one')`);
+      assert.equal(live.webContents.id, originalId);
+      assert(detached.contentView.children.includes(live), 'Original native view moved to detached window');
+      assert.equal(await live.webContents.executeJavaScript('window.retainedMarker'),42);
+      assert.equal(await evaluate(main, `!!document.getElementById('page-tab-window-one')`),false,'Detached tab left its original strip');
+      const detachedState=coordinator.snapshot(detached);
+      assert.equal(detachedState.kind,'temporary');assert.equal(detachedState.tabs.length,1);assert.equal(detachedState.tabs[0].pinned,false);
+      assert(await evaluate(detached, `document.querySelectorAll('[aria-label="Unpinned groups"] .sidebar-app').length===1`),'Detached group is visible in the unpinned section');
+      fs.writeFileSync(path.join(out,'detached-tab.png'),(await detached.capturePage()).toPNG());
+      const token=require('crypto').randomUUID();
+      await evaluate(detached, `window.electron.browser.windowRequest({action:'begin-drag',token:${JSON.stringify(token)},kind:'tab',id:'window-one'});undefined`);
+      await evaluate(main, `window.electron.browser.windowRequest({action:'drop',token:${JSON.stringify(token)},targetId:'window-two'});undefined`);
+      await untilUI(main, `!!document.getElementById('page-tab-window-one')`);
+      await wait(350);
+      assert(detached.isDestroyed(),'Empty detached window closed after drag-back');
+      assert.equal(live.webContents.id,originalId);
+      assert.equal(await live.webContents.executeJavaScript('document.querySelector("#draft").value'),'Retain this draft');
+      assert.equal(await evaluate(main, `JSON.parse(localStorage.getItem('user_apps')).find(tab=>tab.id==='window-one').sessionId`),'window-research');
+      await evaluate(main, `window.electron.browser.windowRequest({action:'open-group',id:'window-one'});undefined`);
+      await wait(750);const grouped=windows['main-secondary'];
+      await untilUI(grouped, `document.querySelectorAll('.horizontal-tab').length===2`);
+      await untilUI(main, `!!document.querySelector('.browser-window-mirror')`);
+      fs.writeFileSync(path.join(out,'shared-page-inactive.png'),(await main.capturePage()).toPNG());
+      main.focus();await wait(350);assert(main.contentView.children.includes(live));assert.equal(live.webContents.id,originalId);
+      main.webContents.sendInputEvent({type:'keyDown',keyCode:'N',modifiers:['meta']});main.webContents.sendInputEvent({type:'keyUp',keyCode:'N',modifiers:['meta']});await wait(650);
+      assert.equal(coordinator.snapshot(windows['main-secondary']).kind,'workspace');
+      console.log('Window UI passed: production React page, single-tab detach, original live view and draft, parent-group drag-back, unpinned temporary group, whole-group window, dimmed snapshot and New Window shortcut. Screenshots: '+out);
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.exit(0);return;
+    }
 
     if (process.argv.includes('--page-capture-only')) {
       const {nativeImage,clipboard,ClipboardItem}=require('electron');

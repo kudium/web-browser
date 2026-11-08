@@ -18,16 +18,19 @@ import {
   dialog,
   nativeTheme,
   shell,
+  screen,
 } from 'electron';
 import log from 'electron-log';
 import fs from 'fs';
 import {
   initializeLocalStorage,
+  localStorageStatus,
   confirmLocalStorageLaunch,
 } from './localStorage';
 import { STORAGE_OS_IDENTITY } from './storageIdentity';
 import { registerAccountSync } from './sync/register';
 import { explainSecureStorage } from './storageWelcome';
+import { rememberWindowSize, restoreWindowSize } from './windowSize';
 import { version as projectVersion } from '../../package.json';
 import { restrictPackagedDebugging } from './runtimeSecurity';
 import { registerGroupLocks } from './groupLocks';
@@ -36,6 +39,7 @@ import { configureDNS, registerAdvancedLifecycle } from './advancedPreferences';
 import { getBrowserPreferences, registerPreferences } from './preferences';
 import { browserUserAgent } from './browserIdentity';
 import { registerPasswordManager } from './passwordManager';
+import { registerBrowserMigration } from './browserMigration';
 import { registerAppUpdates, startAppUpdates } from './appUpdates';
 import { registerHistory } from './history';
 import MenuBuilder from './menu';
@@ -43,6 +47,7 @@ import { consolidateExtensionWarnings } from './extensionWarnings';
 import { registerNativeUi } from './nativeUi';
 import { registerDownloadLibrary, registerDownloadTracking } from './downloads';
 import { registerBrowser } from './browser';
+import { registerBrowserWindows } from './browserWindows';
 import { resolveHtmlPath } from './util';
 import { protectWindowNavigation } from './windowNavigation';
 import { NewWindowParams, View } from '../types';
@@ -80,9 +85,54 @@ try {
 }
 registerAdvancedLifecycle();
 
-const activeWindows: Partial<Record<View, BrowserWindow | null>> = {};
+const activeWindows: Partial<Record<string, BrowserWindow | null>> = {};
 const externalLinks: { url: string; activeGroup: boolean }[] = [];
 let tabRequestsReady = false;
+let quitting = false;
+app.on('before-quit', () => {
+  quitting = true;
+});
+let createAdditionalWindow: () => Promise<BrowserWindow>;
+const browserWindows = registerBrowserWindows(() => createAdditionalWindow());
+const isBrowserChrome = (contents: import('electron').WebContents) =>
+  Object.entries(activeWindows).some(
+    ([key, window]) =>
+      (key === 'main' || key.startsWith('browser-')) &&
+      window?.webContents === contents
+  );
+let finishStorageStartup: () => void;
+const storageReady = new Promise<void>((resolve) => {
+  finishStorageStartup = resolve;
+});
+let storageStartup: Promise<void> | undefined;
+const startStorage = (window: BrowserWindow) => {
+  if (!storageStartup) {
+    storageStartup = (async () => {
+      try {
+        if (await explainSecureStorage(window)) await initializeLocalStorage();
+        if (!window.isDestroyed()) confirmLocalStorageLaunch();
+      } catch (error) {
+        log.error(
+          'Secure storage startup failed; browsing remains available.',
+          error
+        );
+      } finally {
+        finishStorageStartup();
+      }
+    })();
+  }
+};
+ipcMain.handle('browser-storage-ready', async (event) => {
+  if (
+    event.senderFrame !== event.sender.mainFrame ||
+    !Object.values(activeWindows).some(
+      (window) => window?.webContents === event.sender
+    )
+  )
+    throw new Error('Untrusted storage request.');
+  await storageReady;
+  return localStorageStatus();
+});
 const deliverExternalLinks = () => {
   const host = activeWindows.main;
   if (!tabRequestsReady || !host || host.isDestroyed()) return;
@@ -120,6 +170,7 @@ export const createNewWindow = async ({
   isChild = false,
   intent,
   preferencesSection,
+  additional = false,
 }: NewWindowParams) => {
   await app.whenReady();
   if (view === 'add-app' && intent !== 'edit') {
@@ -140,9 +191,9 @@ export const createNewWindow = async ({
         host.webContents.once('did-finish-load', command);
       else command();
     }
-    return;
+    return undefined;
   }
-  if (activeWindows[view]) {
+  if (activeWindows[view] && !additional) {
     const existing = activeWindows[view]!;
     existing.show();
     existing.focus();
@@ -153,7 +204,7 @@ export const createNewWindow = async ({
         existing.webContents.once('did-finish-load', selectSection);
       else selectSection();
     }
-    return;
+    return undefined;
   }
 
   const parentWindow = isChild && activeWindows[MAIN_WINDOW.view];
@@ -164,11 +215,20 @@ export const createNewWindow = async ({
   const getAssetPath = (...paths: string[]): string =>
     path.join(RESOURCES_PATH, ...paths);
 
-  activeWindows[view] = new BrowserWindow({
+  const sizeFile = path.join(
+    app.getPath('userData'),
+    'browser-window-size.json'
+  );
+  const savedSize =
+    view === 'main' && !additional
+      ? restoreWindowSize(sizeFile, screen.getPrimaryDisplay().workAreaSize)
+      : undefined;
+
+  const newWindow = new BrowserWindow({
     show: false,
     title: 'Kudium Browser',
-    width: 1160,
-    height: 950,
+    width: savedSize?.width ?? 1160,
+    height: savedSize?.height ?? 950,
     center: true,
     backgroundColor: '#00000000',
     ...(process.platform === 'darwin' && {
@@ -195,18 +255,9 @@ export const createNewWindow = async ({
     ...options,
   });
 
-  const newWindow = activeWindows[view]!;
-  if (view === 'main') {
-    // Paint a visible, isolated welcome surface before any Keychain access.
-    await newWindow.loadURL(
-      `data:text/html;charset=utf-8,${encodeURIComponent(
-        '<html><body style="margin:0;background:#f5f5f7;color:#1d1d1f;font:16px -apple-system,BlinkMacSystemFont,sans-serif;display:grid;place-items:center;height:100vh"><div style="text-align:center"><h1 style="font-size:28px">Welcome to Kudium</h1><p>Your space to browse.</p></div></body></html>'
-      )}`
-    );
-    newWindow.show();
-    if (await explainSecureStorage(newWindow)) await initializeLocalStorage();
-    if (newWindow.isDestroyed()) return;
-  }
+  const windowKey = additional ? `browser-${newWindow.id}` : view;
+  activeWindows[windowKey] = newWindow;
+  if (savedSize) rememberWindowSize(newWindow, sizeFile);
   if (process.platform === 'darwin')
     app.dock?.setIcon(getAssetPath('app-icon.png'));
   if (view === 'downloads')
@@ -221,12 +272,13 @@ export const createNewWindow = async ({
         newWindow.webContents.send('browser-shortcut', 'find');
       }
     });
-  if (view === 'main') {
+  if (view === 'main' && !additional) {
+    browserWindows.register(newWindow);
     tabRequestsReady = false;
     newWindow.webContents.on('did-start-loading', () => {
       tabRequestsReady = false;
     });
-    registerBrowser(newWindow);
+    registerBrowser(newWindow, storageReady);
   }
   if (process.platform === 'darwin') {
     const updateMaterial = () =>
@@ -250,24 +302,34 @@ export const createNewWindow = async ({
   protectWindowNavigation(newWindow.webContents, documentURL, (url) =>
     shell.openExternal(url)
   );
-  newWindow.loadURL(initialURL);
-
-  newWindow.on('ready-to-show', () => {
-    if (view === 'main') confirmLocalStorageLaunch();
-    if (!activeWindows[view]) {
+  newWindow.once('ready-to-show', () => {
+    if (!activeWindows[windowKey]) {
       throw new Error(`Window "${view}" is not defined`);
     }
+    if (savedSize?.maximized) newWindow.maximize();
     if (process.env.START_MINIMIZED) {
-      activeWindows[view]!.minimize();
+      activeWindows[windowKey]!.minimize();
     } else {
-      activeWindows[view]!.show();
+      activeWindows[windowKey]!.show();
     }
+    // Let the real browser paint before prompting for or accessing Keychain.
+    if (view === 'main' && !additional) startStorage(newWindow);
   });
+
+  newWindow.loadURL(initialURL);
 
   newWindow.on('closed', () => {
-    activeWindows[view] = null;
+    activeWindows[windowKey] = null;
   });
 
+  if (view === 'main' && !additional) {
+    newWindow.on('close', (event) => {
+      if (!quitting && browserWindows.hasOtherWindows(newWindow)) {
+        event.preventDefault();
+        newWindow.hide();
+      }
+    });
+  }
   if (!parentWindow && view === 'main') {
     const menuBuilder = new MenuBuilder({
       mainWindow: newWindow,
@@ -276,6 +338,13 @@ export const createNewWindow = async ({
     menuBuilder.buildMenu();
     startAppUpdates();
   }
+  return newWindow;
+};
+
+createAdditionalWindow = async () => {
+  const created = await createNewWindow({ view: 'main', additional: true });
+  if (!created) throw new Error('Could not create a browser window.');
+  return created;
 };
 
 const openExternalLink = (value: string) => {
@@ -365,15 +434,21 @@ registerPreferences(
   (contents) => activeWindows.settings?.webContents === contents
 );
 
-registerAppUpdates((contents) =>
-  activeWindows.settings?.webContents === contents ||
-  activeWindows.main?.webContents === contents
+registerAppUpdates(
+  (contents) =>
+    activeWindows.settings?.webContents === contents ||
+    isBrowserChrome(contents)
 );
 
+registerBrowserMigration(
+  (contents) =>
+    activeWindows.settings?.webContents === contents ||
+    isBrowserChrome(contents)
+);
 registerPasswordManager(
   (contents) =>
     activeWindows.settings?.webContents === contents ||
-    activeWindows.main?.webContents === contents
+    isBrowserChrome(contents)
 );
 
 registerNativeUi((contents) =>
@@ -449,7 +524,7 @@ app
 
 registerGroupLocks(
   (contents) =>
-    activeWindows.main?.webContents === contents ||
+    isBrowserChrome(contents) ||
     activeWindows.settings?.webContents === contents ||
     activeWindows['add-app']?.webContents === contents
 );

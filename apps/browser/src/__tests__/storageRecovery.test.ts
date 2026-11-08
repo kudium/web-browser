@@ -1,96 +1,80 @@
-import { AppManager } from '../utils/AppManager';
-import { SpaceManager, SPACE_KEY } from '../utils/SpaceManager';
-import { readSavedList, writeSavedList } from '../utils/storageRecovery';
-import { LocalStorage } from '../utils/LocalStorage';
+/** @jest-environment node */
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { archiveUnreadableStorage } from '../main/storageRecovery';
+import { LocalSecureStorage } from '../main/secureStorage';
 
-jest.mock('../utils/EventBus', () => ({ eventBus: { dispatch: jest.fn() } }));
-
-beforeEach(() => localStorage.clear());
-it('preserves corrupt data, retains valid siblings and never changes a malformed profile identity', () => {
-  const raw = JSON.stringify([
-    { id: 'a', name: 'A', url: 'https://example.com', sessionId: 'account' },
-    null,
-    { id: 'b', name: 'B', url: 'https://example.com', sessionId: 42 },
-  ]);
-  localStorage.setItem('user_apps', raw);
-  expect(AppManager.getAll().map((app) => app.id)).toEqual(['a']);
-  expect(AppManager.getAll()[0].sessionId).toBe('account');
-  expect(localStorage.getItem('user_apps.recovery')).toBe(raw);
-  expect(localStorage.getItem('user_apps')).toBe(raw);
-  AppManager.set(AppManager.getAll());
-  expect(localStorage.getItem('user_apps.recovery')).toBe(raw);
+let root: string;
+beforeEach(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-recovery-'));
 });
-it('keeps orphaned groups reachable when space JSON is corrupt', () => {
-  localStorage.setItem(
-    'user_apps',
-    JSON.stringify([
-      {
-        id: 'a',
-        name: 'A',
-        url: 'https://example.com',
-        icon: '',
-        spaceId: 'work',
-        folderId: 'reading',
-        sessionId: 'identity',
-      },
-    ])
+afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+const write = (file: string, value: string) => {
+  fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+  fs.writeFileSync(path.join(root, file), value);
+};
+it('backs up failed records and the journal, retaining healthy records and the live key', () => {
+  write('ai-settings.json', 'unreadable');
+  write('ai-tasks.bin', 'healthy');
+  write('secure-storage/key.json', 'wrapped-key');
+  write('secure-storage/migration-journal.json', 'journal');
+  const backup = archiveUnreadableStorage(root, ['ai-settings.json']);
+  expect(fs.readFileSync(path.join(backup, 'ai-settings.json'), 'utf8')).toBe(
+    'unreadable'
   );
-  localStorage.setItem(SPACE_KEY, '{damaged');
-  const recovered = SpaceManager.getAll().find((space) => space.id === 'work');
-  expect(recovered?.folders).toEqual([
-    { id: 'reading', name: 'Recovered folder' },
-  ]);
-  expect(localStorage.getItem(`${SPACE_KEY}.recovery`)).toBe('{damaged');
-  expect(AppManager.getAll()[0].sessionId).toBe('identity');
+  expect(
+    fs.readFileSync(path.join(backup, 'secure-storage/key.json'), 'utf8')
+  ).toBe('wrapped-key');
+  expect(
+    fs.readFileSync(
+      path.join(backup, 'secure-storage/migration-journal.json'),
+      'utf8'
+    )
+  ).toBe('journal');
+  expect(fs.existsSync(path.join(root, 'ai-settings.json'))).toBe(false);
+  expect(fs.readFileSync(path.join(root, 'ai-tasks.bin'), 'utf8')).toBe(
+    'healthy'
+  );
+  expect(
+    fs.readFileSync(path.join(root, 'secure-storage/key.json'), 'utf8')
+  ).toBe('wrapped-key');
 });
-it('rejects overwriting damaged data when its backup cannot be saved', () => {
-  localStorage.setItem('damaged', '{broken');
-  const save = jest.spyOn(LocalStorage, 'set').mockImplementation(() => {});
-  try {
-    expect(readSavedList('damaged', () => true)).toEqual([]);
-    expect(() => writeSavedList('damaged', [])).toThrow('Unable to preserve');
-    expect(localStorage.getItem('damaged')).toBe('{broken');
-  } finally {
-    save.mockRestore();
-  }
+it('does not remove anything when backup preparation fails or selection is invalid', () => {
+  write('ai-settings.json', 'unreadable');
+  expect(() => archiveUnreadableStorage(root, ['../outside'])).toThrow();
+  expect(() => archiveUnreadableStorage(root, ['ai-settings.json'])).toThrow();
+  expect(fs.readFileSync(path.join(root, 'ai-settings.json'), 'utf8')).toBe(
+    'unreadable'
+  );
 });
-it('keeps startup usable when name migration cannot preserve a damaged original', () => {
-  const raw = JSON.stringify([
-    {
-      id: 'migration',
-      name: 'Example',
-      sessionName: 'Example · New group',
-      url: 'https://example.com',
-      sessionId: 'account',
+it('allows a fresh launch to save again after failed migration records are archived', async () => {
+  const backend = {
+    isAsyncEncryptionAvailable: async () => true,
+    encryptStringAsync: async (value: string) => Buffer.from(`os:${value}`),
+    decryptStringAsync: async (value: Buffer) => {
+      if (!value.toString().startsWith('os:')) throw new Error('Unreadable');
+      return { result: value.toString().slice(3), shouldReEncrypt: false };
     },
-    null,
-  ]);
-  localStorage.setItem('user_apps', raw);
-  const save = jest.spyOn(LocalStorage, 'set').mockImplementation(() => {});
-  try {
-    expect(AppManager.getAll()[0].sessionId).toBe('account');
-    expect(localStorage.getItem('user_apps')).toBe(raw);
-  } finally {
-    save.mockRestore();
-  }
-});
-it('opens with a default space for an empty list and safely handles malformed appearance fields', () => {
-  localStorage.setItem(
-    SPACE_KEY,
-    JSON.stringify([
-      {
-        id: 'work',
-        name: 'Work',
-        folders: null,
-        iconEmoji: { bad: true },
-        color: 'bad',
-      },
-    ])
+  };
+  write(
+    'ai-settings.json',
+    JSON.stringify({
+      endpoint: 'https://api.openai.com/v1',
+      model: 'test',
+      key: Buffer.from('unreadable').toString('base64'),
+    })
   );
-  const space = SpaceManager.getAll()[0];
-  expect(space.folders).toEqual([]);
-  expect(space.iconEmoji).toBeUndefined();
-  expect(space.color).toBe('iris');
-  localStorage.setItem(SPACE_KEY, '[]');
-  expect(SpaceManager.getAll()[0].id).toBe('default');
+  const storage = new LocalSecureStorage(root, backend);
+  await storage.initialize();
+  expect(storage.recoveryFailures()).toContain('ai-settings.json');
+  archiveUnreadableStorage(root, storage.recoveryFailures());
+  storage.dispose();
+  const next = new LocalSecureStorage(root, backend);
+  await next.initialize();
+  expect(next.recoveryFailures()).toEqual([]);
+  expect(next.isFileAvailable(path.join(root, 'ai-settings.json'))).toBe(true);
+  expect(next.decryptString(next.encryptString('replacement-key'))).toBe(
+    'replacement-key'
+  );
 });

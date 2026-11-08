@@ -1,5 +1,7 @@
+import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 /* eslint jsx-a11y/label-has-associated-control: ["error", { "assert": "htmlFor" }] */
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Callout, Switch } from '@radix-ui/themes';
 import { AISkillsSettings } from './AISkillsSettings';
 import { ExternalAISettings } from './ExternalAISettings';
@@ -9,6 +11,7 @@ import {
   providerFor,
 } from '../../../browser/aiProviders';
 import { AI_DEFAULTS, AISettings } from '../../../browser/ai';
+import { useAIPagePreference } from '../../../utils/useAIPagePreference';
 
 const providers = AI_PROVIDERS;
 const errorText = (reason: Error) =>
@@ -17,7 +20,8 @@ const errorText = (reason: Error) =>
     ''
   );
 
-export function AISettingsPage() {
+export function AISettingsPage({ children }: { children?: ReactNode }) {
+  const [showStats, setShowStats] = useAIPagePreference('showStats', true);
   const [tab, setTab] = useState<'model' | 'external' | 'skills'>('model');
   const [saved, setSaved] = useState<AISettings>({
     ...AI_DEFAULTS,
@@ -28,7 +32,7 @@ export function AISettingsPage() {
   const [endpoint, setEndpoint] = useState(AI_DEFAULTS.endpoint);
   const [model, setModel] = useState(AI_DEFAULTS.model);
   const [key, setKey] = useState('');
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [models, setModels] = useState<string[]>([]);
   const [customModel, setCustomModel] = useState(false);
   const [ready, setReady] = useState(false);
@@ -49,7 +53,7 @@ export function AISettingsPage() {
           setEndpoint(value.endpoint);
           setModel(value.model);
           setProvider(providerFor(value.endpoint));
-          setRemember(value.remembered);
+          setRemember(!value.hasKey || value.remembered);
           setReady(true);
         }
         return undefined;
@@ -73,7 +77,7 @@ export function AISettingsPage() {
       );
       setSaved(value);
       setKey('');
-      setRemember(value.remembered);
+      setRemember(!value.hasKey || value.remembered);
       setNotice(clear ? 'API key removed.' : 'Saved.');
     } catch (reason) {
       setError(errorText(reason as Error));
@@ -178,6 +182,7 @@ export function AISettingsPage() {
           <Callout.Root color="red" role="alert">
             <Callout.Text>
               {error}
+              <StorageRecoveryAction message={error} />
               {!ready && (
                 <Button
                   type="button"
@@ -366,6 +371,21 @@ export function AISettingsPage() {
             </p>
           )}
         </form>
+      </div>
+      <div className="preference-card ai-display-preferences">
+        <div className="preference-row">
+          <div>
+            <strong id="ai-show-stats-label">Show stats</strong>
+            <p>Usage and actions in chat.</p>
+          </div>
+          <Switch
+            id="ai-show-stats"
+            aria-labelledby="ai-show-stats-label"
+            checked={showStats}
+            onCheckedChange={setShowStats}
+          />
+        </div>
+        {children}
       </div>
     </div>
   );

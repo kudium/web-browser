@@ -1,5 +1,6 @@
 /** Application-scoped physical key bindings; Mod means Command on macOS. */
 export const shortcutActions = [
+  { id: 'new-window', title: 'New browser window', keys: ['Mod+KeyN'] },
   { id: 'extensions', title: 'Open extensions menu', keys: [] },
   { id: 'history', title: 'Browsing history', keys: ['Mod+KeyY'] },
   {

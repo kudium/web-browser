@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { browser } from '../../browser/client';
 import { IApp, BrowserState } from '../../types';
+import { AppManager } from '../../utils/AppManager';
+import { windowWorkspace } from '../../utils/windowWorkspace';
 import { useSpaces } from '../../utils/SpaceManager';
 
 export function AccountSyncPublisher({
@@ -21,7 +23,11 @@ export function AccountSyncPublisher({
   useEffect(() => {
     const timer = setTimeout(() => {
       browser
-        .accountSync('snapshot', { apps: tabs, spaces, currentUrls })
+        .accountSync('snapshot', {
+          apps: windowWorkspace.state() ? AppManager.getStored() : tabs,
+          spaces,
+          currentUrls,
+        })
         .catch(() => {});
     }, 500);
     return () => clearTimeout(timer);

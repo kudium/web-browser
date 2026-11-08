@@ -19,6 +19,7 @@ beforeEach(() => {
   delete process.env.APPLE_ID;
   delete process.env.APPLE_ID_PASS;
   delete process.env.APPLE_TEAM_ID;
+  delete process.env.RELEASE_SIGNING_REQUIRED;
   jest.clearAllMocks();
 });
 afterEach(() => {
@@ -62,6 +63,13 @@ it('allows explicit local builds and ignores other platforms', async () => {
   } finally {
     warning.mockRestore();
   }
+});
+
+it('requires notarization credentials for signed local releases', async () => {
+  process.env.CI = 'false';
+  process.env.RELEASE_SIGNING_REQUIRED = 'true';
+  await expect(hook(context)).rejects.toThrow('notarization');
+  expect(notarize).not.toHaveBeenCalled();
 });
 
 it('uses a protected temporary API key and removes it after success or failure', async () => {

@@ -7,6 +7,9 @@ const { EventEmitter } = require('events');
 const source = fs.readFileSync('src/main/main.ts', 'utf8');
 const queue = source.slice(
   source.indexOf('const activeWindows:'),
+  source.indexOf('let createAdditionalWindow:')
+) + source.slice(
+  source.indexOf('const deliverExternalLinks ='),
   source.indexOf('if (process.env.NODE_ENV')
 );
 const handlers = source.slice(

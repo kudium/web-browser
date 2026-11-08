@@ -4,6 +4,7 @@ import { EVENT_KEY, STORAGE_KEY } from '../constant';
 import { IApp } from '../../types';
 import { eventBus } from '../EventBus';
 import { LocalStorage } from '../LocalStorage';
+import { windowWorkspace } from '../windowWorkspace';
 
 export const useAppList = (): {
   appList: IApp[];
@@ -30,11 +31,15 @@ export const useAppList = (): {
       setAppList(list);
     };
     const off = eventBus.on(EVENT_KEY.APP_LIST_UPDATE, refresh);
+    const offWindow = windowWorkspace.subscribe(refresh);
     // Subscribe before rereading: a write between render and effect must not
     // leave the new consumer on an old layout until the next update.
     if (LocalStorage.get(STORAGE_KEY.USER_APPS) !== initialRaw.current)
       refresh();
-    return off;
+    return () => {
+      off();
+      offWindow();
+    };
   }, []);
 
   return { appList, setAppList, lastIndex };

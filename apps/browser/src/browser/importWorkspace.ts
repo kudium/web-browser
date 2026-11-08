@@ -2,12 +2,25 @@ import type { ImportedLink } from './browserImport';
 import type { Space } from '../utils/SpaceManager';
 import type { IApp } from '../types';
 
+export interface ImportOrganizationOptions {
+  foldersAsGroups: boolean;
+  spacesAsFolders: boolean;
+}
+
 export function buildImportedWorkspace(
   links: ImportedLink[],
   existing: Space[],
   targetId: string,
-  source: string
+  source: string,
+  options: ImportOrganizationOptions = {
+    foldersAsGroups: true,
+    spacesAsFolders: true,
+  },
+  sessionProfileId: string = crypto.randomUUID()
 ) {
+  const compact = source === 'Arc' || source === 'Dia';
+  const { foldersAsGroups } = options;
+  const spacesAsFolders = compact && options.spacesAsFolders;
   const spaces = existing.map((space) => ({
     ...space,
     folders: [...(space.folders || [])],
@@ -19,7 +32,7 @@ export function buildImportedWorkspace(
   const groups = new Map<string, string>();
   const apps: IApp[] = links.map((link) => {
     let spaceId = targetId;
-    if (link.spaceName) {
+    if (link.spaceName && !spacesAsFolders) {
       if (!spaceIds.has(link.spaceName)) {
         const id = crypto.randomUUID();
         spaceIds.set(link.spaceName, id);
@@ -28,20 +41,28 @@ export function buildImportedWorkspace(
       spaceId = spaceIds.get(link.spaceName)!;
     }
     const path = link.folderPath || [];
-    const folderKey = JSON.stringify([spaceId, path]);
+    const destinationPath = [
+      ...(spacesAsFolders && link.spaceName ? [link.spaceName] : []),
+      ...(foldersAsGroups ? [] : path),
+    ];
+    const folderKey = JSON.stringify([spaceId, destinationPath]);
     let folderId: string | undefined;
-    if (path.length) {
+    if (destinationPath.length) {
       if (!folderIds.has(folderKey)) {
         const id = crypto.randomUUID();
         folderIds.set(folderKey, id);
         spaces
           .find((space) => space.id === spaceId)!
-          .folders.push({ id, name: path.join(' / ').slice(0, 256) });
+          .folders.push({
+            id,
+            name: destinationPath.join(' / ').slice(0, 256),
+          });
       }
       folderId = folderIds.get(folderKey);
     }
     const groupKey = JSON.stringify([
       spaceId,
+      link.spaceName,
       path,
       Boolean(link.favorite),
       link.pinned !== false,
@@ -50,6 +71,7 @@ export function buildImportedWorkspace(
     return {
       id: crypto.randomUUID(),
       sessionId: groups.get(groupKey),
+      sessionProfileId,
       sessionName: path.at(-1) || link.spaceName || `Imported from ${source}`,
       sessionNameCustom: true,
       spaceId,

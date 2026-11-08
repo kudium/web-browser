@@ -14,6 +14,7 @@ import { menuAccelerator } from '../browser/shortcuts';
 import type { BrowserShortcut } from '../browser/contracts';
 import type { NewWindowParams } from '../types';
 import { shellContextMenu } from './shellContextMenu';
+import { getBrowserWindows } from './browserWindows';
 
 export default class MenuBuilder {
   mainWindow: BrowserWindow;
@@ -50,10 +51,15 @@ export default class MenuBuilder {
           ? menuAccelerator(bindings[action as keyof typeof bindings][0])
           : undefined,
       click: () => {
-        if (this.mainWindow.isDestroyed()) return;
-        this.mainWindow.show();
-        this.mainWindow.focus();
-        this.mainWindow.webContents.send('browser-shortcut', action);
+        const focused = BrowserWindow.getFocusedWindow();
+        const host =
+          focused && getBrowserWindows()?.contains(focused)
+            ? focused
+            : this.mainWindow;
+        if (host.isDestroyed()) return;
+        host.show();
+        host.focus();
+        host.webContents.send('browser-shortcut', action);
       },
     };
   }
@@ -114,6 +120,7 @@ export default class MenuBuilder {
     const file: MenuItemConstructorOptions = {
       label: 'File',
       submenu: [
+        this.action('New Window', 'new-window'),
         this.action('New Tab…', 'command', false),
         this.action('New Group…', 'new-session', false),
         this.action('New Space…', 'new-space', false),
@@ -241,7 +248,9 @@ export default class MenuBuilder {
         {
           label: 'Documentation',
           click: () => {
-            shell.openExternal('https://github.com/samtax01/KudiumBrowser#readme');
+            shell.openExternal(
+              'https://github.com/samtax01/KudiumBrowser#readme'
+            );
           },
         },
         {
@@ -255,7 +264,9 @@ export default class MenuBuilder {
         {
           label: 'Report an Issue…',
           click: () => {
-            shell.openExternal('https://github.com/samtax01/KudiumBrowser/issues');
+            shell.openExternal(
+              'https://github.com/samtax01/KudiumBrowser/issues'
+            );
           },
         },
         ...(!mac

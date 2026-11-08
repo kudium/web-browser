@@ -112,3 +112,91 @@ test('incoming snapshots reject browser hooks and credential-bearing links', () 
     })
   ).toThrow('Invalid synced data');
 });
+
+test.each(['sign-in', 'sign-up'] as const)(
+  '%s keeps device approval attached and reuses the pending request',
+  async (mode) => {
+    const request = jest.fn(async () => ({
+      status: 200,
+      headers: new Headers(),
+      body: {
+        device_code: 'private-device-code',
+        user_code: 'ABCD1234',
+        expires_in: 600,
+        interval: 5,
+      },
+    }));
+    const open = jest.fn(async (_url: string) => {});
+    const client = new AccountSyncClient({
+      load: () => ({}),
+      save: jest.fn(),
+      preferences: () => defaultPreferences,
+      enable: () => {},
+      open,
+      request,
+    });
+    await client.connect(mode);
+    const url = new URL(open.mock.calls[0][0]);
+    expect(url.pathname).toBe(`/${mode}`);
+    expect(url.searchParams.get('next')).toBe('/device?user_code=ABCD1234');
+    expect(url.toString()).not.toContain('private-device-code');
+    expect(client.status()).toMatchObject({
+      phase: 'connecting',
+      userCode: 'ABCD1234',
+    });
+    await client.connect();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(new URL(open.mock.calls[1][0]).pathname).toBe('/device');
+    client.cancel();
+    await client.connect(mode);
+    expect(request).toHaveBeenCalledTimes(2);
+  }
+);
+
+test('background password upload stops before writing if the vault locks', async () => {
+  const key = Buffer.alloc(32, 42);
+  const preferences = {
+    ...defaultPreferences,
+    cloudSync: {
+      ...defaultPreferences.cloudSync,
+      enabled: true,
+      provider: 'kudiumbrowser' as const,
+      categories: {
+        ...defaultPreferences.cloudSync.categories,
+        passwords: true,
+      },
+    },
+  };
+  const request = jest.fn(async (path: string) => ({
+    status: 200,
+    headers: new Headers(),
+    body: path.includes('account_key_check')
+      ? {
+          envelope: encryptSyncRecord(
+            { kind: 'kudium-sync-key', accountId: 'account' },
+            key,
+            'account_key_check_v1'
+          ),
+        }
+      : { revision: 1 },
+  }));
+  const client = new AccountSyncClient({
+    load: () => ({
+      credential: {
+        token: 'private',
+        email: 'test@example.com',
+        accountId: 'account',
+        deviceId: 'one',
+        key: key.toString('base64url'),
+        enrolled: true,
+      },
+    }),
+    save: jest.fn(),
+    preferences: () => preferences,
+    enable: () => {},
+    open: async () => {},
+    request,
+  });
+  await expect(client.syncPasswords([], () => false)).rejects.toThrow('paused');
+  expect(request).toHaveBeenCalledTimes(2);
+});

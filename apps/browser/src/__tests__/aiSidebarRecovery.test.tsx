@@ -47,6 +47,7 @@ function mockAI(
     resume: jest.fn().mockResolvedValue(true),
     attachContext: jest.fn(),
     groups: jest.fn().mockResolvedValue({ groupId: null, groups: [] }),
+    feedback: jest.fn().mockResolvedValue(true),
     run: jest.fn(),
   };
   Object.assign(window, { electron: { ai } });
@@ -429,3 +430,155 @@ it.each([false, true])(
     localStorage.removeItem('kudiumbrowser-ai-page-pane');
   }
 );
+
+it('replaces transient streaming text with one final reply and hides suggestion metadata', async () => {
+  const mock = mockAI();
+  render(<AISidebar />);
+  await screen.findByText('test');
+  act(() => {
+    mock.event({ type: 'status', text: 'Thinking…' });
+    mock.event({ type: 'partial', text: 'Working on it.\n```kudium-sug' });
+  });
+  expect(screen.getByLabelText('AI reply in progress')).toHaveTextContent(
+    'Working on it.'
+  );
+  expect(screen.queryByText(/kudium-sug/)).toBeNull();
+  act(() => {
+    mock.event({ type: 'partial', text: '' });
+    mock.event({ type: 'message', text: 'Finished.' });
+    mock.event({ type: 'done', text: '' });
+  });
+  expect(screen.queryByLabelText('AI reply in progress')).toBeNull();
+  expect(screen.getAllByText('Finished.')).toHaveLength(1);
+  expect(screen.queryByText('Working on it.')).toBeNull();
+});
+
+it('discards a partial reply when the run stops', async () => {
+  const mock = mockAI();
+  render(<AISidebar />);
+  await screen.findByText('test');
+  act(() => {
+    mock.event({ type: 'partial', text: 'Temporary reply' });
+    mock.event({ type: 'error', text: 'Run stopped.' });
+    mock.event({ type: 'done', text: '' });
+  });
+  expect(screen.queryByText('Temporary reply')).toBeNull();
+  expect(screen.getByText('Run stopped.')).toBeInTheDocument();
+});
+
+it('shows persisted task notes and clears them without sending a new task', async () => {
+  const mock = mockAI();
+  const state = {
+    selectedId: 'chat',
+    conversations: [],
+    history: [],
+    draft: '',
+    taskMemory: {
+      decisions: ['Preserve the sign-in flow'],
+      unfinished: ['Verify the edit'],
+      sources: [],
+    },
+  };
+  const conversations = jest.fn().mockResolvedValue(state);
+  Object.assign(mock.ai, { conversations });
+  render(<AISidebar />);
+  await screen.findByText('Preserve the sign-in flow');
+  expect(screen.getByText('Verify the edit')).toBeInTheDocument();
+  conversations.mockResolvedValue({ ...state, taskMemory: undefined });
+  fireEvent.click(screen.getByRole('button', { name: 'Clear task notes' }));
+  await waitFor(() =>
+    expect(conversations).toHaveBeenCalledWith({
+      action: 'clear-memory',
+      id: 'chat',
+    })
+  );
+  await waitFor(() =>
+    expect(screen.queryByText('Preserve the sign-in flow')).toBeNull()
+  );
+  expect(mock.ai.run).not.toHaveBeenCalled();
+});
+
+it('does not pull the reader to the bottom while they inspect earlier messages', async () => {
+  const mock = mockAI();
+  const scroll = jest.spyOn(HTMLElement.prototype, 'scrollTo');
+  render(<AISidebar />);
+  await screen.findByText('test');
+  const log = screen.getByRole('log');
+  Object.defineProperties(log, {
+    scrollHeight: { value: 1000 },
+    clientHeight: { value: 200 },
+    scrollTop: { value: 0, writable: true },
+  });
+  fireEvent.scroll(log);
+  scroll.mockClear();
+  act(() => mock.event({ type: 'partial', text: 'New streamed text' }));
+  expect(scroll).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('AI reply in progress')).toHaveAttribute(
+    'aria-live',
+    'off'
+  );
+  log.scrollTop = 800;
+  fireEvent.scroll(log);
+  act(() => mock.event({ type: 'partial', text: 'More streamed text' }));
+  expect(scroll).toHaveBeenCalled();
+  scroll.mockRestore();
+});
+
+it('answers an inline question using the existing composer and resumes the waiting run', async () => {
+  const mock = mockAI();
+  render(<AISidebar />);
+  await screen.findByText('test');
+  act(() => {
+    mock.event({ type: 'status', text: 'Waiting for feedback' });
+    mock.event({
+      type: 'message',
+      text: 'How should I proceed?',
+      feedbackId: 'question-1',
+      suggestions: ['Read the end'],
+    });
+    mock.event({ type: 'feedback', text: '', feedbackId: 'question-1' });
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read the end' }));
+  expect(screen.getByRole('textbox', { name: 'Task for AI' })).toHaveValue(
+    'Read the end'
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Task for AI' }), {
+    target: { value: 'Find the final paragraph' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send reply' }));
+  await waitFor(() =>
+    expect(mock.ai.feedback).toHaveBeenCalledWith(
+      'question-1',
+      'Find the final paragraph'
+    )
+  );
+  expect(mock.ai.run).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Read the end' })).toBeDisabled();
+  expect(
+    screen.getByRole('button', { name: 'Stop AI task' })
+  ).toBeInTheDocument();
+});
+
+it('clears an inline question when the waiting task stops', async () => {
+  const mock = mockAI();
+  render(<AISidebar />);
+  await screen.findByText('test');
+  act(() => {
+    mock.event({ type: 'status', text: 'Waiting' });
+    mock.event({
+      type: 'message',
+      text: 'Choose',
+      feedbackId: 'question-2',
+      suggestions: ['Continue reading'],
+    });
+    mock.event({ type: 'feedback', text: '', feedbackId: 'question-2' });
+    mock.event({ type: 'feedback', text: '' });
+    mock.event({ type: 'done', text: '' });
+  });
+  expect(
+    screen.getByRole('button', { name: 'Continue reading' })
+  ).toBeDisabled();
+  expect(
+    screen.getByRole('button', { name: 'Send AI task' })
+  ).toBeInTheDocument();
+});

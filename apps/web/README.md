@@ -213,3 +213,18 @@ then remove them. **Do not point TEST_DATABASE_URL at production.** Without that
 variable integration tests are explicitly skipped. Tests cover account isolation,
 concurrent revision conflicts, cursor paging, tombstones, quota rollback, deletion,
 release selection/YAML and page responses.
+
+## Public release history
+
+`/releases` lists published versions with stable/beta filters, release notes,
+publication dates and available platform/architecture downloads. Links from the
+download page and footer make older installers discoverable. Existing latest
+update feeds are unchanged; browsing history never initiates a downgrade.
+
+`GET /v1/releases?channel=all&page=1` exposes the same history as JSON. Channel
+may be `all`, `stable` or `beta`; page must be a positive integer. Each page has
+up to 12 version/channel groups, with all architecture downloads kept together.
+Versions sort by semantic version. Only valid manifests with trusted asset
+origins are returned. The response includes `releases`, `page`, `total` and
+`totalPages`. No database migration is required. Deploy the website to expose
+these routes publicly.

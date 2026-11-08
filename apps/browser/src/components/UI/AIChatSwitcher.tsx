@@ -1,3 +1,4 @@
+import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { useEffect, useRef, useState } from 'react';
 import { TextField } from '@radix-ui/themes';
 import { Plus, Search, Trash2, Pin, X, Pencil, Check } from 'lucide-react';
@@ -318,7 +319,10 @@ export function AIChatSwitcher({
         </p>
       )}
       {state.storageNotice && (
-        <p className="ai-chat-history-note">{state.storageNotice}</p>
+        <p className="ai-chat-history-note">
+          {state.storageNotice}
+          <StorageRecoveryAction message={state.storageNotice} />
+        </p>
       )}
     </aside>
   );

@@ -32,7 +32,12 @@ export function defaultSyncSettings(platform = 'darwin'): SyncSettings {
   return {
     enabled: false,
     provider: platform === 'darwin' ? 'icloud' : 'kudiumbrowser',
-    categories: { workspace: true, openTabs: true, preferences: true },
+    categories: {
+      workspace: true,
+      openTabs: true,
+      preferences: true,
+      passwords: true,
+    },
   };
 }
 export function validateSyncSettings(value: unknown): SyncSettings {
@@ -64,7 +69,7 @@ export function validateSyncSettings(value: unknown): SyncSettings {
   return {
     enabled: settings.enabled,
     provider: settings.provider,
-    categories: { ...settings.categories },
+    categories: { passwords: true, ...settings.categories },
   };
 }
 export interface CloudSyncStatus {

@@ -1,6 +1,3 @@
-import type { AppUpdateAction, AppUpdateState } from '../browser/appUpdates';
-// Disable no-unused-vars, broken for spread args
-/* eslint no-unused-vars: off */
 import { injectBrowserAction } from 'electron-chrome-extensions/browser-action';
 import {
   contextBridge,
@@ -8,6 +5,13 @@ import {
   IpcRendererEvent,
   webUtils,
 } from 'electron';
+import type { AppUpdateAction, AppUpdateState } from '../browser/appUpdates';
+import type {
+  BrowserWindowRequest,
+  BrowserWindowState,
+} from '../browser/windows';
+// Disable no-unused-vars, broken for spread args
+/* eslint no-unused-vars: off */
 import {
   safeErrorType,
   safeErrorFrames,
@@ -115,13 +119,25 @@ function sendTelemetry(request: Record<string, unknown>) {
     /* Diagnostics never affect the user action. */
   }
 }
+let storageReady: Promise<void> | undefined;
+function invokeWhenReady(channel: string, ...args: unknown[]) {
+  if (
+    channel.startsWith('ai-') ||
+    ['password-manager', 'account-sync', 'browser-migration'].includes(channel)
+  ) {
+    if (!storageReady)
+      storageReady = ipcRenderer.invoke('browser-storage-ready');
+    return storageReady.then(() => ipcRenderer.invoke(channel, ...args));
+  }
+  return ipcRenderer.invoke(channel, ...args);
+}
+
 function trackedInvoke(
   feature: TelemetryFeature | undefined,
   channel: string,
   ...args: unknown[]
 ) {
-  return ipcRenderer
-    .invoke(channel, ...args)
+  return invokeWhenReady(channel, ...args)
     .then((result) => {
       if (feature && result !== false && result !== null)
         sendTelemetry({ feature, succeeded: true });
@@ -151,6 +167,31 @@ const electronHandler = {
     },
   },
   platform: process.platform,
+  browserMigration(
+    action:
+      | 'profiles'
+      | 'prepare'
+      | 'commit'
+      | 'status'
+      | 'recover'
+      | 'start'
+      | 'discard',
+    input?:
+      | import('../browser/browserMigration').MigrationRequest
+      | {
+          token: string;
+          destinationSpace?: string;
+          organization?: import('../browser/importWorkspace').ImportOrganizationOptions;
+        }
+  ): Promise<
+    | import('../browser/browserMigration').MigrationProfile[]
+    | import('../browser/browserMigration').MigrationPreview
+    | import('../browser/browserMigration').MigrationResult
+    | import('../browser/browserMigration').MigrationProgress
+    | import('../browser/browserMigration').MigrationRecovery[]
+  > {
+    return invokeWhenReady('browser-migration', action, input);
+  },
   onPasswordManagerLock(callback: () => void) {
     const listener = () => callback();
     ipcRenderer.on('password-manager-locked', listener);
@@ -163,10 +204,11 @@ const electronHandler = {
     | VaultItem
     | VaultStatus
     | { filled: number }
+    | { imported: number; skipped: number; canceled?: boolean }
     | { removed: boolean }
     | Array<{ id: number; title: string; url: string }>
   > {
-    return ipcRenderer.invoke('password-manager', request);
+    return invokeWhenReady('password-manager', request);
   },
   ai: {
     skillsFromDrop(
@@ -194,7 +236,7 @@ const electronHandler = {
       );
     },
     permissions(mode?: AIAccessMode): Promise<AIAccessStatus> {
-      return ipcRenderer.invoke('ai-permissions', mode);
+      return invokeWhenReady('ai-permissions', mode);
     },
     onPermissions(callback: (status: AIAccessStatus) => void) {
       const listener = (_event: IpcRendererEvent, value: AIAccessStatus) =>
@@ -206,7 +248,7 @@ const electronHandler = {
     groups(
       groupId?: string | null
     ): Promise<{ groupId: string | null; groups: AIGroup[] }> {
-      return ipcRenderer.invoke('ai-groups', groupId);
+      return invokeWhenReady('ai-groups', groupId);
     },
     onScope(callback: (groupId: string | null) => void) {
       const listener = (_event: IpcRendererEvent, value: string | null) =>
@@ -215,16 +257,16 @@ const electronHandler = {
       return () => ipcRenderer.removeListener('ai-scope-changed', listener);
     },
     draftTask(request: string): Promise<AITaskInput> {
-      return ipcRenderer.invoke('ai-tasks', 'draft', request);
+      return invokeWhenReady('ai-tasks', 'draft', request);
     },
     tasks(): Promise<SavedAITask[]> {
-      return ipcRenderer.invoke('ai-tasks', 'list');
+      return invokeWhenReady('ai-tasks', 'list');
     },
     createTask(input: AITaskInput): Promise<string> {
-      return ipcRenderer.invoke('ai-tasks', 'create', input);
+      return invokeWhenReady('ai-tasks', 'create', input);
     },
     taskAction(id: string, action: 'run' | 'delete' | 'toggle'): Promise<void> {
-      return ipcRenderer.invoke('ai-tasks', action, id);
+      return invokeWhenReady('ai-tasks', action, id);
     },
     onTasks(callback: () => void) {
       ipcRenderer.on('ai-tasks-changed', callback);
@@ -233,27 +275,27 @@ const electronHandler = {
       };
     },
     mcpStatus(): Promise<MCPStatus> {
-      return ipcRenderer.invoke('ai-mcp', 'status');
+      return invokeWhenReady('ai-mcp', 'status');
     },
     personalAgents(
       request: PersonalAgentRequest
     ): Promise<PersonalAgentResult> {
-      return ipcRenderer.invoke('ai-personal-agents', request);
+      return invokeWhenReady('ai-personal-agents', request);
     },
     mcpUpdate(patch: {
       enabled: boolean;
       port?: number;
       rotate?: boolean;
     }): Promise<MCPStatus> {
-      return ipcRenderer.invoke('ai-mcp', 'update', patch);
+      return invokeWhenReady('ai-mcp', 'update', patch);
     },
     mcpStdio(): Promise<{
       mcpServers: { kudiumbrowser: { command: string; args: string[] } };
     }> {
-      return ipcRenderer.invoke('ai-mcp', 'stdio');
+      return invokeWhenReady('ai-mcp', 'stdio');
     },
     mcpConnection(): Promise<MCPConnection> {
-      return ipcRenderer.invoke('ai-mcp', 'connection');
+      return invokeWhenReady('ai-mcp', 'connection');
     },
     onMCP(callback: (status: MCPStatus) => void) {
       const listener = (_event: IpcRendererEvent, value: MCPStatus) =>
@@ -264,10 +306,10 @@ const electronHandler = {
       };
     },
     openPreferences(): Promise<void> {
-      return ipcRenderer.invoke('ai-open-preferences');
+      return invokeWhenReady('ai-open-preferences');
     },
     models(config?: { endpoint: string; key?: string }): Promise<string[]> {
-      return ipcRenderer.invoke('ai-models', config);
+      return invokeWhenReady('ai-models', config);
     },
     onSettings(callback: (settings: AISettings) => void) {
       const listener = (_event: IpcRendererEvent, value: AISettings) =>
@@ -277,6 +319,12 @@ const electronHandler = {
         ipcRenderer.removeListener('ai-settings-changed', listener);
       };
     },
+    recoverStorage(): Promise<void> {
+      return invokeWhenReady('ai-recover-storage');
+    },
+    restartForStorage(): Promise<void> {
+      return invokeWhenReady('ai-restart-for-storage');
+    },
     settings(patch?: {
       endpoint: string;
       model: string;
@@ -284,34 +332,37 @@ const electronHandler = {
       remember?: boolean;
       clear?: boolean;
     }): Promise<AISettings> {
-      return ipcRenderer.invoke('ai-settings', patch);
+      return invokeWhenReady('ai-settings', patch);
     },
     pickAttachments(): Promise<{
       attachments: AIComposerAttachment[];
       errors: string[];
     }> {
-      return ipcRenderer.invoke('ai-composer-pick');
+      return invokeWhenReady('ai-composer-pick');
     },
     addAttachment(
       name: string,
       bytes: Uint8Array
     ): Promise<AIComposerAttachment> {
-      return ipcRenderer.invoke('ai-composer-add', name, bytes);
+      return invokeWhenReady('ai-composer-add', name, bytes);
     },
     savedAttachments(): Promise<AIComposerAttachment[]> {
-      return ipcRenderer.invoke('ai-composer-files');
+      return invokeWhenReady('ai-composer-files');
     },
     saveAttachment(id: string): Promise<boolean> {
-      return ipcRenderer.invoke('ai-composer-save', id);
+      return invokeWhenReady('ai-composer-save', id);
     },
     clearAttachments(): Promise<boolean> {
-      return ipcRenderer.invoke('ai-composer-clear');
+      return invokeWhenReady('ai-composer-clear');
     },
     removeAttachment(id: string): Promise<boolean> {
-      return ipcRenderer.invoke('ai-composer-remove', id);
+      return invokeWhenReady('ai-composer-remove', id);
     },
     attachContext(reference: AIContextReference): Promise<AIContextAttachment> {
-      return ipcRenderer.invoke('ai-composer-context', reference);
+      return invokeWhenReady('ai-composer-context', reference);
+    },
+    feedback(id: string, answer: string): Promise<boolean> {
+      return invokeWhenReady('ai-feedback', id, answer);
     },
     run(prompt: string | AIComposerTask): Promise<boolean> {
       return trackedInvoke('ai_run', 'ai-run', prompt);
@@ -319,7 +370,7 @@ const electronHandler = {
     conversations(
       request: AIConversationRequest = { action: 'list' }
     ): Promise<AIConversationsState> {
-      return ipcRenderer.invoke('ai-conversations', request);
+      return invokeWhenReady('ai-conversations', request);
     },
     onConversations(callback: (state: AIConversationsState) => void) {
       const listener = (
@@ -331,19 +382,19 @@ const electronHandler = {
         ipcRenderer.removeListener('ai-conversations-changed', listener);
     },
     taskStatus(): Promise<AITaskStatus> {
-      return ipcRenderer.invoke('ai-task-status');
+      return invokeWhenReady('ai-task-status');
     },
     resume(): Promise<boolean> {
-      return ipcRenderer.invoke('ai-resume');
+      return invokeWhenReady('ai-resume');
     },
     takeOver(): Promise<void> {
-      return ipcRenderer.invoke('ai-takeover');
+      return invokeWhenReady('ai-takeover');
     },
     resumeExternal(): Promise<void> {
-      return ipcRenderer.invoke('ai-resume-external');
+      return invokeWhenReady('ai-resume-external');
     },
     stop(): Promise<void> {
-      return ipcRenderer.invoke('ai-stop');
+      return invokeWhenReady('ai-stop');
     },
     onEvent(callback: (event: AIEvent) => void) {
       const listener = (_event: IpcRendererEvent, value: AIEvent) =>
@@ -491,6 +542,48 @@ const electronHandler = {
     },
   },
   browser: {
+    storageStatus(): Promise<{ available: boolean; needsRecovery: boolean }> {
+      return ipcRenderer.invoke('browser-storage-ready');
+    },
+    windowRequest(request: BrowserWindowRequest): Promise<BrowserWindowState> {
+      return ipcRenderer.invoke('browser-window-request', request);
+    },
+    onWindowState(callback: (state: BrowserWindowState) => void) {
+      const listener = (_event: IpcRendererEvent, state: BrowserWindowState) =>
+        callback(state);
+      ipcRenderer.on('browser-window-state', listener);
+      return () => {
+        ipcRenderer.removeListener('browser-window-state', listener);
+      };
+    },
+    onWindowMirrors(callback: (frames: BrowserSnapshot[]) => void) {
+      const listener = (_event: IpcRendererEvent, frames: BrowserSnapshot[]) =>
+        callback(frames);
+      ipcRenderer.on('browser-window-mirrors', listener);
+      return () => {
+        ipcRenderer.removeListener('browser-window-mirrors', listener);
+      };
+    },
+    onWindowCommit(
+      callback: (change: {
+        tabs: import('../types').IApp[];
+        remove: string[];
+        token: string;
+      }) => void
+    ) {
+      const listener = (
+        _event: IpcRendererEvent,
+        change: {
+          tabs: import('../types').IApp[];
+          remove: string[];
+          token: string;
+        }
+      ) => callback(change);
+      ipcRenderer.on('browser-window-commit', listener);
+      return () => {
+        ipcRenderer.removeListener('browser-window-commit', listener);
+      };
+    },
     removeGroup(
       id: string,
       allowArchive?: boolean
@@ -559,7 +652,7 @@ const electronHandler = {
       action: AccountSyncAction,
       input?: AccountSyncInput
     ): Promise<AccountSyncStatus | RestoredWorkspace> {
-      return ipcRenderer.invoke('account-sync', action, input);
+      return invokeWhenReady('account-sync', action, input);
     },
     preferences(
       action: 'get' | 'open' | 'update',
@@ -573,9 +666,11 @@ const electronHandler = {
       return ipcRenderer.invoke('browser-app-updates', action);
     },
     onAppUpdates(callback: (state: AppUpdateState) => void) {
-      const listener = (_event: IpcRendererEvent, state: AppUpdateState) => callback(state);
+      const listener = (_event: IpcRendererEvent, state: AppUpdateState) =>
+        callback(state);
       ipcRenderer.on('browser-app-updates-changed', listener);
-      return () => ipcRenderer.removeListener('browser-app-updates-changed', listener);
+      return () =>
+        ipcRenderer.removeListener('browser-app-updates-changed', listener);
     },
     preferenceAction(
       action: PreferenceAction,

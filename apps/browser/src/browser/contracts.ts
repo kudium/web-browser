@@ -195,5 +195,5 @@ export interface BrowserClient {
 }
 export interface BrowserBackend<Host> {
   readonly id: string;
-  attach(host: Host): () => void;
+  attach(host: Host, storageReady?: Promise<void>): () => void;
 }

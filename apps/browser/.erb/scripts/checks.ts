@@ -117,6 +117,8 @@ if (check === 'storage-migration') {
     '--control',
   ]);
   run(require('electron'), ['.erb/scripts/browser-identity-smoke.cjs']);
+  if (process.platform === 'darwin')
+    run(process.execPath, [path.join(__dirname, 'import-session-smoke.cjs')]);
   run(require('electron'), ['.erb/scripts/advanced-preferences-smoke.cjs']);
   run(require('electron'), ['.erb/scripts/ipc-boundary-smoke.cjs', 'after']);
   run(require('electron'), ['.erb/scripts/preferences-benchmark.cjs', 'after']);

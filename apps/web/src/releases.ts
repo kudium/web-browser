@@ -4,7 +4,35 @@ import { and, eq } from 'drizzle-orm';
 import { rcompare, gt } from 'semver';
 import { releases } from './schema';
 import type { Database } from './db';
-import { allowedAssets, type ReleaseManifest } from './validation';
+import { allowedAssets, releaseSchema, type ReleaseManifest } from './validation';
+export type ReleaseHistoryEntry = {
+  version: string; channel: 'stable' | 'beta'; publishedAt: string;
+  notes: string[]; targets: Pick<ReleaseManifest, 'platform' | 'arch' | 'files'>[];
+};
+export function groupReleaseHistory(rows: { manifest: ReleaseManifest; publishedAt: Date }[], origins: string[], channel: 'all' | 'stable' | 'beta', page: number) {
+  const groups = new Map<string, ReleaseHistoryEntry>();
+  for (const row of rows) {
+    const parsed = releaseSchema.safeParse(row.manifest);
+    if (!parsed.success || !allowedAssets(parsed.data, origins)) continue;
+    const manifest = parsed.data;
+    if (channel !== 'all' && manifest.channel !== channel) continue;
+    const key = `${manifest.channel}/${manifest.version}`;
+    const date = row.publishedAt.toISOString();
+    const group: ReleaseHistoryEntry = groups.get(key) || { version: manifest.version, channel: manifest.channel, publishedAt: date, notes: [], targets: [] };
+    if (date > group.publishedAt) group.publishedAt = date;
+    if (manifest.notes && !group.notes.includes(manifest.notes)) group.notes.push(manifest.notes);
+    group.targets.push({ platform: manifest.platform, arch: manifest.arch, files: manifest.files });
+    groups.set(key, group);
+  }
+  const ordered = [...groups.values()].sort((a, b) => rcompare(a.version, b.version) || a.channel.localeCompare(b.channel));
+  for (const group of ordered) group.targets.sort((a, b) => `${a.platform}/${a.arch}`.localeCompare(`${b.platform}/${b.arch}`));
+  const pageSize = 12;
+  return { releases: ordered.slice((page - 1) * pageSize, page * pageSize), page, totalPages: Math.ceil(ordered.length / pageSize), total: ordered.length };
+}
+export async function releaseHistory(db: Database, origins: string[], channel: 'all' | 'stable' | 'beta', page: number) {
+  const rows = await db.select({ manifest: releases.manifest, publishedAt: releases.publishedAt }).from(releases).where(channel === 'all' ? undefined : eq(releases.channel, channel));
+  return groupReleaseHistory(rows, origins, channel, page);
+}
 export async function latestRelease(db: Database, target: Pick<ReleaseManifest, 'platform' | 'arch' | 'channel'>, origins: string[]) {
   const rows = await db.select().from(releases).where(and(eq(releases.platform, target.platform), eq(releases.arch, target.arch), eq(releases.channel, target.channel)));
   return rows.filter(row => allowedAssets(row.manifest, origins)).sort((a, b) => rcompare(a.version, b.version))[0];

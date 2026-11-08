@@ -33,6 +33,14 @@ export const safeStorage = {
     return storage.decryptString(value);
   },
 };
+/** Public health only; never expose filenames, ciphertext, or credentials. */
+export function localStorageStatus() {
+  return {
+    available: safeStorage.isEncryptionAvailable(),
+    needsRecovery: !!storage?.recoveryFailures().length,
+  };
+}
+
 async function prepareLocalStorage() {
   app.setName(STORAGE_OS_IDENTITY);
   if (!storage) {
@@ -74,6 +82,24 @@ export async function initializeLocalStorage() {
   if (!initialization) initialization = prepareLocalStorage();
   await initialization;
   return safeStorage;
+}
+
+export const localStorageRecoveryFiles = () =>
+  storage?.recoveryFailures() || [];
+
+export async function retryLocalStorage() {
+  const previous = storage;
+  storage = undefined;
+  initialization = undefined;
+  await initializeLocalStorage();
+  // Initialization assigns the module-level instance across the await.
+  const replacement = storage as LocalSecureStorage | undefined;
+  if (replacement?.isEncryptionAvailable()) previous?.dispose();
+  else {
+    replacement?.dispose();
+    storage = previous;
+  }
+  return localStorageStatus();
 }
 
 export function confirmLocalStorageLaunch() {

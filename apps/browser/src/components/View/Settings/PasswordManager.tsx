@@ -1,3 +1,5 @@
+import { isStorageRecoveryError } from '../../../browser/storageRecovery';
+import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 /* Radix TextField and Switch render native labeled controls. */
 /* eslint-disable jsx-a11y/label-has-associated-control, react/require-default-props */
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -148,7 +150,14 @@ export function PersonalData({
         setAuthPrompt(false);
       await refresh();
     } catch (failure) {
-      if (request.action === 'import' && failure instanceof Error)
+      if (failure instanceof Error && isStorageRecoveryError(failure.message))
+        setError(
+          failure.message.replace(
+            /^Error invoking remote method '[^']+': (Error: )?/,
+            ''
+          )
+        );
+      else if (request.action === 'import' && failure instanceof Error)
         setError(`Couldn’t import document: ${failure.message.slice(0, 500)}`);
       else if (request.action === 'unlock')
         setError('Couldn’t unlock. Check your master password and try again.');
@@ -261,6 +270,7 @@ export function PersonalData({
             {error && (
               <p className="vault-error" role="alert">
                 {error}
+                <StorageRecoveryAction message={error} />
               </p>
             )}
             <Button
@@ -309,6 +319,7 @@ export function PersonalData({
       {error && !editing && (
         <p className="vault-error" role="alert">
           {error}
+          <StorageRecoveryAction message={error} />
         </p>
       )}
       {notice && (
@@ -981,6 +992,7 @@ export function PersonalData({
               {error && (
                 <p className="vault-error" role="alert">
                   {error}
+                  <StorageRecoveryAction message={error} />
                 </p>
               )}
               <div className="vault-editor-actions">

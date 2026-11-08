@@ -51,9 +51,12 @@ it('uses the shared group identity while saving to its shared login profile', as
   expect(work).toHaveTextContent('💼');
   fireEvent.click(work);
   expect(picker).toHaveTextContent('💼');
+  const hint = screen.getByRole('button', { name: 'About Apply to' });
+  fireEvent.click(hint);
   expect(
-    screen.getByText(/every group sharing the selected login profile/)
+    await screen.findByText(/every group sharing the selected login profile/)
   ).toBeVisible();
+  fireEvent.click(hint);
   fireEvent.change(screen.getByLabelText('Custom user agent'), {
     target: { value: 'Work Browser/1.0' },
   });

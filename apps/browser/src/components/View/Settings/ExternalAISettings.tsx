@@ -12,8 +12,6 @@ const message = (reason: unknown) =>
   );
 
 export function ExternalAISettings() {
-  const [writeInstructions, setWriteInstructions] = useState(true);
-  const [instructionsReady, setInstructionsReady] = useState(false);
   const [status, setStatus] = useState<MCPStatus>();
   const [port, setPort] = useState(43187);
   const [busy, setBusy] = useState(false);
@@ -41,18 +39,6 @@ export function ExternalAISettings() {
   };
   useEffect(() => {
     let alive = true;
-    window.electron.browser
-      .preferences('get')
-      .then((value) => {
-        if (alive) {
-          setWriteInstructions(value.writeBrowserInstructions);
-          setInstructionsReady(true);
-        }
-        return undefined;
-      })
-      .catch((reason) => {
-        if (alive) setError(message(reason));
-      });
     window.electron.ai
       .mcpStatus()
       .then((value) => {
@@ -158,10 +144,15 @@ export function ExternalAISettings() {
       <div className="preference-card">
         <div className="preference-row">
           <div>
-            <strong>Connect your coding agent</strong>
-            <p className="ai-model-help">
-              Enable external control, run setup, then approve in Kudium.
-            </p>
+            <div className="preference-label">
+              <strong>Connect your coding agent</strong>
+              <PreferenceHint label="Coding agent setup">
+                Run npx @kudiumbrowser/mcp setup after enabling external
+                control. Supports Codex, Claude Code, Cursor and VS Code with
+                Node 22+. Approve in Kudium, then restart your agent.
+              </PreferenceHint>
+            </div>
+            <p className="ai-model-help">Enable control, then run setup.</p>
           </div>
           <Button
             variant="soft"
@@ -174,44 +165,6 @@ export function ExternalAISettings() {
           >
             Copy setup command
           </Button>
-        </div>
-        <div className="preference-row">
-          <code>npx @kudiumbrowser/mcp setup</code>
-          <PreferenceHint label="Coding agent setup">
-            Supports Codex, Claude Code, Cursor and VS Code. Requires Node 22+.
-            Restart your agent after setup. Reset the connection token below to
-            revoke access.
-          </PreferenceHint>
-        </div>
-        <div className="preference-row">
-          <div className="preference-label">
-            <strong>Project browser instructions</strong>
-            <PreferenceHint label="Project browser instructions">
-              Add BROWSER.md and a reference in AGENTS.md when linking a folder.
-              Includes setup instructions and linked group context, never
-              credentials. Turning this off stops future updates and keeps
-              existing files.
-            </PreferenceHint>
-          </div>
-          <Switch
-            aria-label="Project browser instructions"
-            checked={writeInstructions}
-            disabled={busy || !instructionsReady}
-            onCheckedChange={async (value) => {
-              setBusy(true);
-              try {
-                const next = await window.electron.browser.preferences(
-                  'update',
-                  { writeBrowserInstructions: value }
-                );
-                setWriteInstructions(next.writeBrowserInstructions);
-              } catch (reason) {
-                setError(message(reason));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
         </div>
       </div>
       {notice && (
@@ -393,11 +346,6 @@ export function ExternalAISettings() {
                 Enable MCP to connect an external AI. No API key needed.
               </small>
             </div>
-          )}
-          {notice && (
-            <p role="status" className="ai-model-help">
-              {notice}
-            </p>
           )}
         </div>
       </details>

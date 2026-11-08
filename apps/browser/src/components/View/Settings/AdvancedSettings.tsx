@@ -1,4 +1,5 @@
 import { useEffect, useState, ReactNode } from 'react';
+import { PreferenceHint } from '../../UI/PreferenceHint';
 import {
   Button,
   Select,
@@ -54,8 +55,10 @@ export function AdvancedSettings({
   const row = (title: string, description: string, control: ReactNode) => (
     <div className="preference-row">
       <div>
-        <strong>{title}</strong>
-        <p>{description}</p>
+        <div className="preference-label">
+          <strong>{title}</strong>
+          <PreferenceHint label={title}>{description}</PreferenceHint>
+        </div>
       </div>
       {control}
     </div>

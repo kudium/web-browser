@@ -1,4 +1,4 @@
-import { AppUpdateBanner } from '../../UI/AppUpdateBanner';
+import { StorageRecoveryBanner } from '../../UI/StorageRecoveryBanner';
 import {
   CSSProperties,
   useCallback,
@@ -42,6 +42,7 @@ import {
   Square,
   X,
 } from 'lucide-react';
+import { AppUpdateBanner } from '../../UI/AppUpdateBanner';
 import { SpaceSettingsForm } from '../../UI/SpaceSettingsForm';
 import { EmptySpaceWelcome } from '../../UI/EmptySpaceWelcome';
 import { BrowserWelcome } from '../../UI/BrowserWelcome';
@@ -149,6 +150,8 @@ import {
 import { AppIcon } from '../../UI/AppIcon/AppIcon';
 import { useAppList } from '../../../utils/hooks/useAppList';
 import { AppManager, ScreenManager } from '../../../utils/AppManager';
+import { WINDOW_DRAG_MIME } from '../../../browser/windows';
+import { windowWorkspace } from '../../../utils/windowWorkspace';
 import { BrowserSnapshot, BrowserState, IApp } from '../../../types';
 import { eventBus } from '../../../utils/EventBus';
 import { EVENT_KEY } from '../../../utils/constant';
@@ -314,6 +317,12 @@ export function Main() {
   );
   const [split, setSplit] = useState<SplitView | null>(null);
   const [snapshots, setSnapshots] = useState<BrowserSnapshot[]>([]);
+  const [windowMirrors, setWindowMirrors] = useState<BrowserSnapshot[]>([]);
+  const windowDrag = useRef<{
+    token: string;
+    handled: boolean;
+    cancelled: boolean;
+  }>();
   const [states, setStates] = useState<Record<string, BrowserState>>({});
   useEffect(() => {
     setStates((previous) =>
@@ -768,7 +777,8 @@ export function Main() {
         id: 'archive',
         label: 'Archive Unpinned Groups',
         enabled:
-          showUnpinnedGroups &&
+          (showUnpinnedGroups ||
+            windowWorkspace.state()?.kind === 'temporary') &&
           appList.some(
             (item) =>
               !item.archived &&
@@ -856,7 +866,10 @@ export function Main() {
       setShowExtensionIcons(preferences.showExtensionIcons !== false);
       setTabDisplayMode(preferences.tabDisplayMode || 'horizontal');
       setFolderHoverPreviews(preferences.folderHoverPreviews !== false);
-      setShowUnpinnedGroups(preferences.showUnpinnedGroups === true);
+      setShowUnpinnedGroups(
+        preferences.showUnpinnedGroups === true ||
+          windowWorkspace.state()?.kind === 'temporary'
+      );
       setAddressBarPlacement(preferences.addressBarPlacement || 'sidebar');
       setAddressBarExtensionsExpanded(
         preferences.addressBarExtensionsExpanded !== false
@@ -897,6 +910,10 @@ export function Main() {
     };
   }, []);
   useEffect(() => browser.onSnapshots(setSnapshots), []);
+  useEffect(
+    () => window.electron.browser.onWindowMirrors?.(setWindowMirrors),
+    []
+  );
   useEffect(() => {
     if (!overlayOpen) setSnapshots([]);
   }, [overlayOpen]);
@@ -908,6 +925,10 @@ export function Main() {
   useEffect(
     () =>
       browser.onShortcut((action) => {
+        if (action === 'new-window')
+          window.electron.browser
+            .windowRequest({ action: 'new-window' })
+            .catch((error) => setMoveMessage(String(error)));
         if (action === 'command') setPaletteOpen(true);
         if (action === 'new-session')
           window.electron.ipcRenderer.sendMessage('ipc-create-window', [
@@ -1503,6 +1524,17 @@ export function Main() {
       return;
     }
     event.dataTransfer.setData('application/x-kudiumbrowser-tab', item.id);
+    const token = crypto.randomUUID();
+    windowDrag.current = { token, handled: false, cancelled: false };
+    event.dataTransfer.setData(WINDOW_DRAG_MIME, token);
+    window.electron.browser
+      .windowRequest({
+        action: 'begin-drag',
+        token,
+        id: item.id,
+        kind: axis === 'vertical' ? 'group' : 'tab',
+      })
+      .catch((error) => setMoveMessage(String(error)));
     event.dataTransfer.setData(
       AI_CONTEXT_MIME,
       JSON.stringify({
@@ -1526,11 +1558,38 @@ export function Main() {
     setMoveMessage('');
   };
   const finishDrag = () => {
+    if (windowDrag.current) windowDrag.current.handled = true;
     dragPreview.current?.remove();
     dragPreview.current = undefined;
     setDragged(undefined);
     setDropTarget(undefined);
   };
+  const endWindowDrag = () => {
+    const drag = windowDrag.current;
+    if (drag) {
+      window.electron.browser
+        .windowRequest(
+          drag.handled
+            ? { action: 'cancel-drag', token: drag.token }
+            : {
+                action: 'finish-drag',
+                token: drag.token,
+                cancelled: drag.cancelled,
+              }
+        )
+        .catch((error) => setMoveMessage(String(error)));
+    }
+    windowDrag.current = undefined;
+    finishDrag();
+  };
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && windowDrag.current)
+        windowDrag.current.cancelled = true;
+    };
+    window.addEventListener('keydown', escape, true);
+    return () => window.removeEventListener('keydown', escape, true);
+  }, []);
   const transferTab = async (source: IApp, target?: IApp) => {
     const url = states[source.id]?.url || source.url;
     const approved =
@@ -1578,7 +1637,11 @@ export function Main() {
   }, [moveMessage]);
   const sectionOf = (item: IApp): SidebarSection => {
     if (item.favorite) return 'favorites';
-    return showUnpinnedGroups && item.pinned === false ? 'regular' : 'pinned';
+    return (showUnpinnedGroups ||
+      windowWorkspace.state()?.kind === 'temporary') &&
+      item.pinned === false
+      ? 'regular'
+      : 'pinned';
   };
   const dropSidebarFile = async (file: File) => {
     if (sidebarDropBusy.current) return;
@@ -1654,6 +1717,14 @@ export function Main() {
   ) => {
     event.preventDefault();
     event.stopPropagation();
+    const token = event.dataTransfer.getData(WINDOW_DRAG_MIME);
+    if (token && (!windowDrag.current || token !== windowDrag.current.token)) {
+      window.electron.browser
+        .windowRequest({ action: 'drop', token, targetId: target?.id })
+        .catch((error) => setMoveMessage(String(error)));
+      finishDrag();
+      return;
+    }
     if (
       !dragged ||
       event.dataTransfer.getData('application/x-kudiumbrowser-tab') !==
@@ -1704,6 +1775,17 @@ export function Main() {
     return (
       <ContextMenu.Content>
         <ContextMenu.Label>{item.sessionName || item.name}</ContextMenu.Label>
+        {!locked && (
+          <ContextMenu.Item
+            onSelect={() =>
+              window.electron.browser
+                .windowRequest({ action: 'open-group', id: item.id })
+                .catch((error) => setMoveMessage(String(error)))
+            }
+          >
+            Open group in new window
+          </ContextMenu.Item>
+        )}
         {locked ? (
           <ContextMenu.Item
             onSelect={() =>
@@ -1915,9 +1997,12 @@ export function Main() {
                 preview.close();
                 startDrag(event, item, 'vertical');
               }}
-              onDragEnd={finishDrag}
+              onDragEnd={endWindowDrag}
               onDragOver={(event) => {
-                if (dragged) {
+                if (
+                  dragged ||
+                  event.dataTransfer.types.includes(WINDOW_DRAG_MIME)
+                ) {
                   event.preventDefault();
                   event.stopPropagation();
                   setDropTarget(item.id);
@@ -2313,6 +2398,15 @@ export function Main() {
         Reloads this tab with separate cookies and login state
       </ContextMenu.Label>
       <ContextMenu.Item
+        onSelect={() =>
+          window.electron.browser
+            .windowRequest({ action: 'open-tab', id: item.id })
+            .catch((error) => setMoveMessage(String(error)))
+        }
+      >
+        Open tab in new window
+      </ContextMenu.Item>
+      <ContextMenu.Item
         onSelect={() => {
           rename(item, 'horizontal');
         }}
@@ -2510,9 +2604,12 @@ export function Main() {
                     onDragStart={(event) =>
                       startDrag(event, item, 'horizontal')
                     }
-                    onDragEnd={finishDrag}
+                    onDragEnd={endWindowDrag}
                     onDragOver={(event) => {
-                      if (dragged) {
+                      if (
+                        dragged ||
+                        event.dataTransfer.types.includes(WINDOW_DRAG_MIME)
+                      ) {
                         event.preventDefault();
                         event.stopPropagation();
                         setDropTarget(item.id);
@@ -2706,7 +2803,10 @@ export function Main() {
           dropSidebarFile(event.dataTransfer.files[0]);
         }}
         onDragOver={(event) => {
-          if (dragged?.axis === 'horizontal') {
+          if (
+            dragged?.axis === 'horizontal' ||
+            event.dataTransfer.types.includes(WINDOW_DRAG_MIME)
+          ) {
             event.preventDefault();
             setDropTarget('new-session');
           }
@@ -3197,7 +3297,8 @@ export function Main() {
                     </div>
                   </div>
                 ))}
-                {showUnpinnedGroups && (
+                {(showUnpinnedGroups ||
+                  windowWorkspace.state()?.kind === 'temporary') && (
                   <div className="session-list-tools">
                     <span className="list-divider" />
                     {!!tabGroups.length && (
@@ -3224,7 +3325,8 @@ export function Main() {
                             Tidy
                           </button>
                         </Tooltip>
-                        {showUnpinnedGroups && (
+                        {(showUnpinnedGroups ||
+                          windowWorkspace.state()?.kind === 'temporary') && (
                           <Tooltip
                             collisionBoundary={sidebarBoundary}
                             collisionPadding={8}
@@ -3279,7 +3381,8 @@ export function Main() {
                   <Plus size={20} />
                   <span>New Tab</span>
                 </button>
-                {showUnpinnedGroups && (
+                {(showUnpinnedGroups ||
+                  windowWorkspace.state()?.kind === 'temporary') && (
                   <div
                     className="sidebar-section"
                     aria-label="Unpinned groups"
@@ -3479,6 +3582,7 @@ export function Main() {
         {addressBarPlacement === 'header' && (
           <div className="browser-address-header">{renderAddressBar()}</div>
         )}
+        <StorageRecoveryBanner />
         {hasStorageRecovery() && !recoveryDismissed && (
           <div className="tab-move-message" role="status">
             Some saved layout data needed recovery. Your original data is kept
@@ -3640,6 +3744,32 @@ export function Main() {
                 ))}
               </div>
             )}
+            {windowMirrors
+              .filter((frame) =>
+                appList.some((tab) => tab.id === frame.id && !lockedGroup(tab))
+              )
+              .map((frame) => (
+                <button
+                  key={frame.id}
+                  type="button"
+                  className="browser-window-mirror"
+                  aria-label="Continue this tab in this window"
+                  onClick={() => window.focus()}
+                  style={{
+                    left:
+                      frame.x -
+                      (viewport.current?.getBoundingClientRect().x || 0),
+                    top:
+                      frame.y -
+                      (viewport.current?.getBoundingClientRect().y || 0),
+                    width: frame.width,
+                    height: frame.height,
+                  }}
+                >
+                  <img src={frame.image} alt="" />
+                  <span>Continue here</span>
+                </button>
+              ))}
             {overlayOpen &&
               snapshots
                 .filter((frame) => {

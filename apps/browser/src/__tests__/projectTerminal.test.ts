@@ -238,8 +238,57 @@ it('runs a saved command in a new named terminal without writing into an existin
   expect(result.selected).not.toBe(original.selected);
   expect(result.tabs[1].name).toBe('Dev server');
   expect(result.open).toBe(true);
-  expect(pty.write).toHaveBeenCalledWith('npm run dev\r');
+  expect(pty.write).not.toHaveBeenCalled();
+  expect(spawn).toHaveBeenLastCalledWith(
+    expect.any(String),
+    ['-l', '-c', 'npm run dev'],
+    expect.any(Object)
+  );
+  expect(result.command?.status).toBe('running');
+  data('looks successful');
+  expect(
+    manager.request('group', { action: 'read', tab: result.selected }).command
+      ?.status
+  ).toBe('running');
+  exit({ exitCode: 7 });
+  expect(
+    manager.request('group', { action: 'read', tab: result.selected }).command
+  ).toMatchObject({
+    id: result.command?.id,
+    status: 'completed',
+    exitCode: 7,
+  });
   manager.dispose();
+});
+
+it('restores unfinished commands as interrupted without replaying them', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'command-receipt-'));
+  const file = path.join(root, 'terminals.json');
+  try {
+    const manager = new ProjectTerminals(host, () => root, file);
+    const launched = manager.runCommand('g', 'Test', 'sleep 60');
+    manager.flush();
+    const restored = new ProjectTerminals(host, () => root, file);
+    const result = restored.request('g', {
+      action: 'read',
+      tab: launched.selected,
+    });
+    expect(result.command).toMatchObject({
+      status: 'interrupted',
+      id: launched.command?.id,
+    });
+    expect(result.command?.exitCode).toBeUndefined();
+    expect(spawn).toHaveBeenCalledTimes(1);
+    manager.request('g', { action: 'close', tab: launched.selected });
+    expect(
+      manager.request('g', { action: 'read', tab: launched.selected }).command
+        ?.status
+    ).toBe('interrupted');
+    manager.dispose();
+    restored.dispose();
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 it('creates a new shell in a selected project subfolder and keeps streaming from it', () => {

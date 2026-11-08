@@ -1,3 +1,4 @@
+import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 import { useEffect, useState } from 'react';
 import { Button, Callout, DropdownMenu, IconButton } from '@radix-ui/themes';
 import { Bot, Ellipsis, Check } from 'lucide-react';
@@ -107,8 +108,13 @@ export function PersonalAgentSettings({
   return (
     <section className="personal-agent-settings" aria-label="Personal agents">
       <div className="personal-agent-heading">
-        <h2>Personal agents</h2>
-        <p>Connect your existing agent to work in Kudium Browser.</p>
+        <div className="preference-label">
+          <h2>Personal agents</h2>
+          <PreferenceHint label="Personal agents">
+            Connect an existing agent to use Kudium Browser. Each agent’s info
+            button includes connection and troubleshooting details.
+          </PreferenceHint>
+        </div>
       </div>
       <div className="preference-card">
         {PERSONAL_AGENTS.map((agent) => {
@@ -206,7 +212,8 @@ export function PersonalAgentSettings({
       {error && (
         <Callout.Root color="red" role="alert">
           <Callout.Text>
-            {error}{' '}
+            {error}
+            <StorageRecoveryAction message={error} />{' '}
             <Button
               size="1"
               variant="soft"

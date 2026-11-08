@@ -20,6 +20,8 @@ node_modules
 
 apps/browser/release/app/dist
 apps/browser/release/build
+apps/browser/release/local-*
+release-artifacts/
 apps/browser/.erb/dll
 
 .idea

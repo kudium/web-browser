@@ -1,6 +1,32 @@
 import { decode } from '@toon-format/toon';
 import { formatAIObservation } from '../browser/aiObservationFormat';
 
+it('explains document-prefix truncation without changing public observations or target receipts', () => {
+  const page = {
+    format: 'compact',
+    snapshotId: 's',
+    elements: [],
+    text: 'prefix',
+    coverage: { textTruncated: true },
+  };
+  const result = formatAIObservation('read_page', page);
+  expect(result).toContain('Scrolling does not move this prefix');
+  expect(result).toContain('extract_rows');
+  expect(result).toContain('"snapshotId":"s"');
+  expect(page).not.toHaveProperty('applicationGuidance');
+});
+
+it('adds no truncation recovery hints to complete text or intentionally omitted text', () => {
+  [
+    { textTruncated: false },
+    { textTruncated: true, textOmitted: true },
+  ].forEach((coverage) => {
+    expect(
+      formatAIObservation('read_page', { coverage, text: '' })
+    ).not.toContain('applicationGuidance');
+  });
+});
+
 it('preserves semantic target IDs, state and context without label injection', () => {
   const page = {
     format: 'compact',

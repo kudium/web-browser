@@ -1,4 +1,5 @@
 import type { AIEvent } from './ai';
+import type { AITaskMemory } from './aiTaskMemory';
 
 export type AIConversationEvent =
   | AIEvent
@@ -19,6 +20,7 @@ export interface AIConversationSummary {
   paused: boolean;
 }
 export interface AIConversationsState {
+  taskMemory?: AITaskMemory;
   selectedId: string;
   conversations: AIConversationSummary[];
   history: AIConversationEvent[];
@@ -26,6 +28,7 @@ export interface AIConversationsState {
   storageNotice?: string;
 }
 export type AIConversationRequest =
+  | { action: 'clear-memory'; id: string }
   | { action: 'list' }
   | { action: 'reorder'; id: string; beforeId: string | null }
   | { action: 'rename'; id: string; title: string }

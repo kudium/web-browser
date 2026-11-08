@@ -5,6 +5,7 @@ import { SiteDeveloperPage } from '../components/View/SiteDeveloperPage';
 import { useAppearance } from '../utils/appearance';
 import { AddApp } from '../components/View/AddApp/AddApp';
 import { Main } from '../components/View/Main/Main';
+import { BrowserWorkspace } from '../components/UI/BrowserWorkspace';
 import { Downloads } from '../components/View/Downloads/Downloads';
 import { Settings } from '../components/View/Settings/Settings';
 import { View } from '../types';
@@ -23,7 +24,7 @@ export function AppSelectedView() {
     case 'site-developer':
       return <SiteDeveloperPage />;
     case 'main':
-      return <Main />;
+      return <BrowserWorkspace />;
     case 'downloads':
       return <Downloads />;
     case 'settings':

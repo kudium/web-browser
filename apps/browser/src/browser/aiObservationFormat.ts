@@ -5,7 +5,22 @@ import { compactAIPage } from './aiSnapshot';
 export function formatAIObservation(tool: string, output: unknown): string {
   const json = JSON.stringify(output);
   if (!output || typeof output !== 'object') return json;
-  const data = output as Record<string, unknown>;
+  let data = output as Record<string, unknown>;
+  if (
+    ['read_page', 'wait_until'].includes(tool) &&
+    (
+      data.coverage as
+        | { textTruncated?: boolean; textOmitted?: boolean }
+        | undefined
+    )?.textTruncated &&
+    !(data.coverage as { textOmitted?: boolean }).textOmitted
+  ) {
+    data = {
+      ...data,
+      applicationGuidance:
+        'The text is a document prefix, not a viewport excerpt. Scrolling does not move this prefix. If the requested passage is missing, increase maxText up to 50000 or load advanced_interaction with discover_tools and use extract_rows on a task-relevant CSS selector with bounded columns/offset/limit. For a page-end question, try a final-paragraph selector and verify relevance. Use supported extraction before asking the user to choose internal tools. Do not expand reads if the current text already answers the task.',
+    };
+  }
   if (
     ['read_page', 'wait_until'].includes(tool) &&
     data.format === 'compact' &&
@@ -36,5 +51,5 @@ export function formatAIObservation(tool: string, output: unknown): string {
     if (Buffer.byteLength(candidate) < Buffer.byteLength(json))
       return candidate;
   }
-  return json;
+  return JSON.stringify(data);
 }

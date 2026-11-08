@@ -7,7 +7,7 @@ Website: https://browser.kudium.com.
 
 Open a pull request to `main`. Website changes run Bun type checks, API/auth/sync
 integration tests against a dedicated PostgreSQL 18 service, and a Docker build.
-Browser changes run TypeScript and Jest on macOS Intel, Windows, and Linux.
+Browser changes run TypeScript and Jest on Windows and Linux. Paid macOS checks are optional when manually running Browser checks with include_macos enabled.
 
 After website changes reach `main`, successful web checks trigger Coolify. The job
 pins the checked commit, waits for that deployment to finish, verifies its commit,
@@ -18,42 +18,92 @@ changes do not redeploy the website.
 GitHub workflow names: **Web checks and deployment**, **Browser checks**, and
 **Browser release**. Workflows can also be run manually from the Actions tab.
 
-## Publish a release
+## Local builds and releases (recommended)
 
-After pushing code to `main`, open **Actions → Browser release → Run workflow**:
+Run these from the repository root on a Mac:
 
-1. Keep the branch set to `main`.
-2. Choose `beta` or `stable` in the channel dropdown.
-3. Leave version bump as `auto` and targets as `macos`.
-4. Click **Run workflow**.
+| Command | Result |
+| --- | --- |
+| `npm run release:test` | Builds your current edits for this Mac. Creates a local DMG/ZIP without pushing, publishing, or changing the release version. Test builds are unsigned and unnotarized. |
+| `npm run release:beta` | Selects the next beta version, builds and verifies both Mac architectures locally, pushes main and the version tag, and publishes the beta download/update feed. |
+| `npm run release:stable` | Selects the next stable version, builds and verifies both Mac architectures locally, pushes main and the version tag, and publishes the stable download/update feed. |
 
-That single action creates a tag for the main commit selected when the run starts,
-runs tests, builds both Mac architectures, signs and notarizes the apps, verifies
-them, and publishes the installers and chosen update feed.
+Install browser dependencies first with `npm run install:browser`. Beta/stable
+require a clean `main` checkout: commit your changes before running them. They
+fetch remote tags, reject a main branch that has fallen behind origin/main, and
+build the selected commit in an isolated local clone. Your working checkout and
+its version files are preserved. Versions are embedded in the build checkout,
+using the same preparation script as hosted releases.
 
-Version numbers are automatic. Starting from stable `1.0.1`, beta runs create
-`1.0.2-beta.1`, then `1.0.2-beta.2`. Choosing stable releases `1.0.2`; the next
-beta starts `1.0.3-beta.1`. A stable run with no pending beta increments the patch.
-Automatic mode continues the highest pending beta version, including minor or
-major betas, and stable uses that same base version.
+Starting from stable `1.0.1`, beta commands create `1.0.2-beta.1`, then
+`1.0.2-beta.2`. Stable releases that pending version as `1.0.2`; the next beta
+starts `1.0.3-beta.1`. With no pending beta, stable increments the patch. For a
+larger jump, use `npm run release:beta -- --bump minor` (or `major`). Stable
+rebuilds the selected main commit rather than reusing an earlier beta's binaries.
 
-For a deliberate version jump, select `patch`, `minor` or `major`. These calculate
-from the latest stable tag: `1.0.1` becomes `1.0.2`, `1.1.0` or `2.0.0` respectively.
-Existing beta numbers for that base version continue incrementing. Tags and
-published artifacts are immutable; failed attempts can consume a tag number.
-The pipeline checks credentials before creating a tag, and publishes only after
-both signed builds pass. Releases always build the selected main commit; selecting
-stable does not reuse an older beta's binaries.
+Preview either release with `--dry-run`; this reads local tags and performs no
+build, push, upload, or credential checks. A real run fetches the latest tags,
+so its chosen version may differ from the preview.
 
-Selecting `stable` and clicking **Run workflow** requests production publication;
-there is no separate publish checkbox or tag creation step. GitHub environment
-reviewer rules are not configured. CI artifacts expire after 14 days; published
-downloads live on the server's persistent release volume.
+Test outputs are retained under `apps/browser/release/local-test-<timestamp>/`.
+Versioned releases retain installers, build outputs, the isolated source clone,
+source commit metadata and `build.log` under `release-artifacts/local/<tag>/`.
+Build tool output goes to that log; the terminal displays each release stage.
+Both architectures must pass type checks, tests, signing/notarization checks and
+checksum validation before a tag is pushed or any channel is published.
 
-Advanced developers can still push beta tags to publish automatically. Pushing a
-stable tag runs an inspection build; use the one-action release flow above with a
-automatically selected version for signed publication. Windows x64 and Linux x64 remain available
-through the optional `all` target once Windows signing is configured.
+The new commands are macOS-only. Windows/Linux publication remains available
+through the optional hosted release workflow once Windows signing is configured.
+
+### One-time local credential setup
+
+Install the Kudium LTD Developer ID Application certificate and private key in
+Keychain. macOS may request your login password and permission for codesign to
+use that key. Enter passwords locally, never in chat or repository files.
+
+Create `~/Library/Application Support/Kudium/release.json` with these fields:
+
+```json
+{
+  "appleApiKeyPath": "/absolute/private/path/AuthKey_KEYID.p8",
+  "appleApiKeyId": "YOUR_KEY_ID",
+  "appleApiIssuer": "YOUR_ISSUER_UUID",
+  "publishToken": "YOUR_RELEASE_PUBLISH_TOKEN"
+}
+```
+
+Use owner-only permissions (`chmod 600` on this file) and keep it outside the
+repository. `KUDIUM_RELEASE_CONFIG` can select another absolute config path.
+Existing shell environment variables override file settings. API key contents
+are loaded privately for the build and are never printed by the release runner.
+An Apple ID/app-specific password/team ID environment configuration is also
+supported by the existing notarization hook. No publication token is needed for
+`release:test`.
+
+### Retry a publication
+
+If verified builds completed but push/upload failed, retry the same artifacts:
+
+```sh
+npm run release:beta -- --retry v1.0.2-beta.1
+# Or, for the stable channel:
+npm run release:stable -- --retry v1.0.2
+```
+
+The runner checks the retained version/source record, rechecks the signed update
+ZIPs and installer digests, pushes the existing tag, and retries immutable uploads
+without rebuilding. Never change a published version's artifacts. If a build
+fails before it has verified both architectures, inspect its log and move the
+failed artifact folder aside before rebuilding; incomplete builds cannot be
+published with `--retry`.
+
+### Hosted fallback
+
+**Actions → Browser release → Run workflow** still supports beta/stable,
+automatic or explicit version bumps, and macos/all targets. It builds on paid
+GitHub runners, so use it only when needed. Pushing a tag no longer starts this
+workflow. Hosted Mac checks are likewise opt-in on Browser checks. Neither local
+release command invokes a hosted Mac build.
 
 ## Secrets
 
@@ -93,7 +143,7 @@ CI extracts the update ZIP and verifies Kudium Developer ID signing, hardened
 runtime, the stapled notarization ticket, and Gatekeeper acceptance before upload.
 Both macOS architectures must succeed before either feed advances.
 
-The same one-action flow is available from the command line:
+The paid hosted fallback is also available from the command line:
 
 ```sh
 gh workflow run browser-release.yml --ref main -f channel=stable -f bump=auto -f targets=macos

@@ -1,6 +1,8 @@
+import { storageRecoveryMessage } from '../browser/storageRecovery';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { AITaskMemory, validAITaskMemory } from '../browser/aiTaskMemory';
 import type { SynchronousSecureStorage } from './secureStorage';
 import type { AICheckpoint } from './aiCheckpoint';
 import type {
@@ -9,6 +11,7 @@ import type {
 } from '../browser/aiConversations';
 
 interface Conversation {
+  taskMemory?: AITaskMemory;
   id: string;
   title: string;
   titleSource?: 'prompt' | 'ai' | 'user';
@@ -63,7 +66,13 @@ export class AIConversationStore {
           .map((chat: Conversation) => ({
             ...chat,
             draft: chat.draft.slice(0, 12000),
-            history: chat.history.slice(-100),
+            history:
+              chat.history.length > 100
+                ? [chat.history[0], ...chat.history.slice(-99)]
+                : chat.history,
+            taskMemory: validAITaskMemory(chat.taskMemory)
+              ? chat.taskMemory
+              : undefined,
             attachmentIds: [],
             privateRecipient:
               typeof chat.privateRecipient === 'string' &&
@@ -104,8 +113,7 @@ export class AIConversationStore {
         'Saved chats could not be restored. New chats remain available in this session.';
     }
     if (!this.available() && fs.existsSync(this.file))
-      this.storageNotice =
-        'Saved chats could not be restored. Their encrypted file has been preserved.';
+      this.storageNotice = storageRecoveryMessage('your saved chats');
     if (!this.chats.length) this.chats.push(AIConversationStore.blank());
     if (!this.chats.some((chat) => chat.id === this.selectedId))
       this.selectedId = this.chats[0].id;
@@ -151,7 +159,7 @@ export class AIConversationStore {
     try {
       if (!this.available()) {
         this.storageNotice =
-          'Chats stay in this session because secure local storage is unavailable.';
+          'Chats stay in this session because secure local storage is unavailable. Restart Kudium to retry access. Copy any new chats you want to keep before restarting.';
         return;
       }
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
@@ -250,6 +258,7 @@ export class AIConversationStore {
       history: chat.history.map((event) => ({ ...event })),
       draft: chat.draft,
       storageNotice: this.storageNotice,
+      taskMemory: chat.taskMemory,
     };
   }
 }

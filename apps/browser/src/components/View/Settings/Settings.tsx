@@ -52,11 +52,12 @@ const sections = [
     id: 'updates',
     title: 'Updates',
     icon: Download,
-    description: 'Check for new versions, download updates and choose when to restart and install.',
+    description:
+      'Check for new versions, download updates and choose when to restart and install.',
   },
   {
     id: 'import',
-    title: 'Import from a browser',
+    title: 'Browser migration',
     icon: ArrowDownToLine,
     description:
       'Import bookmarks or links from your default browser, Arc, Chrome, Dia, Edge, Safari, Firefox, and other browsers.',
@@ -457,12 +458,30 @@ export function Settings() {
             </header>
             {item.id === 'updates' && <AppUpdateSettings />}
             {item.id === 'import' && <BrowserImportSettings />}
-            {item.id === 'ai' && <AISettingsPage />}
+            {item.id === 'ai' && (
+              <AISettingsPage>
+                <div className="preference-row">
+                  <div>
+                    <strong id="ai-project-instructions-label">
+                      Project instructions
+                    </strong>
+                    <p>Keep browser context in linked projects.</p>
+                  </div>
+                  <Switch
+                    aria-labelledby="ai-project-instructions-label"
+                    checked={preferences.writeBrowserInstructions}
+                    disabled={!ready || busy}
+                    onCheckedChange={(value) =>
+                      save({ writeBrowserInstructions: value })
+                    }
+                  />
+                </div>
+              </AISettingsPage>
+            )}
             {item.id === 'passwords' && <PasswordManager />}
             <div
               className={
                 [
-                  'ai',
                   'passwords',
                   'sync',
                   'import',
@@ -478,6 +497,7 @@ export function Settings() {
                 .filter(
                   (control) =>
                     control.section === item.id &&
+                    item.id !== 'ai' &&
                     (!filter ||
                       matches(
                         `${item.title} ${control.title} ${control.description}`
@@ -488,10 +508,13 @@ export function Settings() {
                     <div>
                       <div className="preference-label">
                         <strong>{control.title}</strong>
-                        <PreferenceHint label={control.title}>
-                          {control.description}
-                        </PreferenceHint>
+                        {item.id !== 'ai' && (
+                          <PreferenceHint label={control.title}>
+                            {control.description}
+                          </PreferenceHint>
+                        )}
                       </div>
+                      {item.id === 'ai' && <p>{control.description}</p>}
                     </div>
                     {control.kind === 'toggle' && (
                       <Switch

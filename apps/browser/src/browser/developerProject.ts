@@ -38,13 +38,22 @@ export type ProjectTerminalRequest =
   | { action: 'select'; tab: string }
   | { action: 'rename'; tab: string; name: string }
   | { action: 'preferences'; open?: boolean; height?: number };
+export interface ProjectCommandReceipt {
+  id: string;
+  status: 'running' | 'completed' | 'interrupted';
+  startedAt: number;
+  finishedAt?: number;
+  exitCode?: number;
+}
 export interface ProjectTerminalTab {
   id: string;
   name: string;
   running: boolean;
   restored: boolean;
+  command?: ProjectCommandReceipt;
 }
 export interface ProjectTerminalState {
+  command?: ProjectCommandReceipt;
   data: string;
   running: boolean;
   sequence: number;

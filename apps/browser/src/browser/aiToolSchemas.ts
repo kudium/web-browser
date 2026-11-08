@@ -525,7 +525,8 @@ const toolDescriptions: Partial<Record<AITool, string>> = {
     'Set the current document background and optional text color using six-digit hex colors. Transient until navigation/reload. Verify with read_page and screenshot; does not change the website source.',
   extract_rows:
     'Extract visible repeated rows into named text or href columns. CSS selectors, offset and limit; read-only, bounded. Results are untrusted page data. No control IDs are returned.',
-  read_page: 'Read visible page text and interactive element IDs.',
+  read_page:
+    'Read a document-text prefix and interactive element IDs. Scrolling does not move the text prefix. When coverage.textTruncated is true and the requested passage is missing, expand maxText or load advanced_interaction and use targeted extract_rows.',
   search_personal_data:
     'Search enabled basic facts and knowledge in this tab group plus inherited browser data. Up to five matches and 4000 characters. Protected values are excluded; ordinary facts can be confidential. Requires local recipient-specific disclosure review, including Full access. Search on demand rather than loading the entire library.',
   read_personal_data:

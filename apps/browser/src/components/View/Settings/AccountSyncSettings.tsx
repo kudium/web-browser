@@ -9,6 +9,7 @@ import {
   CircleAlert,
   LockKeyhole,
 } from 'lucide-react';
+import { PreferenceHint } from '../../UI/PreferenceHint';
 import { browser } from '../../../browser/client';
 import {
   AccountSyncAction,
@@ -85,44 +86,73 @@ export function AccountSyncSettings({
   if (status?.phase === 'syncing') stateLabel = 'Syncing…';
   return (
     <div className="account-sync-settings">
-      <div className="preference-card sync-account-hero">
-        <div className="preference-row">
-          <div>
-            <strong className="sync-account-title">
-              <Cloud size={19} /> Kudium Sync{' '}
-              <span
-                className="sync-state-pill"
-                data-active={enabled && status?.phase === 'ready'}
-              >
-                {stateLabel}
-              </span>
-            </strong>
-            <p className="preference-note">
-              {status?.email || 'Sign in securely on browser.kudium.com'}
-            </p>
-          </div>
-          {!status?.connected && (
-            <Button
-              disabled={busy || status?.phase === 'connecting'}
-              onClick={() => action('connect')}
-            >
-              Connect account
-            </Button>
-          )}
-          {status?.connected &&
-            status.phase !== 'key-required' &&
-            status.phase !== 'recovery-required' && (
+      {!status?.connected ? (
+        <section className="preference-card" aria-label="Kudium account">
+          <div className="preference-row">
+            <div>
+              <div className="preference-label">
+                <strong>Kudium account</strong>
+                <PreferenceHint label="Kudium sync">
+                  Sync tabs, workspace and preferences across devices. Your data
+                  is end-to-end encrypted with your recovery key.
+                </PreferenceHint>
+              </div>
+              <p>Sign in to sync across devices.</p>
+            </div>
+            <div className="sync-sign-in-actions">
               <Button
-                variant="soft"
-                disabled={busy}
-                onClick={() => action(enabled ? 'sync' : 'enable')}
+                size="2"
+                disabled={busy || !status || status.phase === 'connecting'}
+                onClick={() => action('connect', { authMode: 'sign-in' })}
               >
-                {enabled ? 'Sync now' : 'Enable sync'}
+                Sign in to Kudium
               </Button>
-            )}
+              <Button
+                size="2"
+                variant="ghost"
+                disabled={busy || !status || status.phase === 'connecting'}
+                onClick={() => action('connect', { authMode: 'sign-up' })}
+              >
+                Create account
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <div className="preference-card sync-account-hero">
+          <div className="preference-row">
+            <div className="sync-account-identity">
+              <span className="sync-account-avatar">
+                <Cloud size={20} />
+              </span>
+              <div>
+                <strong>Kudium Account</strong>
+                <p className="preference-note">{status.email}</p>
+              </div>
+            </div>
+            <span
+              className="sync-state-pill"
+              data-active={enabled && status.phase === 'ready'}
+            >
+              {stateLabel}
+            </span>
+            {status.phase !== 'key-required' &&
+              status.phase !== 'recovery-required' && (
+                <Button
+                  variant="soft"
+                  disabled={busy}
+                  onClick={() => action(enabled ? 'sync' : 'enable')}
+                >
+                  {enabled ? 'Sync now' : 'Enable sync'}
+                </Button>
+              )}
+          </div>
         </div>
-      </div>
-      {(error || status?.phase === 'error' || status?.phase === 'syncing') && (
+      )}
+      {(error ||
+        status?.phase === 'error' ||
+        status?.phase === 'syncing' ||
+        (passwordsEnabled && status?.message.includes('saved logins'))) && (
         <p role="status" className="sync-status-line">
           {error ? <CircleAlert size={15} /> : <CheckCircle2 size={15} />}
           {error || status?.message || 'Checking account…'}
@@ -134,7 +164,20 @@ export function AccountSyncSettings({
             <ShieldCheck size={18} />
             Compare the device code
           </strong>
+          <p>
+            Finish signing in on the website, then approve this code. This page
+            will update automatically when your browser is connected.
+          </p>
           <code>{status.userCode}</code>
+          <div className="sync-sign-in-actions">
+            <Button
+              variant="soft"
+              disabled={busy}
+              onClick={() => action('connect')}
+            >
+              Continue on website
+            </Button>
+          </div>
           <Button
             variant="soft"
             disabled={busy}
@@ -198,43 +241,47 @@ export function AccountSyncSettings({
         </div>
       )}
       {passwordsEnabled && (
-        <details className="sync-details sync-password-panel">
-          <summary>
-            <KeyRound size={16} /> Manage saved passwords
-          </summary>
-          <div>
-            <strong>Your saved logins</strong>
-            <p>
-              Unlock Personal Data to sync. Existing passwords are kept when
-              restoring.
-            </p>
-            <Button
-              variant="soft"
-              disabled={
-                busy ||
-                !enabled ||
-                !status?.connected ||
-                status.phase === 'key-required' ||
-                status.phase === 'recovery-required'
-              }
-              onClick={() => action('sync-passwords')}
-            >
-              Sync saved passwords
-            </Button>
-            {status?.passwordDevices?.map((device) => (
+        <div className="preference-card">
+          <div className="preference-row">
+            <div>
+              <div className="preference-label">
+                <strong>Saved passwords</strong>
+                <PreferenceHint label="password sync">
+                  Unlock Personal Data to encrypt and sync saved logins.
+                  Restoring keeps your existing passwords.
+                </PreferenceHint>
+              </div>
+              <p>Sync your saved logins.</p>
+            </div>
+            <div className="sync-password-actions">
               <Button
-                key={device.recordId}
                 variant="soft"
-                disabled={busy || !enabled}
-                onClick={() =>
-                  action('restore-passwords', { recordId: device.recordId })
+                disabled={
+                  busy ||
+                  !enabled ||
+                  !status?.connected ||
+                  status.phase === 'key-required' ||
+                  status.phase === 'recovery-required'
                 }
+                onClick={() => action('sync-passwords')}
               >
-                Restore logins from another device
+                Unlock & sync passwords
               </Button>
-            ))}
+              {status?.passwordDevices?.map((device) => (
+                <Button
+                  key={device.recordId}
+                  variant="soft"
+                  disabled={busy || !enabled}
+                  onClick={() =>
+                    action('restore-passwords', { recordId: device.recordId })
+                  }
+                >
+                  Restore logins from another device
+                </Button>
+              ))}
+            </div>
           </div>
-        </details>
+        </div>
       )}
       {status?.lastSyncedAt && (
         <p className="preference-note">
