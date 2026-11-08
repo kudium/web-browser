@@ -70,7 +70,7 @@ it('treats an unmarked legacy external connection as potentially private', async
   }
 });
 
-it('refuses private results after rename until directory sync succeeds, including restart', async () => {
+it('refuses private results after rename until durable sync succeeds, including restart', async () => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'touchbox-mcp-sync-')
   );
@@ -87,7 +87,12 @@ it('refuses private results after rename until directory sync succeeds, includin
   let rejectDirectory = true;
   let directorySyncs = 0;
   const sync = jest.spyOn(fs, 'fsyncSync').mockImplementation((fd) => {
-    if (fs.fstatSync(fd).isDirectory()) {
+    const stats = fs.fstatSync(fd);
+    const durableHandle =
+      process.platform === 'win32'
+        ? fs.existsSync(filename) && stats.ino === fs.statSync(filename).ino
+        : stats.isDirectory();
+    if (durableHandle) {
       directorySyncs += 1;
       if (rejectDirectory) throw new Error('Directory sync failed');
     }

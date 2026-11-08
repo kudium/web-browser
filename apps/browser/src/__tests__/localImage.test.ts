@@ -55,7 +55,9 @@ it('uses a private immutable thumbnail snapshot and removes it after dispatch', 
       snapshot = name;
       expect(name).not.toBe(file);
       expect(await fs.readFile(name)).toEqual(png);
-      expect((await fs.stat(name)).mode % 0o1000).toBe(0o600);
+      if (process.platform !== 'win32') {
+        expect((await fs.stat(name)).mode % 0o1000).toBe(0o600);
+      }
       await fs.writeFile(file, 'source replaced');
       expect(await fs.readFile(name)).toEqual(png);
       return { isEmpty: () => false, toDataURL: () => 'preview' };

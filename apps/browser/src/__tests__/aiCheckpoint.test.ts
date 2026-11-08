@@ -36,7 +36,9 @@ it('restores encrypted paused context in a new store without executing anything'
     'Private paused task'
   );
   expect(new AICheckpointStore(filename, storage as any).load()).toEqual(value);
-  expect(fs.statSync(filename).mode & 0o777).toBe(0o600);
+  if (process.platform !== 'win32') {
+    expect(fs.statSync(filename).mode & 0o777).toBe(0o600);
+  }
 });
 it('removes persisted context on Stop or a new task', () => {
   const filename = path.join(directory, 'checkpoint');

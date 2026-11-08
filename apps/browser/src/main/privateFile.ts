@@ -18,7 +18,11 @@ export function writePrivateFile(
     descriptor = undefined;
     fs.renameSync(temporary, filename);
     if (options.durable) {
-      const directory = fs.openSync(path.dirname(filename), 'r');
+      // Windows cannot sync directory handles; flush the renamed file instead.
+      const directory =
+        process.platform === 'win32'
+          ? fs.openSync(filename, 'r+')
+          : fs.openSync(path.dirname(filename), 'r');
       try {
         fs.fsyncSync(directory);
       } finally {
