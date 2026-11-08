@@ -4,15 +4,16 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version to release, for example 1.0.2"
-        required: true
-        type: string
       channel:
         description: "Who should receive this release?"
         default: beta
         type: choice
         options: [beta, stable]
+      bump:
+        description: "Version: auto continues a beta or starts the next patch"
+        default: auto
+        type: choice
+        options: [auto, patch, minor, major]
       targets:
         description: "Platforms to release (macOS includes Apple Silicon and Intel)"
         default: macos
@@ -45,7 +46,7 @@ jobs:
       - name: Select version and channel
         id: target
         env:
-          VERSION: ${{ inputs.version }}
+          BUMP: ${{ inputs.bump }}
           CHANNEL: ${{ inputs.channel }}
           TAG: ${{ github.ref_name }}
           EVENT: ${{ github.event_name }}
