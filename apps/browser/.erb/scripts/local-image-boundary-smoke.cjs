@@ -1,7 +1,7 @@
 /* Actual native handlers/files; hostile decoder inputs use dispatch observers. */
 const fs=require('fs'),fsp=require('fs/promises'),path=require('path'),os=require('os'),crypto=require('crypto'),assert=require('assert/strict');
 const {app,BrowserWindow,ipcMain,dialog,nativeImage}=require('electron');
-const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after',temporary=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-local-images-'));
+const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after',temporary=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-local-images-'));
 app.setPath('userData',path.join(temporary,'profile'));fs.mkdirSync(app.getPath('userData'));
 const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex'),handlers=new Map();
 const original={handle:ipcMain.handle,stat:fs.statSync,lstat:fs.lstatSync,open:fsp.open,buffer:nativeImage.createFromBuffer.bind(nativeImage),icon:nativeImage.createFromPath.bind(nativeImage),thumbnail:nativeImage.createThumbnailFromPath.bind(nativeImage),picker:dialog.showOpenDialog};

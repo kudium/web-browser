@@ -57,14 +57,14 @@
     },
     {
       "name": "production preload integration",
-      "command": "TOUCHBOX_SMOKE_OUTPUT=docs/evidence/local-images node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --local-images-only",
+      "command": "KUDIUMBROWSER_SMOKE_OUTPUT=docs/evidence/local-images node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --local-images-only",
       "observedExitCode": 0,
       "logSha256": "e102e3cbddae7b9bf62df04e1b05a5e9a749e717c01127f67ed98f266f213641",
       "summary": "Actual preload PNG/ICNS icons, cancellation, oversized/foreign-window rejection, real downloaded PNG preview and deduplication pass"
     },
     {
       "name": "download boundary integration",
-      "command": "TOUCHBOX_SMOKE_OUTPUT=docs/evidence/local-images node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --download-history-boundaries-only",
+      "command": "KUDIUMBROWSER_SMOKE_OUTPUT=docs/evidence/local-images node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --download-history-boundaries-only",
       "observedExitCode": 0,
       "logSha256": "72932265929310ef02f4ef8423569bbdeb4327e964e99849dd68083c9b60f534",
       "summary": "Actual preload recovery, malformed requests, regular-file icons, symlink/directory rejection and metadata-only clear pass"

@@ -3,8 +3,8 @@ const {app,BrowserWindow,WebContentsView,ipcMain,dialog,session}=require('electr
 const {Client}=require('@modelcontextprotocol/sdk/client/index.js');
 const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
 const fs=require('fs'),os=require('os'),path=require('path'),http=require('http'),net=require('net'),crypto=require('crypto'),assert=require('assert');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-disclosure-'));app.setPath('userData',root);
-const mainSource=fs.readFileSync(process.env.TOUCHBOX_DISCLOSURE_SOURCE||'src/main/ai.ts','utf8');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-disclosure-'));app.setPath('userData',root);
+const mainSource=fs.readFileSync(process.env.KUDIUMBROWSER_DISCLOSURE_SOURCE||'src/main/ai.ts','utf8');
 require('esbuild').buildSync({stdin:{contents:mainSource+"\nexport {passwordVault,registerPasswordManager} from './passwordManager';",resolveDir:path.resolve('src/main'),sourcefile:'ai.ts',loader:'ts'},bundle:true,minify:true,platform:'node',external:['electron'],outfile:path.join(root,'ai.cjs')});
 fs.writeFileSync(path.join(root,'preload.cjs'),`const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('test',{mcp:(a,p)=>ipcRenderer.invoke('ai-mcp',a,p),permissions:m=>ipcRenderer.invoke('ai-permissions',m),settings:p=>ipcRenderer.invoke('ai-settings',p),run:p=>ipcRenderer.invoke('ai-run',p),stop:()=>ipcRenderer.invoke('ai-stop')});ipcRenderer.on('ai-event',(_,event)=>ipcRenderer.send('fixture-event',event));`);
 const content=result=>JSON.parse(result.content.find(item=>item.type==='text').text);
@@ -29,12 +29,13 @@ let providerStep=0;let providerBodies=[];let providerFinished;let pendingDone;le
   const login={...record,id:'login',kind:'login',username,origin:'',fields:[],password:'never-disclose-protected-9831'};vault.save(login);
   const tabs=[{id:'first',name:'Fixture',url,icon:'',sessionId:'fixture'}];
   ai.registerPasswordManager(()=>false,{authenticateOS:async()=>{}});
+  await ai.initializeLocalStorage();
   dispose=ai.registerAI(host,{tabs:()=>tabs,focused:()=> 'first',contents:id=>id==='first'?view.webContents:undefined});
   const evaluate=code=>host.webContents.executeJavaScript(code);
   const reserve=net.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
-  await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);const connection=(await evaluate("test.mcp('connection')")).mcpServers.touchbox;
+  await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);const connection=(await evaluate("test.mcp('connection')")).mcpServers.kudiumbrowser;
   client=new Client({name:'disclosure-fixture',version:'1'},{capabilities:{}});await client.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
-  const baseline=process.env.TOUCHBOX_DISCLOSURE_PHASE==='before';const results=[];
+  const baseline=process.env.KUDIUMBROWSER_DISCLOSURE_PHASE==='before';const results=[];
   for(const [mode,name,args,sentinel] of [['standard','read_personal_data',{recordId:'private'},fact],['full','search_personal_data',{query:'7391'},fact],['full','read_personal_data',{recordId:'private'},fact],['full','list_saved_logins',{},username]]){
     await evaluate(`test.permissions('${mode}')`);let reviews=0;dialog.showMessageBox=async()=>{reviews+=1;return {response:0};};
     const result=await client.callTool({name,arguments:{tabId:'first',...args}});const disclosed=JSON.stringify(result).includes(sentinel);
@@ -69,7 +70,7 @@ let providerStep=0;let providerBodies=[];let providerFinished;let pendingDone;le
   const contextDone=new Promise(resolve=>{pendingDone=resolve;});await evaluate("test.run('Use full access. Continue the previous discussion.')");await Promise.race([contextDone,new Promise((_resolve,reject)=>{providerFinished=setTimeout(()=>reject(new Error('Context disclosure timed out')),10000);})]);clearTimeout(providerFinished);
   const contextDisclosed=providerBodies.some(body=>body.includes(fact));assert.equal(contextDisclosed,baseline);assert.equal(contextReviews,baseline?0:1);if(!baseline)assert.equal(providerBodies.length,0);results.push({case:'new recipient, prior private conversation declined',reviews:contextReviews,requests:providerBodies.length,disclosed:contextDisclosed});
   const report={measuredAt:new Date().toISOString(),electron:process.versions.electron,platform:process.platform,arch:process.arch,mainSourceSHA256:crypto.createHash('sha256').update(mainSource).digest('hex'),method:'Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.',results,limitations:['Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.','Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.','No external accounts, production providers or packaged installer are used.']};
-  const file='docs/benchmarks/ai-data-disclosure.json';const stored=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{};const phase=process.env.TOUCHBOX_DISCLOSURE_PHASE||'after';if(stored[phase])stored.confirmations=[...(stored.confirmations||[]),{phase,...report}];else stored[phase]=report;fs.writeFileSync(file,JSON.stringify(stored,null,2)+'\n');
+  const file='docs/benchmarks/ai-data-disclosure.json';const stored=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{};const phase=process.env.KUDIUMBROWSER_DISCLOSURE_PHASE||'after';if(stored[phase])stored.confirmations=[...(stored.confirmations||[]),{phase,...report}];else stored[phase]=report;fs.writeFileSync(file,JSON.stringify(stored,null,2)+'\n');
   console.log('PASS: '+phase+' private-data disclosure boundary',JSON.stringify(report));
   await dispose();view.webContents.close();host.destroy();site.close();provider.close();vault.lock();fs.rmSync(root,{recursive:true,force:true});app.exit(0);
 })().catch(async error=>{console.error(error);clearTimeout(providerFinished);try{await client?.close();await dispose?.();}catch{}site?.close();provider?.close();host?.destroy();app.exit(1);});

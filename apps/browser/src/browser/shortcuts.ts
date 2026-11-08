@@ -226,7 +226,7 @@ export function exportShortcuts(
 ): string {
   return JSON.stringify(
     {
-      format: 'touchbox-shortcuts',
+      format: 'kudiumbrowser-shortcuts',
       version: 1,
       bindings: validateShortcuts(bindings, mac),
     },
@@ -245,7 +245,7 @@ export function importShortcuts(source: string, mac = true): ShortcutBindings {
   }
   if (
     !document ||
-    document.format !== 'touchbox-shortcuts' ||
+    document.format !== 'kudiumbrowser-shortcuts' ||
     document.version !== 1 ||
     !document.bindings ||
     typeof document.bindings !== 'object' ||

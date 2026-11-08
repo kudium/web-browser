@@ -22,14 +22,14 @@
       "result": "Whole-project style and TypeScript passed",
       "observedExitCode": 0,
       "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
-      "outputTail": "npm notice run touch-box@1.0.0 lint\nnpm notice run cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts lint\nChecking code style...\nChecking TypeScript types..."
+      "outputTail": "npm notice run kudiumbrowser@1.0.0 lint\nnpm notice run cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts lint\nChecking code style...\nChecking TypeScript types..."
     },
     {
       "command": "npm run build",
       "result": "Production build passed",
       "observedExitCode": 0,
       "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
-      "outputTail": "npm notice run touch-box@1.0.0 prebuild\nnpm notice run node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs\nnpm notice run touch-box@1.0.0 build\nnpm notice run cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config .erb/configs/webpack.config.main.prod.ts --config .erb/configs/webpack.config.renderer.prod.ts"
+      "outputTail": "npm notice run kudiumbrowser@1.0.0 prebuild\nnpm notice run node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs\nnpm notice run kudiumbrowser@1.0.0 build\nnpm notice run cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config .erb/configs/webpack.config.main.prod.ts --config .erb/configs/webpack.config.renderer.prod.ts"
     },
     {
       "command": "Electron .erb/scripts/browser-ui-smoke.cjs --organization-only",

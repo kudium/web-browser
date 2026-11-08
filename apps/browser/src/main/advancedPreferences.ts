@@ -325,7 +325,7 @@ export function registerAdvancedLifecycle() {
     const directory = path.join(app.getPath('sessionData'), 'Partitions');
     try {
       (current.clearOnExit ? fs.readdirSync(directory) : [])
-        .filter((name) => name.startsWith('touchbox-'))
+        .filter((name) => name.startsWith('kudiumbrowser-'))
         .forEach((name) =>
           targets.add(session.fromPartition(`persist:${name}`))
         );
@@ -406,7 +406,7 @@ export async function advancedDiagnostic(
     if (target.netLog.currentlyLogging)
       throw new Error('This session is already logging.');
     const result = await dialog.showSaveDialog(owner, {
-      defaultPath: path.join(app.getPath('downloads'), 'touchbox-network.json'),
+      defaultPath: path.join(app.getPath('downloads'), 'kudiumbrowser-network.json'),
       filters: [{ name: 'JSON network log', extensions: ['json'] }],
       title: 'Save network log (contains visited URLs)',
     });

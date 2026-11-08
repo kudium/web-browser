@@ -301,7 +301,7 @@ export function registerPreferences(
           kind: 'diagnostic',
           text: success
             ? 'Default browser registration requested. Your operating system may ask you to confirm.'
-            : 'Open your operating system Default Apps settings and choose TouchBox.',
+            : 'Open your operating system Default Apps settings and choose KudiumBrowser.',
         };
       }
       if (
@@ -337,7 +337,7 @@ export function registerPreferences(
           })),
           languages: session.defaultSession.availableSpellCheckerLanguages,
           versions: {
-            touchbox: app.getVersion(),
+            kudiumbrowser: app.getVersion(),
             engine: process.versions.electron,
             chromium: process.versions.chrome,
           },

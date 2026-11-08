@@ -106,7 +106,7 @@ it('keeps takeover and pointer output bound to active, owned content', () => {
   native.webContents.emit('console-message', { message: 'other' });
   expect(takeover).not.toHaveBeenCalled();
   native.webContents.emit('console-message', {
-    message: 'touchbox-ai-explicit-takeover',
+    message: 'kudiumbrowser-ai-explicit-takeover',
   });
   expect(takeover).toHaveBeenCalledTimes(1);
   native.webContents.executeJavaScript.mockClear();
@@ -123,14 +123,14 @@ it('keeps takeover and pointer output bound to active, owned content', () => {
   expect(native.webContents.executeJavaScript).not.toHaveBeenCalled();
   layer.set();
   native.webContents.emit('console-message', {
-    message: 'touchbox-ai-explicit-takeover',
+    message: 'kudiumbrowser-ai-explicit-takeover',
   });
   expect(takeover).toHaveBeenCalledTimes(1);
   host.isDestroyed.mockReturnValue(true);
   layer.set('first');
   layer.dispose();
   native.webContents.emit('console-message', {
-    message: 'touchbox-ai-explicit-takeover',
+    message: 'kudiumbrowser-ai-explicit-takeover',
   });
   expect(takeover).toHaveBeenCalledTimes(1);
 });

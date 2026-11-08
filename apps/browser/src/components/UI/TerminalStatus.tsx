@@ -34,7 +34,7 @@ export function TerminalStatus({
       <div className="connection-terminal">
         <header>
           <Terminal size={15} />
-          <span>TOUCHBOX / {title}</span>
+          <span>KUDIUM BROWSER / {title}</span>
           <span className="connection-live">{badge}</span>
         </header>
         {children}

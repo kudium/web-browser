@@ -3,11 +3,11 @@ import { imageSize } from 'image-size';
 
 const maximumBytes = 1024 * 1024;
 
-/** Preflight the PNG/JPEG buffer formats supported by nativeImage decoding. */
+/** Preflight the PNG/JPEG/ICO buffer formats supported by nativeImage decoding. */
 export function validateFaviconDimensions(bytes: Buffer) {
   const size = imageSize(bytes);
   if (
-    !['png', 'jpg'].includes(size.type || '') ||
+    !['png', 'jpg', 'ico'].includes(size.type || '') ||
     !Number.isInteger(size.width) ||
     !Number.isInteger(size.height) ||
     size.width < 1 ||

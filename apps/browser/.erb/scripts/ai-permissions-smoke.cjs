@@ -10,7 +10,7 @@ const fs = require('fs'),
   http = require('http'),
   net = require('net'),
   assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-permissions-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-permissions-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/ai.ts'],
@@ -51,6 +51,7 @@ let host,
   const tabs = [
     { id: 'page', name: 'Fixture', sessionId: 'work', url, icon: '' },
   ];
+  await require(path.join(root, 'ai.cjs')).initializeLocalStorage();
   dispose = require(path.join(root, 'ai.cjs')).registerAI(host, {
     tabs: () => tabs,
     focused: () => 'page',
@@ -68,7 +69,7 @@ let host,
   await new Promise((r) => reserve.close(r));
   await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);
   const connection = (await evaluate("test.mcp('connection')")).mcpServers
-    .touchbox;
+    .kudiumbrowser;
   client = new Client({ name: 'permissions-fixture', version: '1' });
   await client.connect(
     new StreamableHTTPClientTransport(new URL(connection.url), {

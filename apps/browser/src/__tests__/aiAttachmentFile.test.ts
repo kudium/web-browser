@@ -7,7 +7,7 @@ import { AI_ATTACHMENT_BYTES } from '../browser/aiComposer';
 
 it('reads selected bytes and rejects empty, oversized and non-regular files', async () => {
   const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'touchbox-file-read-')
+    path.join(os.tmpdir(), 'kudiumbrowser-file-read-')
   );
   const file = path.join(directory, 'fixture.txt');
   try {

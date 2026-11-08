@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-ai-smoke-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-ai-smoke-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({ entryPoints: ['src/main/ai.ts'], bundle: true, minify: true, platform: 'node', external: ['electron'], outfile: path.join(root, 'ai.cjs') });
 fs.writeFileSync(path.join(root, 'preload.cjs'), `const { contextBridge, ipcRenderer } = require('electron');contextBridge.exposeInMainWorld('ai',{models:p=>ipcRenderer.invoke('ai-models',p),settings:p=>ipcRenderer.invoke('ai-settings',p),run:p=>ipcRenderer.invoke('ai-run',p),continue:()=>ipcRenderer.invoke('ai-resume'),status:()=>ipcRenderer.invoke('ai-task-status'),mcpStatus:()=>ipcRenderer.invoke('ai-mcp','status'),stop:()=>ipcRenderer.invoke('ai-stop'),takeOver:()=>ipcRenderer.invoke('ai-takeover'),resume:()=>ipcRenderer.invoke('ai-resume-external'),listen:()=>ipcRenderer.on('ai-event',(_,e)=>{window.events.push(e)})});window.events=[];ipcRenderer.on('ai-event',(_,e)=>{ipcRenderer.send('test-event',e)});ipcRenderer.on('browser-tab-request',(_,r)=>ipcRenderer.send('test-tab',r));`);
@@ -22,7 +22,7 @@ const recoveryPlans=[['click',{tabId:'first',elementId:1}],['list_tabs',{}],['cl
 let step = 0; let port; let done; let approvals = 0;
 const plans = [
   ['list_tabs', {}], ['read_page', { tabId: 'first' }],
-  ['type', { tabId: 'first', elementId: 0, text: 'TouchBox test' }],
+  ['type', { tabId: 'first', elementId: 0, text: 'KudiumBrowser test' }],
   ['click', { tabId: 'first', elementId: 1 }],
   ['read_page', { tabId: 'first' }],
   ['new_tab', {}], ['navigate', { tabId: 'first' }],
@@ -60,7 +60,7 @@ const server = http.createServer(async (req, res) => {
     if(recoveryTest && step===3 && recoveryStage===3) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('read_page for this tab')), 'Listing alone must not authorize stale target');
     if(handoffTest && step===3 && handoffIssued && recoveryStage>0) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('This action was not executed')), 'Actions after handoff must be recorded as unexecuted');
     if(handoffTest && step===3 && recoveryStage===4) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('Human completed login')), 'Resume must observe the changed human-completed page');
-    if (step === 5) assert(request.messages.some((message) => message.role === 'tool' && message.content.includes('Done TouchBox test')));
+    if (step === 5) assert(request.messages.some((message) => message.role === 'tool' && message.content.includes('Done KudiumBrowser test')));
     if(visionTest && visionCaptured) {
       const imageMessage=request.messages.find(message=>message.role==='user' && Array.isArray(message.content));
       assert(imageMessage,'Screenshot must reach provider as a multimodal message');
@@ -90,6 +90,7 @@ const server = http.createServer(async (req, res) => {
   await view.webContents.loadURL(tabs[0].url);
   let focused = 'first';
   let settingsContents;
+  await require(path.join(root, 'ai.cjs')).initializeLocalStorage();
   const dispose = require(path.join(root, 'ai.cjs')).registerAI(host, { settingsWindow: (contents) => contents === settingsContents, tabs: () => tabs, focused: () => focused, contents: (id) => views.get(id)?.webContents });
   ipcMain.on('test-tab', async (_event, request) => {
     if (request.action === 'create') {
@@ -165,6 +166,7 @@ const server = http.createServer(async (req, res) => {
   const restored=new WebContentsView({webPreferences:{partition:'persist:shared-test'}});
   await restored.webContents.loadURL(`http://127.0.0.1:${port}/`);
   const restoredTabs=[{id:'first',name:'Restored',url:`http://127.0.0.1:${port}/`,sessionId:'shared-test'}];
+  await require(path.join(root,'ai.cjs')).initializeLocalStorage();
   const disposeReplacement=require(path.join(root,'ai.cjs')).registerAI(replacement,{settingsWindow:(contents)=>contents===settingsContents,tabs:()=>restoredTabs,focused:()=> 'first',contents:()=>restored.webContents});
   await replacement.loadURL('data:text/html,replacement');
   assert((await replacement.webContents.executeJavaScript(`ai.settings()`)).hasKey,'Session-only key must survive browsing window recreation');

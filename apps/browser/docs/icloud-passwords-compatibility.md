@@ -5,7 +5,7 @@ Verified November 4, 2026 on macOS 27.0.1 with iCloud Passwords 3.4.0.
 ## Finding
 
 The extension loads, but macOS rejects the Apple native helper when launched
-from Touchbox's Electron runtime. This is an operating-system launch constraint,
+from Kudium Browser's Electron runtime. This is an operating-system launch constraint,
 not a missing extension permission or a missing helper installation.
 
 - The extension uses `chrome.runtime.connectNative("com.apple.passwordmanager")`.
@@ -21,15 +21,15 @@ not a missing extension permission or a missing helper installation.
 - The helper's embedded parent launch constraint (code-signature slot 9)
   accepts a browser credential entitlement or specified signing identifiers
   paired with specified developer team identifiers. Arc and Dia are listed;
-  Touchbox and the Electron development runtime are not.
+  Kudium Browser and the Electron development runtime are not.
 
 The existing EPIPE compatibility patch prevents the broken pipe from becoming
-an uncaught Electron error. It does not authorize Touchbox to launch Apple's
+an uncaught Electron error. It does not authorize Kudium Browser to launch Apple's
 helper and therefore cannot make iCloud Passwords connect.
 
 ## Application identity
 
-Company: Kudium. Bundle ID: `com.kudium.touchbox`. Website: https://kudium.com.
+Company: Kudium. Bundle ID: `com.kudium.kudiumbrowser`. Website: https://kudium.com.
 Contact: hello@kudium.com. Use these values in the Apple entitlement request.
 
 ## Supported next step
@@ -44,12 +44,11 @@ capability that an organization's Apple Developer Account Holder must request.
 
 Apple's documented criteria include HTTP/HTTPS schemes in Info.plist, a URL
 field/search/bookmarks on launch, and rendering the requested destination.
-Touchbox has URL entry and rendering, but its current packaging does not declare
-HTTP/HTTPS URL schemes or implement macOS external URL opening. These need to be
-prepared before applying. After approval, sign the main browser executable with
+Kudium Browser now declares HTTP/HTTPS URL schemes and implements macOS external
+URL opening (verified November 8). These application prerequisites are prepared. After approval, sign the main browser executable with
 the managed entitlement and the appropriate provisioning profile, then test a
 packaged build with the real helper. Normal Developer ID signing alone does not
-satisfy the currently installed helper's constraint for Touchbox.
+satisfy the currently installed helper's constraint for Kudium Browser.
 
 Do not add the managed entitlement to active development or release signing
 configuration before it is granted. Renaming Electron to another browser,
@@ -68,3 +67,5 @@ password-manager support.
 
 No saved passwords, extension storage, keychain databases, or pairing secrets
 were read or modified during this investigation.
+
+See [Apple integration readiness](apple-integration-readiness.md) for the current request details, capability checks and remaining acceptance work.

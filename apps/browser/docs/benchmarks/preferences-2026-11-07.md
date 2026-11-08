@@ -79,7 +79,7 @@ the deterministic I/O result, not a general startup, latency or memory claim.
   remain part of the full suite. The native probe is in the desktop check runner.
 
 JSON shape and atomic temporary-file/rename persistence remain compatible. No
-migration is required. Manual external edits now require restarting TouchBox;
+migration is required. Manual external edits now require restarting Kudium Browser;
 there is no live file watcher or periodic synchronous stat/read. This is an
 intentional behavior change, including when repairing a malformed file. Settings
 changes through the application remain immediate. A code rollback needs no data

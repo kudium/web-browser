@@ -4,7 +4,7 @@ const {app,BrowserWindow,ipcMain,dialog}=require('electron');
 const {Client}=require('@modelcontextprotocol/sdk/client/index.js');
 const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
 const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after';assert(['before','after'].includes(phase));
-const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-mcp-ownership-')),userData=path.join(temporary,'user-data');
+const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-mcp-ownership-')),userData=path.join(temporary,'user-data');
 app.setPath('userData',userData);process.env.HERMES_HOME=path.join(temporary,'hermes');
 const files=['src/main/ai.ts','src/main/mcp.ts','src/main/personalAgentConnections.ts'];
 const source=file=>fs.readFileSync(path.join(root,phase==='before'?'docs/benchmarks/baselines/mcp-ownership/'+path.basename(file)+'.txt':file),'utf8');
@@ -20,7 +20,7 @@ net.Server.prototype.listen=function(...args){
 };
 async function port(){const server=net.createServer();await new Promise(resolve=>originalListen.call(server,0,'127.0.0.1',resolve));const selected=server.address().port;await new Promise(resolve=>server.close(resolve));return selected;}
 const settingsFile=()=>path.join(userData,'mcp-settings.json'),registry=()=>path.join(userData,'personal-agent-connections.json'),agentFile=()=>path.join(process.env.HERMES_HOME,'config.yaml');
-const initial='model: fixture\nmcp_servers:\n  touchbox:\n    url: https://previous.test/mcp\n';
+const initial='model: fixture\nmcp_servers:\n  kudiumbrowser:\n    url: https://previous.test/mcp\n';
 async function run(){
  await app.whenReady();fs.mkdirSync(userData,{recursive:true});fs.mkdirSync(process.env.HERMES_HOME,{recursive:true});
  const bundle=path.join(temporary,'fixture.cjs');
@@ -39,6 +39,7 @@ async function run(){
   for(const name of fs.readdirSync(process.env.HERMES_HOME))fs.rmSync(path.join(process.env.HERMES_HOME,name),{force:true});
   const selected=await port();fs.writeFileSync(settingsFile(),JSON.stringify({enabled:false,port:selected}));
   fs.writeFileSync(agentFile(),initial);ai.fixtureShutdown(delayed||Promise.resolve());
+  await ai.initializeLocalStorage();
   dispose=ai.registerAI(host,{tabs:()=>[],focused:()=>undefined,contents:()=>undefined,settingsWindow:contents=>contents===settings.webContents});
   if(!delayed)await ai.fixtureMCP.ready;
   return selected;
@@ -98,7 +99,7 @@ async function run(){
  const competing=await outcome(call('ai-mcp',['update',{enabled:true,port:selected,rotate:true}],settings));
  assert.equal(competing.accepted,phase==='before');held.release.resolve({response:1});const connected=await connecting;assert.equal(connected.accepted,true);
  const expected=ai.fixtureMCP.agentConnection('hermes'),configText=fs.readFileSync(agentFile(),'utf8');
- const liveCredential=!!expected&&configText.includes(expected.mcpServers.touchbox.headers.Authorization);assert.equal(liveCredential,phase==='after');
+ const liveCredential=!!expected&&configText.includes(expected.mcpServers.kudiumbrowser.headers.Authorization);assert.equal(liveCredential,phase==='after');
  observations.push({name:'competingTokenRotation',competingAccepted:competing.accepted,agentConfigHasLiveCredential:liveCredential});
  // Normal update/agent disconnect/locate remain usable, including a settings
  // window after the browser host closes.

@@ -23,14 +23,14 @@
     },
     {
       "name": "macOS arm64 directory package",
-      "command": "electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-fuse-package",
+      "command": "electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/kudiumbrowser-fuse-package",
       "observedExitCode": 0,
       "logSha256": "cf724420ee123d5b63d2a101643f036cb1d3cd0ccea872c179159225fb72c97e",
       "summary": "Native package built; fuse configuration applied before signing; signing explicitly null"
     },
     {
       "name": "packaged security runner",
-      "command": "npm run test:packaged-security -- /tmp/touchbox-fuse-package/mac-arm64/TouchBox.app",
+      "command": "npm run test:packaged-security -- /tmp/kudiumbrowser-fuse-package/mac-arm64/KudiumBrowser.app",
       "observedExitCode": 0,
       "logSha256": "db97cc28363d255cab51ef535894401d55fdf5841a2c1cf55943e6d47f8cdf17",
       "summary": "Default/hardened attack checks and actual application smoke passed"

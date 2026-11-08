@@ -1,13 +1,13 @@
 # Live AI project workflow smoke test
 
-Tested on 2026-11-07 in the running TouchBox development app using its native UI and the configured external model `gemini-3.5-flash-lite`. No AI responses or project tools were mocked.
+Tested on 2026-11-07 in the running Kudium Browser development app using its native UI and the configured external model `gemini-3.5-flash-lite`. No AI responses or project tools were mocked.
 
 Created a disposable project at `/path/to/kudium-browser-e2e-demo` with an HTML page and a Node assertion test. Served it on `http://127.0.0.1:47831/`, opened its tab, moved the tab to a new group (`hocafy · Group 2`, slug `hocafy-2`), and linked the project using the native folder picker.
 
 Started a new AI chat and referenced `@hocafy-2`. Asked it to inspect/edit `index.html`, read `test.cjs`, save a project script named `Test website` with command `node test.cjs`, run it, read the result, reload the website, and verify the heading. The app narrowed scope to the referenced group. The explicit command-review dialog was approved for this requested disposable test.
 
 Verified:
-- The on-disk HTML was edited by the app AI to include `Website updated by TouchBox AI` and compact CSS.
+- The on-disk HTML was edited by the app AI to include `Website updated by Kudium Browser AI` and compact CSS.
 - The Developer Scripts menu contains `Test website` with command `node test.cjs`.
 - The built-in terminal output contains `PASS: website heading was updated`.
 - The browser page shows the updated heading after the AI reloaded it.

@@ -15,6 +15,11 @@ Object.assign(global, {
 beforeEach(() => {
   Object.assign(window, {
     electron: {
+      browser: {
+        preferences: jest
+          .fn()
+          .mockResolvedValue({ writeBrowserInstructions: true }),
+      },
       ai: {
         personalAgents: jest.fn().mockResolvedValue({
           agents: [
@@ -164,4 +169,55 @@ it('switches settings tabs with the keyboard and keeps only the selected panel v
   expect(modelTab).toHaveFocus();
   expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'ai-model-panel');
   await waitFor(() => expect(screen.getByLabelText('Provider')).toBeEnabled());
+});
+
+it('offers current Gemini models without an API key and lets users choose Flash-Lite', async () => {
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  await waitFor(() => expect(screen.getByLabelText('Provider')).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'gemini' },
+  });
+  expect(
+    screen.getByRole('option', { name: 'gemini-4-argon' })
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Model'), {
+    target: { value: 'gemini-3.5-flash-lite' },
+  });
+  expect(screen.getByLabelText('Model')).toHaveValue('gemini-3.5-flash-lite');
+  expect(window.electron.ai.models).not.toHaveBeenCalled();
+});
+
+it('configures Meta Muse and lets users select Wonder with their own API key', async () => {
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  await waitFor(() => expect(screen.getByLabelText('Provider')).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'meta' },
+  });
+  expect(screen.getByLabelText('API endpoint')).toHaveValue(
+    'https://api.meta.ai/v1'
+  );
+  expect(screen.getByLabelText('Model')).toHaveValue('muse-spark-1.3');
+  fireEvent.change(screen.getByLabelText('Model'), {
+    target: { value: 'muse-wonder-1.0' },
+  });
+  fireEvent.change(screen.getByLabelText('API key'), {
+    target: { value: 'fixture-meta-key' },
+  });
+  fireEvent.click(screen.getByText('Save AI settings'));
+  await waitFor(() =>
+    expect(window.electron.ai.settings).toHaveBeenLastCalledWith({
+      endpoint: 'https://api.meta.ai/v1',
+      model: 'muse-wonder-1.0',
+      key: 'fixture-meta-key',
+      remember: false,
+    })
+  );
 });

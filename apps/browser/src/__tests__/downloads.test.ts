@@ -30,7 +30,7 @@ jest.mock('../main/preferences', () => ({
 
 it('persists completed history and clears records without deleting files or active downloads', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-downloads-')
+    path.join(os.tmpdir(), 'kudiumbrowser-downloads-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const session = new EventEmitter();
@@ -125,7 +125,7 @@ it('groups downloads by date and identifies common file types', () => {
 
 it('preserves damaged native history before sanitizing and refuses replaced file targets', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-download-recovery-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-recovery-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const file = path.join(directory, 'file.txt');
@@ -217,7 +217,7 @@ it('preserves damaged native history before sanitizing and refuses replaced file
 
 it('refuses to overwrite corrupt history if its recovery copy cannot be written', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-download-recovery-failure-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-recovery-failure-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const historyFile = path.join(directory, 'download-history.json');
@@ -252,7 +252,7 @@ it('refuses to overwrite corrupt history if its recovery copy cannot be written'
 
 it('uses safe fallback names, avoids dangling-link collisions and follows save-path renames', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-download-name-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-name-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const link = path.join(directory, 'download');
@@ -299,7 +299,7 @@ it('uses safe fallback names, avoids dangling-link collisions and follows save-p
 
 it('attributes live downloads to the originating WebContents and omits unowned history', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-download-owner-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-owner-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   let isolated: typeof import('../main/downloads');
@@ -346,7 +346,7 @@ it('attributes live downloads to the originating WebContents and omits unowned h
 
 it('preserves scoped ownership across replacement WebContents and history reload', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-download-stable-owner-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-stable-owner-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   let manager: typeof import('../main/downloads');
@@ -395,7 +395,7 @@ it('preserves scoped ownership across replacement WebContents and history reload
 
 it('reports an outstanding save picker only until a destination is selected or cancelled', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-save-picker-')
+    path.join(os.tmpdir(), 'kudiumbrowser-save-picker-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   (getBrowserPreferences as jest.Mock).mockReturnValue({

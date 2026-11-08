@@ -37,7 +37,7 @@ it('uses the shared group identity while saving to its shared login profile', as
         info={{
           profiles: [{ id: 'shared-login', name: 'Work', extensions: 0 }],
           languages: [],
-          versions: { touchbox: '', engine: '', chromium: '' },
+          versions: { kudiumbrowser: '', engine: '', chromium: '' },
         }}
         busy={false}
         save={save}

@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-password-smoke-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-password-smoke-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/passwordManager/index.ts'],

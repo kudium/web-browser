@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const esbuild = require('esbuild');
 const assert = require('assert');
 const temporary = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'touchbox-history-shutdown-')
+  path.join(os.tmpdir(), 'kudiumbrowser-history-shutdown-')
 );
 const data = path.join(temporary, 'user-data');
 fs.mkdirSync(data);

@@ -13,12 +13,12 @@ it('defaults to iCloud on Mac, remains off and rejects invalid consent/settings'
     enabled: false,
     provider: 'icloud',
   });
-  expect(defaultSyncSettings('win32').provider).toBe('touchbox');
+  expect(defaultSyncSettings('win32').provider).toBe('kudiumbrowser');
   const defaults = defaultSyncSettings();
   expect(() =>
     validateSyncSettings({
       ...defaults,
-      categories: { ...defaults.categories, passwords: true },
+      categories: { ...defaults.categories, passwords: 'yes' },
     })
   ).toThrow('Invalid');
   expect(() =>

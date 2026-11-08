@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-hook-review-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-hook-review-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: [path.resolve('src/main/dialogs.ts')],

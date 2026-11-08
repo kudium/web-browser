@@ -5,7 +5,7 @@ const assert = require('assert');
 const http = require('http');
 const { app, BrowserWindow } = require('electron');
 const runtime = fs.mkdtempSync(
-  path.join(require('os').tmpdir(), 'touchbox-navigation-')
+  path.join(require('os').tmpdir(), 'kudiumbrowser-navigation-')
 );
 app.setPath('userData', path.join(runtime, 'profile'));
 require(path.join(root, 'node_modules/esbuild')).buildSync({

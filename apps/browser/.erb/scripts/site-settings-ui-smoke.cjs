@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-site-settings-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-site-settings-'));
 const out = path.resolve('docs/evidence/site-settings');
 fs.mkdirSync(out, { recursive: true });
 app.setPath('userData', path.join(root, 'profile'));

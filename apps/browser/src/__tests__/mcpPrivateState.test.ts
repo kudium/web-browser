@@ -6,7 +6,7 @@ import { createMCPController, MCP_NAMES } from '../main/mcp';
 
 it('retains external disclosure across restart and retries failed marker persistence', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-mcp-private-')
+    path.join(os.tmpdir(), 'kudiumbrowser-mcp-private-')
   );
   const filename = path.join(directory, 'settings.json');
   const create = () =>
@@ -51,7 +51,7 @@ it('retains external disclosure across restart and retries failed marker persist
 
 it('treats an unmarked legacy external connection as potentially private', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-mcp-private-')
+    path.join(os.tmpdir(), 'kudiumbrowser-mcp-private-')
   );
   const filename = path.join(directory, 'settings.json');
   fs.writeFileSync(filename, JSON.stringify({ enabled: false, port: 43187 }));
@@ -72,7 +72,7 @@ it('treats an unmarked legacy external connection as potentially private', async
 
 it('refuses private results after rename until durable sync succeeds, including restart', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-mcp-sync-')
+    path.join(os.tmpdir(), 'kudiumbrowser-mcp-sync-')
   );
   const filename = path.join(directory, 'settings.json');
   const create = () =>

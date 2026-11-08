@@ -11,7 +11,7 @@ import {
 jest.mock('electron', () => ({ app: { getPath: jest.fn() } }));
 it('persists site decisions, permits reversing a denial, and isolates profiles and origins', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-site-settings-')
+    path.join(os.tmpdir(), 'kudiumbrowser-site-settings-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   try {
@@ -58,7 +58,7 @@ it('normalizes website origins and rejects non-website schemes', () => {
 
 it('reads settings once, protects cached grants from callers, and retains state when saving fails', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-site-cache-')
+    path.join(os.tmpdir(), 'kudiumbrowser-site-cache-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const file = path.join(directory, 'site-settings.json');
@@ -112,7 +112,7 @@ it('reads settings once, protects cached grants from callers, and retains state 
 
 it('ignores malformed grants instead of treating them as permissions', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-site-invalid-')
+    path.join(os.tmpdir(), 'kudiumbrowser-site-invalid-')
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   try {

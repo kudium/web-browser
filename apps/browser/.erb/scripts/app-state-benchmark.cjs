@@ -21,7 +21,7 @@ const stats = (values) => {
 async function run() {
   const phase = process.argv[2];
   assert(['before', 'after', 'confirmation'].includes(phase), 'Expected before, after or confirmation');
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-state-bench-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-state-bench-'));
   const originalParse = JSON.parse;
   const workloads = [];
   const sourceFiles = ['src/utils/AppManager.ts', 'src/utils/hooks/useAppList.ts'];

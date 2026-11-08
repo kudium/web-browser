@@ -4,7 +4,7 @@ const fs = require('fs'),
   path = require('path'),
   assert = require('assert');
 const runtime = fs.mkdtempSync(
-  path.join(require('os').tmpdir(), 'touchbox-extensions-')
+  path.join(require('os').tmpdir(), 'kudiumbrowser-extensions-')
 );
 app.setPath('userData', path.join(runtime, 'user-data'));
 for (const [moduleName, filename] of [
@@ -52,8 +52,8 @@ app.on('window-all-closed', () => {});
 app
   .whenReady()
   .then(async () => {
-    const a = session.fromPartition('persist:touchbox-a'),
-      b = session.fromPartition('persist:touchbox-b');
+    const a = session.fromPartition('persist:kudiumbrowser-a'),
+      b = session.fromPartition('persist:kudiumbrowser-b');
     a.serviceWorkers.on('console-message', (_event, details) =>
       console.log('WORKER', details.message)
     );
@@ -74,7 +74,7 @@ app
     await manager.applyExtensions(a, 'a', 'Account A', owner);
     await manager.applyExtensions(b, 'b', 'Account B', owner);
     // Exercise the real store in a WebContentsView, including its install button.
-    const storeSession = session.fromPartition('persist:touchbox-store');
+    const storeSession = session.fromPartition('persist:kudiumbrowser-store');
     await manager.applyExtensions(
       storeSession,
       'store',
@@ -154,11 +154,11 @@ app
       )
     );
     await popup.webContents.executeJavaScript(
-      `chrome.storage.local.set({ touchboxTestProfile: 'a' })`
+      `chrome.storage.local.set({ kudiumbrowserTestProfile: 'a' })`
     );
     assert.equal(
       await popup.webContents.executeJavaScript(
-        `chrome.storage.local.get('touchboxTestProfile').then(result=>result.touchboxTestProfile)`
+        `chrome.storage.local.get('kudiumbrowserTestProfile').then(result=>result.kudiumbrowserTestProfile)`
       ),
       'a'
     );
@@ -170,7 +170,7 @@ app
         actionPopup = popup;
       });
     await owner.webContents.executeJavaScript(
-      `(()=>{const list=document.createElement('browser-action-list');list.setAttribute('partition','persist:touchbox-a');list.setAttribute('tab','${popup.webContents.id}');list.setAttribute('alignment','bottom left');list.style.cssText='position:absolute;right:8px;top:8px';document.body.append(list);})()`
+      `(()=>{const list=document.createElement('browser-action-list');list.setAttribute('partition','persist:kudiumbrowser-a');list.setAttribute('tab','${popup.webContents.id}');list.setAttribute('alignment','bottom left');list.style.cssText='position:absolute;right:8px;top:8px';document.body.append(list);})()`
     );
     await wait(1000);
     assert(
@@ -192,7 +192,7 @@ app
     );
     assert.equal(
       await actionPopup.browserWindow.webContents.executeJavaScript(
-        `chrome.storage.local.get('touchboxTestProfile').then(result=>result.touchboxTestProfile)`
+        `chrome.storage.local.get('kudiumbrowserTestProfile').then(result=>result.kudiumbrowserTestProfile)`
       ),
       'a'
     );
@@ -226,7 +226,7 @@ app
     );
     assert.equal(
       await popupB.webContents.executeJavaScript(
-        `chrome.storage.local.get('touchboxTestProfile').then(result=>result.touchboxTestProfile)`
+        `chrome.storage.local.get('kudiumbrowserTestProfile').then(result=>result.kudiumbrowserTestProfile)`
       ),
       undefined
     );

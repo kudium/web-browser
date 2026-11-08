@@ -241,21 +241,21 @@ export default class MenuBuilder {
         {
           label: 'Documentation',
           click: () => {
-            shell.openExternal('https://github.com/samtax01/TouchBox#readme');
+            shell.openExternal('https://github.com/samtax01/KudiumBrowser#readme');
           },
         },
         {
           label: 'Community',
           click: () => {
             shell.openExternal(
-              'https://github.com/samtax01/TouchBox/discussions'
+              'https://github.com/samtax01/KudiumBrowser/discussions'
             );
           },
         },
         {
           label: 'Report an Issue…',
           click: () => {
-            shell.openExternal('https://github.com/samtax01/TouchBox/issues');
+            shell.openExternal('https://github.com/samtax01/KudiumBrowser/issues');
           },
         },
         ...(!mac

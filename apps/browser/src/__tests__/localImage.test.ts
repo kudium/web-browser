@@ -23,7 +23,7 @@ afterEach(() => jest.clearAllMocks());
 
 it('rejects compressed oversized dimensions before icon and thumbnail decoding', async () => {
   const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'touchbox-local-image-')
+    path.join(os.tmpdir(), 'kudiumbrowser-local-image-')
   );
   const file = path.join(directory, 'huge.png');
   const giant = Buffer.from(png);
@@ -46,7 +46,7 @@ it('rejects compressed oversized dimensions before icon and thumbnail decoding',
 
 it('uses a private immutable thumbnail snapshot and removes it after dispatch', async () => {
   const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'touchbox-local-image-')
+    path.join(os.tmpdir(), 'kudiumbrowser-local-image-')
   );
   const file = path.join(directory, 'normal.png');
   let snapshot = '';
@@ -74,7 +74,7 @@ it('uses a private immutable thumbnail snapshot and removes it after dispatch', 
 
 it('checks every modern ICNS payload and rejects invalid entry lengths', async () => {
   const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'touchbox-local-image-')
+    path.join(os.tmpdir(), 'kudiumbrowser-local-image-')
   );
   const file = path.join(directory, 'invalid.icns');
   const bytes = Buffer.alloc(16);

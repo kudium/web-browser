@@ -6,7 +6,7 @@ const fs = require('fs'),
   crypto = require('crypto'),
   assert = require('assert/strict');
 const root = path.resolve(__dirname, '../..'),
-  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-install-scope-'));
+  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-install-scope-'));
 app.setPath('userData', temporary);
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const deadline = setTimeout(() => {

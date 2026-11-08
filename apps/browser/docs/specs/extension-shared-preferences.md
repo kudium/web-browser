@@ -6,7 +6,7 @@ Status: proposed implementation plan.
 
 “All sessions” grants an extension access to every eligible session. Website cookies, authentication, extension browsing caches and website-specific state remain isolated. Extension code still starts separately in each session: a single instance cannot provide complete coverage of isolated Electron sessions without a substantial architecture change.
 
-For supported extensions, TouchBox will remember successful onboarding once and share only reviewed, non-sensitive preferences across sessions. Unknown extensions retain their current isolated behavior. The UI will explain both access scope and settings-sharing scope.
+For supported extensions, Kudium Browser will remember successful onboarding once and share only reviewed, non-sensitive preferences across sessions. Unknown extensions retain their current isolated behavior. The UI will explain both access scope and settings-sharing scope.
 
 ## Threat model and boundary
 

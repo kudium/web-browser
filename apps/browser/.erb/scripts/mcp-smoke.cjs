@@ -9,12 +9,12 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const net = require('net');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-mcp-smoke-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-mcp-smoke-'));
 app.setPath('userData', root);
 if(process.argv.includes('--oop-frames')) app.commandLine.appendSwitch('site-per-process');
 // Reproduce the pre-adaptive algorithm in a disposable module, not product files.
 let drawingBuildInput={entryPoints:['src/main/ai.ts']};
-if(process.env.TOUCHBOX_DRAWING_INTERPOLATION==='baseline') {
+if(process.env.KUDIUMBROWSER_DRAWING_INTERPOLATION==='baseline') {
   const filename=path.resolve('src/browser/aiDrawing.ts');
   const source=fs.readFileSync(filename,'utf8');const ts=require('typescript');
   const ast=ts.createSourceFile(filename,source,ts.ScriptTarget.Latest,true);
@@ -36,7 +36,7 @@ if(process.env.TOUCHBOX_DRAWING_INTERPOLATION==='baseline') {
   drawingBuildInput={stdin:{contents:mainSource.replace(importPath,'from '+JSON.stringify(baselineFile)),resolveDir:path.resolve('src/main'),sourcefile:'ai.ts',loader:'ts'}};
 }
 // Benchmark only: reproduce repeated owner setup with the same live safety checks.
-if(process.env.TOUCHBOX_FRAME_POINTER_VARIANT==='uncached') {
+if(process.env.KUDIUMBROWSER_FRAME_POINTER_VARIANT==='uncached') {
   let source=fs.readFileSync('src/main/aiFrames.ts','utf8');
   const lookup='let cached = owners.get(current.id);';
   const focus='if (!focused) {';
@@ -81,6 +81,7 @@ const views = new Map();
   fs.writeFileSync(path.join(root,'preferences.js'),`exports.getBrowserPreferences=()=>({askDownloadLocation:false,downloadDirectory:${JSON.stringify(root)}});`);
   require('esbuild').buildSync({entryPoints:['src/main/downloads.ts'],bundle:true,platform:'node',external:['electron','./preferences'],outfile:path.join(root,'downloads.js')});
   const downloadManager=require(path.join(root,'downloads.js'));downloadManager.bindDownloadSource(first.webContents,'["mcp-test","first"]');downloadManager.trackDownloads(first.webContents.session);
+  await require(path.join(root,'ai.cjs')).initializeLocalStorage();
   dispose=require(path.join(root,'ai.cjs')).registerAI(host,{tabs:()=>tabs,focused:()=>focused,contents:id=>views.get(id)?.webContents,downloads:downloadManager.getDownloadsForContents,downloadAction:downloadManager.controlTabDownload});
   ipcMain.on('test-tab',async(_,request)=>{
     if(request.action==='create') { tabs.push(request.app);focused=request.app.id;const view=new WebContentsView({webPreferences:{partition:'persist:mcp-test'}});views.set(focused,view);await view.webContents.loadURL(request.app.url); }
@@ -92,13 +93,13 @@ const views = new Map();
   assert(!(await evaluate(`test.settings()`)).hasKey);
   assert(!(await evaluate(`test.mcp('status')`)).enabled);
   const status=await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);assert(status.running);
-  const config=await evaluate(`test.mcp('connection')`);const connection=config.mcpServers.touchbox;
+  const config=await evaluate(`test.mcp('connection')`);const connection=config.mcpServers.kudiumbrowser;
   assert.equal((await fetch(connection.url,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);
   assert.equal((await fetch(connection.url,{method:'POST',headers:{...connection.headers,'Content-Type':'application/json',Origin:'https://example.com'},body:'{}'})).status,403);
   const forgedHost = await new Promise(resolve => { const req=http.request(connection.url,{method:'POST',headers:{...connection.headers,'Content-Type':'application/json',Host:`localhost:${port}`}},res=>{res.resume();resolve(res.statusCode);});req.end('{}'); });
   assert.equal(forgedHost,403);
   assert.equal((await fetch(connection.url,{method:'POST',headers:{...connection.headers,'Content-Type':'application/json'},body:'x'.repeat(1024*1024+1)})).status,413);
-  const client=new Client({name:'touchbox-test',version:'1'},{capabilities:{}});
+  const client=new Client({name:'kudiumbrowser-test',version:'1'},{capabilities:{}});
   await client.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
   // Approval assertions explicitly exercise Ask first, independent of the user-facing default.
   await ipcMain._invokeHandlers.get('ai-permissions')({sender:host.webContents,senderFrame:host.webContents.mainFrame},'ask');
@@ -106,7 +107,7 @@ const views = new Map();
   assert.deepEqual(listed.tools.find(tool=>tool.name==='read_page').inputSchema.properties.format.enum,['compact','detailed']);
   assert.deepEqual(listed.tools.find(tool=>tool.name==='wait_until').inputSchema.properties.format.enum,['compact','detailed']);
   assert.equal(listed.tools.find(tool=>tool.name==='drag_at').inputSchema.properties.path.maxItems,128);
-  const guide=await client.readResource({uri:'touchbox://guide'});assert(guide.contents[0].text.includes('untrusted'));
+  const guide=await client.readResource({uri:'kudiumbrowser://guide'});assert(guide.contents[0].text.includes('untrusted'));
   assert.equal(content(await client.callTool({name:'list_tabs',arguments:{}})).length,1);
 
   if(process.argv.includes('--action-approval-only')) {
@@ -321,7 +322,7 @@ const views = new Map();
   } finally {
     first.webContents.executeJavaScriptInIsolatedWorld=originalObservation;
   }
-  await first.webContents.executeJavaScript(`window.touchboxAISnapshot={id:'forged',url:location.href,entries:[]}`);
+  await first.webContents.executeJavaScript(`window.kudiumbrowserAISnapshot={id:'forged',url:location.href,entries:[]}`);
   await first.webContents.executeJavaScript(`document.body.insertAdjacentHTML('beforeend','<label for="semantic-input">Full name</label><input id="semantic-input">')`);
   const semantic=content(await client.callTool({name:'find_element',arguments:{tabId:'first',label:'Full name'}}));assert.equal(semantic.elements[0].label,'Full name');
   dialog.showMessageBox=async()=>({response:1});
@@ -639,14 +640,14 @@ const views = new Map();
     const pathPixels=await native.executeJavaScript(`(()=>{const ctx=document.querySelector('#ai-canvas').getContext('2d');return {horizontal:ctx.getImageData(87,24,1,1).data[3],vertical:ctx.getImageData(140,49,1,1).data[3],diagonal:ctx.getImageData(87,49,1,1).data[3],start:JSON.parse(document.body.dataset.drawStart),end:JSON.parse(document.body.dataset.drawEnd)};})()`);
     assert(pathPixels.horizontal>0&&pathPixels.vertical>0&&pathPixels.diagonal===0,'Multi-point drawing must follow the elbow instead of shortcutting it: '+JSON.stringify(pathPixels));
     assert(pathPixels.start.trusted&&pathPixels.end.trusted);
-    const fullPath=Array.from({length:128},(_,index)=>process.env.TOUCHBOX_LONG_PATH_FIXTURE==='dense'?{x:35+105*index/127,y:24+51*Math.sin(Math.PI*index/254)}:{x:index%2?140:35,y:24+51*index/127});
+    const fullPath=Array.from({length:128},(_,index)=>process.env.KUDIUMBROWSER_LONG_PATH_FIXTURE==='dense'?{x:35+105*index/127,y:24+51*Math.sin(Math.PI*index/254)}:{x:index%2?140:35,y:24+51*index/127});
     await native.executeJavaScript(`(()=>{window.fullDrawingTrace=[];const canvas=document.querySelector('#ai-canvas');canvas.getContext('2d').clearRect(0,0,300,150);if(!window.fullTraceInstalled){canvas.addEventListener('pointermove',event=>{if(window.fullDrawingTrace&&event.buttons===1)window.fullDrawingTrace.push({x:event.offsetX,y:event.offsetY,trusted:event.isTrusted});});window.fullTraceInstalled=true;}})()`);
     const protocolCounts={};const originalProtocolSend=first.webContents.debugger.sendCommand;
     first.webContents.debugger.sendCommand=function(method,...args){protocolCounts[method]=(protocolCounts[method]||0)+1;return originalProtocolSend.call(this,method,...args);};
     const fullStarted=performance.now();let fullDrawing;
     try {fullDrawing=await client.callTool({name:'drag_at',arguments:{...pathArgs,path:fullPath}});}finally{first.webContents.debugger.sendCommand=originalProtocolSend;}
     const fullElapsed=performance.now()-fullStarted;
-    console.log('LONG_PATH',JSON.stringify({frame:frameId?'embedded':'main',fixture:process.env.TOUCHBOX_LONG_PATH_FIXTURE||'zigzag',pointerVariant:process.env.TOUCHBOX_FRAME_POINTER_VARIANT||'cached',milliseconds:fullElapsed,protocolCommands:Object.values(protocolCounts).reduce((sum,count)=>sum+count,0),protocolCounts,platform:process.platform,arch:process.arch,electron:process.versions.electron,chrome:process.versions.chrome,error:fullDrawing.isError||false}));
+    console.log('LONG_PATH',JSON.stringify({frame:frameId?'embedded':'main',fixture:process.env.KUDIUMBROWSER_LONG_PATH_FIXTURE||'zigzag',pointerVariant:process.env.KUDIUMBROWSER_FRAME_POINTER_VARIANT||'cached',milliseconds:fullElapsed,protocolCommands:Object.values(protocolCounts).reduce((sum,count)=>sum+count,0),protocolCounts,platform:process.platform,arch:process.arch,electron:process.versions.electron,chrome:process.versions.chrome,error:fullDrawing.isError||false}));
     assert(!fullDrawing.isError,JSON.stringify(fullDrawing));
     const fullTrace=await native.executeJavaScript(`({points:window.fullDrawingTrace,start:JSON.parse(document.body.dataset.drawStart),end:JSON.parse(document.body.dataset.drawEnd)})`);
     assert(fullTrace.points.length>=127&&fullTrace.points.every(point=>point.trusted),'Long path input must reach the actual canvas');
@@ -818,7 +819,7 @@ const views = new Map();
       assert.equal(await native.executeJavaScript(`document.body.dataset.frameDragReleased`),'true','Stop must release frame pointer at source');
       assert.equal(await native.executeJavaScript(`document.body.dataset.frameDropped`),null,'Stop must not complete the frame drop');
     }
-    await native.executeJavaScript(`(()=>{const source=document.querySelector('#frame-drag').firstElementChild,target=document.querySelector('#frame-drag').lastElementChild;source.draggable=true;source.ondragstart=event=>{window.frameHTMLStarted=event.isTrusted;event.dataTransfer.setData('text/plain','Frame HTML payload');event.dataTransfer.setData('text/html','<i>Frame HTML payload</i>');event.dataTransfer.setData('application/x-touchbox','Frame custom payload');event.dataTransfer.effectAllowed='copy';};target.ondragover=event=>{event.preventDefault();event.dataTransfer.dropEffect='copy';};target.ondrop=event=>{event.preventDefault();window.frameHTMLDrop={trusted:event.isTrusted,text:event.dataTransfer.getData('text/plain'),html:event.dataTransfer.getData('text/html'),custom:event.dataTransfer.getData('application/x-touchbox')};};})()`);
+    await native.executeJavaScript(`(()=>{const source=document.querySelector('#frame-drag').firstElementChild,target=document.querySelector('#frame-drag').lastElementChild;source.draggable=true;source.ondragstart=event=>{window.frameHTMLStarted=event.isTrusted;event.dataTransfer.setData('text/plain','Frame HTML payload');event.dataTransfer.setData('text/html','<i>Frame HTML payload</i>');event.dataTransfer.setData('application/x-kudiumbrowser','Frame custom payload');event.dataTransfer.effectAllowed='copy';};target.ondragover=event=>{event.preventDefault();event.dataTransfer.dropEffect='copy';};target.ondrop=event=>{event.preventDefault();window.frameHTMLDrop={trusted:event.isTrusted,text:event.dataTransfer.getData('text/plain'),html:event.dataTransfer.getData('text/html'),custom:event.dataTransfer.getData('application/x-kudiumbrowser')};};})()`);
     const htmlObserved=content(await client.callTool({name:'read_page',arguments:{tabId:'first',frameId}}));
     const htmlSource=htmlObserved.elements.find(el=>el.label==='Frame drag source'),htmlTarget=htmlObserved.elements.find(el=>el.label==='Frame drop target');assert(htmlSource&&htmlTarget);
     const htmlArgs={tabId:'first',frameId,elementId:htmlSource.id,toElementId:htmlTarget.id,snapshotId:htmlObserved.snapshotId};
@@ -1012,10 +1013,10 @@ const views = new Map();
   assert(pendingApproval);assert((await client.callTool({name:'list_tabs',arguments:{}})).isError,'Another controller must not interrupt');
   await evaluate(`test.stop()`);assert((await pending).isError);
   assert.equal(await first.webContents.executeJavaScript(`document.querySelector('input').value`),'MCP worked');
-  const stdio=await evaluate(`test.mcp('stdio')`);const stored=stdio.mcpServers.touchbox.args[1];assert(fs.existsSync(stored));
+  const stdio=await evaluate(`test.mcp('stdio')`);const stored=stdio.mcpServers.kudiumbrowser.args[1];assert(fs.existsSync(stored));
   const bridgeClient=new Client({name:'stdio-test',version:'1'},{capabilities:{}});
   // Electron embeds Node, but use the installed Node executable for this bridge.
-  await bridgeClient.connect(new StdioClientTransport({command:'node',args:[path.resolve('mcp/touchbox-mcp.cjs'),stored]}));
+  await bridgeClient.connect(new StdioClientTransport({command:'node',args:[path.resolve('mcp/kudiumbrowser-mcp.cjs'),stored]}));
   assert.deepEqual((await bridgeClient.listTools()).tools.map(tool=>tool.name).sort(),listed.tools.map(tool=>tool.name).sort(),'stdio exposes the same tools as HTTP');await bridgeClient.close();
   await client.close();
   await evaluate(`test.mcp('update',{enabled:true,port:${port},rotate:true})`);

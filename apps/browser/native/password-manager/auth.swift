@@ -11,8 +11,8 @@ if CommandLine.arguments.contains("--check") {
 }
 guard available else { exit(2) }
 let reason = CommandLine.arguments.contains("--group")
-    ? "Unlock a protected group in TouchBox"
-    : "Access your saved passwords in TouchBox"
+    ? "Unlock a protected group in Kudium Browser"
+    : "Access your saved passwords in Kudium Browser"
 context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, _ in
     exit(success ? 0 : 1)
 }

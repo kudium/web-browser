@@ -32,7 +32,7 @@ const record: VaultItem = {
 };
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-consent-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-consent-'));
   filename = path.join(root, 'vault.json');
   vault = new PasswordVault(filename);
   vault.unlock(password, true);

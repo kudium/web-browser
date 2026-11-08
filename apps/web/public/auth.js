@@ -20,7 +20,9 @@ if (form) form.addEventListener('submit', async event => {
   try {
     const email = String(fields.get('email') || '').trim();
     const password = String(fields.get('password') || '');
-    const callbackURL = `${location.origin}/account`;
+    const next = new URLSearchParams(location.search).get('next');
+    const destination = next && /^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(next) ? next : '/account';
+    const callbackURL = `${location.origin}${destination}`;
     if (mode === 'sign-up') {
       const result = await authRequest('sign-up/email', { name: String(fields.get('name') || '').trim(), email, password, callbackURL });
       if (!result.token) { showMessage('Check your email to verify your account, then sign in.'); return; }
@@ -36,7 +38,7 @@ if (form) form.addEventListener('submit', async event => {
       history.replaceState(null, '', '/reset-password');
       location.assign('/sign-in'); return;
     }
-    location.assign('/account');
+    location.assign(destination);
   } catch (error) { showMessage(error instanceof Error ? error.message : 'Unable to complete this request.'); }
   finally { button.disabled = false; }
 });
@@ -47,3 +49,10 @@ if (signOut) signOut.addEventListener('click', async () => {
   try { await authRequest('sign-out', {}); location.assign('/sign-in'); }
   catch { showMessage('Unable to sign out. Please try again.'); signOut.disabled = false; }
 });
+// Preserve a device approval request when moving between sign-in and sign-up.
+const returnTo = new URLSearchParams(location.search).get('next');
+if (returnTo && /^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(returnTo)) {
+  for (const link of document.querySelectorAll('a[href="/sign-in"],a[href="/sign-up"]')) {
+    link.href = `${link.getAttribute('href')}?next=${encodeURIComponent(returnTo)}`;
+  }
+}

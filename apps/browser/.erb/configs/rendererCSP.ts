@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import webpack from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 
-const marker = '__TOUCHBOX_PRODUCTION_CSP__';
+const marker = '__KUDIUMBROWSER_PRODUCTION_CSP__';
 
 /** Authorize emitted script bytes rather than arbitrary same-origin files. */
 export class RendererCSPPlugin {
@@ -48,7 +48,7 @@ export class RendererCSPPlugin {
           "font-src 'self' data:",
           "connect-src 'none'",
           "object-src 'none'",
-          "frame-src 'none'",
+          'frame-src https://browser.kudium.com',
           "worker-src 'none'",
           "base-uri 'none'",
           "form-action 'none'",

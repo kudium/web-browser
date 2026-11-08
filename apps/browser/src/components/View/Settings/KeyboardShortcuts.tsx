@@ -95,7 +95,7 @@ export function KeyboardShortcuts({
               );
               const link = document.createElement('a');
               link.href = url;
-              link.download = 'touchbox-shortcuts.json';
+              link.download = 'kudiumbrowser-shortcuts.json';
               link.click();
               setTimeout(() => URL.revokeObjectURL(url), 1000);
               setTransferError('');

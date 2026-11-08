@@ -1,4 +1,4 @@
-# TouchBox release checklist
+# Kudium Browser release checklist
 
 Privacy scope confirmed November 7: approved websites may process shared saved
 data through their own services. Local disclosure and AI action reviews remain
@@ -59,7 +59,7 @@ not block a release that clearly scopes unavailable features.
 - [ ] iCloud sync: two-Mac conflict/reconnect/deletion tests and sensitive-data boundaries.
 - [ ] Native iCloud passkeys: Apple approval, entitlement and actual integration verification.
   Keep unavailable capabilities clearly marked until verified.
-- [ ] Dedicated TouchBox encrypted sync API: specification only; backend implementation
+- [ ] Dedicated Kudium Browser encrypted sync API: specification only; backend implementation
   remains deferred by user request.
 
 ## Optional follow-up
@@ -173,3 +173,18 @@ signed/cross-platform release gates remain open. Production readiness is unprove
   See `../benchmarks/enter-key-2026-11-07.md`.
 - [ ] Resolve original pointer UnknownVizError and broader sidebar focus; verify
   interruption, all frame layouts, physical input and signed/platform gates.
+
+## Storage migration release gate
+
+See [storage migration and release safety](storage-migration-and-release-safety.md).
+
+- [x] Prepare journaled encrypted backups, staged validation, restart recovery,
+  unavailable-store write guards, recovery export and migration contract tests.
+- [ ] Register real supported previous signed releases and populated UI fixtures
+  in `../releases/storage-migration-policy.json`; the empty registry blocks release.
+- [ ] Complete all required native signed upgrade scenarios on macOS arm64/x64,
+  Windows x64 and Linux x64, including cookies and full browser-state preservation.
+- [ ] Verify source/candidate signatures and hashes, supply approved native evidence,
+  and pass `npm run release:verify-migrations -- /path/to/evidence.json` before distribution.
+- [ ] Make the evidence gate required in the eventual distribution workflow.
+  Development checks and artifact packaging do not establish signed release readiness.

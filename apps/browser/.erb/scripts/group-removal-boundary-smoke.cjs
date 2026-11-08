@@ -4,7 +4,7 @@ const {spawn}=require('child_process');
 const {app,BrowserWindow,ipcMain,session}=require('electron');
 app.on('window-all-closed',()=>{});
 const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after',worker=process.argv[3]==='worker';assert(['before','after'].includes(phase));
-const temporary=worker?process.argv[4]:fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-removal-boundary-'));
+const temporary=worker?process.argv[4]:fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-removal-boundary-'));
 app.setPath('userData',path.join(temporary,'user-data'));
 const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const sourceFile='src/main/groupRemoval.ts',source=()=>fs.readFileSync(path.join(root,phase==='before'?'docs/benchmarks/baselines/group-removal/groupRemoval.ts.txt':sourceFile),'utf8');
@@ -36,7 +36,7 @@ async function fixture(name,second=false){
  if(!worker||process.argv[5]==='first')await owner.webContents.executeJavaScript('localStorage.setItem("user_apps",'+JSON.stringify(JSON.stringify(apps))+')');
  else assert.equal(JSON.parse(await owner.webContents.executeJavaScript('localStorage.getItem("user_apps")'))[0].id,source.id,'saved layout survived native process restart');
  const save=async value=>owner.webContents.executeJavaScript('localStorage.setItem("user_apps",'+JSON.stringify(JSON.stringify(value))+')');
- const profile=session.fromPartition('persist:touchbox-'+name);profile.protocol.handle('https',()=>new Response('<!doctype html><title>Website</title>'));
+ const profile=session.fromPartition('persist:kudiumbrowser-'+name);profile.protocol.handle('https',()=>new Response('<!doctype html><title>Website</title>'));
  const website=async(target=profile)=>{const window=new BrowserWindow({show:false,webPreferences:{session:target,sandbox:true,contextIsolation:true,nodeIntegration:false}});await window.loadURL('https://fixture.test');return window;};
  const seed=async(target=profile)=>{await target.cookies.set({url:'https://fixture.test',name:'removal',value:'synthetic'});const window=await website(target);await window.webContents.executeJavaScript('localStorage.setItem("removal","synthetic")');window.destroy();};
  if(!worker||process.argv[5]==='first')await seed();
@@ -73,7 +73,7 @@ async function parentRun(){
   }
   if(name==='liveProfile'){live=await f.website();f.active(true);}
   if(name==='secondaryProfile'){
-   secondProfile=session.fromPartition('persist:touchbox-secondary-'+name);secondProfile.protocol.handle('https',()=>new Response('<!doctype html>'));
+   secondProfile=session.fromPartition('persist:kudiumbrowser-secondary-'+name);secondProfile.protocol.handle('https',()=>new Response('<!doctype html>'));
    await f.seed(secondProfile);f.apps[1].sessionProfileId='secondary-'+name;await f.save(f.apps);
   }
   if(name==='ownerClosedAfterCommit'){

@@ -1,14 +1,14 @@
 # iCloud sync and continuity
 
-Owner: Kudium / TouchBox (`com.kudium.touchbox`). November 4, 2026.
+Owner: Kudium / Kudium Browser (`com.kudium.kudiumbrowser`). November 4, 2026.
 Initial scope confirmed by the user: Mac to Mac.
-Status: Sync preferences and tested local outbound/encryption foundation implemented.
-Provider connection, key provisioning and cloud transport remain pending; no uploads.
-The TouchBox API is specification-only at the user's request.
+Status (November 8): Kudium Account sync, recovery-key enrollment, encrypted per-device workspace/password records, explicit restore and device authorization are implemented and tested locally. Backend deployment and desktop publication are pending. Native iCloud transport, CloudKit provisioning and Apple credential approval remain pending.
+
+The historical phase notes below describe the November 4 audit. For current Apple setup and acceptance requirements, see [Apple integration readiness](../apple-integration-readiness.md).
 
 ## Product goal
 
-Let a user enable iCloud sync in TouchBox, see their spaces, folders, favorites,
+Let a user enable iCloud sync in Kudium Browser, see their spaces, folders, favorites,
 session apps and tabs on another Mac, and explicitly continue browsing there.
 Keep credentials under Apple-supported credential APIs and protect browsing data
 with application-level encryption. Sync is optional and off by default.
@@ -24,11 +24,11 @@ or an authenticated server session.
 - [x] Audit app/session storage: `src/utils/AppManager.ts` uses `user_apps` in
   workspace localStorage; spaces/folders have their own localStorage records.
 - [x] Audit actual login isolation: main-process WebContentsViews use persistent
-  Electron session partitions (`persist:touchbox-<sessionId>`).
+  Electron session partitions (`persist:kudiumbrowser-<sessionId>`).
 - [x] Audit preferences: main-process JSON contains controls and shortcuts as well
   as device-specific settings that must not all be copied to another Mac.
-- [x] Separate Apple credentials from TouchBox browsing-state sync. No custom
-  TouchBox password vault or existing CloudKit integration was found in the audit.
+- [x] Separate Apple credentials from Kudium Browser browsing-state sync. No custom
+  Kudium Browser password vault or existing CloudKit integration was found in the audit.
 
 ## Data and credential channels
 
@@ -38,7 +38,7 @@ or an authenticated server session.
 | Open tabs and their current URLs, selected tab and per-device recency | Same encrypted channel; explicit “Tabs from other Macs” / continue action | Yes, opt-in |
 | Portable preferences and keyboard shortcuts | Versioned allowlist in encrypted records | Yes, optional category |
 | Passwords/passkeys saved by Apple's credential provider | iCloud Keychain / Passwords integration, governed by that provider | Separate integration; Apple browser work still pending |
-| A future TouchBox-owned secret such as the sync encryption key | App-scoped synchronizable Keychain item, via native Security APIs | Needs signed integration and lifecycle testing |
+| A future Kudium Browser-owned secret such as the sync encryption key | App-scoped synchronizable Keychain item, via native Security APIs | Needs signed integration and lifecycle testing |
 | Website cookies, bearer/refresh tokens and login storage | Device-local Electron partition | Excluded from initial sync |
 | Private/incognito tabs, extension credential stores, permission grants | Device-local | Excluded |
 | File downloads, local paths, caches, history of unsaved forms/editor content | Device-local | Excluded |
@@ -130,7 +130,7 @@ active page or close local work without an explicit user action.
 - [ ] Verify supported iCloud Passwords/passkey discovery, registration and sign-in
   on both Macs through Apple's supported integration.
 - [ ] Explain site-required reauthentication and provider authorization accurately.
-- [ ] Consider any TouchBox-owned credential vault only as a separate reviewed
+- [ ] Consider any Kudium Browser-owned credential vault only as a separate reviewed
   project; no custom password-copying channel is part of this first release.
 
 ## Release acceptance
@@ -164,7 +164,7 @@ extension-install targets. It is not yet wired to live snapshot collection or
 remote import. The encryption module takes a main-process key; it does not generate
 or persist a roaming vault key, and its tests do not establish end-to-end deployment.
 
-[TouchBox API plan](touchbox-sync-api.md): account auth, opaque encrypted storage,
+[Kudium Browser API plan](kudiumbrowser-sync-api.md): account auth, opaque encrypted storage,
 change cursors, optimistic concurrency, key enrollment/recovery and device revocation.
 Backend implementation remains deferred as requested. Native CloudKit container,
 bridge, signed provisioning and two-Mac tests are also still outstanding.
@@ -176,7 +176,14 @@ bridge, signed provisioning and two-Mac tests are also still outstanding.
 - Targeted ESLint: passed.
 - `npm run build`: passed.
 - `electron .erb/scripts/browser-ui-smoke.cjs --sync-settings-only`: passed Mac
-  iCloud default, persisted enable intent/categories, TouchBox provider selection,
+  iCloud default, persisted enable intent/categories, Kudium Browser provider selection,
   truthful disconnected status, disable, and layouts at 1080/760/480 pixels.
 - Desktop screenshots were visually inspected. Encryption/snapshot helpers use
   synthetic fixtures; there is no real cloud/network or two-Mac test in this phase.
+
+
+### Optional saved-password sync and structured imports
+
+Kudium global saved logins can be synced as separate encrypted per-device records. Password sync defaults off, requires unlocking Personal Data for each upload or restore, and never sends plaintext credentials through renderer IPC. Restoring keeps existing passwords and creates entries without AI access. Group-scoped credentials, passkeys, payment data and OTPs remain local. Apple iCloud Passwords remains blocked until Apple grants Kudium the managed browser entitlement; account sync does not grant this access.
+
+Preferences → Import accepts bookmark HTML, links and Arc’s official Markdown data export. Arc space headings become new Kudium spaces, and favorites/pinned sections are recognized. Bookmark folder paths are retained; nested folders use readable Parent / Child names because Kudium folders are currently flat. Dia and other browsers retain structure only when it exists in their export; flat links do not expose spaces. Existing local tabs and spaces are preserved.

@@ -1,4 +1,4 @@
-# TouchBox Personal Data
+# Kudium Browser Personal Data
 
 The current records, group inheritance and AI interfaces are documented in [Personal Data](personal-data.md). This document retains the underlying vault security and authentication details.
 

@@ -2,7 +2,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs'), path = require('path'), assert = require('assert');
 const root = path.resolve(__dirname, '../..');
-const runtime = fs.mkdtempSync(path.join(require('os').tmpdir(), 'touchbox-window-ipc-'));
+const runtime = fs.mkdtempSync(path.join(require('os').tmpdir(), 'kudiumbrowser-window-ipc-'));
 app.setPath('userData', path.join(runtime, 'profile'));
 require('esbuild').buildSync({ entryPoints: [path.join(root, 'src/main/windowCommands.ts'), path.join(root, 'src/utils/EventBus.ts')], bundle: true, platform: 'node', external: ['electron'], outdir: runtime });
 const { registerWindowCommands } = require(path.join(runtime, 'main/windowCommands.js'));

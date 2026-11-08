@@ -2,9 +2,9 @@
 // Requires the paired Electron harness, which writes this private control file.
 const fs = await import('node:fs/promises');
 const { origin, secret } = JSON.parse(
-  await fs.readFile('/tmp/touchbox-comparison-control.json', 'utf8')
+  await fs.readFile('/tmp/kudiumbrowser-comparison-control.json', 'utf8')
 );
-const task = await taskSpace('TouchBox AI control benchmark');
+const task = await taskSpace('KudiumBrowser AI control benchmark');
 const page = task.page('p1');
 await page.goto(`${origin}/fixture`);
 const request = async (path, input) => {
@@ -46,9 +46,9 @@ const measure = async (kind, round) => {
     apiCalls: kind === 'workflow' ? 4 : 1,
   };
 };
-const coldTouchbox = await request('/measure', { kind: 'snapshot' });
+const coldKudiumBrowser = await request('/measure', { kind: 'snapshot' });
 const coldEgo = await measure('snapshot', -1);
-console.log({ spaceId: task.spaceId, coldTouchbox, coldEgo });
+console.log({ spaceId: task.spaceId, coldKudiumBrowser, coldEgo });
 const ego = { snapshot: [], workflow: [] };
 for (let round = -2; round < 20; round += 1) {
   for (const kind of ['snapshot', 'workflow']) {
@@ -64,6 +64,6 @@ for (let round = -2; round < 20; round += 1) {
   }
   if (round >= 0 && round % 5 === 0) console.log({ round });
 }
-console.log(await request('/finish', { coldTouchbox, coldEgo, ego }));
+console.log(await request('/finish', { coldKudiumBrowser, coldEgo, ego }));
 console.log(await page.snapshot({ scope: 'full_page' }));
 // The broader parity task remains active; reuse this TaskSpace for later fixtures.

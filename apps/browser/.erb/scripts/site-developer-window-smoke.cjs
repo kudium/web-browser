@@ -6,7 +6,7 @@ const os = require('os');
 const assert = require('assert');
 
 const root = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'touchbox-developer-window-')
+  path.join(os.tmpdir(), 'kudiumbrowser-developer-window-')
 );
 app.setPath('userData', path.join(root, 'profile'));
 process.env.NODE_ENV = 'production';
@@ -272,7 +272,7 @@ app
       for (const theme of ['light', 'dark']) {
         editor.setContentSize(width, 640);
         await wc.executeJavaScript(
-          `localStorage.setItem('touchbox-appearance',${JSON.stringify(
+          `localStorage.setItem('kudiumbrowser-appearance',${JSON.stringify(
             theme
           )});window.dispatchEvent(new Event('storage'));window.setTheme(${JSON.stringify(
             theme
@@ -361,7 +361,7 @@ app
         await wait(250);
         assert(
           await wc.executeJavaScript(
-            `localStorage.getItem('react-resizable-panels:touchbox-developer-workspace-${
+            `localStorage.getItem('react-resizable-panels:kudiumbrowser-developer-workspace-${
               width >= 720 ? 'horizontal' : 'vertical'
             }')!==null`
           ),

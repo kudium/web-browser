@@ -1,4 +1,5 @@
 export type ProjectAction =
+  | 'choose-folder'
   | 'get'
   | 'link'
   | 'unlink'

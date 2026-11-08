@@ -1,6 +1,16 @@
 import { aiURL } from '../browser/ai';
 import { readAIPage, actAIPage } from '../main/ai';
 
+jest.mock('../main/preferences', () => ({
+  getBrowserPreferences: () => ({
+    ...jest.requireActual('../browser/preferences').defaultPreferences,
+    writeBrowserInstructions: true,
+  }),
+}));
+jest.mock('../main/localStorage', () => ({
+  safeStorage: jest.requireMock('electron').safeStorage,
+}));
+
 it('validates the observed keyboard target after focus without refocusing a changed target', () => {
   jest
     .spyOn(Element.prototype, 'getClientRects')

@@ -12,7 +12,7 @@ import { authenticateSession, syncAccountId, type Authenticate, type Auth } from
 import { envelopeSchema, opaqueId, targetSchema } from './validation';
 import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest } from './releases';
-import { homepage, documentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage } from './pages';
+import { homepage, documentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage } from './pages';
 import { tutorials } from './tutorials';
 export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing }: { publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
   const app = new Hono<{ Variables: { account: string } }>();
@@ -42,7 +42,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/docs', c => c.html(documentation()));
   app.get('/tutorials', c => c.html(tutorialIndex()));
   app.get('/tutorials/:slug', c => { const tutorial = tutorials.find(t => t.slug === c.req.param('slug')); return tutorial ? c.html(tutorialPage(tutorial)) : c.notFound(); });
-  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace']);
+  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace']);
   app.get('/assets/product/demo/:filename', async c => {
     const filename = c.req.param('filename');
     if (!filename.endsWith('.webp') || !demoAssets.has(filename.slice(0, -5))) return c.notFound();
@@ -87,6 +87,17 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
       return c.html(authPage(page, Boolean(auth), Boolean(auth?.options.emailAndPassword?.sendResetPassword)));
     });
   }
+  app.get('/device', async c => {
+    c.header('Cache-Control', 'no-store');
+    if (!auth) throw new HTTPException(503, {message: 'auth_not_configured'});
+    const code = c.req.query('user_code');
+    if (!code || !/^[A-Za-z0-9-]{4,32}$/.test(code)) throw new HTTPException(400, {message: 'invalid_device_code'});
+    const session = await auth.api.getSession({headers: c.req.raw.headers, query: {disableCookieCache:true}});
+    if (!session) return c.redirect(`/sign-in?next=${encodeURIComponent(`/device?user_code=${code}`)}`);
+    return c.html(devicePage());
+  });
+  app.get('/assets/sessions.js', async c => {c.header('Content-Type','text/javascript; charset=utf-8');return c.body(await Bun.file(new URL('../public/sessions.js',import.meta.url)).text());});
+  app.get('/assets/device.js', async c => {c.header('Content-Type','text/javascript; charset=utf-8');return c.body(await Bun.file(new URL('../public/device.js',import.meta.url)).text());});
   app.get('/account', async c => {
     c.header('Cache-Control', 'no-store');
     if (!auth) return c.redirect('/sign-in');
@@ -154,6 +165,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     if (!id.success) throw new HTTPException(400, { message: 'invalid_record_id' });
     const row = await store.get(c.get('account'), id.data);
     c.header('ETag', `"${row.revision}"`);
+    if (!row.envelope) return c.json({error:'record_not_found',revision:row.revision,deleted:true},404);
     return c.json({ envelope: row.envelope, revision: row.revision });
   });
   app.put('/v1/sync/records/:id', async c => {

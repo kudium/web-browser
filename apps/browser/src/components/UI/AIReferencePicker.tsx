@@ -50,7 +50,7 @@ export function AIReferencePicker({
   const focus = (id?: string) => {
     if (id)
       window.dispatchEvent(
-        new CustomEvent('touchbox-ai-focus-tab', { detail: id })
+        new CustomEvent('kudiumbrowser-ai-focus-tab', { detail: id })
       );
     close();
   };

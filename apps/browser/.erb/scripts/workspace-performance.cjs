@@ -28,7 +28,7 @@ async function child(mode, config) {
     await app.whenReady();
     const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
     await win.loadFile(path.join(config.stage, 'dist/renderer/seed.html'));
-    await win.webContents.executeJavaScript(`localStorage.clear();localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(config.tabs))});localStorage.setItem('user_last_app_id','synthetic-0');localStorage.setItem('touchbox-active-space','default');localStorage.setItem('touchbox-appearance','light');localStorage.setItem('touchbox-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[],selectedAppId:'synthetic-0'}]))});undefined`);
+    await win.webContents.executeJavaScript(`localStorage.clear();localStorage.setItem('user_apps',${JSON.stringify(JSON.stringify(config.tabs))});localStorage.setItem('user_last_app_id','synthetic-0');localStorage.setItem('kudiumbrowser-active-space','default');localStorage.setItem('kudiumbrowser-appearance','light');localStorage.setItem('kudiumbrowser-spaces',${JSON.stringify(JSON.stringify([{id:'default',name:'Personal',color:'iris',folders:[],selectedAppId:'synthetic-0'}]))});undefined`);
     session.defaultSession.flushStorageData();
     win.destroy();
     clearTimeout(timeout);
@@ -91,11 +91,11 @@ async function child(mode, config) {
   await until(() => win && !win.webContents.isLoadingMainFrame(), 'app document');
   await until(() => evaluate(`document.querySelectorAll('.sidebar-app').length===${config.tabs.length} && !!document.querySelector('.workspace')`), 'saved layout');
   const wrapperToShellReadyMs = performance.now() - start;
-  console.log('TOUCHBOX_PROFILE_EVENT shell');
+  console.log('KUDIUMBROWSER_PROFILE_EVENT shell');
   await until(() => ready(0), 'initial website');
   await until(() => evaluate(`document.querySelector('#browser-content')?.getAttribute('aria-busy')==='false'`), 'initial page state');
   const wrapperToFirstPageReadyMs = performance.now() - start;
-  console.log('TOUCHBOX_PROFILE_EVENT page');
+  console.log('KUDIUMBROWSER_PROFILE_EVENT page');
   assert.equal(websiteViews().length, 1, 'Unvisited tabs must remain metadata');
   assert.equal(await evaluate(`document.querySelector('.workspace').getAttribute('data-glass')`), String(config.glass));
   const metrics = () => app.getAppMetrics().map((item) => ({
@@ -174,7 +174,7 @@ async function run() {
   assert(['before', 'after', 'confirmation', 'pilot'].includes(phase));
   const repetitions = process.argv.includes('--quick') ? 1 : 5;
   const counts = process.argv.includes('--quick') ? [10] : [1, 10, 50];
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-workspace-profile-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-workspace-profile-'));
   const stage = path.join(temporary, 'app');
   fs.mkdirSync(stage);
   fs.cpSync(path.join(root, 'release/app/dist'), path.join(stage, 'dist'), { recursive: true });
@@ -210,7 +210,7 @@ async function run() {
       let end;
       while ((end = buffered.indexOf('\n')) >= 0) {
         const line = buffered.slice(0, end); buffered = buffered.slice(end + 1);
-        if (line.startsWith('TOUCHBOX_PROFILE_EVENT ')) times[line.slice(23).trim()] = performance.now() - started;
+        if (line.startsWith('KUDIUMBROWSER_PROFILE_EVENT ')) times[line.slice(23).trim()] = performance.now() - started;
       }
     });
     processHandle.stderr.on('data', (chunk) => { log = (log + chunk).slice(-20000); });

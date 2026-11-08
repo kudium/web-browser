@@ -20,7 +20,7 @@ Commands:
 `npx electron .erb/scripts/browser-ui-smoke.cjs --page-status-only`
 `npx electron .erb/scripts/browser-ui-smoke.cjs --loading-only`
 
-## TouchBox connection sequence
+## Kudium Browser connection sequence
 
 - [x] Replace the first-load spinner screen with a dark terminal card, animated matrix streams, blinking prompt, and staggered DNS/network/TLS/HTTP/DOM stages.
 - [x] Display only the destination host; avoid exposing URL paths, query strings, or credentials.

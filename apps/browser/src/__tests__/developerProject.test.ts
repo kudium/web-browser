@@ -7,6 +7,10 @@ import { dialog, shell } from 'electron';
 import { projectAction, repositoryURL } from '../main/developerProject';
 
 let mockRoot: string;
+let mockInstructions = true;
+jest.mock('../main/preferences', () => ({
+  getBrowserPreferences: () => ({ writeBrowserInstructions: mockInstructions }),
+}));
 jest.mock('electron', () => ({
   app: { getPath: () => mockRoot },
   dialog: { showOpenDialog: jest.fn() },
@@ -16,7 +20,10 @@ jest.mock('electron', () => ({
   },
 }));
 beforeEach(() => {
-  mockRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-project-test-'));
+  mockInstructions = true;
+  mockRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kudiumbrowser-project-test-')
+  );
 });
 afterEach(() => {
   fs.rmSync(mockRoot, { recursive: true, force: true });
@@ -130,4 +137,52 @@ it('provides home-relative clickable breadcrumbs and only opens real project anc
   } finally {
     fs.rmSync(outside, { recursive: true, force: true });
   }
+});
+
+it('moves the browser context when relinking to another folder', async () => {
+  const first = path.join(mockRoot, 'first');
+  const second = path.join(mockRoot, 'second');
+  fs.mkdirSync(first);
+  fs.mkdirSync(second);
+  const picker = dialog.showOpenDialog as jest.Mock;
+  picker.mockResolvedValue({ canceled: false, filePaths: [first] });
+  await projectAction(
+    {} as any,
+    'group',
+    'link',
+    () => {},
+    undefined,
+    undefined,
+    { name: 'Website', slug: 'website' }
+  );
+  expect(fs.readFileSync(path.join(first, 'BROWSER.md'), 'utf8')).toContain(
+    '"slug":"website"'
+  );
+  picker.mockResolvedValue({ canceled: false, filePaths: [second] });
+  await projectAction(
+    {} as any,
+    'group',
+    'link',
+    () => {},
+    undefined,
+    undefined,
+    { name: 'Website', slug: 'website' }
+  );
+  expect(fs.existsSync(path.join(first, 'BROWSER.md'))).toBe(false);
+  expect(fs.existsSync(path.join(first, 'AGENTS.md'))).toBe(false);
+  expect(fs.existsSync(path.join(second, 'BROWSER.md'))).toBe(true);
+  await projectAction({} as any, 'group', 'unlink', () => {});
+  expect(fs.existsSync(path.join(second, 'BROWSER.md'))).toBe(false);
+});
+
+it('links a project without writing instructions when disabled', async () => {
+  mockInstructions = false;
+  const folder = path.join(mockRoot, 'No instructions');
+  fs.mkdirSync(folder);
+  await projectAction({} as any, 'group', 'link', () => {}, undefined, folder, {
+    name: 'Project',
+    slug: 'project',
+  });
+  expect(fs.existsSync(path.join(folder, 'BROWSER.md'))).toBe(false);
+  expect(fs.existsSync(path.join(folder, 'AGENTS.md'))).toBe(false);
 });

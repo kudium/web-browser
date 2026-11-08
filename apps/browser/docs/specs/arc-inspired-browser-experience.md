@@ -1,6 +1,6 @@
 # Browser interaction and organization
 
-Owner: Kudium / TouchBox. Updated November 4, 2026.
+Owner: Kudium / Kudium Browser. Updated November 4, 2026.
 
 ## Research and approach
 
@@ -10,19 +10,19 @@ Preferences → Shortcuts → search for “back” → Go Back (Alternate) → 
 A sidebar screenshot also showed four favorites columns and nested folders.
 The Mac initially required unlocking; inspection resumed after the user unlocked it.
 
-Use these interaction patterns as references. TouchBox keeps its own visual design
+Use these interaction patterns as references. Kudium Browser keeps its own visual design
 and explicit isolated-session model. No Arc names, pinned URLs, shortcut settings
 or account data were edited. Findings below describe browser controls, not private
 website content.
 
-| Observed Arc behavior | TouchBox decision |
+| Observed Arc behavior | Kudium Browser decision |
 | --- | --- |
 | Favorite single-click activates its page | Preserve single-click session activation and clear active state |
 | Four favorites columns; the inspected collection had twelve tiles | Use four columns and no row-count cap, with scrolling for larger collections |
 | Favorite menu separates Rename, Edit Pinned Page, Split View, Move To, Remove Favorite | Keep name, home URL, placement and favorite status as distinct actions |
 | Rename opens a small name dialog with Cancel/Rename | Use a responsive favorite rename dialog with Cancel/Save and accessible labels |
 | Folders visibly support nested organization | Ship consistent flat session-folder moves now; plan nested folders next |
-| Command+T opens “Search or Enter URL…” | Keep TouchBox command palette and session-aware new-tab flow |
+| Command+T opens “Search or Enter URL…” | Keep Kudium Browser command palette and session-aware new-tab flow |
 | Shortcuts page searches feature names and shortcut labels | Dedicated searchable Keyboard Shortcuts preference page |
 | Go Back uses Command+Left; alternate uses Command+[ | Support requested Command+[ / ] and shifted { / } aliases; bindings are editable |
 | Shortcut priority offers Prefer Websites / Use Both / Prefer Arc | Track per-action/site priority as a follow-up; current registered shortcuts take browser priority |
@@ -78,7 +78,7 @@ website content.
 - [ ] Keyboard-layout/localized key labels and split management shortcut actions.
 - [ ] Revisit home-URL editing and left/middle/modifier-click actions with a written
   behavior matrix for favorites, sessions, tabs and folders.
-- [ ] Verify all native menu interactions manually in a packaged TouchBox build.
+- [ ] Verify all native menu interactions manually in a packaged Kudium Browser build.
 
 ## Acceptance and scope
 
@@ -125,7 +125,7 @@ its permission semantics. Extension popup authentication remains unverified.
 The folder context menu exposes Share Folder, New Nested Folder, Turn Folder into
 Space, Copy All Links, Copy All Links as Markdown, Change Icon, Rename, Duplicate,
 Move to (existing spaces and New Space), and Delete. These were read without
-changing or deleting the user's folders. TouchBox currently has flat folders;
+changing or deleting the user's folders. Kudium Browser currently has flat folders;
 nested folders and the additional actions remain implementation requirements.
 
 - [x] Persistent extension pin/order controls in the native management menu;

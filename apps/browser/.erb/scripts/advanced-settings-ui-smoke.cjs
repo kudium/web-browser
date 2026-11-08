@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-settings-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-settings-'));
 const output = path.resolve('docs/evidence/preferences');
 fs.mkdirSync(output, { recursive: true });
 app.setPath('userData', path.join(root, 'data'));
@@ -20,7 +20,7 @@ require('esbuild').buildSync({
 
 fs.writeFileSync(
   path.join(root, 'extensions.js'),
-  `const {session}=require('electron');exports.configureExtensionToolbar=()=>{};exports.extensionCatalog=()=>[];exports.installedExtensionOrigins=()=>[];exports.getExtensionProfiles=()=>[{id:'work',name:'Work',session:session.fromPartition('persist:touchbox-work')}];exports.getExtensionProfile=id=>exports.getExtensionProfiles().find(p=>p.id===id);`
+  `const {session}=require('electron');exports.configureExtensionToolbar=()=>{};exports.extensionCatalog=()=>[];exports.installedExtensionOrigins=()=>[];exports.getExtensionProfiles=()=>[{id:'work',name:'Work',session:session.fromPartition('persist:kudiumbrowser-work')}];exports.getExtensionProfile=id=>exports.getExtensionProfiles().find(p=>p.id===id);`
 );
 fs.writeFileSync(
   path.join(root, 'dialogs.js'),

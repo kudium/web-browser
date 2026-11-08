@@ -35,7 +35,7 @@ it('searches controls, saves a live setting and surfaces save failures', async (
   (browser.preferenceAction as jest.Mock).mockResolvedValue({
     profiles: [],
     languages: ['en-US'],
-    versions: { touchbox: '1', engine: '45', chromium: '1' },
+    versions: { kudiumbrowser: '1', engine: '45', chromium: '1' },
   });
   render(
     <Theme>
@@ -79,7 +79,7 @@ it('defaults extension access to all apps and carries it into store and manageme
         ? {
             profiles: [{ id: 'personal', name: 'Personal', extensions: 0 }],
             languages: ['en-US'],
-            versions: { touchbox: '1', engine: '45', chromium: '1' },
+            versions: { kudiumbrowser: '1', engine: '45', chromium: '1' },
           }
         : null
     )
@@ -172,7 +172,7 @@ it('shows the default-browser banner, preserves pending feedback and refreshes a
             defaultBrowser: isDefault,
             profiles: [],
             languages: [],
-            versions: { touchbox: '1', engine: '1', chromium: '1' },
+            versions: { kudiumbrowser: '1', engine: '1', chromium: '1' },
           }
         : {
             kind: 'diagnostic',
@@ -209,7 +209,7 @@ it.each(['apps', 'spaces', 'archive'])(
     (browser.preferenceAction as jest.Mock).mockResolvedValue({
       profiles: [],
       languages: [],
-      versions: { touchbox: '1', engine: '45', chromium: '1' },
+      versions: { kudiumbrowser: '1', engine: '45', chromium: '1' },
     });
     try {
       render(
@@ -238,7 +238,7 @@ it('falls back to Search for an unknown initial section', async () => {
   (browser.preferenceAction as jest.Mock).mockResolvedValue({
     profiles: [],
     languages: [],
-    versions: { touchbox: '1', engine: '45', chromium: '1' },
+    versions: { kudiumbrowser: '1', engine: '45', chromium: '1' },
   });
   try {
     render(
@@ -253,4 +253,23 @@ it('falls back to Search for an unknown initial section', async () => {
   } finally {
     window.history.replaceState(null, '', '/');
   }
+});
+
+
+it('shows default update preferences and lets users turn both off', async () => {
+  window.location.hash = '#updates';
+  (browser.preferences as jest.Mock).mockImplementation((action, patch) => Promise.resolve({ ...defaultPreferences, ...patch }));
+  (browser.preferenceAction as jest.Mock).mockResolvedValue({ profiles: [], languages: ['en-US'], versions: { kudiumbrowser: '1', engine: '45', chromium: '1' } });
+  render(<Theme><Settings /></Theme>);
+  await screen.findByText('Saved automatically');
+  const download = screen.getByRole('switch', { name: 'Automatically download updates' });
+  const install = screen.getByRole('switch', { name: 'Install downloaded updates when I quit' });
+  expect(download).toBeChecked();
+  expect(install).toBeChecked();
+  fireEvent.click(download);
+  await waitFor(() => expect(browser.preferences).toHaveBeenCalledWith('update', { automaticallyDownloadUpdates: false }));
+  await screen.findByText('Saved automatically');
+  fireEvent.click(install);
+  await waitFor(() => expect(browser.preferences).toHaveBeenCalledWith('update', { automaticallyInstallUpdates: false }));
+  window.location.hash = '';
 });

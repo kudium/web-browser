@@ -233,7 +233,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
       audible: contents.isCurrentlyAudible(),
       mediaPlaying: playingMedia.has(id),
       extensionContext: {
-        profile: `persist:touchbox-${loginProfileKey(
+        profile: `persist:kudiumbrowser-${loginProfileKey(
           configurations.get(id) || ({} as IApp)
         )}`,
         tab: String(contents.id),
@@ -386,7 +386,7 @@ export function registerElectronBrowser(window: BrowserWindow) {
           new WebContentsView({
             webPreferences: {
               preload: siteDeveloperPreload(),
-              partition: `persist:touchbox-${loginProfileKey(item)}`,
+              partition: `persist:kudiumbrowser-${loginProfileKey(item)}`,
               sandbox: true,
               contextIsolation: true,
               nodeIntegration: false,

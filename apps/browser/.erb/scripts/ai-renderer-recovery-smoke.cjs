@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const http = require('http');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-renderer-recovery-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-renderer-recovery-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/aiNavigation.ts', 'src/main/aiObservation.ts', 'src/main/aiTabs.ts'],

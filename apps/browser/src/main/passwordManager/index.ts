@@ -14,6 +14,7 @@ import type { VaultItem, VaultRequest } from '../../browser/passwordManager';
 import { PasswordVault } from './vault';
 import { fillDocument } from './fill';
 import * as nativeAuthentication from './authentication';
+import { safeStorage } from '../localStorage';
 import { assertRemovalScopeWritable } from '../groupRemovalJournal';
 
 const pages = new Map<number, WebContents>();
@@ -49,7 +50,18 @@ export const passwordVault = () => {
       path.join(app.getPath('userData'), 'password-manager', 'vault.json'),
       Date.now,
       nativeAuthentication.summaryProtection,
-      assertRemovalScopeWritable
+      assertRemovalScopeWritable,
+      () => {
+        const file = path.join(
+          app.getPath('userData'),
+          'password-manager',
+          'vault.json'
+        );
+        if (!safeStorage.isFileAvailable(file))
+          throw new Error(
+            'Saved Personal Data needs recovery before it can be changed. Its encrypted file has been preserved.'
+          );
+      }
     );
   return store;
 };
@@ -536,7 +548,7 @@ export function registerPasswordManager(
       // Remove files left by a crashed, previously approved document upload.
       try {
         fs.readdirSync(app.getPath('temp'))
-          .filter((name) => name.startsWith('touchbox-personal-upload-'))
+          .filter((name) => name.startsWith('kudiumbrowser-personal-upload-'))
           .forEach((name) =>
             fs.rmSync(path.join(app.getPath('temp'), name), {
               recursive: true,
@@ -555,3 +567,5 @@ export function registerPasswordManager(
   const timer = setInterval(() => store?.status(), 10000);
   timer.unref();
 }
+
+export { initializeLocalStorage } from '../localStorage';

@@ -30,7 +30,7 @@ export function SiteDeveloperWorkspace({
     <PanelGroup
       key={direction}
       direction={direction}
-      autoSaveId={`touchbox-developer-workspace-${direction}`}
+      autoSaveId={`kudiumbrowser-developer-workspace-${direction}`}
       className="site-developer-workspace"
     >
       <Panel

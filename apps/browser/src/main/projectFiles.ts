@@ -251,7 +251,7 @@ export async function projectFiles(
         );
       const staged = path.join(
         path.dirname(target),
-        `.touchbox-${randomUUID()}.tmp`
+        `.kudiumbrowser-${randomUUID()}.tmp`
       );
       const handle = await fs.open(
         staged,

@@ -30,7 +30,7 @@ const context = vm.createContext({
   import_electron9: { ipcMain: ipc }, ipcMain: ipc,
   resolvePartition(partition) { resolved++; return partition === 'allowed' ? target : other; },
 });
-context[Symbol.for('touchbox.extensionRemoteAuthority')] = (candidate, session) => candidate === ui && (!session || session === target);
+context[Symbol.for('kudiumbrowser.extensionRemoteAuthority')] = (candidate, session) => candidate === ui && (!session || session === target);
 vm.runInContext(source.slice(source.indexOf('var getSessionFromEvent ='), source.indexOf('var getHostId =')), context);
 const delegate = new context.RoutingDelegate();
 delegate.sessionMap.set(target, observer);

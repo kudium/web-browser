@@ -17,7 +17,7 @@ let registry: string;
 let manager: PersonalAgentConnections;
 const connection = {
   mcpServers: {
-    touchbox: {
+    kudiumbrowser: {
       url: 'http://127.0.0.1:43187/mcp',
       headers: { Authorization: 'Bearer fixture-private-token' },
     },
@@ -34,7 +34,7 @@ const setup = (id: PersonalAgentId, text: string) => {
   return filename;
 };
 beforeEach(() => {
-  home = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-agent-test-'));
+  home = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-agent-test-'));
   registry = path.join(home, 'registrations.json');
   manager = new PersonalAgentConnections({ home, filename: registry });
 });
@@ -57,13 +57,13 @@ it.each(['hermes', 'openclaw'] as const)(
     expect(parsed.model).toBe('my-model');
     const servers = id === 'hermes' ? parsed.mcp_servers : parsed.mcp.servers;
     expect(servers.other.url).toBe('https://other.test/mcp');
-    expect(servers.touchbox.headers.Authorization).toBe(
+    expect(servers.kudiumbrowser.headers.Authorization).toBe(
       'Bearer fixture-private-token'
     );
     if (process.platform !== 'win32') { expect(fs.statSync(filename).mode & 0o777).toBe(0o600); }
     const backup = fs
       .readdirSync(path.dirname(filename))
-      .find((entry) => entry.includes('touchbox-backup'))!;
+      .find((entry) => entry.includes('kudiumbrowser-backup'))!;
     expect(
       fs.readFileSync(path.join(path.dirname(filename), backup), 'utf8')
     ).toBe(text);
@@ -95,7 +95,7 @@ it('detects missing agents without creating folders, and supports an existing in
 it('requires review to replace an unknown entry and cancels without changes', async () => {
   const filename = setup(
     'hermes',
-    'mcp_servers:\n  touchbox:\n    command: original-agent\n'
+    'mcp_servers:\n  kudiumbrowser:\n    command: original-agent\n'
   );
   const original = fs.readFileSync(filename, 'utf8');
   expect(manager.list()[0].state).toBe('conflict');
@@ -114,8 +114,8 @@ it('detects rotated tokens and refuses to silently remove user edits', async () 
   await manager.change('openclaw', connection, jest.fn());
   const rotated = {
     mcpServers: {
-      touchbox: {
-        ...connection.mcpServers.touchbox,
+      kudiumbrowser: {
+        ...connection.mcpServers.kudiumbrowser,
         headers: { Authorization: 'Bearer new-token' },
       },
     },
@@ -134,7 +134,7 @@ it('detects rotated tokens and refuses to silently remove user edits', async () 
 it('rejects concurrent config changes during review', async () => {
   const filename = setup(
     'openclaw',
-    '{mcp:{servers:{touchbox:{url:"https://original.test"}}}}'
+    '{mcp:{servers:{kudiumbrowser:{url:"https://original.test"}}}}'
   );
   await expect(
     manager.change('openclaw', connection, async () => {
@@ -148,7 +148,7 @@ it('rejects concurrent config changes during review', async () => {
 it('revoked review cannot create a backup, registry or changed config', async () => {
   const filename = setup(
     'openclaw',
-    '{mcp:{servers:{touchbox:{url:"https://original.test"}}}}'
+    '{mcp:{servers:{kudiumbrowser:{url:"https://original.test"}}}}'
   );
   const before = fs.readFileSync(filename, 'utf8');
   let current = true;
@@ -191,13 +191,13 @@ it('rejects malformed/linked files and never returns their secret contents in st
 it('preserves YAML aliases and rejects an aliased server mapping rather than mutating other settings', () => {
   const text = 'defaults: &defaults\n  model: unchanged\nprofile: *defaults\n';
   const result = agentConfig('hermes', text).set(
-    connection.mcpServers.touchbox
+    connection.mcpServers.kudiumbrowser
   );
   expect(parse(result).profile.model).toBe('unchanged');
   const alias =
     'shared: &shared\n  other:\n    url: https://other.test\nmcp_servers: *shared\n';
   expect(() =>
-    agentConfig('hermes', alias).set(connection.mcpServers.touchbox)
+    agentConfig('hermes', alias).set(connection.mcpServers.kudiumbrowser)
   ).toThrow('mapping');
 });
 

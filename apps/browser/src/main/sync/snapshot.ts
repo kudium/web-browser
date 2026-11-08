@@ -132,3 +132,143 @@ export function buildSyncSnapshot(input: {
     preferences?: unknown;
   };
 }
+
+export interface IncomingSnapshot {
+  version: 1;
+  deviceId: string;
+  createdAt: number;
+  workspace?: {
+    spaces: {
+      id: string;
+      name: string;
+      color: Space['color'];
+      folders: { id: string; name: string }[];
+    }[];
+    apps: {
+      id: string;
+      sessionId: string;
+      spaceId: string;
+      folderId?: string;
+      name: string;
+      sessionName?: string;
+      homeUrl: string;
+      favorite: boolean;
+      pinned: boolean;
+      archived: boolean;
+    }[];
+  };
+  openTabs?: {
+    id: string;
+    sessionId: string;
+    spaceId: string;
+    title: string;
+    url: string;
+  }[];
+  preferences?: Partial<
+    Pick<BrowserPreferences, (typeof portablePreferenceKeys)[number]>
+  >;
+}
+/** Remote snapshots never carry executable hooks or local login partitions. */
+export function validateIncomingSnapshot(value: unknown): IncomingSnapshot {
+  const snapshot = value as IncomingSnapshot;
+  const only = (object: unknown, keys: string[]) => {
+    if (
+      !object ||
+      typeof object !== 'object' ||
+      Array.isArray(object) ||
+      Object.keys(object).some((key) => !keys.includes(key))
+    )
+      throw new Error('Invalid synced data');
+  };
+  only(snapshot, [
+    'version',
+    'deviceId',
+    'createdAt',
+    'workspace',
+    'openTabs',
+    'preferences',
+  ]);
+  if (
+    snapshot.version !== 1 ||
+    !Number.isSafeInteger(snapshot.createdAt) ||
+    snapshot.createdAt < 0
+  )
+    throw new Error('Invalid synced data');
+  id(snapshot.deviceId);
+  if (snapshot.workspace) {
+    only(snapshot.workspace, ['spaces', 'apps']);
+    if (
+      !Array.isArray(snapshot.workspace.spaces) ||
+      snapshot.workspace.spaces.length > 200 ||
+      !Array.isArray(snapshot.workspace.apps) ||
+      snapshot.workspace.apps.length > 5000
+    )
+      throw new Error('Invalid synced workspace');
+    snapshot.workspace.spaces.forEach((space) => {
+      only(space, [
+        'id',
+        'name',
+        'color',
+        'icon',
+        'iconEmoji',
+        'customColor',
+        'folders',
+      ]);
+      id(space.id);
+      label(space.name);
+      if (
+        !['iris', 'blue', 'green', 'amber', 'pink'].includes(space.color) ||
+        !Array.isArray(space.folders) ||
+        space.folders.length > 500
+      )
+        throw new Error('Invalid synced space');
+      space.folders.forEach((folder) => {
+        only(folder, ['id', 'name']);
+        id(folder.id);
+        label(folder.name);
+      });
+    });
+    snapshot.workspace.apps.forEach((app) => {
+      only(app, [
+        'id',
+        'sessionId',
+        'spaceId',
+        'folderId',
+        'name',
+        'sessionName',
+        'homeUrl',
+        'favorite',
+        'pinned',
+        'archived',
+      ]);
+      id(app.id);
+      id(app.sessionId);
+      id(app.spaceId);
+      if (app.folderId) id(app.folderId);
+      label(app.name);
+      if (app.sessionName) label(app.sessionName);
+      if (
+        !webUrl(app.homeUrl) ||
+        ['favorite', 'pinned', 'archived'].some(
+          (key) => typeof app[key as 'pinned'] !== 'boolean'
+        )
+      )
+        throw new Error('Invalid synced page');
+    });
+  }
+  if (snapshot.openTabs) {
+    if (!Array.isArray(snapshot.openTabs) || snapshot.openTabs.length > 5000)
+      throw new Error('Invalid synced tabs');
+    snapshot.openTabs.forEach((tab) => {
+      only(tab, ['id', 'sessionId', 'spaceId', 'title', 'url']);
+      id(tab.id);
+      id(tab.sessionId);
+      id(tab.spaceId);
+      label(tab.title);
+      if (!webUrl(tab.url)) throw new Error('Invalid synced tab');
+    });
+  }
+  if (snapshot.preferences)
+    only(snapshot.preferences, [...portablePreferenceKeys]);
+  return snapshot;
+}

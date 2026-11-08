@@ -15,11 +15,19 @@ import {
   BrowserWindow,
   BrowserWindowConstructorOptions,
   ipcMain,
+  dialog,
   nativeTheme,
   shell,
 } from 'electron';
 import log from 'electron-log';
 import fs from 'fs';
+import {
+  initializeLocalStorage,
+  confirmLocalStorageLaunch,
+} from './localStorage';
+import { STORAGE_OS_IDENTITY } from './storageIdentity';
+import { registerAccountSync } from './sync/register';
+import { explainSecureStorage } from './storageWelcome';
 import { version as projectVersion } from '../../package.json';
 import { restrictPackagedDebugging } from './runtimeSecurity';
 import { registerGroupLocks } from './groupLocks';
@@ -28,7 +36,7 @@ import { configureDNS, registerAdvancedLifecycle } from './advancedPreferences';
 import { getBrowserPreferences, registerPreferences } from './preferences';
 import { browserUserAgent } from './browserIdentity';
 import { registerPasswordManager } from './passwordManager';
-import { startAppUpdates } from './appUpdates';
+import { registerAppUpdates, startAppUpdates } from './appUpdates';
 import { registerHistory } from './history';
 import MenuBuilder from './menu';
 import { consolidateExtensionWarnings } from './extensionWarnings';
@@ -41,17 +49,9 @@ import { NewWindowParams, View } from '../types';
 import { MAIN_WINDOW } from '../utils/constant';
 import { eventBus } from '../utils/EventBus';
 import { registerWindowCommands } from './windowCommands';
+import { registerTelemetry } from './telemetry';
 
-// Keep the existing profile path when changing the public application name.
-const legacyProfile =
-  app.isPackaged && !app.commandLine.hasSwitch('user-data-dir')
-    ? ['TouchBox', 'touch-box']
-        .map((name) => path.join(app.getPath('appData'), name))
-        .find((folder) => fs.existsSync(folder))
-    : undefined;
-const existingUserData = legacyProfile || app.getPath('userData');
-app.setName('Kudium Browser');
-app.setPath('userData', existingUserData);
+app.setName(STORAGE_OS_IDENTITY);
 app.setAboutPanelOptions({
   applicationName: 'Kudium Browser',
   applicationVersion: app.isPackaged ? app.getVersion() : projectVersion,
@@ -121,6 +121,7 @@ export const createNewWindow = async ({
   intent,
   preferencesSection,
 }: NewWindowParams) => {
+  await app.whenReady();
   if (view === 'add-app' && intent !== 'edit') {
     if (!activeWindows.main) await createNewWindow({ view: 'main' });
     const host = activeWindows.main;
@@ -195,6 +196,17 @@ export const createNewWindow = async ({
   });
 
   const newWindow = activeWindows[view]!;
+  if (view === 'main') {
+    // Paint a visible, isolated welcome surface before any Keychain access.
+    await newWindow.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(
+        '<html><body style="margin:0;background:#f5f5f7;color:#1d1d1f;font:16px -apple-system,BlinkMacSystemFont,sans-serif;display:grid;place-items:center;height:100vh"><div style="text-align:center"><h1 style="font-size:28px">Welcome to Kudium</h1><p>Your space to browse.</p></div></body></html>'
+      )}`
+    );
+    newWindow.show();
+    if (await explainSecureStorage(newWindow)) await initializeLocalStorage();
+    if (newWindow.isDestroyed()) return;
+  }
   if (process.platform === 'darwin')
     app.dock?.setIcon(getAssetPath('app-icon.png'));
   if (view === 'downloads')
@@ -241,6 +253,7 @@ export const createNewWindow = async ({
   newWindow.loadURL(initialURL);
 
   newWindow.on('ready-to-show', () => {
+    if (view === 'main') confirmLocalStorageLaunch();
     if (!activeWindows[view]) {
       throw new Error(`Window "${view}" is not defined`);
     }
@@ -352,6 +365,11 @@ registerPreferences(
   (contents) => activeWindows.settings?.webContents === contents
 );
 
+registerAppUpdates((contents) =>
+  activeWindows.settings?.webContents === contents ||
+  activeWindows.main?.webContents === contents
+);
+
 registerPasswordManager(
   (contents) =>
     activeWindows.settings?.webContents === contents ||
@@ -367,7 +385,17 @@ registerNativeUi((contents) =>
 /** Window to Window communication */
 eventBus.registerOnMain(ipcMain, activeWindows);
 
+registerAccountSync(
+  (window) =>
+    window === activeWindows.main || window === activeWindows.settings,
+  (window) => window === activeWindows.main
+);
 registerWindowCommands(ipcMain, activeWindows, createNewWindow);
+registerTelemetry((contents) =>
+  Object.values(activeWindows).some(
+    (window) => window?.webContents === contents
+  )
+);
 
 app.on('window-all-closed', () => {
   // Respect the OSX convention of having the application in memory even
@@ -379,7 +407,7 @@ app.on('window-all-closed', () => {
 
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
     // If using method B for the session you should first construct the BrowserWindow
     // const filter = { urls: ['*://*.google.com/*'] };
     // session.defaultSession.webRequest.onBeforeSendHeaders(
@@ -411,7 +439,13 @@ app
         createNewWindow(mainWindowConfig);
     });
   })
-  .catch(console.log);
+  .catch((error) => {
+    log.error('Browser startup failed', error);
+    dialog.showErrorBox(
+      'Kudium Browser could not start',
+      error instanceof Error ? error.message : String(error)
+    );
+  });
 
 registerGroupLocks(
   (contents) =>

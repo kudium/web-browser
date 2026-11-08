@@ -5,7 +5,7 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-identity-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-identity-'));
 const bundled = path.join(root, 'identity.cjs');
 require('esbuild').buildSync({ entryPoints: [path.join(__dirname, '../../src/main/browserIdentity.ts')], bundle: true, platform: 'node', outfile: bundled });
 const { browserUserAgent } = require(bundled);

@@ -1,8 +1,8 @@
 // Actual favicon callback source, Electron Session.fetch, real native image decoding.
 const { app, session, nativeImage } = require('electron');
 const fs=require('fs'),path=require('path'),os=require('os'),http=require('http'),zlib=require('zlib'),crypto=require('crypto'),assert=require('assert'),ts=require('typescript');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-favicon-'));app.setPath('userData',root);
-const source=fs.readFileSync(process.env.TOUCHBOX_FAVICON_SOURCE || 'src/main/electronBrowser.ts','utf8');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-favicon-'));app.setPath('userData',root);
+const source=fs.readFileSync(process.env.KUDIUMBROWSER_FAVICON_SOURCE || 'src/main/electronBrowser.ts','utf8');
 const parsed=ts.createSourceFile('electronBrowser.ts',source,ts.ScriptTarget.Latest,true);let callback;
 function find(node){if(ts.isCallExpression(node)&&node.expression.name?.text==='on'&&node.arguments[0]?.text==='page-favicon-updated'&&node.arguments[1]?.getText(parsed).includes('nativeImage'))callback=node.arguments[1];ts.forEachChild(node,find);}find(parsed);assert(callback);
 const callbackProgram=ts.transpileModule('const handler='+callback.getText(parsed)+';', {compilerOptions:{target:ts.ScriptTarget.ES2022},transformers:{before:[context=>node=>{
@@ -45,7 +45,7 @@ let largePNG,jpg;let server,active=0,peak=0,written=0,requests=0;
   await Promise.all(tasks);
   const deadline=Date.now()+2000;while(active&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
   assert.equal(active,0,'Previous fixture transports must stop before resetting counters');
-  const baseline=process.env.TOUCHBOX_FAVICON_PHASE==='before';
+  const baseline=process.env.KUDIUMBROWSER_FAVICON_PHASE==='before';
   if(kind==='large-png'){assert.equal(decodes,baseline?1:0);assert.equal(published,baseline?1:0);}
   else if(kind==='healthy-jpg'){assert.equal(decodes,1);assert.equal(published,1);}
   else if(count===1){assert.equal(decodes,0);assert.equal(published,0);if(baseline)assert.equal(readBytes,8*1024*1024);else {assert.equal(arrayBufferBytes,0);assert(readBytes<=1024*1024+maxReadChunkBytes);}}
@@ -53,5 +53,5 @@ let largePNG,jpg;let server,active=0,peak=0,written=0,requests=0;
   results.push({case:kind,requests,peakClientFetches:peakFetches,peakServerRequests:peak,serverBytesWritten:written,decodedBodyBytesConsumed:readBytes,maxReadChunkBytes,arrayBufferBytesAllocated:arrayBufferBytes,nativeDecodes:decodes,published,elapsedMs:performance.now()-started});loader.clear();
  }
  const report={measuredAt:new Date().toISOString(),electron:process.versions.electron,platform:process.platform,arch:process.arch,sourceSHA256:crypto.createHash('sha256').update(source).digest('hex'),probeSHA256:crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),imageSizeVersion:JSON.parse(fs.readFileSync('node_modules/image-size/package.json','utf8')).version,loaderSHA256:crypto.createHash('sha256').update(fs.readFileSync('src/main/faviconLoader.ts')).digest('hex'),results,method:'Extracted actual production favicon event callback with its background promise tracked; actual Electron Session.fetch and nativeImage decoding. Synthetic HTTP responses, gzip decoding, 20 independent tabs or 20 superseding events. No personal profile.',limitations:['Server bytes written include network buffering; they are not exact bytes received by the client.','PNG/JPEG dimensions are preflighted, but a byte/header policy is not a hard bound on Chromium stream chunks, native decoder CPU, or whole-process RSS.','No whole-app CPU/RSS or tab-switch improvement is claimed.']};
- const file='docs/benchmarks/favicon-resources.json';const saved=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{};const phase=process.env.TOUCHBOX_FAVICON_PHASE||'after';if(saved[phase])saved.confirmations=[...(saved.confirmations||[]),{phase,...report}];else saved[phase]=report;fs.writeFileSync(file,JSON.stringify(saved,null,2)+'\n');console.log('PASS favicon resources',JSON.stringify(report));server.close();fs.rmSync(root,{recursive:true,force:true});app.exit(0);
+ const file='docs/benchmarks/favicon-resources.json';const saved=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{};const phase=process.env.KUDIUMBROWSER_FAVICON_PHASE||'after';if(saved[phase])saved.confirmations=[...(saved.confirmations||[]),{phase,...report}];else saved[phase]=report;fs.writeFileSync(file,JSON.stringify(saved,null,2)+'\n');console.log('PASS favicon resources',JSON.stringify(report));server.close();fs.rmSync(root,{recursive:true,force:true});app.exit(0);
 })().catch(error=>{console.error(error);server?.close();app.exit(1);});

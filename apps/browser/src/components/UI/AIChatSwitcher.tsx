@@ -141,7 +141,7 @@ export function AIChatSwitcher({
                 clearTimeout(dismissalTimer.current);
                 setDragging(chat.id);
                 event.dataTransfer.setData(
-                  'application/x-touchbox-ai-chat',
+                  'application/x-kudiumbrowser-ai-chat',
                   chat.id
                 );
                 event.dataTransfer.effectAllowed = 'move';

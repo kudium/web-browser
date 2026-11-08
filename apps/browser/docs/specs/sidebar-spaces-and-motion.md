@@ -4,9 +4,9 @@ Implemented November 4, 2026.
 
 ## Arc observation
 
-Inspected Arc’s native sidebar and selected another space using its bottom dock. The sidebar exposes a horizontal scroll collection containing space content and a separate shared dock. Synthetic native scrolling did not reproduce Arc’s trackpad gesture, so the precise gesture thresholds and animation timings were not verified. TouchBox uses its own deliberate horizontal gesture recognition.
+Inspected Arc’s native sidebar and selected another space using its bottom dock. The sidebar exposes a horizontal scroll collection containing space content and a separate shared dock. Synthetic native scrolling did not reproduce Arc’s trackpad gesture, so the precise gesture thresholds and animation timings were not verified. Kudium Browser uses its own deliberate horizontal gesture recognition.
 
-## TouchBox behavior
+## Kudium Browser behavior
 
 - [x] One sidebar sequence: Downloads, History, then user spaces.
 - [x] Downloads and History are built-in sidebar spaces with a separate System spaces group at the left of the dock.

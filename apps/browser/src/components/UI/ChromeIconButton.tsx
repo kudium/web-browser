@@ -10,6 +10,7 @@ type ChromeIconButtonProps = Omit<
 > & {
   label: string;
   icon: LucideIcon;
+  badgeCount?: number;
 };
 
 /** Shared chrome control; forwards Radix trigger events and the native ref. */
@@ -17,7 +18,7 @@ export const ChromeIconButton = forwardRef<
   HTMLButtonElement,
   ChromeIconButtonProps
 >(function ChromeIconButton(
-  { label, icon: Icon, className = '', ...props },
+  { label, icon: Icon, className = '', badgeCount = 0, ...props },
   ref
 ) {
   return (
@@ -32,6 +33,11 @@ export const ChromeIconButton = forwardRef<
         className={`chrome-icon-button ${className}`.trim()}
       >
         <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
+        {badgeCount > 0 && (
+          <span className="ai-count-badge" aria-hidden="true">
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
       </button>
     </Tooltip>
   );

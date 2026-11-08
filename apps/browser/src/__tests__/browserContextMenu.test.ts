@@ -30,6 +30,7 @@ const contents = {
   inspectElement: jest.fn(),
   navigationHistory: { canGoBack: () => false, canGoForward: () => true },
 } as unknown as WebContents;
+const pictureInPicture = jest.fn();
 function menu(patch: Partial<ContextMenuParams> = {}) {
   showBrowserContextMenu(
     {} as BrowserWindow,
@@ -42,7 +43,8 @@ function menu(patch: Partial<ContextMenuParams> = {}) {
       ...patch,
     } as ContextMenuParams,
     openTab,
-    [{ label: 'Extension Action' } as MenuItem]
+    [{ label: 'Extension Action' } as MenuItem],
+    pictureInPicture
   );
   return (Menu.buildFromTemplate as jest.Mock).mock.calls.at(-1)[0];
 }
@@ -166,4 +168,36 @@ it('includes native macOS sharing and Services with selected text', () => {
     urls: undefined,
   });
   expect(items.some((item: any) => item.role === 'services')).toBe(true);
+});
+
+it('offers native PiP for supported video, including streams without source URLs', () => {
+  const items = menu({
+    mediaType: 'video',
+    mediaFlags: {
+      canShowPictureInPicture: true,
+    } as ContextMenuParams['mediaFlags'],
+  });
+  items.find((item: any) => item.label === 'Picture in Picture').click();
+  expect(pictureInPicture).toHaveBeenCalledTimes(1);
+  expect(
+    menu({
+      mediaType: 'video',
+      mediaFlags: {
+        canShowPictureInPicture: false,
+      } as ContextMenuParams['mediaFlags'],
+    }).some((item: any) => item.label === 'Picture in Picture')
+  ).toBe(false);
+  expect(
+    menu({ mediaType: 'audio' }).some(
+      (item: any) => item.label === 'Picture in Picture'
+    )
+  ).toBe(false);
+  expect(
+    menu({
+      mediaType: 'video',
+      mediaFlags: {
+        isShowingPictureInPicture: true,
+      } as ContextMenuParams['mediaFlags'],
+    }).some((item: any) => item.label === 'Exit Picture in Picture')
+  ).toBe(true);
 });

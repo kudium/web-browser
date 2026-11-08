@@ -4,7 +4,7 @@ Release targets confirmed November 7: macOS, Windows and Linux.
 
 Privacy scope confirmed by the user November 7: after local approval to share
 saved data with a website, that website may process it through its own services.
-TouchBox must continue enforcing recipient-specific disclosure and subsequent
+Kudium Browser must continue enforcing recipient-specific disclosure and subsequent
 AI action review. Strict interception of every descendant/worker/WebSocket/WebRTC
 connection is outside the requested scope; earlier requirements for universal
 downstream network containment are superseded by this decision.
@@ -98,7 +98,7 @@ must not expose them before the review.
    records/fields/passages to be released, the user task, current group/site and
    actual provider endpoint/model in native review. For external MCP clients,
    disclose that the authenticated local connection receives the data and that
-   its downstream provider is unknown to TouchBox. Never display credentials.
+   its downstream provider is unknown to Kudium Browser. Never display credentials.
 2. Bind the review to run/cancellation, host and target document/owner, access
    revision, vault/auth revision, exact result digest and recipient identity.
    Subscribe to vault changes during review; reject consent changed and restored.
@@ -112,7 +112,7 @@ must not expose them before the review.
    entry, select/keyboard submission, uploads and hooks. Provider consent cannot
    silently authorize sending facts to another website. Full access cannot bypass
    a distinct private-data release floor. Ordinary page handlers may contact
-   destinations TouchBox cannot infer from labels. The approved website may
+   destinations Kudium Browser cannot infer from labels. The approved website may
    process the shared information through its own services under the user's
    confirmed privacy scope. Do not claim exact downstream network containment.
 5. Fake-provider tests must deliberately ask for opted-out records and inject

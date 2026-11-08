@@ -119,6 +119,7 @@ it('persists validated preferences and applies live settings to existing views',
   const contents = Object.assign(new EventEmitter(), {
     isDestroyed: () => false,
     setZoomFactor: jest.fn(),
+    setVisualZoomLevelLimits: jest.fn().mockResolvedValue(undefined),
     getURL: () => 'https://example.com',
     session: {
       setSpellCheckerEnabled: jest.fn(),
@@ -126,6 +127,7 @@ it('persists validated preferences and applies live settings to existing views',
     },
   });
   applyBrowserPreferences(contents as any);
+  expect(contents.setVisualZoomLevelLimits).toHaveBeenCalledWith(1, 5);
   updateBrowserPreferences({
     searchEngine: 'google',
     zoom: 1.25,
@@ -451,4 +453,26 @@ it('caches missing or malformed defaults and replaces them on a successful save'
     read.mockRestore();
     location.mockRestore();
   }
+});
+
+it('keeps unpinned groups off by default and persists the explicit customization', () => {
+  expect(defaultPreferences.showUnpinnedGroups).toBe(false);
+  expect(validatePreferences({ showUnpinnedGroups: true })).toEqual({
+    showUnpinnedGroups: true,
+  });
+  updateBrowserPreferences({ showUnpinnedGroups: true });
+  expect(getBrowserPreferences().showUnpinnedGroups).toBe(true);
+  updateBrowserPreferences({ showUnpinnedGroups: false });
+  expect(getBrowserPreferences().showUnpinnedGroups).toBe(false);
+});
+
+
+it('defaults updates to automatic and persists explicit opt-outs', () => {
+  expect(defaultPreferences.automaticallyDownloadUpdates).toBe(true);
+  expect(defaultPreferences.automaticallyInstallUpdates).toBe(true);
+  expect(() => validatePreferences({ automaticallyDownloadUpdates: 'yes' } as any)).toThrow('Invalid preference');
+  expect(() => validatePreferences({ automaticallyInstallUpdates: 'yes' } as any)).toThrow('Invalid preference');
+  updateBrowserPreferences({ automaticallyDownloadUpdates: false, automaticallyInstallUpdates: false });
+  expect(getBrowserPreferences()).toEqual(expect.objectContaining({ automaticallyDownloadUpdates: false, automaticallyInstallUpdates: false }));
+  updateBrowserPreferences({ automaticallyDownloadUpdates: true, automaticallyInstallUpdates: true });
 });

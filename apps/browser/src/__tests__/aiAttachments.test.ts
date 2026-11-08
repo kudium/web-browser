@@ -16,7 +16,7 @@ Object.defineProperty(AbortSignal.prototype, 'throwIfAborted', {
 });
 let root: string;
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-attachment-test-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-attachment-test-'));
   fs.mkdirSync(path.join(root, 'nested'));
   fs.writeFileSync(path.join(root, 'nested', 'note.txt'), 'nested');
   fs.writeFileSync(path.join(root, '.hidden'), 'hidden');

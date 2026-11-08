@@ -210,12 +210,12 @@
       "injectedIPC": [],
       "tamperExecuted": false,
       "integrityErrors": [
-        "Failed to find a valid digest in the 'integrity' attribute for resource 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-hCCSKb/tampered/renderer.js' with computed SHA-256 integrity 'nzJRID/qVIRI8qEE9E88UOr6fzD3SGSAEnsJJSmSn+k='. The resource has been blocked."
+        "Failed to find a valid digest in the 'integrity' attribute for resource 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-renderer-csp-hCCSKb/tampered/renderer.js' with computed SHA-256 integrity 'nzJRID/qVIRI8qEE9E88UOr6fzD3SGSAEnsJJSmSn+k='. The resource has been blocked."
       ],
       "errors": [
         "Executing inline script violates the following Content Security Policy directive 'script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ=''. Either the 'unsafe-inline' keyword, a hash ('sha256-pXYHJ/qHRKGtYetdE7JrKwDTBEoUTckWtkkF1rt9Ncs='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
         "Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
-        "Loading the script 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-hCCSKb/renderer/untrusted-local.js' violates the following Content Security Policy directive: \"script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.",
+        "Loading the script 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-renderer-csp-hCCSKb/renderer/untrusted-local.js' violates the following Content Security Policy directive: \"script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.",
         "Setting the document's base URI to 'http://127.0.0.1:54187/base/' violates the following Content Security Policy directive: \"base-uri 'none'\". The action has been blocked.",
         "Connecting to 'http://127.0.0.1:54187/fetch' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
         "Fetch API cannot load http://127.0.0.1:54187/fetch. Refused to connect because it violates the document's Content Security Policy.",
@@ -291,12 +291,12 @@
     "injectedIPC": [],
     "tamperExecuted": false,
     "integrityErrors": [
-      "Failed to find a valid digest in the 'integrity' attribute for resource 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-KI4TIk/tampered/renderer.js' with computed SHA-256 integrity 'nzJRID/qVIRI8qEE9E88UOr6fzD3SGSAEnsJJSmSn+k='. The resource has been blocked."
+      "Failed to find a valid digest in the 'integrity' attribute for resource 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-renderer-csp-KI4TIk/tampered/renderer.js' with computed SHA-256 integrity 'nzJRID/qVIRI8qEE9E88UOr6fzD3SGSAEnsJJSmSn+k='. The resource has been blocked."
     ],
     "errors": [
       "Executing inline script violates the following Content Security Policy directive 'script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ=''. Either the 'unsafe-inline' keyword, a hash ('sha256-pXYHJ/qHRKGtYetdE7JrKwDTBEoUTckWtkkF1rt9Ncs='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
       "Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
-      "Loading the script 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-KI4TIk/renderer/untrusted-local.js' violates the following Content Security Policy directive: \"script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.",
+      "Loading the script 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-renderer-csp-KI4TIk/renderer/untrusted-local.js' violates the following Content Security Policy directive: \"script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.",
       "Setting the document's base URI to 'http://127.0.0.1:54026/base/' violates the following Content Security Policy directive: \"base-uri 'none'\". The action has been blocked.",
       "Connecting to 'http://127.0.0.1:54026/fetch' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
       "Fetch API cannot load http://127.0.0.1:54026/fetch. Refused to connect because it violates the document's Content Security Policy.",

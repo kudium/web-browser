@@ -14,6 +14,16 @@ import { getSiteSettings } from '../main/siteSettings';
 import { isGroupLocked } from '../main/groupLocks';
 import type { IApp } from '../types';
 
+jest.mock('../main/preferences', () => ({
+  getBrowserPreferences: () => ({
+    ...jest.requireActual('../browser/preferences').defaultPreferences,
+    writeBrowserInstructions: true,
+  }),
+}));
+jest.mock('../main/localStorage', () => ({
+  safeStorage: jest.requireMock('electron').safeStorage,
+}));
+
 jest.mock('node-pty', () => ({
   spawn: jest.fn(() => ({
     write: jest.fn(),
@@ -319,5 +329,40 @@ it('binds AI project access to a live unlocked source group and its linked folde
   } finally {
     dispose();
     folder.mockRestore();
+  }
+});
+
+it('waits for imported groups to reach layout sync before loading their project', async () => {
+  const mainFrame = {};
+  const sender = {
+    id: 921,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+  };
+  let synced: IApp[] = [];
+  const project = jest.spyOn(projects, 'projectAction').mockResolvedValue({
+    name: 'Project',
+    path: '/tmp/project',
+    available: true,
+  });
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender, isDestroyed: () => false } as any,
+    () => synced,
+    () => undefined
+  );
+  const handler = (ipcMain.handle as jest.Mock).mock.calls.find(
+    ([name]) => name === 'site-developer-project'
+  )[1];
+  try {
+    const request = handler({ sender, senderFrame: mainFrame }, 'home', 'get');
+    setTimeout(() => {
+      synced = [home];
+    }, 10);
+    await expect(request).resolves.toMatchObject({ path: '/tmp/project' });
+    expect(project).toHaveBeenCalled();
+  } finally {
+    dispose();
+    project.mockRestore();
   }
 });

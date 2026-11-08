@@ -57,3 +57,9 @@ export const authRateLimit = pgTable('auth_rate_limits', {
   id: text('id').primaryKey(), key: text('key').notNull().unique(), count: integer('count').notNull(),
   lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
 });
+
+export const authDeviceCode = pgTable('auth_device_codes', {
+  id: text('id').primaryKey(), deviceCode: text('device_code').notNull().unique(), userCode: text('user_code').notNull().unique(),
+  userId: text('user_id').references(() => authUser.id, {onDelete: 'cascade'}), expiresAt: timestamp('expires_at', {withTimezone: true}).notNull(),
+  status: text('status').notNull(), lastPolledAt: timestamp('last_polled_at', {withTimezone: true}), pollingInterval: integer('polling_interval'), clientId: text('client_id'), scope: text('scope'),
+});

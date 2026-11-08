@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path'), os = require('os'), crypto = r
 const { app, BrowserWindow, ipcMain, dialog, powerMonitor } = require('electron');
 const root = path.resolve(__dirname, '../..'), phase = process.argv[2] || 'after';
 assert(['before', 'after'].includes(phase));
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-composer-save-'));
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-composer-save-'));
 app.setPath('userData', temporary);
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const files = ['src/main/ai.ts', 'src/main/aiComposer.ts', 'src/main/passwordManager/index.ts'];
@@ -35,6 +35,7 @@ async function run() {
     newOSCredential: () => 'synthetic-fixture-credential-for-encrypted-vault',
     writeOSCredential: () => { credentials += 1; },
   });
+  await ai.initializeLocalStorage();
   dispose = ai.registerAI(host, { tabs: () => tabs, focused: () => undefined, contents: () => undefined });
   const event = () => ({ sender: host.webContents, senderFrame: host.webContents.mainFrame });
   const call = (name, ...args) => handlers.get(name)(event(), ...args);

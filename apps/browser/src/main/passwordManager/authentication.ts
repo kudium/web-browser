@@ -1,9 +1,10 @@
-import { app, safeStorage } from 'electron';
+import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { randomBytes, randomUUID } from 'crypto';
+import { safeStorage } from '../localStorage';
 import type { SummaryProtection } from './vault';
 
 const execute = promisify(execFile);
@@ -12,14 +13,14 @@ const credentialFile = () =>
 function helperPath() {
   if (process.platform !== 'darwin') return undefined;
   const candidates = [
-    path.join(process.resourcesPath, 'assets/native/touchbox-password-auth'),
-    path.join(app.getAppPath(), 'assets/native/touchbox-password-auth'),
+    path.join(process.resourcesPath, 'assets/native/kudiumbrowser-password-auth'),
+    path.join(app.getAppPath(), 'assets/native/kudiumbrowser-password-auth'),
   ];
   if (!app.isPackaged)
     candidates.push(
       path.resolve(
         app.getAppPath(),
-        '../../assets/native/touchbox-password-auth'
+        '../../assets/native/kudiumbrowser-password-auth'
       )
     );
   return candidates.find((candidate) => fs.existsSync(candidate));
@@ -106,3 +107,5 @@ export const summaryProtection: SummaryProtection = {
     return value;
   },
 };
+
+export { initializeLocalStorage } from '../localStorage';

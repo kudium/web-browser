@@ -30,8 +30,8 @@ it('restores panel visibility, pinning, history visibility, and the chosen page 
   expect(closed.result.current.pinned[0]).toBe(true);
 });
 it('uses safe defaults for malformed or outdated layout settings', () => {
-  localStorage.setItem('touchbox-ai-page-open', 'broken JSON');
-  localStorage.setItem('touchbox-ai-page-pane', '"unknown-page"');
+  localStorage.setItem('kudiumbrowser-ai-page-open', 'broken JSON');
+  localStorage.setItem('kudiumbrowser-ai-page-pane', '"unknown-page"');
   const view = renderHook(() => ({
     open: useAIPagePreference('open', false),
     pane: useAIPagePreference('pane', 'assistant'),

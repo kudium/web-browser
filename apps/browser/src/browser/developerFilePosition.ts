@@ -7,7 +7,7 @@ export interface DeveloperFilePosition {
   selected: string[];
   scroll: number;
 }
-const prefix = 'touchbox-file-position:';
+const prefix = 'kudiumbrowser-file-position:';
 const validPath = (value: unknown): value is string =>
   typeof value === 'string' && value.length <= 4096 && !value.includes('\0');
 export function readFilePosition(key: string): DeveloperFilePosition {

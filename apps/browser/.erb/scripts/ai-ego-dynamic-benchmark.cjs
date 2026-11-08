@@ -17,10 +17,10 @@ const os = require('os');
 const http = require('http');
 const crypto = require('crypto');
 const assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-ego-benchmark-'));
-const controlPath = '/tmp/touchbox-dynamic-comparison-control.json';
-const format = process.env.TOUCHBOX_BENCHMARK_FORMAT || 'detailed';
-const compactWait = process.env.TOUCHBOX_BENCHMARK_COMPACT_WAIT === '1';
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-ego-benchmark-'));
+const controlPath = '/tmp/kudiumbrowser-dynamic-comparison-control.json';
+const format = process.env.KUDIUMBROWSER_BENCHMARK_FORMAT || 'detailed';
+const compactWait = process.env.KUDIUMBROWSER_BENCHMARK_COMPACT_WAIT === '1';
 assert(['detailed', 'compact'].includes(format));
 const secret = crypto.randomBytes(32).toString('hex');
 const samples = { snapshot: [], workflow: [] };
@@ -110,7 +110,7 @@ const summarize = (values) => {
         );
         const report = {
           measuredAt: new Date().toISOString(),
-          touchboxFormat: format,
+          kudiumbrowserFormat: format,
           compactWait,
           fixture: '100 buttons plus Name / Apply form; each Apply awaits localhost response delayed 75ms',
           environment: {
@@ -122,19 +122,19 @@ const summarize = (values) => {
             cpu: os.cpus()[0]?.model,
           },
           method:
-            'Interleaved SDK/MCP calls on one machine; first observation reported separately, two warmups excluded, 20 measured rounds per operation. Dynamic workflow waits for a 75ms localhost response and verifies final status. TouchBox uses five public API calls with compactWait, six otherwise; Ego uses five. No AI inference or CLI process startup included.',
+            'Interleaved SDK/MCP calls on one machine; first observation reported separately, two warmups excluded, 20 measured rounds per operation. Dynamic workflow waits for a 75ms localhost response and verifies final status. KudiumBrowser uses five public API calls with compactWait, six otherwise; Ego uses five. No AI inference or CLI process startup included.',
           limitations: [
-            'TouchBox uses authenticated localhost Streamable HTTP MCP; Ego uses its documented Page SDK transport. These are different transport paths.',
-            'TouchBox native approval dialogs are accepted by a fixture stub; no human decision latency included.',
-            compactWait ? 'TouchBox compact wait returns the final observation directly. Both products use five public API calls per workflow.' : 'TouchBox waits using a detailed snapshot then reads compact output; six public calls versus Ego five.',
+            'KudiumBrowser uses authenticated localhost Streamable HTTP MCP; Ego uses its documented Page SDK transport. These are different transport paths.',
+            'KudiumBrowser native approval dialogs are accepted by a fixture stub; no human decision latency included.',
+            compactWait ? 'KudiumBrowser compact wait returns the final observation directly. Both products use five public API calls per workflow.' : 'KudiumBrowser waits using a detailed snapshot then reads compact output; six public calls versus Ego five.',
             'The localhost response has a controlled 75ms delay; this is a dynamic DOM/network fixture, not a remote production application.',
-            'Snapshots have different semantic schemas. Fixture fits the viewport; Ego uses full_page and TouchBox discovers all 102 controls (below its 250 cap).',
+            'Snapshots have different semantic schemas. Fixture fits the viewport; Ego uses full_page and KudiumBrowser discovers all 102 controls (below its 250 cap).',
             'One local static fixture cannot establish complete parity or general browser superiority.',
           ],
           failures: 0,
           retries: 0,
-          touchbox: {
-            cold: input.coldTouchbox,
+          kudiumbrowser: {
+            cold: input.coldKudiumBrowser,
             snapshot: summarize(samples.snapshot),
             workflow: summarize(samples.workflow),
           },
@@ -154,7 +154,7 @@ const summarize = (values) => {
         res.end(
           JSON.stringify({
             output,
-            touchbox: report.touchbox.snapshot.p50Ms,
+            kudiumbrowser: report.kudiumbrowser.snapshot.p50Ms,
             ego: report.ego.snapshot.p50Ms,
           })
         );
@@ -213,9 +213,9 @@ const summarize = (values) => {
   const config = await host.webContents.executeJavaScript(
     `benchmark.mcp('update',{enabled:true,port:${port}}).then(()=>benchmark.mcp('connection'))`
   );
-  const connection = config.mcpServers.touchbox;
+  const connection = config.mcpServers.kudiumbrowser;
   client = new Client(
-    { name: 'touchbox-comparison', version: '1' },
+    { name: 'kudiumbrowser-comparison', version: '1' },
     { capabilities: {} }
   );
   await client.connect(

@@ -14,7 +14,7 @@ Elapsed time is essentially unchanged. This long zigzag still needs 1,016 interp
 Raw method counts and source hashes are in [ai-frame-pointer-benchmark.json](ai-frame-pointer-benchmark.json). To reproduce, run separately after other builds and tests finish:
 
 ```sh
-TOUCHBOX_FRAME_POINTER_VARIANT=uncached npx electron .erb/scripts/mcp-smoke.cjs --oop-frames
+KUDIUMBROWSER_FRAME_POINTER_VARIANT=uncached npx electron .erb/scripts/mcp-smoke.cjs --oop-frames
 npx electron .erb/scripts/mcp-smoke.cjs --oop-frames
 ```
 

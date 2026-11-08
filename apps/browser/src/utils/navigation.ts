@@ -6,7 +6,7 @@ import { IApp } from '../types';
 
 export function cachedSearchEngines() {
   try {
-    const saved = localStorage.getItem('touchbox-search-engines');
+    const saved = localStorage.getItem('kudiumbrowser-search-engines');
     if (saved) return validateSearchEngines(JSON.parse(saved));
   } catch {
     /* Built-in engines remain available while preferences load. */
@@ -22,7 +22,7 @@ export function resolveAddress(value: string): string {
     const engines = cachedSearchEngines();
     const engine =
       engines.find(
-        (entry) => entry.id === localStorage.getItem('touchbox-search-engine')
+        (entry) => entry.id === localStorage.getItem('kudiumbrowser-search-engine')
       ) || engines[0];
     return engine.url.replaceAll('%s', encodeURIComponent(input));
   }

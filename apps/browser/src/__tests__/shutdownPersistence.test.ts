@@ -34,8 +34,8 @@ const tick = async () => {
 beforeEach(() => {
   jest.clearAllMocks();
   (app as any).removeAllListeners();
-  directory = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-quit-'));
-  fs.mkdirSync(path.join(directory, 'Partitions', 'touchbox-fixture'), {
+  directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-quit-'));
+  fs.mkdirSync(path.join(directory, 'Partitions', 'kudiumbrowser-fixture'), {
     recursive: true,
   });
   (app.getPath as jest.Mock).mockReturnValue(directory);

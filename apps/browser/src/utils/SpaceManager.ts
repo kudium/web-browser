@@ -6,8 +6,8 @@ import { LocalStorage } from './LocalStorage';
 import { readSavedList, writeSavedList } from './storageRecovery';
 
 export const DEFAULT_SPACE = 'default';
-export const SPACE_KEY = 'touchbox-spaces';
-export const ACTIVE_SPACE_KEY = 'touchbox-active-space';
+export const SPACE_KEY = 'kudiumbrowser-spaces';
+export const ACTIVE_SPACE_KEY = 'kudiumbrowser-active-space';
 export const spaceColors = ['iris', 'blue', 'green', 'amber', 'pink'] as const;
 export const spaceColorNames = {
   iris: 'Purple',
@@ -142,6 +142,7 @@ export const SpaceManager = {
     };
     SpaceManager.set([...SpaceManager.getAll(), space]);
     SpaceManager.select(space.id);
+    window.electron?.telemetry?.feature('space_created');
     return space;
   },
   update(id: string, changes: Partial<Space>) {

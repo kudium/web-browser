@@ -1,3 +1,4 @@
+import type { AppUpdateAction, AppUpdateState } from '../browser/appUpdates';
 // Disable no-unused-vars, broken for spread args
 /* eslint no-unused-vars: off */
 import { injectBrowserAction } from 'electron-chrome-extensions/browser-action';
@@ -7,6 +8,12 @@ import {
   IpcRendererEvent,
   webUtils,
 } from 'electron';
+import {
+  safeErrorType,
+  safeErrorFrames,
+  validatedErrorFrames,
+  TelemetryFeature,
+} from '../browser/telemetry';
 import type {
   ProjectFilesRequest,
   ProjectFilesResult,
@@ -61,6 +68,12 @@ import type {
   DownloadRecord,
   DownloadRecoveryInfo,
 } from '../browser/downloads';
+import type {
+  AccountSyncAction,
+  AccountSyncInput,
+  AccountSyncStatus,
+  RestoredWorkspace,
+} from '../browser/accountSync';
 import type { CloudSyncStatus } from '../browser/cloudSync';
 import { retainExtensionIcons } from '../browser/extensionIconRetention';
 import type { NativeMenuItem, NativePrompt } from '../browser/nativeUi';
@@ -95,7 +108,48 @@ const assertLegacyChannel = (channel: Channels) => {
 injectBrowserAction();
 contextBridge.executeInMainWorld({ func: retainExtensionIcons });
 
+function sendTelemetry(request: Record<string, unknown>) {
+  try {
+    ipcRenderer.send('kudium-telemetry', request);
+  } catch {
+    /* Diagnostics never affect the user action. */
+  }
+}
+function trackedInvoke(
+  feature: TelemetryFeature | undefined,
+  channel: string,
+  ...args: unknown[]
+) {
+  return ipcRenderer
+    .invoke(channel, ...args)
+    .then((result) => {
+      if (feature && result !== false && result !== null)
+        sendTelemetry({ feature, succeeded: true });
+      return result;
+    })
+    .catch((error) => {
+      if (feature)
+        sendTelemetry({
+          feature,
+          succeeded: false,
+          errorType: safeErrorType(error?.name),
+          frames: safeErrorFrames(error?.stack),
+        });
+      throw error;
+    });
+}
 const electronHandler = {
+  telemetry: {
+    feature(feature: TelemetryFeature) {
+      sendTelemetry({ feature });
+    },
+    error(type: string, frames?: string[]) {
+      sendTelemetry({
+        errorType: safeErrorType(type),
+        frames: validatedErrorFrames(frames),
+      });
+    },
+  },
   platform: process.platform,
   onPasswordManagerLock(callback: () => void) {
     const listener = () => callback();
@@ -123,12 +177,21 @@ const electronHandler = {
         return Promise.reject(
           new Error('Drop a local SKILL.md file or skill folder.')
         );
-      return ipcRenderer.invoke('ai-skills', { action: 'import-path', source });
+      return trackedInvoke('ai_skill_installed', 'ai-skills', {
+        action: 'import-path',
+        source,
+      });
     },
     skills(
       request: import('../browser/aiSkills').AISkillsRequest
     ): Promise<import('../browser/aiSkills').AISkill[]> {
-      return ipcRenderer.invoke('ai-skills', request);
+      return trackedInvoke(
+        ['add', 'create', 'import-link', 'import-path'].includes(request.action)
+          ? 'ai_skill_installed'
+          : undefined,
+        'ai-skills',
+        request
+      );
     },
     permissions(mode?: AIAccessMode): Promise<AIAccessStatus> {
       return ipcRenderer.invoke('ai-permissions', mode);
@@ -185,7 +248,7 @@ const electronHandler = {
       return ipcRenderer.invoke('ai-mcp', 'update', patch);
     },
     mcpStdio(): Promise<{
-      mcpServers: { touchbox: { command: string; args: string[] } };
+      mcpServers: { kudiumbrowser: { command: string; args: string[] } };
     }> {
       return ipcRenderer.invoke('ai-mcp', 'stdio');
     },
@@ -251,7 +314,7 @@ const electronHandler = {
       return ipcRenderer.invoke('ai-composer-context', reference);
     },
     run(prompt: string | AIComposerTask): Promise<boolean> {
-      return ipcRenderer.invoke('ai-run', prompt);
+      return trackedInvoke('ai_run', 'ai-run', prompt);
     },
     conversations(
       request: AIConversationRequest = { action: 'list' }
@@ -305,23 +368,56 @@ const electronHandler = {
     },
   },
   siteDeveloper: {
+    drop(
+      file: File,
+      spaceId: string
+    ): Promise<import('../browser/sidebarDrop').SidebarDropResult> {
+      const filePath = webUtils.getPathForFile(file);
+      if (!filePath)
+        return Promise.reject(new Error('Drop a local file or folder.'));
+      return ipcRenderer.invoke('sidebar-drop', filePath, spaceId);
+    },
+    createDroppedGroup(
+      draft: import('../browser/sidebarDrop').DroppedGroupDraft
+    ): Promise<import('../browser/sidebarDrop').CreatedDroppedGroup> {
+      return ipcRenderer.invoke('sidebar-drop-create', draft);
+    },
     transfer(
       action: 'import' | 'export',
       id: string
     ): Promise<import('../browser/groupTransfer').GroupTransferResult | null> {
-      return ipcRenderer.invoke('group-transfer', action, id);
+      return trackedInvoke(
+        action === 'import' ? 'group_imported' : 'group_exported',
+        'group-transfer',
+        action,
+        id
+      );
     },
     files(
       id: string,
       request: ProjectFilesRequest
     ): Promise<ProjectFilesResult> {
-      return ipcRenderer.invoke('site-developer-files', id, request);
+      const feature = {
+        list: 'file_browser_opened',
+        preview: 'file_previewed',
+        save: 'file_saved',
+        'terminal-tab': 'terminal_opened',
+      }[request.action as string] as TelemetryFeature | undefined;
+      return trackedInvoke(feature, 'site-developer-files', id, request);
     },
     scripts(
       id: string,
       request: ProjectScriptRequest
     ): Promise<ProjectScriptResult> {
-      return ipcRenderer.invoke('site-developer-scripts', id, request);
+      const features: Partial<
+        Record<ProjectScriptRequest['action'], TelemetryFeature>
+      > = { run: 'script_run', save: 'script_saved' };
+      return trackedInvoke(
+        features[request.action],
+        'site-developer-scripts',
+        id,
+        request
+      );
     },
     editors(choose?: true): Promise<ProjectEditors> {
       return ipcRenderer.invoke('site-developer-editors', choose);
@@ -330,7 +426,14 @@ const electronHandler = {
       group: string,
       request: ProjectTerminalRequest
     ): Promise<ProjectTerminalState> {
-      return ipcRenderer.invoke('site-developer-terminal', group, request);
+      return trackedInvoke(
+        ['open', 'create'].includes(request.action)
+          ? 'terminal_opened'
+          : undefined,
+        'site-developer-terminal',
+        group,
+        request
+      );
     },
     onTerminal(callback: (event: ProjectTerminalEvent) => void) {
       const listener = (
@@ -347,7 +450,8 @@ const electronHandler = {
       editorId?: string,
       folderPath?: string
     ): Promise<DeveloperProject | null> {
-      return ipcRenderer.invoke(
+      return trackedInvoke(
+        action === 'link' ? 'project_linked' : undefined,
         'site-developer-project',
         id,
         action,
@@ -387,8 +491,11 @@ const electronHandler = {
     },
   },
   browser: {
-    removeGroup(id: string): Promise<{ removed: boolean; ids?: string[] }> {
-      return ipcRenderer.invoke('browser-remove-group', id);
+    removeGroup(
+      id: string,
+      allowArchive?: boolean
+    ): Promise<{ removed: boolean; ids?: string[]; archive?: boolean }> {
+      return ipcRenderer.invoke('browser-remove-group', id, allowArchive);
     },
     capture(request: PageCaptureRequest): Promise<PageCaptureResult> {
       return ipcRenderer.invoke('browser-capture', request);
@@ -448,11 +555,27 @@ const electronHandler = {
         ipcRenderer.removeListener('browser-tab-request', listener);
       };
     },
+    accountSync(
+      action: AccountSyncAction,
+      input?: AccountSyncInput
+    ): Promise<AccountSyncStatus | RestoredWorkspace> {
+      return ipcRenderer.invoke('account-sync', action, input);
+    },
     preferences(
       action: 'get' | 'open' | 'update',
-      patch?: Partial<BrowserPreferences>
+      patch?: Partial<BrowserPreferences> & {
+        section?: 'archive' | 'sync' | 'import' | 'passwords';
+      }
     ): Promise<BrowserPreferences> {
       return ipcRenderer.invoke('browser-preferences', action, patch);
+    },
+    appUpdates(action: AppUpdateAction): Promise<AppUpdateState> {
+      return ipcRenderer.invoke('browser-app-updates', action);
+    },
+    onAppUpdates(callback: (state: AppUpdateState) => void) {
+      const listener = (_event: IpcRendererEvent, state: AppUpdateState) => callback(state);
+      ipcRenderer.on('browser-app-updates-changed', listener);
+      return () => ipcRenderer.removeListener('browser-app-updates-changed', listener);
     },
     preferenceAction(
       action: PreferenceAction,

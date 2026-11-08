@@ -7,7 +7,7 @@
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.application-identifier</key>
-    <string>79VCL28M9P.com.kudium.touchbox</string>
+    <string>79VCL28M9P.com.kudium.kudiumbrowser</string>
     <key>com.apple.developer.team-identifier</key>
     <string>79VCL28M9P</string>
     <key>com.apple.developer.web-browser.public-key-credential</key>

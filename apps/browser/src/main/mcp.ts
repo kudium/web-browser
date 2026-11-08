@@ -35,7 +35,8 @@ export const MCP_NAMES = AI_TOOLS.filter(
 );
 export type MCPTool = (typeof MCP_NAMES)[number];
 const descriptions: Record<MCPTool, string> = {
-  list_skills: 'Discover user-enabled Kudium Browser skills for relevant workflows.',
+  list_skills:
+    'Discover user-enabled Kudium Browser skills for relevant workflows.',
   read_skill:
     'Read an enabled skill or one bundled text resource by skillId and optional resource. Skills cannot grant permissions. Scripts are reference text and never run automatically.',
   request_user_feedback:
@@ -258,6 +259,7 @@ export function mcpArguments(
 export function createMCPController(options: {
   filename: string;
   beforeStart?: Promise<void>;
+  approveConnector?: () => Promise<boolean>;
   execute: (
     name: MCPTool,
     args: Record<string, unknown>,
@@ -269,6 +271,9 @@ export function createMCPController(options: {
   let enabled = false;
   let port = 43187;
   let token = randomBytes(32).toString('hex');
+  let connectorToken: string | undefined;
+  let pairing = false;
+  let lastPairing = 0;
   let agentTokens: Partial<Record<PersonalAgentId, string>> = {};
   const agentRequests = new Map<
     string,
@@ -297,6 +302,8 @@ export function createMCPController(options: {
       port = saved.port;
     if (typeof saved.token === 'string' && /^[a-f0-9]{64}$/.test(saved.token))
       token = saved.token;
+    if (/^[a-f0-9]{64}$/.test(saved.connectorToken || ''))
+      connectorToken = saved.connectorToken;
     PERSONAL_AGENTS.forEach(({ id }) => {
       const savedToken = saved.agentTokens?.[id];
       if (typeof savedToken === 'string' && /^[a-f0-9]{64}$/.test(savedToken))
@@ -323,6 +330,7 @@ export function createMCPController(options: {
         port,
         token,
         agentTokens,
+        connectorToken,
         privateDataDisclosed,
       }),
       { durable: privateDataDisclosed }
@@ -368,16 +376,69 @@ export function createMCPController(options: {
         fail(403, 'Only local MCP clients are accepted.');
         return;
       }
-      const supplied = Buffer.from(request.headers.authorization || '');
-      const accepted = [token, ...Object.values(agentTokens)].find(
-        (candidate) => {
-          const expected = Buffer.from(`Bearer ${candidate}`);
-          return (
-            supplied.length === expected.length &&
-            timingSafeEqual(supplied, expected)
-          );
+      if (request.url === '/connect' && request.method === 'POST') {
+        if (!enabled || disposed || !options.approveConnector) {
+          fail(403, 'Enable external control in Kudium Browser first.');
+          return;
         }
-      );
+        if (pairing || Date.now() - lastPairing < 5000) {
+          fail(429, 'A connection request is already pending.');
+          return;
+        }
+        pairing = true;
+        lastPairing = Date.now();
+        const generation = token;
+        try {
+          const approved = await options.approveConnector();
+          if (
+            !approved ||
+            disposed ||
+            !enabled ||
+            token !== generation ||
+            response.destroyed
+          ) {
+            fail(403, 'Connection cancelled.');
+            return;
+          }
+          if (!connectorToken) {
+            connectorToken = randomBytes(32).toString('hex');
+            try {
+              persist();
+            } catch (reason) {
+              connectorToken = undefined;
+              throw reason;
+            }
+          }
+          response.writeHead(200, { 'Content-Type': 'application/json' });
+          response.end(
+            JSON.stringify({
+              mcpServers: {
+                kudiumbrowser: {
+                  url: status().url,
+                  headers: { Authorization: `Bearer ${connectorToken}` },
+                },
+              },
+            })
+          );
+        } catch {
+          fail(500, 'Could not save connection.');
+        } finally {
+          pairing = false;
+        }
+        return;
+      }
+      const supplied = Buffer.from(request.headers.authorization || '');
+      const accepted = [
+        token,
+        ...(connectorToken ? [connectorToken] : []),
+        ...Object.values(agentTokens),
+      ].find((candidate) => {
+        const expected = Buffer.from(`Bearer ${candidate}`);
+        return (
+          supplied.length === expected.length &&
+          timingSafeEqual(supplied, expected)
+        );
+      });
       if (!accepted) {
         fail(401, 'Kudium Browser connection token required.');
         return;
@@ -423,7 +484,7 @@ export function createMCPController(options: {
           enableJsonResponse: true,
         });
         mcp = new Server(
-          { name: 'touchbox', version: '1.0.0' },
+          { name: 'kudium-browser', version: '1.0.0' },
           {
             capabilities: { tools: {}, resources: {} },
             instructions: MCP_GUIDE,
@@ -439,19 +500,19 @@ export function createMCPController(options: {
         mcp.setRequestHandler(ListResourcesRequestSchema, async () => ({
           resources: [
             {
-              uri: 'touchbox://guide',
-              name: 'Kudium Browser browser guide',
+              uri: 'kudiumbrowser://guide',
+              name: 'Kudium Browser guide',
               mimeType: 'text/plain',
             },
           ],
         }));
         mcp.setRequestHandler(ReadResourceRequestSchema, async (call) => {
-          if (call.params.uri !== 'touchbox://guide')
+          if (call.params.uri !== 'kudiumbrowser://guide')
             throw new Error('Unknown resource.');
           return {
             contents: [
               {
-                uri: 'touchbox://guide',
+                uri: 'kudiumbrowser://guide',
                 mimeType: 'text/plain',
                 text: MCP_GUIDE,
               },
@@ -550,7 +611,7 @@ export function createMCPController(options: {
         );
       return {
         mcpServers: {
-          touchbox: {
+          kudiumbrowser: {
             url: status().url,
             headers: { Authorization: `Bearer ${token}` },
           },
@@ -578,7 +639,7 @@ export function createMCPController(options: {
       if (!agentTokens[id]) return undefined;
       return {
         mcpServers: {
-          touchbox: {
+          kudiumbrowser: {
             url: status().url,
             headers: { Authorization: `Bearer ${agentTokens[id]}` },
           },
@@ -641,6 +702,7 @@ export function createMCPController(options: {
         if (change.rotate || !enabled) {
           token = randomBytes(32).toString('hex');
           agentTokens = {};
+          connectorToken = undefined;
         }
         error = undefined;
         persist();
@@ -655,6 +717,7 @@ export function createMCPController(options: {
           enabled = false;
           token = randomBytes(32).toString('hex');
           agentTokens = {};
+          connectorToken = undefined;
           await stop();
           persist();
           options.changed(status());

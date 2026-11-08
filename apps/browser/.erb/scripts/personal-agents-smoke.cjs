@@ -4,7 +4,7 @@ const fs = require('fs'), os = require('os'), path = require('path'), assert = r
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
 const JSON5 = require('json5'), YAML = require('yaml'), esbuild = require('esbuild');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-personal-agents-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-personal-agents-'));
 app.setPath('userData', path.join(root, 'user-data'));
 process.env.HERMES_HOME = path.join(root, 'hermes');
 process.env.OPENCLAW_STATE_DIR = path.join(root, 'openclaw');
@@ -30,6 +30,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   host = new BrowserWindow({ width: 1080, height: 760, show: true, webPreferences: { preload: path.join(root,'preload.cjs'), contextIsolation: true } });
   website = new WebContentsView();await website.webContents.loadURL('data:text/html,<title>Fixture page</title><p>Personal agent target</p>');
   const tabs = [{ id: 'fixture-tab', name: 'Fixture page', url: 'https://fixture.test', sessionId: 'fixture-group', icon: '' }];
+  await require(path.join(root,'ai.cjs')).initializeLocalStorage();
   dispose = require(path.join(root,'ai.cjs')).registerAI(host,{ tabs:()=>tabs, focused:()=>tabs[0].id, contents:id=>id===tabs[0].id?website.webContents:undefined });
   await host.loadFile(path.join(root,'index.html'));
   const evaluate = expression => host.webContents.executeJavaScript(expression);
@@ -49,8 +50,8 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   assert(!(await evaluate("document.querySelector('.ai-manual-connection').open")),'manual config remains collapsed');
   assert.equal(await evaluate("document.querySelector('[aria-label=\"MCP configuration\"]').value"),'','quick setup does not load a token into the form');
   await click('Connect OpenClaw');await until("!!document.querySelector('[aria-label=\"Disconnect OpenClaw\"]')");
-  const hermes = YAML.parse(fs.readFileSync(hermesPath,'utf8')).mcp_servers.touchbox;
-  const openclaw = JSON5.parse(fs.readFileSync(openclawPath,'utf8')).mcp.servers.touchbox;
+  const hermes = YAML.parse(fs.readFileSync(hermesPath,'utf8')).mcp_servers.kudiumbrowser;
+  const openclaw = JSON5.parse(fs.readFileSync(openclawPath,'utf8')).mcp.servers.kudiumbrowser;
   assert.notEqual(hermes.headers.Authorization,openclaw.headers.Authorization,'agents have independent credentials');
   for (const [name,entry] of [['Hermes',hermes],['OpenClaw',openclaw]]) {
     const client = new Client({name:name+'-config-fixture',version:'1'});clients.push(client);
@@ -82,15 +83,15 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   // Revocation immediately blocks one agent while retaining the other.
   await click('Disconnect Hermes');await until("!!document.querySelector('[aria-label=\"Connect Hermes\"]')");
   await assert.rejects(clients[0].callTool({name:'list_tabs',arguments:{}}));assert(!(await clients[1].callTool({name:'list_tabs',arguments:{}})).isError);
-  assert(!YAML.parse(fs.readFileSync(hermesPath,'utf8')).mcp_servers.touchbox);assert(fs.readFileSync(hermesPath,'utf8').includes('Preserve my preferences'));
+  assert(!YAML.parse(fs.readFileSync(hermesPath,'utf8')).mcp_servers.kudiumbrowser);assert(fs.readFileSync(hermesPath,'utf8').includes('Preserve my preferences'));
   await click('Connect Hermes');await until("!!document.querySelector('[aria-label=\"Disconnect Hermes\"]')");
   await evaluate("window.electron.ai.mcpUpdate({enabled:true,rotate:true})");await until("!!document.querySelector('[aria-label=\"Reconnect OpenClaw\"]')");
   await assert.rejects(clients[1].callTool({name:'list_tabs',arguments:{}}));await shot('reconnect-after-reset');
   await click('Reconnect OpenClaw');await until("!!document.querySelector('[aria-label=\"Disconnect OpenClaw\"]')");
   // A user-edited connection requires explicit native review; Cancel preserves it.
-  const edited = JSON5.parse(fs.readFileSync(openclawPath,'utf8'));edited.mcp.servers.touchbox.url='https://custom.test/mcp';fs.writeFileSync(openclawPath,JSON.stringify(edited));
+  const edited = JSON5.parse(fs.readFileSync(openclawPath,'utf8'));edited.mcp.servers.kudiumbrowser.url='https://custom.test/mcp';fs.writeFileSync(openclawPath,JSON.stringify(edited));
   dialog.showMessageBox = async()=>({response:0});
-  const cancelled = await evaluate("window.electron.ai.personalAgents({action:'connect',id:'openclaw'})");assert.equal(cancelled.changed,false);assert.equal(JSON5.parse(fs.readFileSync(openclawPath,'utf8')).mcp.servers.touchbox.url,'https://custom.test/mcp');
+  const cancelled = await evaluate("window.electron.ai.personalAgents({action:'connect',id:'openclaw'})");assert.equal(cancelled.changed,false);assert.equal(JSON5.parse(fs.readFileSync(openclawPath,'utf8')).mcp.servers.kudiumbrowser.url,'https://custom.test/mcp');
   // Native picker cancellation and a selected alternate config are both safe.
   dialog.showOpenDialog = async()=>({canceled:true,filePaths:[]});await evaluate("window.electron.ai.personalAgents({action:'locate',id:'hermes'})");
   dialog.showOpenDialog = async()=>({canceled:false,filePaths:[hermesPath]});await evaluate("window.electron.ai.personalAgents({action:'locate',id:'hermes'})");

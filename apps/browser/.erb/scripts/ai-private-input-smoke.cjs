@@ -4,7 +4,7 @@ const {app,BrowserWindow,WebContentsView,dialog,session,powerMonitor}=require('e
 const {Client}=require('@modelcontextprotocol/sdk/client/index.js');
 const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
 const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after';assert(['before','after'].includes(phase));
-const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-private-input-'));app.setPath('userData',temporary);
+const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-private-input-'));app.setPath('userData',temporary);
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const source=fs.readFileSync(path.join(root,phase==='before'?'docs/benchmarks/baselines/private-input/ai.ts.txt':'src/main/ai.ts'),'utf8');
 const url='https://private-input.fixture.test/',fact='synthetic-temporary-secret-21937';
@@ -20,10 +20,11 @@ let host,view,client,dispose,vault,scenario,received=[],formFailure,formFinished
  host=new BrowserWindow({show:false,width:700,height:500,webPreferences:{sandbox:true,contextIsolation:true,preload:path.join(temporary,'preload.cjs')}});await host.loadURL('data:text/html,Temporary input host');
  view=new WebContentsView({webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});host.contentView.addChildView(view);view.setBounds({x:0,y:0,width:650,height:400});await view.webContents.loadURL(url);
  const ai=require(path.join(temporary,'ai.cjs'));vault=ai.passwordVault();vault.unlock('disposable temporary input credential',true);ai.registerPasswordManager(()=>false,{authenticateOS:async()=>{}});
+ await ai.initializeLocalStorage();
  tabs=[{id:'first',name:'Fixture',url,icon:'',sessionId:'fixture'}];dispose=ai.registerAI(host,{tabs:()=>tabs,focused:()=> 'first',contents:id=>id==='first'?view.webContents:undefined});
  const evaluate=code=>host.webContents.executeJavaScript(code);
  const reserve=net.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
- await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);const connection=(await evaluate("test.mcp('connection')")).mcpServers.touchbox;
+ await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);const connection=(await evaluate("test.mcp('connection')")).mcpServers.kudiumbrowser;
  client=new Client({name:'private-input-fixture',version:'1'},{capabilities:{}});await client.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
  app.on('browser-window-created',(_event,win)=>{
    win.webContents.once('did-finish-load',async()=>{

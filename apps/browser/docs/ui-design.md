@@ -1,6 +1,6 @@
-# Touchbox desktop interaction model
+# Kudium Browser desktop interaction model
 
-Touchbox uses Radix Themes for accessible controls and Lucide React for interface
+Kudium Browser uses Radix Themes for accessible controls and Lucide React for interface
 icons. Website logos are content, with a local globe fallback. Global CSS tokens
 provide light/dark appearance and desktop surfaces without a second styling
 framework. macOS uses Electron vibrancy and native inset window controls; this
@@ -18,7 +18,7 @@ not proprietary design specifications or a promise of feature parity.
 - [Dia product updates](https://www.diabrowser.com/changelog/mac): current sidebar,
   profiles, and tab organization conventions.
 
-## Touchbox's hybrid model
+## Kudium Browser's hybrid model
 
 Spaces organize contexts such as Personal, Work, or Projects. A space is not a
 cookie partition. Moving a session to another space preserves its account.
@@ -57,7 +57,7 @@ The final space cannot be deleted. Per-space active tabs are saved locally.
 
 Chrome's settings and extension-management pages are not shipped with Electron.
 Browser page actions use Electron native menus. The Chrome Web Store opens in
-Touchbox and installs Manifest V3 extensions after a native consent dialog.
+Kudium Browser and installs Manifest V3 extensions after a native consent dialog.
 Extensions can run in all apps or selected apps, with independent storage in
 each profile. Toolbar actions open extension popups. Electron supports a subset
 of Chrome APIs; loading and worker errors appear in extension menus. The native
@@ -77,7 +77,7 @@ session rows and indented folders. Session counts, status dots, promotional
 branding, repeated page titles, and the persistent status footer were removed.
 Folder disclosure and management controls become more visible on hover or
 keyboard focus. The bottom strip holds the app library, settings and space
-switching. Horizontal page tabs remain above the website for Touchbox's hybrid
+switching. Horizontal page tabs remain above the website for Kudium Browser's hybrid
 session model. The populated preview uses disposable test data.
 
 ## Dragging tabs and browser controls
@@ -87,7 +87,7 @@ sidebar reordering moves the whole session group together. Drop a horizontal
 page into the sidebar’s fresh-session zone to recreate it in a new persistent
 cookie partition. Drop it on a same-origin session to switch to that account’s
 partition. Cookies are not copied. Cross-origin merges are rejected, preserving
-Touchbox’s origin isolation rule. Custom page names survive moves.
+Kudium Browser’s origin isolation rule. Custom page names survive moves.
 
 The native Extensions submenu lists installed extensions with enable/remove,
 app-access and update controls, and the integrated Chrome Web Store.

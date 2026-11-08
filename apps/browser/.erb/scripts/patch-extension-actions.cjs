@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 function patchSource(source) {
-  if (source.includes('// TouchBox: profile-scoped action state v1'))
+  if (source.includes('// KudiumBrowser: profile-scoped action state v1'))
     return source;
   function replace(before, after) {
     if (!source.includes(before))
@@ -15,7 +15,7 @@ function patchSource(source) {
   }
   replace(
     '  const observerCounts = /* @__PURE__ */ new Map();',
-    '  // TouchBox: profile-scoped action state v1\n  const observerCounts = /* @__PURE__ */ new Map();\n  const requests = new Map();\n  let requestNumber = 0;'
+    '  // KudiumBrowser: profile-scoped action state v1\n  const observerCounts = /* @__PURE__ */ new Map();\n  const requests = new Map();\n  let requestNumber = 0;'
   );
   replace(
     '    getAction(extensionId) {\n      return actionMap.get(extensionId);\n    },',
@@ -77,12 +77,12 @@ function patchInstalled() {
 }
 
 function patchObserverSource(source) {
-  if (source.includes('// TouchBox: bounded extension observer cleanup v1')) return source;
+  if (source.includes('// KudiumBrowser: bounded extension observer cleanup v1')) return source;
   const beforeAdd = `        this.observers.add(observer);
         observer.once?.("destroyed", () => {
           this.observers.delete(observer);
         });`;
-  const afterAdd = `        // TouchBox: bounded extension observer cleanup v1
+  const afterAdd = `        // KudiumBrowser: bounded extension observer cleanup v1
         if (this.observers.has(observer)) return;
         this.observers.add(observer);
         this.observerCleanup ||= new WeakMap();

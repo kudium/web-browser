@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const before = process.argv.includes('--before');
 const baseline = before ? execFileSync('git', ['show', 'de2eae3bdf2f346d66dc91a6ef5aeda9581c0603:src/main/aiActivityLayer.ts']) : fs.readFileSync('src/main/aiActivityLayer.ts');
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-activity-smoke-'));
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-activity-smoke-'));
 app.setPath('userData', path.join(temporary, 'user-data'));
 const hash = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
