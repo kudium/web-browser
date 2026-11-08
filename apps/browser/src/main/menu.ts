@@ -15,6 +15,7 @@ import type { BrowserShortcut } from '../browser/contracts';
 import type { NewWindowParams } from '../types';
 import { shellContextMenu } from './shellContextMenu';
 import { getBrowserWindows } from './browserWindows';
+import { showAboutDialog } from './about';
 
 export default class MenuBuilder {
   mainWindow: BrowserWindow;
@@ -270,7 +271,15 @@ export default class MenuBuilder {
           },
         },
         ...(!mac
-          ? [separator, this.settings('About Kudium Browser', 'about')]
+          ? [
+              separator,
+              {
+                label: 'About Kudium Browser',
+                click: () => {
+                  void showAboutDialog(this.mainWindow);
+                },
+              },
+            ]
           : []),
       ],
     };
@@ -280,7 +289,12 @@ export default class MenuBuilder {
             {
               label: 'Kudium Browser',
               submenu: [
-                { label: 'About Kudium Browser', role: 'about' as const },
+                {
+                  label: 'About Kudium Browser',
+                  click: () => {
+                    void showAboutDialog(this.mainWindow);
+                  },
+                },
                 separator,
                 preferences,
                 separator,

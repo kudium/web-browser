@@ -1,4 +1,6 @@
-jest.mock('../main/browserWindows', () => ({ getBrowserWindows: () => undefined }));
+jest.mock('../main/browserWindows', () => ({
+  getBrowserWindows: () => undefined,
+}));
 import MenuBuilder from '../main/menu';
 
 const send = jest.fn();
@@ -50,9 +52,9 @@ test('provides a branded standard browser menu on both platforms', () => {
     'Window',
     'Help',
   ]);
-  expect(children(mac[0]).find((item) => item.role === 'about').label).toBe(
-    'About Kudium Browser'
-  );
+  expect(
+    children(mac[0]).find((item) => item.label === 'About Kudium Browser').click
+  ).toEqual(expect.any(Function));
   expect(
     builder()
       .buildDefaultTemplate()
