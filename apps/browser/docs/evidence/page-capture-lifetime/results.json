@@ -1,0 +1,23 @@
+{
+  "widths": [
+    1160,
+    480
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "verified": [
+    "production Site settings actions",
+    "area selection with real mouse events",
+    "crop image pixels",
+    "clipboard copy and restoration",
+    "native save cancellation",
+    "full page below fold",
+    "scroll position retained",
+    "zoomed visible capture",
+    "PDF print layout and text",
+    "foreign-window IPC rejected"
+  ],
+  "nativeSaveDialog": "stubbed with disposable output paths"
+}

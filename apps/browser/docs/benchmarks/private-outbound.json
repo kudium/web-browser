@@ -1,0 +1,172 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T08:50:25.574Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "95e77fbd75da3939ebfbaef0c95039b0edeeecb18b6ee8151f6203e3c3b598cc",
+    "sourceHashes": {
+      "src/main/ai.ts": "67f21249d4261b60fbc97479c479e3b50653104153bbda43d5cef16b4e3f5c50",
+      "src/main/mcp.ts": "774e6e09946e1aa5b348e3ed1a817e68f6632b6dedab7a0927911846c032193c",
+      "src/main/aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399"
+    },
+    "bundleSha256": "7c0847d20fa43a202d8568a7897a2e3b994a14e4d35ffe2e3057b2399a88810c",
+    "results": [
+      {
+        "label": "public Full access",
+        "name": "navigate",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "denied navigate",
+        "name": "navigate",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 1
+      },
+      {
+        "label": "denied type",
+        "name": "type",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 1
+      },
+      {
+        "label": "denied click",
+        "name": "click",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 1
+      },
+      {
+        "label": "denied select_options",
+        "name": "select_options",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 1
+      },
+      {
+        "label": "denied press_key",
+        "name": "press_key",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "approved private form",
+        "name": "type",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 1
+      },
+      {
+        "label": "controller restart",
+        "name": "navigate",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 1
+      },
+      {
+        "label": "provider transforms approved saved fact into URL",
+        "providerReceivedFact": true,
+        "privateSocketRequests": 1,
+        "reviews": 1
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault, official MCP SDK, native host/site identities, Chromium navigation/input/select/click traffic; Enter dispatch acceptance is checked but baseline key-handler transmission is unproven and loopback HTTP request bodies. Native approval responses/revocation are controlled. Rejection happens at action review before dispatch; accepted page scripts can contact other destinations. No network allowlist/redirect/service-worker containment, physical input/authentication, signed/cross-platform or general speed claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T08:58:05.341Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "95e77fbd75da3939ebfbaef0c95039b0edeeecb18b6ee8151f6203e3c3b598cc",
+    "sourceHashes": {
+      "src/main/ai.ts": "a47cc858bf8ba2c82ea4b0d3bdeeddde2de587a977d06f5d2c18761607e160bc",
+      "src/main/mcp.ts": "211ee91e12871792d813530c2d269698dbd08e530536f3f3b052fe7d50d2c5c3",
+      "src/main/aiTasks.ts": "3b22bf84483f7e0422e39b1573a229a5e58016b27f116b1cd1faa3dd2a8e8d19"
+    },
+    "bundleSha256": "880de8abd0985df09032ea9a36ea10f9b503580be400b97f7a57058a11327db7",
+    "results": [
+      {
+        "label": "public Full access",
+        "name": "navigate",
+        "reviews": 0,
+        "isError": false,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "denied navigate",
+        "name": "navigate",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "denied type",
+        "name": "type",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "denied click",
+        "name": "click",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "denied select_options",
+        "name": "select_options",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "denied press_key",
+        "name": "press_key",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "approved private form",
+        "name": "type",
+        "reviews": 1,
+        "isError": false,
+        "privateSocketRequests": 1
+      },
+      {
+        "label": "consent changed and restored",
+        "name": "type",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "Stop during action review",
+        "name": "navigate",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "controller restart",
+        "name": "navigate",
+        "reviews": 1,
+        "isError": true,
+        "privateSocketRequests": 0
+      },
+      {
+        "label": "provider transforms approved saved fact into URL",
+        "providerReceivedFact": true,
+        "privateSocketRequests": 0,
+        "reviews": 2
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault, official MCP SDK, native host/site identities, Chromium navigation/input/select/click traffic; Enter dispatch acceptance is checked but baseline key-handler transmission is unproven and loopback HTTP request bodies. Native approval responses/revocation are controlled. Rejection happens at action review before dispatch; accepted page scripts can contact other destinations. No network allowlist/redirect/service-worker containment, physical input/authentication, signed/cross-platform or general speed claim."
+  }
+}

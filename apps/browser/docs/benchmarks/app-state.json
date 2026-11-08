@@ -1,0 +1,1533 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T02:14:30.200Z",
+    "phase": "before",
+    "runtime": {
+      "node": "22.23.1",
+      "acorn": "8.16.0",
+      "ada": "2.9.2",
+      "amaro": "1.1.8",
+      "ares": "1.34.6",
+      "brotli": "1.1.0",
+      "cjs_module_lexer": "2.2.0",
+      "cldr": "48.0",
+      "icu": "78.2",
+      "llhttp": "9.4.2",
+      "modules": "127",
+      "napi": "10",
+      "nbytes": "0.1.3",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.69.0",
+      "openssl": "3.5.7",
+      "simdjson": "4.5.0",
+      "simdutf": "6.4.2",
+      "sqlite": "3.51.3",
+      "tz": "2026a",
+      "undici": "6.27.0",
+      "unicode": "17.0",
+      "uv": "1.51.0",
+      "uvwasi": "0.0.23",
+      "v8": "12.4.254.21-node.56",
+      "zlib": "1.3.1-e00f703",
+      "zstd": "1.5.7"
+    },
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cpu": "Apple M1 Max",
+    "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+    "sources": {
+      "manager": "1698b25fbc438b6423f5c265fb807c5ffc20aec9219afa5061861f4cb1010fb8",
+      "hook": "6678ead5578f24b706cba49ec679ce4b10eafbd16ffc5f9724f0304c2786bde5",
+      "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+      "probe": "77733c1c249997cedf229371726a95bbb1fb353c8888925083c3d8a83aaf4413"
+    },
+    "baselineRevision": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+    "bundledSources": {
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/utils/groupAccess.ts": "927ae55e0783c4626f572e456d36d42b5b2cf3db813cd87c2a2e792e7f8e0e7c",
+      "src/utils/constant.ts": "6562ece1d03b571a09d26e8b2345cabc81212491deebf08870f5ba0d03d67af0",
+      "src/utils/LocalStorage.ts": "5d344de50b52a17d12a6c447aee22051f0f8fbb18ecc2a8ad7bfb55734f48213",
+      "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1",
+      "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+      "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+      "src/utils/AppManager.ts": "1698b25fbc438b6423f5c265fb807c5ffc20aec9219afa5061861f4cb1010fb8",
+      "src/utils/hooks/useAppList.ts": "6678ead5578f24b706cba49ec679ce4b10eafbd16ffc5f9724f0304c2786bde5"
+    },
+    "workloads": [
+      {
+        "records": 1,
+        "coldReadMs": 0.31733300000000497,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 0.691166999999993,
+            "p95": 1.375583000000006
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 15,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.04766600000000665,
+            "p95": 0.44420800000000327
+          },
+          "storageReads": 450,
+          "parses": 150
+        },
+        "subscriptionRaceObserved": "0:1:Changed"
+      },
+      {
+        "records": 10,
+        "coldReadMs": 0.023791000000002782,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 5.112042000000002,
+            "p95": 6.191624999999988
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 15,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.12487500000003138,
+            "p95": 0.41320799999999736
+          },
+          "storageReads": 450,
+          "parses": 150
+        },
+        "subscriptionRaceObserved": "0:10:Changed"
+      },
+      {
+        "records": 50,
+        "coldReadMs": 0.07649999999995316,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 24.763292000000035,
+            "p95": 26.143959000000052
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 15,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.44533400000000256,
+            "p95": 1.0524579999998878
+          },
+          "storageReads": 450,
+          "parses": 150
+        },
+        "subscriptionRaceObserved": "0:50:Changed"
+      },
+      {
+        "records": 1000,
+        "coldReadMs": 1.5289170000000922,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 464.23262499999964,
+            "p95": 505.0300420000001
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 15,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 8.035875000001397,
+            "p95": 8.356958999998824
+          },
+          "storageReads": 450,
+          "parses": 150
+        },
+        "subscriptionRaceObserved": "0:1000:Changed"
+      }
+    ]
+  },
+  "after": {
+    "recordedAt": "2026-11-07T02:14:53.264Z",
+    "phase": "after",
+    "runtime": {
+      "node": "22.23.1",
+      "acorn": "8.16.0",
+      "ada": "2.9.2",
+      "amaro": "1.1.8",
+      "ares": "1.34.6",
+      "brotli": "1.1.0",
+      "cjs_module_lexer": "2.2.0",
+      "cldr": "48.0",
+      "icu": "78.2",
+      "llhttp": "9.4.2",
+      "modules": "127",
+      "napi": "10",
+      "nbytes": "0.1.3",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.69.0",
+      "openssl": "3.5.7",
+      "simdjson": "4.5.0",
+      "simdutf": "6.4.2",
+      "sqlite": "3.51.3",
+      "tz": "2026a",
+      "undici": "6.27.0",
+      "unicode": "17.0",
+      "uv": "1.51.0",
+      "uvwasi": "0.0.23",
+      "v8": "12.4.254.21-node.56",
+      "zlib": "1.3.1-e00f703",
+      "zstd": "1.5.7"
+    },
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cpu": "Apple M1 Max",
+    "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+    "sources": {
+      "manager": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+      "hook": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
+      "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+      "probe": "77733c1c249997cedf229371726a95bbb1fb353c8888925083c3d8a83aaf4413"
+    },
+    "baselineRevision": null,
+    "bundledSources": {
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/utils/groupAccess.ts": "927ae55e0783c4626f572e456d36d42b5b2cf3db813cd87c2a2e792e7f8e0e7c",
+      "src/utils/constant.ts": "6562ece1d03b571a09d26e8b2345cabc81212491deebf08870f5ba0d03d67af0",
+      "src/utils/LocalStorage.ts": "5d344de50b52a17d12a6c447aee22051f0f8fbb18ecc2a8ad7bfb55734f48213",
+      "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1",
+      "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+      "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+      "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+      "src/utils/hooks/useAppList.ts": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d"
+    },
+    "workloads": [
+      {
+        "records": 1,
+        "coldReadMs": 0.36258300000000077,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 0.1849589999999992,
+            "p95": 0.3627919999999989
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.037584000000002504,
+            "p95": 0.44599999999999795
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:1:During mount"
+      },
+      {
+        "records": 10,
+        "coldReadMs": 0.1008330000000015,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 1.2907499999999885,
+            "p95": 1.506875000000008
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.038666000000006306,
+            "p95": 0.08916600000000585
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:10:During mount"
+      },
+      {
+        "records": 50,
+        "coldReadMs": 0.12408400000001052,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 6.027999999999992,
+            "p95": 6.305415999999994
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.03970800000001873,
+            "p95": 0.13141600000000153
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:50:During mount"
+      },
+      {
+        "records": 1000,
+        "coldReadMs": 2.492832999999962,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 115.83345900000006,
+            "p95": 117.82945899999993
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.08191699999997581,
+            "p95": 0.09220899999991161
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:1000:During mount"
+      }
+    ]
+  },
+  "previousRuns": [
+    {
+      "recordedAt": "2026-11-07T02:06:03.792Z",
+      "phase": "before",
+      "runtime": {
+        "node": "22.23.1",
+        "acorn": "8.16.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.8",
+        "ares": "1.34.6",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.2",
+        "modules": "127",
+        "napi": "10",
+        "nbytes": "0.1.3",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.69.0",
+        "openssl": "3.5.7",
+        "simdjson": "4.5.0",
+        "simdutf": "6.4.2",
+        "sqlite": "3.51.3",
+        "tz": "2026a",
+        "undici": "6.27.0",
+        "unicode": "17.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "12.4.254.21-node.56",
+        "zlib": "1.3.1-e00f703",
+        "zstd": "1.5.7"
+      },
+      "platform": "darwin",
+      "architecture": "arm64",
+      "cpu": "Apple M1 Max",
+      "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+      "sources": {
+        "manager": "1698b25fbc438b6423f5c265fb807c5ffc20aec9219afa5061861f4cb1010fb8",
+        "hook": "6678ead5578f24b706cba49ec679ce4b10eafbd16ffc5f9724f0304c2786bde5",
+        "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "probe": "1f00d4f3dd56ddacc1468232ee2e65bc7d55d567f20dfc9068faf18d755f8ef3"
+      },
+      "workloads": [
+        {
+          "records": 1,
+          "coldReadMs": 0.3356670000000008,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 0.6498329999999868,
+              "p95": 0.9809999999999945
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.04941700000000537,
+              "p95": 0.4800420000000116
+            },
+            "storageReads": 450,
+            "parses": 150
+          }
+        },
+        {
+          "records": 10,
+          "coldReadMs": 0.027333999999996195,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 4.545708000000005,
+              "p95": 5.004082999999994
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.1145829999999819,
+              "p95": 0.24366699999998787
+            },
+            "storageReads": 450,
+            "parses": 150
+          }
+        },
+        {
+          "records": 50,
+          "coldReadMs": 0.07995800000000486,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 21.800749999999994,
+              "p95": 22.64100000000002
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.42258300000003146,
+              "p95": 0.6308330000000524
+            },
+            "storageReads": 450,
+            "parses": 150
+          }
+        },
+        {
+          "records": 1000,
+          "coldReadMs": 1.4929579999999305,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 458.7699170000001,
+              "p95": 469.51091599999995
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 7.936417000000802,
+              "p95": 8.27599999999984
+            },
+            "storageReads": 450,
+            "parses": 150
+          }
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-11-07T02:06:41.203Z",
+      "phase": "after",
+      "runtime": {
+        "node": "22.23.1",
+        "acorn": "8.16.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.8",
+        "ares": "1.34.6",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.2",
+        "modules": "127",
+        "napi": "10",
+        "nbytes": "0.1.3",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.69.0",
+        "openssl": "3.5.7",
+        "simdjson": "4.5.0",
+        "simdutf": "6.4.2",
+        "sqlite": "3.51.3",
+        "tz": "2026a",
+        "undici": "6.27.0",
+        "unicode": "17.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "12.4.254.21-node.56",
+        "zlib": "1.3.1-e00f703",
+        "zstd": "1.5.7"
+      },
+      "platform": "darwin",
+      "architecture": "arm64",
+      "cpu": "Apple M1 Max",
+      "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+      "sources": {
+        "manager": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+        "hook": "628b2f11fbdba9742f04ac47e657be0a048951d956c784103212a28c0438276d",
+        "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "probe": "1f00d4f3dd56ddacc1468232ee2e65bc7d55d567f20dfc9068faf18d755f8ef3"
+      },
+      "workloads": [
+        {
+          "records": 1,
+          "coldReadMs": 0.5054999999999978,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 0.228833999999992,
+              "p95": 1.7716670000000008
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.04075000000000273,
+              "p95": 0.25108399999999165
+            },
+            "storageReads": 300,
+            "parses": 0
+          }
+        },
+        {
+          "records": 10,
+          "coldReadMs": 0.12774999999999181,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 1.3393749999999898,
+              "p95": 1.6789580000000086
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.038167000000001394,
+              "p95": 0.07508300000000645
+            },
+            "storageReads": 300,
+            "parses": 0
+          }
+        },
+        {
+          "records": 50,
+          "coldReadMs": 0.11866699999998787,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 6.466875000000016,
+              "p95": 7.293749999999989
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.038625000000024556,
+              "p95": 0.08816600000000108
+            },
+            "storageReads": 300,
+            "parses": 0
+          }
+        },
+        {
+          "records": 1000,
+          "coldReadMs": 2.8632499999999936,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 117.44675000000007,
+              "p95": 142.73212499999988
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.0812909999999647,
+              "p95": 0.11687499999970896
+            },
+            "storageReads": 300,
+            "parses": 0
+          }
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-11-07T02:09:53.785Z",
+      "phase": "after",
+      "runtime": {
+        "node": "22.23.1",
+        "acorn": "8.16.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.8",
+        "ares": "1.34.6",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.2",
+        "modules": "127",
+        "napi": "10",
+        "nbytes": "0.1.3",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.69.0",
+        "openssl": "3.5.7",
+        "simdjson": "4.5.0",
+        "simdutf": "6.4.2",
+        "sqlite": "3.51.3",
+        "tz": "2026a",
+        "undici": "6.27.0",
+        "unicode": "17.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "12.4.254.21-node.56",
+        "zlib": "1.3.1-e00f703",
+        "zstd": "1.5.7"
+      },
+      "platform": "darwin",
+      "architecture": "arm64",
+      "cpu": "Apple M1 Max",
+      "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+      "sources": {
+        "manager": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+        "hook": "628b2f11fbdba9742f04ac47e657be0a048951d956c784103212a28c0438276d",
+        "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "probe": "37c4932c72a12a77f5f173f624dcf336de4fa36081ee8f5c7a99c06aa6f16135"
+      },
+      "baselineRevision": null,
+      "bundledSources": {
+        "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+        "src/utils/groupAccess.ts": "927ae55e0783c4626f572e456d36d42b5b2cf3db813cd87c2a2e792e7f8e0e7c",
+        "src/utils/constant.ts": "6562ece1d03b571a09d26e8b2345cabc81212491deebf08870f5ba0d03d67af0",
+        "src/utils/LocalStorage.ts": "5d344de50b52a17d12a6c447aee22051f0f8fbb18ecc2a8ad7bfb55734f48213",
+        "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1",
+        "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+        "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+        "src/utils/hooks/useAppList.ts": "628b2f11fbdba9742f04ac47e657be0a048951d956c784103212a28c0438276d",
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-2CxDSG/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+      },
+      "workloads": [
+        {
+          "records": 1,
+          "coldReadMs": 0.3847909999999999,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 0.18816699999999997,
+              "p95": 0.3829159999999945
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.036874999999994884,
+              "p95": 0.24208300000000094
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:1:During mount"
+        },
+        {
+          "records": 10,
+          "coldReadMs": 0.10349999999999682,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 1.3156669999999906,
+              "p95": 1.5190000000000055
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.03570799999999963,
+              "p95": 0.06858400000000131
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:10:During mount"
+        },
+        {
+          "records": 50,
+          "coldReadMs": 0.11650000000000205,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 6.075416000000004,
+              "p95": 10.527458000000024
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.14316700000000537,
+              "p95": 0.274833000000001
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:50:During mount"
+        },
+        {
+          "records": 1000,
+          "coldReadMs": 8.777750000000026,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 118.91816699999981,
+              "p95": 125.1596669999999
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 160,
+            "mount": {
+              "storageReads": 30,
+              "parses": 10
+            },
+            "updateMs": {
+              "median": 0.08770800000002055,
+              "p95": 0.12358399999993708
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:1000:During mount"
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-11-07T02:09:40.951Z",
+      "phase": "before",
+      "runtime": {
+        "node": "22.23.1",
+        "acorn": "8.16.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.8",
+        "ares": "1.34.6",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.2",
+        "modules": "127",
+        "napi": "10",
+        "nbytes": "0.1.3",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.69.0",
+        "openssl": "3.5.7",
+        "simdjson": "4.5.0",
+        "simdutf": "6.4.2",
+        "sqlite": "3.51.3",
+        "tz": "2026a",
+        "undici": "6.27.0",
+        "unicode": "17.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "12.4.254.21-node.56",
+        "zlib": "1.3.1-e00f703",
+        "zstd": "1.5.7"
+      },
+      "platform": "darwin",
+      "architecture": "arm64",
+      "cpu": "Apple M1 Max",
+      "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+      "sources": {
+        "manager": "1698b25fbc438b6423f5c265fb807c5ffc20aec9219afa5061861f4cb1010fb8",
+        "hook": "6678ead5578f24b706cba49ec679ce4b10eafbd16ffc5f9724f0304c2786bde5",
+        "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "probe": "37c4932c72a12a77f5f173f624dcf336de4fa36081ee8f5c7a99c06aa6f16135"
+      },
+      "baselineRevision": "de2eae3bdf2f346d66dc91a6ef5aeda9581c0603",
+      "bundledSources": {
+        "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+        "src/utils/groupAccess.ts": "927ae55e0783c4626f572e456d36d42b5b2cf3db813cd87c2a2e792e7f8e0e7c",
+        "src/utils/constant.ts": "6562ece1d03b571a09d26e8b2345cabc81212491deebf08870f5ba0d03d67af0",
+        "src/utils/LocalStorage.ts": "5d344de50b52a17d12a6c447aee22051f0f8fbb18ecc2a8ad7bfb55734f48213",
+        "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1",
+        "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+        "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "src/utils/AppManager.ts": "1698b25fbc438b6423f5c265fb807c5ffc20aec9219afa5061861f4cb1010fb8",
+        "src/utils/hooks/useAppList.ts": "6678ead5578f24b706cba49ec679ce4b10eafbd16ffc5f9724f0304c2786bde5",
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-H439Px/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+      },
+      "workloads": [
+        {
+          "records": 1,
+          "coldReadMs": 0.35029199999999605,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 0.6329999999999956,
+              "p95": 1.1410829999999947
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.0557500000000033,
+              "p95": 0.5904999999999916
+            },
+            "storageReads": 450,
+            "parses": 150
+          },
+          "subscriptionRaceObserved": "0:1:Changed"
+        },
+        {
+          "records": 10,
+          "coldReadMs": 0.022832999999991443,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 4.653083000000009,
+              "p95": 5.007417000000004
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.11641699999998423,
+              "p95": 0.18629199999998036
+            },
+            "storageReads": 450,
+            "parses": 150
+          },
+          "subscriptionRaceObserved": "0:10:Changed"
+        },
+        {
+          "records": 50,
+          "coldReadMs": 0.07816600000001017,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 23.115499999999997,
+              "p95": 25.740583000000015
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.4232919999999467,
+              "p95": 0.6443330000000742
+            },
+            "storageReads": 450,
+            "parses": 150
+          },
+          "subscriptionRaceObserved": "0:50:Changed"
+        },
+        {
+          "records": 1000,
+          "coldReadMs": 1.669499999999971,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 477.3810420000009,
+              "p95": 484.7643330000001
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 15,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 8.30291699999907,
+              "p95": 8.794874999999593
+            },
+            "storageReads": 450,
+            "parses": 150
+          },
+          "subscriptionRaceObserved": "0:1000:Changed"
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-11-07T02:10:35.028Z",
+      "phase": "after",
+      "runtime": {
+        "node": "22.23.1",
+        "acorn": "8.16.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.8",
+        "ares": "1.34.6",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.2",
+        "modules": "127",
+        "napi": "10",
+        "nbytes": "0.1.3",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.69.0",
+        "openssl": "3.5.7",
+        "simdjson": "4.5.0",
+        "simdutf": "6.4.2",
+        "sqlite": "3.51.3",
+        "tz": "2026a",
+        "undici": "6.27.0",
+        "unicode": "17.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "12.4.254.21-node.56",
+        "zlib": "1.3.1-e00f703",
+        "zstd": "1.5.7"
+      },
+      "platform": "darwin",
+      "architecture": "arm64",
+      "cpu": "Apple M1 Max",
+      "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+      "sources": {
+        "manager": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+        "hook": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
+        "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "probe": "37c4932c72a12a77f5f173f624dcf336de4fa36081ee8f5c7a99c06aa6f16135"
+      },
+      "baselineRevision": null,
+      "bundledSources": {
+        "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+        "src/utils/groupAccess.ts": "927ae55e0783c4626f572e456d36d42b5b2cf3db813cd87c2a2e792e7f8e0e7c",
+        "src/utils/constant.ts": "6562ece1d03b571a09d26e8b2345cabc81212491deebf08870f5ba0d03d67af0",
+        "src/utils/LocalStorage.ts": "5d344de50b52a17d12a6c447aee22051f0f8fbb18ecc2a8ad7bfb55734f48213",
+        "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1",
+        "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+        "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+        "src/utils/hooks/useAppList.ts": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-y39QGb/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+      },
+      "workloads": [
+        {
+          "records": 1,
+          "coldReadMs": 0.3476660000000038,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 0.19966699999999804,
+              "p95": 0.5365000000000038
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.03725000000000023,
+              "p95": 0.4807909999999964
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:1:During mount"
+        },
+        {
+          "records": 10,
+          "coldReadMs": 0.10037499999999966,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 1.3336659999999938,
+              "p95": 1.6022500000000122
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.036457999999996105,
+              "p95": 0.06645800000001145
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:10:During mount"
+        },
+        {
+          "records": 50,
+          "coldReadMs": 0.2018329999999935,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 6.380750000000006,
+              "p95": 7.5080409999999915
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.03958299999999326,
+              "p95": 0.1229579999999828
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:50:During mount"
+        },
+        {
+          "records": 1000,
+          "coldReadMs": 2.909417000000019,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 118.37945900000022,
+              "p95": 142.514542
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.08262500000000728,
+              "p95": 0.09862499999962893
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:1000:During mount"
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-11-07T02:10:50.237Z",
+      "phase": "confirmation",
+      "runtime": {
+        "node": "22.23.1",
+        "acorn": "8.16.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.8",
+        "ares": "1.34.6",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.2",
+        "modules": "127",
+        "napi": "10",
+        "nbytes": "0.1.3",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.69.0",
+        "openssl": "3.5.7",
+        "simdjson": "4.5.0",
+        "simdutf": "6.4.2",
+        "sqlite": "3.51.3",
+        "tz": "2026a",
+        "undici": "6.27.0",
+        "unicode": "17.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "12.4.254.21-node.56",
+        "zlib": "1.3.1-e00f703",
+        "zstd": "1.5.7"
+      },
+      "platform": "darwin",
+      "architecture": "arm64",
+      "cpu": "Apple M1 Max",
+      "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+      "sources": {
+        "manager": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+        "hook": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
+        "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "probe": "37c4932c72a12a77f5f173f624dcf336de4fa36081ee8f5c7a99c06aa6f16135"
+      },
+      "baselineRevision": null,
+      "bundledSources": {
+        "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+        "src/utils/groupAccess.ts": "927ae55e0783c4626f572e456d36d42b5b2cf3db813cd87c2a2e792e7f8e0e7c",
+        "src/utils/constant.ts": "6562ece1d03b571a09d26e8b2345cabc81212491deebf08870f5ba0d03d67af0",
+        "src/utils/LocalStorage.ts": "5d344de50b52a17d12a6c447aee22051f0f8fbb18ecc2a8ad7bfb55734f48213",
+        "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1",
+        "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+        "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+        "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+        "src/utils/hooks/useAppList.ts": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
+        "../../../../private/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-state-bench-m3SHer/entry.ts": "b25aa7066cf35ec5c52f064d7aa5db9adcc0c2586fd8699b5bb25b60d51e9d24"
+      },
+      "workloads": [
+        {
+          "records": 1,
+          "coldReadMs": 0.3446250000000006,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 0.18045899999999904,
+              "p95": 0.3639170000000007
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.03916699999999196,
+              "p95": 0.442040999999989
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:1:During mount"
+        },
+        {
+          "records": 10,
+          "coldReadMs": 0.09641700000000242,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 1.2680000000000007,
+              "p95": 1.3967910000000074
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.03787499999999966,
+              "p95": 0.12445800000000418
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:10:During mount"
+        },
+        {
+          "records": 50,
+          "coldReadMs": 0.11575000000000557,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 6.103999999999985,
+              "p95": 6.4112499999999955
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.040374999999983174,
+              "p95": 0.10404199999999264
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:50:During mount"
+        },
+        {
+          "records": 1000,
+          "coldReadMs": 2.8679579999999874,
+          "reads": {
+            "calls": 9000,
+            "burstOf300Ms": {
+              "median": 116.49212500000021,
+              "p95": 119.42762500000003
+            },
+            "storageReads": 9000,
+            "parses": 9000
+          },
+          "hook": {
+            "consumers": 5,
+            "unrelatedUpdates": 30,
+            "renders": 155,
+            "mount": {
+              "storageReads": 25,
+              "parses": 5
+            },
+            "updateMs": {
+              "median": 0.08637499999986176,
+              "p95": 0.11724999999978536
+            },
+            "storageReads": 300,
+            "parses": 0
+          },
+          "subscriptionRaceObserved": "0:1000:During mount"
+        }
+      ]
+    }
+  ],
+  "confirmation": {
+    "recordedAt": "2026-11-07T02:15:10.753Z",
+    "phase": "confirmation",
+    "runtime": {
+      "node": "22.23.1",
+      "acorn": "8.16.0",
+      "ada": "2.9.2",
+      "amaro": "1.1.8",
+      "ares": "1.34.6",
+      "brotli": "1.1.0",
+      "cjs_module_lexer": "2.2.0",
+      "cldr": "48.0",
+      "icu": "78.2",
+      "llhttp": "9.4.2",
+      "modules": "127",
+      "napi": "10",
+      "nbytes": "0.1.3",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.69.0",
+      "openssl": "3.5.7",
+      "simdjson": "4.5.0",
+      "simdutf": "6.4.2",
+      "sqlite": "3.51.3",
+      "tz": "2026a",
+      "undici": "6.27.0",
+      "unicode": "17.0",
+      "uv": "1.51.0",
+      "uvwasi": "0.0.23",
+      "v8": "12.4.254.21-node.56",
+      "zlib": "1.3.1-e00f703",
+      "zstd": "1.5.7"
+    },
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cpu": "Apple M1 Max",
+    "scope": "Node actual AppManager and React 18 test renderer; synthetic localStorage. Excludes browser IPC/disk, Chromium paint, websites and whole-app latency.",
+    "sources": {
+      "manager": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+      "hook": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d",
+      "recovery": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+      "probe": "77733c1c249997cedf229371726a95bbb1fb353c8888925083c3d8a83aaf4413"
+    },
+    "baselineRevision": null,
+    "bundledSources": {
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/utils/groupAccess.ts": "927ae55e0783c4626f572e456d36d42b5b2cf3db813cd87c2a2e792e7f8e0e7c",
+      "src/utils/constant.ts": "6562ece1d03b571a09d26e8b2345cabc81212491deebf08870f5ba0d03d67af0",
+      "src/utils/LocalStorage.ts": "5d344de50b52a17d12a6c447aee22051f0f8fbb18ecc2a8ad7bfb55734f48213",
+      "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1",
+      "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+      "src/utils/storageRecovery.ts": "94097a856ed58cd2b234aff1bdcc5eaad48c4805bcefa28273c86d3c32b94623",
+      "src/utils/AppManager.ts": "a979ae37a339ec38c8088fac9a6ab8f18a87f3273bbb25711a30daa959852bc8",
+      "src/utils/hooks/useAppList.ts": "75fe09d15aebdb06da6bf9fe3b399940a1da63cca61cb25f2d3623a42b9d744d"
+    },
+    "workloads": [
+      {
+        "records": 1,
+        "coldReadMs": 0.3519580000000033,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 0.18129200000000623,
+            "p95": 0.37854199999999594
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.03954200000000441,
+            "p95": 0.47170899999999705
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:1:During mount"
+      },
+      {
+        "records": 10,
+        "coldReadMs": 0.09816699999999656,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 1.283875000000009,
+            "p95": 1.4521670000000029
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.037209000000004266,
+            "p95": 0.06470799999999599
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:10:During mount"
+      },
+      {
+        "records": 50,
+        "coldReadMs": 0.11754200000000026,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 5.902124999999984,
+            "p95": 6.228583000000015
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.038000000000010914,
+            "p95": 0.10737499999999045
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:50:During mount"
+      },
+      {
+        "records": 1000,
+        "coldReadMs": 2.6647080000000187,
+        "reads": {
+          "calls": 9000,
+          "burstOf300Ms": {
+            "median": 113.05349999999999,
+            "p95": 115.91262500000005
+          },
+          "storageReads": 9000,
+          "parses": 9000
+        },
+        "hook": {
+          "consumers": 5,
+          "unrelatedUpdates": 30,
+          "renders": 155,
+          "mount": {
+            "storageReads": 25,
+            "parses": 5
+          },
+          "updateMs": {
+            "median": 0.08204200000000128,
+            "p95": 0.09012499999971624
+          },
+          "storageReads": 300,
+          "parses": 0
+        },
+        "subscriptionRaceObserved": "0:1000:During mount"
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "kudium-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kudium Browser and its Bun/Hono web service",
+  "packageManager": "npm@12.2.0",
+  "scripts": {
+    "dev": "npm run dev:browser",
+    "dev:browser": "npm --prefix apps/browser run dev --",
+    "dev:web": "bun run --cwd apps/web dev",
+    "build:browser": "npm --prefix apps/browser run build --",
+    "package:browser": "npm --prefix apps/browser run package --",
+    "package:web": "npm --prefix apps/browser run package:web --",
+    "test": "npm run test:browser --",
+    "test:browser": "npm --prefix apps/browser run test --",
+    "test:web": "bun run --cwd apps/web test",
+    "check:web": "bun run --cwd apps/web check",
+    "db:generate": "bun run --cwd apps/web db:generate",
+    "db:migrate": "bun run --cwd apps/web db:migrate",
+    "install:browser": "npm --prefix apps/browser ci",
+    "install:web": "bun install --cwd apps/web --frozen-lockfile",
+    "start": "npm run dev:browser",
+    "build": "npm run build:browser",
+    "package": "npm run package:browser",
+    "lint": "npm run lint:browser --",
+    "lint:browser": "npm --prefix apps/browser run lint --",
+    "test:packaged-security": "npm --prefix apps/browser run test:packaged-security --"
+  }
+}

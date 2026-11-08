@@ -1,0 +1,38 @@
+services:
+  migrate:
+    build: .
+    env_file: .env
+    command: ["bun", "scripts/migrate.ts"]
+    restart: "no"
+  web:
+    build: .
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    expose:
+      - "3000"
+    init: true
+    stop_grace_period: 30s
+  proxy:
+    image: caddy:2
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./release-assets:/srv/releases:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  caddy_data:
+  caddy_config:

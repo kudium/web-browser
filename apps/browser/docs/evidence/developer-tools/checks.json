@@ -1,0 +1,52 @@
+{
+  "editors": [
+    "Android Studio",
+    "Antigravity",
+    "Sublime Text",
+    "WebStorm",
+    "Xcode"
+  ],
+  "launched": "Sublime Text",
+  "checks": [
+    {
+      "width": 420,
+      "height": 640,
+      "theme": "light",
+      "state": "stopped",
+      "overflow": false,
+      "terminalBottom": 628,
+      "menuFits": true,
+      "headerHeight": 34
+    },
+    {
+      "width": 420,
+      "height": 640,
+      "theme": "dark",
+      "state": "stopped",
+      "overflow": false,
+      "terminalBottom": 628,
+      "menuFits": true,
+      "headerHeight": 34
+    },
+    {
+      "width": 240,
+      "height": 640,
+      "theme": "light",
+      "state": "stopped",
+      "overflow": false,
+      "terminalBottom": 628,
+      "menuFits": true,
+      "headerHeight": 34
+    },
+    {
+      "width": 240,
+      "height": 640,
+      "theme": "dark",
+      "state": "stopped",
+      "overflow": false,
+      "terminalBottom": 628,
+      "menuFits": true,
+      "headerHeight": 34
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "slug": "chatgpt",
+    "name": "ChatGPT",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/chatgpt/chatgpt-icon-filled-128.png?v=1675593277570"
+  },
+  {
+    "slug": "make",
+    "name": "Make",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/make/make-icon-filled-128.png?v=1669863995747"
+  },
+  {
+    "slug": "codepen",
+    "name": "Codepen",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/codepen/codepen-icon-filled-128.png?v=1675614075855"
+  },
+  {
+    "slug": "youtube-music",
+    "name": "YouTube Music",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/youtube-music/youtube-music-icon-filled-128.png?v=1679560392586"
+  },
+  {
+    "slug": "whatsapp",
+    "name": "WhatsApp",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/whatsapp/whatsapp-icon-filled-128.png?v=1679558881640"
+  },
+  {
+    "slug": "youtube",
+    "name": "YouTube",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/youtube/youtube-icon-filled-128.png?v=1679558862423"
+  },
+  {
+    "slug": "github",
+    "name": "GitHub",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/github/github-icon-filled-128.png?v=1679559684200"
+  },
+  {
+    "slug": "gmail",
+    "name": "Gmail",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/gmail/gmail-icon-filled-128.png?v=1679558862120"
+  },
+  {
+    "slug": "google-calendar",
+    "name": "Google Calendar",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/google-calendar/google-calendar-icon-filled-128.png?v=1679558897612"
+  },
+  {
+    "slug": "reddit",
+    "name": "Reddit",
+    "iconFilled128Png": "https://cdn-1.webcatalog.io/catalog/reddit/reddit-icon-filled-128.png?v=1679558862849"
+  }
+]

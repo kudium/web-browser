@@ -1,0 +1,9 @@
+{
+  "verified": [
+    "production horizontal and sidebar drag sources",
+    "copy semantics and unchanged tab membership",
+    "shared GroupIcon",
+    "real provider read_page follows attached tab"
+  ],
+  "syntheticDragEvents": true
+}

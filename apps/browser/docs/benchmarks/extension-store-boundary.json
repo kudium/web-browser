@@ -1,0 +1,86 @@
+{
+  "before": {
+    "sourceSha256": "905518e6f3f1c40a4c34d828f65ee3184baa49120d3c057c6096fd5d6fecc838",
+    "probeSha256": "f4376e3301bb64a941f1d3ad1911edf2cba7d27e0f74dcaabbea8695fb6fb837",
+    "bindingSha256": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "results": [
+      {
+        "name": "same-origin child frame",
+        "result": "enabled"
+      },
+      {
+        "name": "navigation",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "target restored",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "queued target restored",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "owner restored",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "normal",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      }
+    ],
+    "scope": "Actual native main/child frame IPC and filesystem catalog policy mutations. HTTPS origin served by local session protocol. Extension engine/web-store initialization and native review are fixture adapters; synthetic extension is not installed. Subframe-enabled fixture preload solely exposes IPC attacks. No live store install, dependency router, signed packaging or physical input claim."
+  },
+  "after": {
+    "sourceSha256": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "probeSha256": "f4376e3301bb64a941f1d3ad1911edf2cba7d27e0f74dcaabbea8695fb6fb837",
+    "bindingSha256": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "results": [
+      {
+        "name": "same-origin child frame",
+        "error": "Error invoking remote method 'chromeWebstore.getExtensionStatus': Error: Untrusted extension store request"
+      },
+      {
+        "name": "navigation",
+        "result": "user_cancelled",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "target restored",
+        "result": "user_cancelled",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "queued target restored",
+        "error": "This window or its access changed. Try the action again.",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "owner restored",
+        "result": "user_cancelled",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "name": "normal",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      }
+    ],
+    "scope": "Actual native main/child frame IPC and filesystem catalog policy mutations. HTTPS origin served by local session protocol. Extension engine/web-store initialization and native review are fixture adapters; synthetic extension is not installed. Subframe-enabled fixture preload solely exposes IPC attacks. No live store install, dependency router, signed packaging or physical input claim."
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "widths": [
+    240,
+    320,
+    368,
+    480
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "states": [
+    "empty",
+    "focus",
+    "open pickers",
+    "attachments",
+    "busy",
+    "error",
+    "short height"
+  ],
+  "nativePicker": "stubbed with local files and cancellation",
+  "verified": [
+    "real attachment IPC",
+    "drop",
+    "paste",
+    "provider multimodal payload",
+    "malicious attachment cannot change access",
+    "saved access/group/model",
+    "missing group fallback",
+    "untrusted IPC rejected",
+    "tab/group drops",
+    "duplicate and covered-reference removal",
+    "scope remains human-selected",
+    "bounded on-demand browser context"
+  ]
+}

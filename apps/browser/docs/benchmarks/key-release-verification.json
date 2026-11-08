@@ -1,0 +1,49 @@
+{
+  "checks": {
+    "before": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/key-release-logs/before.log",
+      "sha256": "7c1d69ef88833f88877f4b43a42edf1fb631fde1b09ef856a7e645344a07f04a"
+    },
+    "after": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/key-release-logs/after.log",
+      "sha256": "381df2dea6df4342c0030c6729fee11b03b21c556a2a33002a8e0490c061cb08"
+    },
+    "unit": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/key-release-logs/unit.log",
+      "sha256": "6de38d2aa7b7636232a361aad1958dac2002aea85d4c9435acce8c7467b4ab35"
+    },
+    "tests": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/key-release-logs/tests.log",
+      "sha256": "8b3a80323f925248f899c435d9a8e0c1b1aea8aefb6dc05c6dd84e6579d688ee"
+    },
+    "lint": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/key-release-logs/lint.log",
+      "sha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc"
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/key-release-logs/build.log",
+      "sha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c"
+    }
+  },
+  "sourceHashes": {
+    "src/main/aiProtocol.ts": "baa44efd7148085f470a194c094a64833d90ef75887af8056931bb9aa6c27a87",
+    "src/__tests__/aiProtocol.test.ts": "8e58e6d0d2ebab63df8308c3c86c248a88fb846fcb8ed7758353181ed6de6b8e",
+    ".erb/scripts/key-release-smoke.cjs": "22f9af474c6c372f5eec446d13f94f19af923d509986370eadaae9c01e070772",
+    ".erb/scripts/checks.ts": "796089a92d27608136f47c8b58f27da02da8aec9fe7afb1e1c7bd0819ce3f63d",
+    "docs/benchmarks/baselines/key-release/aiProtocol.ts.txt": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+    "docs/benchmarks/key-release.json": "f0d1e398c8155b6a952f1914c4ae404269ba439eab99027a09ff78ac3d9b8085",
+    "docs/security/ipc-inventory-2026-11-07-key-release.json": "7631997265c4ce2a31e64c50e39399935528ac66e2e51d90842b44bd308668f2"
+  },
+  "fullSuite": {
+    "suites": 142,
+    "tests": 731,
+    "note": "Before test-only lint refactor; final protocol suite rerun:16 tests."
+  },
+  "scope": "Native root key-up delivery for Stop/failure/normal. Unit pending acknowledgements, child sessions, timeout and stalled cleanup. Production readiness unproven."
+}

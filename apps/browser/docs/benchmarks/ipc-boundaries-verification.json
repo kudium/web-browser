@@ -1,0 +1,100 @@
+{
+  "recordedAt": "2026-11-07T07:27:22.466035+00:00",
+  "sourceHashes": {
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "src/main/groupLocks.ts": "bdd106cbc5a24adad1e5d741b2d4304aebff503e5c9f3d0f51ec4d4911b6e5be",
+    "src/main/preferences.ts": "e3bd6bdee4720cf7d420285bd5d3252a9d21c0b924d32fd16ea7309cf4bfb9e2",
+    "src/main/preload.ts": "643e60414b2872bb77b6dd4d7d922b21ea5aa99945c82e6368069c2c9d0e1392",
+    "src/__tests__/ipcRequestBinding.test.ts": "c9c3ccea2f9288d2d2605db293bd64de5689c33781359f30733e78b445e94c2a",
+    "src/__tests__/groupLocks.test.ts": "c39f7e45fd2e63b580787d142931ca97476407134044f05cfbb42f19f1fd898b",
+    "src/__tests__/preferences.test.ts": "5722c6c849a919d2fb6d0182dceb799ac3720b4c0e532178575e697447b35350",
+    ".erb/scripts/checks.ts": "ce632254fd635da3d0871d840c10d290ab80b458ae10700b51278ca08a80f1de",
+    ".erb/scripts/ipc-boundary-smoke.cjs": "44b124db460a8da1fe07baaf0d71ba46710167a372100c09bd2c430eaa96514e",
+    ".erb/scripts/ipc-inventory.cjs": "8a767ca73b6266a629ab6a3896db642953d456a5632d1b6c0e81dc31974379c3"
+  },
+  "rawReportSha256": "1d64a614f4ae64dd8e472d0b761e80379d2bb257ca5aca44e5743ef791d4f170",
+  "inventorySha256": "4c11b95b4e79942c2c7dad6403d3bd6d3c6189eb499385288076c86c71931ad9",
+  "identitiesVerified": true,
+  "newlyBlockedStaleEffects": 7,
+  "runtimeBoundGenericMethods": 3,
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "e77ca35c33a3d2f1f01dcc48ab109a9bebac9ea35adff7d4c98503eb4b0f5ac8",
+      "summary": "137 suites / 693 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ipc-boundary-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "dd8e5d918ccf8db777646b473f5f320be9216f92250298d864b3cb98da24f985",
+      "summary": "Seven stale effects accepted; generic channel send/on/once escape available"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ipc-boundary-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "ffcc1dee482411c15827f2855dce960791cf10a1a37d91722b8e893b2f0f0266",
+      "summary": "Seven stale effects blocked; undeclared generic channel send/on/once rejected; normal/foreign cases pass"
+    },
+    {
+      "name": "source inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "ec6e5e40b6bae423f2cf0fb5857af03a81aece87e472b0242b88efede2a646ec",
+      "summary": "48 registrations / 47 literal channels; one dynamic input, three generic methods, two generated scripts"
+    },
+    {
+      "name": "directory package",
+      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-ipc-package",
+      "observedExitCode": 0,
+      "logSha256": "398cc338045a78ac6fb4a27f763c935665586d463deb38b910bfd8990a03b465",
+      "summary": "Unsigned/ad-hoc macOS arm64"
+    },
+    {
+      "name": "packaged security",
+      "command": "npm run test:packaged-security -- /tmp/touchbox-ipc-package/mac-arm64/TouchBox.app",
+      "observedExitCode": 0,
+      "logSha256": "76b48e707aeadc33e52679a3c57e6fd0d5780a8f307466e81026baac1f491ddc",
+      "summary": "Fuse/debugging tests and instrumented production-payload UI/preload/isolation/history/CSP/cleanup passed; unsigned/ad-hoc macOS arm64, not untouched signed-release UI verification"
+    }
+  ],
+  "runtime": {
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "limitations": [
+    "Native frame identities, real production preload bridge and fixture-controlled capability/auth/native dialogs.",
+    "Extension registration/profile enumeration and native-dialog forwarding are declared fixture overrides; bundle hashes bind the actually executed bytes.",
+    "Session clear/cache dispatched to disposable native session; no personal data or physical OS authentication.",
+    "Generic IPC channel narrowing is not proof of UI injection exploitation or full IPC security.",
+    "Remaining group removal, composer Save, MCP/personal-agent/capture/decoder/dependency IPC audits, downstream data traffic and signed/cross-platform/native input gates stay open.",
+    "No whole-app latency/CPU/memory claim."
+  ],
+  "packageAsarSha256": "5eef7c94a3bed2ef245252df19dd8b4d404adb6157d3edd1600b690a112566c7",
+  "previousInventorySha256": "d3d226e51bfb8cd342d1b00dbf8f15e414e2a2d68aa0b657ca9320854b82b859",
+  "inventoryRefresh": {
+    "recordedAt": "2026-11-07T07:32:30.870832+00:00",
+    "reason": "Composer Save follow-up changes AI registration source locations; same 48/47/69 channel counts. Prior IPC results remain historical evidence for their recorded source hashes.",
+    "observedExitCode": 0,
+    "logSha256": "7f519348354a32e2c292859a0f89ecce854aa633eecd8b3995168a38868fe308"
+  },
+  "inventoryPath": "docs/security/ipc-inventory-2026-11-07-composer-save.json"
+}

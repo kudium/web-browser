@@ -1,0 +1,77 @@
+const { app, BrowserWindow, WebContentsView, View } = require('electron');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
+const before = process.argv.includes('--before');
+const baseline = before ? execFileSync('git', ['show', 'de2eae3bdf2f346d66dc91a6ef5aeda9581c0603:src/main/aiActivityLayer.ts']) : fs.readFileSync('src/main/aiActivityLayer.ts');
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-activity-smoke-'));
+app.setPath('userData', path.join(temporary, 'user-data'));
+const hash = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const until = async (test) => {
+  for (let index = 0; index < 100; index += 1) { if (await test()) return; await wait(20); }
+  throw new Error('Activity check timed out');
+};
+const timers = new Set();
+const set = global.setInterval;
+const clear = global.clearInterval;
+global.setInterval = (callback, ms, ...args) => { const timer = set(callback, ms, ...args); if (ms === 50) timers.add(timer); return timer; };
+global.clearInterval = (timer) => { timers.delete(timer); return clear(timer); };
+const build = require('esbuild').build({ entryPoints: ['src/main/aiActivityLayer.ts'], bundle: true, platform: 'node', external: ['electron'], outfile: path.join(temporary, 'activity.cjs'), plugins: [{ name: 'exact-source', setup(builder) { builder.onLoad({ filter: /aiActivityLayer\.ts$/ }, (args) => ({ contents: baseline.toString(), loader: 'ts', resolveDir: path.dirname(args.path) })); } }] });
+app.whenReady().then(async () => {
+  await build;
+  const { AIActivityLayer } = require(path.join(temporary, 'activity.cjs'));
+  const host = new BrowserWindow({ width: 600, height: 450, show: true });
+  await host.loadURL('data:text/html,<title>Activity fixture</title>');
+  let takeover = 0;
+  const layer = new AIActivityLayer(host, () => ({ x: 0, y: 0, width: 600, height: 400 }), () => { takeover += 1; });
+  const layers = () => host.contentView.children.filter((view) => view instanceof WebContentsView);
+  const file = 'docs/benchmarks/ai-activity-lifecycle.json';
+  const record = (data) => {
+    const previous = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+    previous[before ? 'before' : 'after'] = { ...data, layerSha256: crypto.createHash('sha256').update(baseline).digest('hex'), probeSha256: hash(__filename) };
+    fs.writeFileSync(file, JSON.stringify(previous, null, 2) + '\n');
+  };
+  if (before) {
+    assert.equal(layers().length, 1); assert.equal(timers.size, 1);
+    record({ recordedAt: new Date().toISOString(), runtime: process.versions, unusedRenderers: 1, unusedTimers: 1, scope: 'Actual baseline constructor only; functional checks belong to after.' });
+    layer.dispose(); host.destroy(); global.setInterval = set; global.clearInterval = clear; app.quit(); return;
+  }
+  assert.equal(layers().length, 0);
+  assert.equal(timers.size, 0);
+  layer.set('first');
+  layer.pointer('first', { x: 40, y: 60, type: 'move' });
+  assert.equal(layers().length, 1);
+  assert.equal(timers.size, 1);
+  const view = layers()[0];
+  await until(() => view.webContents.executeJavaScript('typeof window.resetAIActivity === "function"'));
+  assert(view.getVisible());
+  await view.webContents.executeJavaScript('document.querySelector("#take-control").click();undefined');
+  await wait(50);
+  assert.equal(takeover, 0, 'Synthetic click must not request takeover');
+  const point = await view.webContents.executeJavaScript('(()=>{const r=document.querySelector("#take-control").getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()');
+  view.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...point });
+  view.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point });
+  await until(() => takeover === 1);
+  await until(() => view.webContents.executeJavaScript('document.querySelector("#agent-pointer").classList.contains("visible")'));
+  const other = new View(); host.contentView.addChildView(other);
+  await until(() => host.contentView.children.at(-1) === view);
+  layer.set();
+  assert.equal(timers.size, 0);
+  assert.equal(view.getVisible(), false);
+  layer.set('second');
+  assert.equal(layers()[0], view, 'Resume must reuse the loaded activity renderer');
+  assert.equal(timers.size, 1);
+  layer.dispose(); layer.dispose(); layer.set('first');
+  assert.equal(layers().length, 0);
+  assert.equal(timers.size, 0);
+  const report = { recordedAt: new Date().toISOString(), runtime: process.versions, platform: process.platform, architecture: process.arch, unusedRenderers: 0, unusedTimers: 0, activeRenderers: 1, activeTimers: 1, syntheticTakeovers: 0, nativeTakeovers: takeover, resumeReusesView: true, pointerAndZOrder: true, disposedTimers: 0, sources: Object.fromEntries(['src/main/aiActivityLayer.ts', 'src/main/aiActivityPresentation.ts', __filename].map((file) => [file, hash(file)])) };
+  record(report);
+  console.log('PASS: no unused AI renderer/timer; first activation, trusted takeover, pointer, z-order, inactive timer cleanup, reuse and idempotent disposal');
+  host.destroy(); global.setInterval = set; global.clearInterval = clear;
+  app.quit();
+}).catch((error) => { console.error(error); app.exit(1); });
+setTimeout(() => { console.error('Activity smoke timed out'); app.exit(1); }, 15000).unref();

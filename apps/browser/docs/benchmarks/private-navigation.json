@@ -1,0 +1,126 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T09:15:24.332Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "d636232b6be32e160724da6b111c0fe4ff0e55c2244bca857812f07f8a93a21e",
+    "sourceHashes": {
+      "src/main/ai.ts": "90056ba7cb5139d2718129998ca3cd38a55282b428454d4ab25c6603fa830077",
+      "src/main/aiNavigation.ts": "7dab0743c6cb6e0b349321fa9b5b9ad94c220cc93e0241b8bb4704122c43610b",
+      "src/main/advancedPreferences.ts": "f475bf2240ee8f02619bf3c7dc8a6acecee3dc4b80903e9b76c7c19a6edcb2b4",
+      "src/main/aiDialogs.ts": "dc760ff22218ab3f9c44d916a8f252895ea57156043227a19a3008719ed676ca",
+      "src/main/requestRules.ts": "ba10d0737c62411c294e8e239fab3306dfdc69c1bdd92fd07907889a69111a5f"
+    },
+    "bundleSha256": "af99b307dca4190df528b77529d56b46e40c4d235dc836a5e8262b30bd57796f",
+    "results": [
+      {
+        "label": "public Full access redirect",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "same-origin changed path/query denied",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "cross-origin redirect denied",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "approved two-hop redirect",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault/MCP/native request callbacks and loopback HTTP socket counts. Before replaces only the navigation and preference modules with retained pre-change files; other modules use current source. Controlled native reviews; synthetic values. Main-frame navigation only; no containment of descendants, fetch, workers, existing WebSocket/WebRTC channels or later sends after navigation completes. macOS native Electron only; no signed/cross-platform release claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T09:15:51.769Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "d636232b6be32e160724da6b111c0fe4ff0e55c2244bca857812f07f8a93a21e",
+    "sourceHashes": {
+      "src/main/ai.ts": "90056ba7cb5139d2718129998ca3cd38a55282b428454d4ab25c6603fa830077",
+      "src/main/aiNavigation.ts": "f00eec0680b705e7e93fef456b075bb772a26fb0d3d0c286753776cd83b232b9",
+      "src/main/advancedPreferences.ts": "9c1ee2e41a23611b73d3089ffe5efddf732bebcdf43cf795bd705084a624b926",
+      "src/main/aiDialogs.ts": "dc760ff22218ab3f9c44d916a8f252895ea57156043227a19a3008719ed676ca",
+      "src/main/requestRules.ts": "ba10d0737c62411c294e8e239fab3306dfdc69c1bdd92fd07907889a69111a5f"
+    },
+    "bundleSha256": "61f1c4017573e6d96911af177034c8322c042626d238219652940a97b93895b7",
+    "results": [
+      {
+        "label": "public Full access redirect",
+        "isError": false,
+        "destinationReviews": 0,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "same-origin changed path/query denied",
+        "isError": true,
+        "destinationReviews": 1,
+        "received": 0,
+        "resourceRequests": 0
+      },
+      {
+        "label": "cross-origin redirect denied",
+        "isError": true,
+        "destinationReviews": 1,
+        "received": 0,
+        "resourceRequests": 0
+      },
+      {
+        "label": "approved two-hop redirect",
+        "isError": false,
+        "destinationReviews": 2,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "held redirect with sibling sharing profile",
+        "isError": false,
+        "destinationReviews": 1,
+        "received": 1,
+        "resourceRequests": 0
+      },
+      {
+        "label": "Stop while redirect review pending",
+        "isError": true,
+        "destinationReviews": 1,
+        "received": 0,
+        "resourceRequests": 0
+      },
+      {
+        "label": "private consent changed and restored during redirect review",
+        "isError": true,
+        "destinationReviews": 1,
+        "received": 0,
+        "resourceRequests": 0
+      },
+      {
+        "label": "approved POST 307 preserves body and cookie",
+        "method": "POST",
+        "body": "synthetic-post-body",
+        "cookie": "fixture=synthetic-cookie",
+        "reviewMetadata": {
+          "url": "http://127.0.0.1:51278/received?synthetic=private",
+          "method": "POST",
+          "hasBody": true
+        }
+      }
+    ],
+    "scope": "Actual registerAI/encrypted vault/MCP/native request callbacks and loopback HTTP socket counts. Before replaces only the navigation and preference modules with retained pre-change files; other modules use current source. Controlled native reviews; synthetic values. Main-frame navigation only; no containment of descendants, fetch, workers, existing WebSocket/WebRTC channels or later sends after navigation completes. macOS native Electron only; no signed/cross-platform release claim."
+  }
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "width": 800,
+    "theme": "light",
+    "rows": [
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 758,
+        "right": 786,
+        "tabsRight": 204
+      },
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 758,
+        "right": 786,
+        "tabsRight": 752
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 368,
+        "right": 396,
+        "tabsRight": 204,
+        "closeRight": 238
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 760,
+        "right": 788,
+        "tabsRight": 720,
+        "closeRight": 754
+      }
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "rows": [
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 758,
+        "right": 786,
+        "tabsRight": 204
+      },
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 758,
+        "right": 786,
+        "tabsRight": 752
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 368,
+        "right": 396,
+        "tabsRight": 204,
+        "closeRight": 238
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 760,
+        "right": 788,
+        "tabsRight": 720,
+        "closeRight": 754
+      }
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "rows": [
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 358,
+        "right": 386,
+        "tabsRight": 204
+      },
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 358,
+        "right": 386,
+        "tabsRight": 352
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 168,
+        "right": 196,
+        "tabsRight": 128,
+        "closeRight": 162
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 360,
+        "right": 388,
+        "tabsRight": 320,
+        "closeRight": 354
+      }
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "rows": [
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 358,
+        "right": 386,
+        "tabsRight": 204
+      },
+      {
+        "edge": 6,
+        "padding": 6,
+        "left": 358,
+        "right": 386,
+        "tabsRight": 352
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 168,
+        "right": 196,
+        "tabsRight": 128,
+        "closeRight": 162
+      },
+      {
+        "edge": 4,
+        "padding": 4,
+        "left": 360,
+        "right": 388,
+        "tabsRight": 320,
+        "closeRight": 354
+      }
+    ]
+  }
+]

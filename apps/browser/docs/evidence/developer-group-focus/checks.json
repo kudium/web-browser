@@ -1,0 +1,82 @@
+[
+  {
+    "width": 620,
+    "theme": "light",
+    "count": 20,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "count": 120,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "count": 20,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "count": 120,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "count": 20,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "count": 120,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "count": 20,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "count": 120,
+    "active": true,
+    "visible": true,
+    "searchFocused": true,
+    "scrolled": true,
+    "pickerFits": true
+  }
+]

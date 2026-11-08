@@ -1,0 +1,7 @@
+{
+  "docs/benchmarks/pointer-diagnostic-2026-11-07/interaction-probe.cjs": "375b762036aa0f8bb958ea059367e203be338bf757833e4bff8f5ec984195104",
+  "docs/benchmarks/pointer-diagnostic-2026-11-07/interaction.log": "cb26e9666243bc2c5de9c7681cba38e995446e2ad1e01dff4832f0bf42d22e8d",
+  "docs/benchmarks/pointer-diagnostic-2026-11-07/capture-options.log": "46a549222dd476dd2e58f2ae0f23f13d0a37664d92b92d19820f585a0cc96295",
+  "docs/benchmarks/pointer-diagnostic-2026-11-07/original.log": "d8bd4125027439f4bd760ca97bb37fe5adca43c3b2b0fef5a005f79491549ee4",
+  ".erb/scripts/ai-activity-smoke.cjs": "1f2a0d0cb5625cc153b42a15945680785a28283827e2c465a4e2e339e5c92706"
+}

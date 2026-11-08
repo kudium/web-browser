@@ -1,0 +1,306 @@
+import {
+  app,
+  Menu,
+  shell,
+  BrowserWindow,
+  MenuItemConstructorOptions,
+} from 'electron';
+import {
+  showBrowserPreferences,
+  getBrowserPreferences,
+  onBrowserPreferencesChanged,
+} from './preferences';
+import { menuAccelerator } from '../browser/shortcuts';
+import type { BrowserShortcut } from '../browser/contracts';
+import type { NewWindowParams } from '../types';
+import { shellContextMenu } from './shellContextMenu';
+
+export default class MenuBuilder {
+  mainWindow: BrowserWindow;
+
+  contextMenuSetup = false;
+
+  createNewWindow?: (params: NewWindowParams) => void;
+
+  constructor({
+    mainWindow,
+    createNewWindow,
+  }: {
+    mainWindow: BrowserWindow;
+    createNewWindow?: (params: NewWindowParams) => void;
+  }) {
+    this.mainWindow = mainWindow;
+    this.createNewWindow = createNewWindow;
+    const stop = onBrowserPreferencesChanged(() => {
+      if (!this.mainWindow.isDestroyed()) this.buildMenu();
+    });
+    this.mainWindow.once('closed', stop);
+  }
+
+  action(
+    label: string,
+    action: BrowserShortcut,
+    accelerator = true
+  ): MenuItemConstructorOptions {
+    const bindings = getBrowserPreferences().shortcuts;
+    return {
+      label,
+      accelerator:
+        accelerator && action in bindings
+          ? menuAccelerator(bindings[action as keyof typeof bindings][0])
+          : undefined,
+      click: () => {
+        if (this.mainWindow.isDestroyed()) return;
+        this.mainWindow.show();
+        this.mainWindow.focus();
+        this.mainWindow.webContents.send('browser-shortcut', action);
+      },
+    };
+  }
+
+  settings(
+    label: string,
+    preferencesSection: string
+  ): MenuItemConstructorOptions {
+    return {
+      label,
+      click: () =>
+        this.createNewWindow?.({
+          view: 'settings',
+          preferencesSection,
+          options: { width: 1080, height: 800, minWidth: 760, minHeight: 600 },
+        }),
+    };
+  }
+
+  buildMenu(): Menu {
+    if (!this.contextMenuSetup) {
+      this.setupContextMenu();
+      this.contextMenuSetup = true;
+    }
+    const menu = Menu.buildFromTemplate(
+      process.platform === 'darwin'
+        ? this.buildDarwinTemplate()
+        : this.buildDefaultTemplate()
+    );
+    Menu.setApplicationMenu(menu);
+    return menu;
+  }
+
+  setupContextMenu(): void {
+    this.mainWindow.webContents.on('context-menu', (_, props) => {
+      const inspect =
+        process.env.NODE_ENV === 'development' ||
+        process.env.DEBUG_PROD === 'true';
+      const items = shellContextMenu(
+        this.mainWindow.webContents,
+        props,
+        inspect
+      );
+      if (items.length)
+        Menu.buildFromTemplate(items).popup({ window: this.mainWindow });
+    });
+  }
+
+  template(mac: boolean): MenuItemConstructorOptions[] {
+    const separator: MenuItemConstructorOptions = { type: 'separator' };
+    const preferences: MenuItemConstructorOptions = {
+      label: 'Settings…',
+      accelerator: menuAccelerator(
+        getBrowserPreferences().shortcuts.preferences[0]
+      ),
+      click: () => showBrowserPreferences(this.mainWindow),
+    };
+    const file: MenuItemConstructorOptions = {
+      label: 'File',
+      submenu: [
+        this.action('New Tab…', 'command', false),
+        this.action('New Group…', 'new-session', false),
+        this.action('New Space…', 'new-space', false),
+        separator,
+        this.action('Import Group…', 'import-group', false),
+        this.action('Export Current Group…', 'export-group', false),
+        separator,
+        this.action('Open Location…', 'command'),
+        this.action('Close Tab', 'close-tab'),
+        {
+          label: 'Close Window',
+          role: 'close',
+          accelerator: 'CommandOrControl+Shift+W',
+        },
+        separator,
+        this.action('Print…', 'print'),
+        ...(!mac
+          ? [
+              separator,
+              preferences,
+              separator,
+              { label: 'Exit', role: 'quit' as const },
+            ]
+          : []),
+      ],
+    };
+    const edit: MenuItemConstructorOptions = {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        separator,
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'selectAll' },
+        separator,
+        this.action('Find in Page…', 'find'),
+      ],
+    };
+    const view: MenuItemConstructorOptions = {
+      label: 'View',
+      submenu: [
+        this.action('Back', 'back'),
+        this.action('Forward', 'forward'),
+        separator,
+        this.action('Reload Page', 'reload'),
+        this.action('Reload Without Cache', 'reload-ignore-cache'),
+        separator,
+        this.action('Zoom In', 'zoom-in'),
+        this.action('Zoom Out', 'zoom-out'),
+        this.action('Actual Size', 'zoom-reset'),
+        separator,
+        this.action('Show / Hide Sidebar', 'sidebar'),
+        { label: 'Enter / Exit Full Screen', role: 'togglefullscreen' },
+      ],
+    };
+    const history: MenuItemConstructorOptions = {
+      label: 'History',
+      submenu: [
+        this.action('Show History', 'history'),
+        this.action('Reopen Closed Tab', 'reopen-tab'),
+        separator,
+        this.action('Show Downloads', 'downloads'),
+      ],
+    };
+    const workspace: MenuItemConstructorOptions = {
+      label: 'Workspace',
+      submenu: [
+        this.action('Current Group Settings…', 'group-settings', false),
+        this.action('Next Tab', 'next-tab'),
+        this.action('Previous Tab', 'previous-tab'),
+        separator,
+        this.action('Next Space', 'next-space'),
+        this.action('Previous Space', 'previous-space'),
+        separator,
+        this.settings('Manage Groups, Spaces and Archive…', 'apps'),
+      ],
+    };
+    const ai: MenuItemConstructorOptions = {
+      label: 'AI',
+      submenu: [
+        this.action('Open Assistant', 'assistant', false),
+        this.action('Browser Tasks', 'ai-tasks', false),
+        separator,
+        this.settings('Models, Connections and Skills…', 'ai'),
+        this.settings('Personal Data…', 'passwords'),
+      ],
+    };
+    const developer: MenuItemConstructorOptions = {
+      label: 'Developer',
+      submenu: [
+        this.action(
+          'Project Files, Terminals and Scripts…',
+          'developer',
+          false
+        ),
+        this.action('Website Settings and Hooks…', 'site-settings', false),
+        separator,
+        this.action('Extensions', 'extensions'),
+        this.settings('Manage Extensions…', 'extensions'),
+        separator,
+        ...(process.env.NODE_ENV === 'development' ||
+        process.env.DEBUG_PROD === 'true'
+          ? [
+              separator,
+              {
+                label: 'Inspect Browser Interface',
+                click: () => this.mainWindow.webContents.toggleDevTools(),
+              },
+            ]
+          : []),
+      ],
+    };
+    const help: MenuItemConstructorOptions = {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Kudium Browser Website',
+          click: () => {
+            shell.openExternal('https://kudium.com');
+          },
+        },
+        {
+          label: 'Documentation',
+          click: () => {
+            shell.openExternal('https://github.com/samtax01/TouchBox#readme');
+          },
+        },
+        {
+          label: 'Community',
+          click: () => {
+            shell.openExternal(
+              'https://github.com/samtax01/TouchBox/discussions'
+            );
+          },
+        },
+        {
+          label: 'Report an Issue…',
+          click: () => {
+            shell.openExternal('https://github.com/samtax01/TouchBox/issues');
+          },
+        },
+        ...(!mac
+          ? [separator, this.settings('About Kudium Browser', 'about')]
+          : []),
+      ],
+    };
+    return [
+      ...(mac
+        ? [
+            {
+              label: 'Kudium Browser',
+              submenu: [
+                { label: 'About Kudium Browser', role: 'about' as const },
+                separator,
+                preferences,
+                separator,
+                { role: 'services' as const },
+                separator,
+                { label: 'Hide Kudium Browser', role: 'hide' as const },
+                { role: 'hideOthers' as const },
+                { role: 'unhide' as const },
+                separator,
+                { label: 'Quit Kudium Browser', role: 'quit' as const },
+              ],
+            },
+          ]
+        : []),
+      file,
+      edit,
+      view,
+      history,
+      workspace,
+      ai,
+      developer,
+      { label: 'Window', role: 'windowMenu' },
+      help,
+    ];
+  }
+
+  buildDarwinTemplate() {
+    return this.template(true);
+  }
+
+  buildDefaultTemplate() {
+    return this.template(false);
+  }
+}

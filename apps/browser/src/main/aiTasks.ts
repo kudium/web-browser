@@ -1,0 +1,363 @@
+/* eslint-disable max-classes-per-file */
+import fs from 'fs';
+import { randomUUID } from 'crypto';
+import type { safeStorage } from 'electron';
+import { nextDailyTaskRun } from '../browser/aiTasks';
+import type {
+  AITaskInput,
+  AITaskOutcome,
+  SavedAITask,
+} from '../browser/aiTasks';
+
+export function validateAITask(input: AITaskInput): AITaskInput {
+  if (
+    !input ||
+    typeof input.name !== 'string' ||
+    !input.name.trim() ||
+    input.name.length > 100
+  )
+    throw new Error('Enter a task name under 100 characters.');
+  if (
+    typeof input.instructions !== 'string' ||
+    !input.instructions.trim() ||
+    input.instructions.length > 12000
+  )
+    throw new Error('Enter instructions under 12,000 characters.');
+  if (
+    input.groupId !== undefined &&
+    input.groupId !== null &&
+    (typeof input.groupId !== 'string' || input.groupId.length > 300)
+  )
+    throw new Error('Invalid task group.');
+  const { schedule } = input;
+  if (
+    !schedule ||
+    !['manual', 'once', 'interval', 'daily'].includes(schedule.kind)
+  )
+    throw new Error('Choose a schedule.');
+  if (
+    schedule.kind === 'once' &&
+    (!Number.isSafeInteger(schedule.at) ||
+      schedule.at <= 0 ||
+      schedule.at > 8640000000000000)
+  )
+    throw new Error('Choose a valid run time.');
+  if (
+    schedule.kind === 'interval' &&
+    (!Number.isInteger(schedule.minutes) ||
+      schedule.minutes < 1 ||
+      schedule.minutes > 525600)
+  )
+    throw new Error('Interval must be between 1 minute and 1 year.');
+  if (
+    schedule.kind === 'interval' &&
+    schedule.startAt !== undefined &&
+    (!Number.isSafeInteger(schedule.startAt) || schedule.startAt <= 0)
+  )
+    throw new Error('Choose a valid interval start time.');
+  if (
+    schedule.kind === 'daily' &&
+    (typeof schedule.time !== 'string' ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time))
+  )
+    throw new Error('Choose a daily time in HH:mm format.');
+  return {
+    ...(input.groupId !== undefined ? { groupId: input.groupId } : {}),
+    name: input.name.trim(),
+    instructions: input.instructions.trim(),
+    schedule: { ...schedule },
+  };
+}
+
+export class AITaskStore {
+  // eslint-disable-next-line no-useless-constructor, no-empty-function
+  constructor(private filename: string, private storage: typeof safeStorage) {}
+
+  private available() {
+    return (
+      this.storage.isEncryptionAvailable() &&
+      this.storage.getSelectedStorageBackend?.() !== 'basic_text'
+    );
+  }
+
+  load(): SavedAITask[] {
+    if (!fs.existsSync(this.filename)) return [];
+    if (!this.available())
+      throw new Error('Unlock OS encryption to load AI tasks.');
+    if (fs.statSync(this.filename).size > 16 * 1024 * 1024)
+      throw new Error('AI task storage is too large.');
+    const data = JSON.parse(
+      this.storage.decryptString(fs.readFileSync(this.filename))
+    );
+    if (!Array.isArray(data) || data.length > 100)
+      throw new Error('Invalid AI task storage.');
+    const ids = new Set<string>();
+    data.forEach((task: SavedAITask) => {
+      validateAITask(task);
+      if (
+        task.privateData !== undefined &&
+        typeof task.privateData !== 'boolean'
+      )
+        throw new Error('Invalid task privacy marker.');
+      // Legacy instructions may contain facts disclosed before this marker.
+      task.privateData = task.privateData !== false;
+      if (
+        typeof task.id !== 'string' ||
+        !task.id ||
+        ids.has(task.id) ||
+        typeof task.enabled !== 'boolean' ||
+        !Array.isArray(task.runs) ||
+        task.runs.length > 20 ||
+        (task.nextRunAt !== undefined && !Number.isSafeInteger(task.nextRunAt))
+      )
+        throw new Error('Invalid AI task record.');
+      ids.add(task.id);
+      task.runs.forEach((run) => {
+        if (
+          typeof run.id !== 'string' ||
+          !Number.isSafeInteger(run.startedAt) ||
+          (run.endedAt !== undefined && !Number.isSafeInteger(run.endedAt)) ||
+          ![
+            'running',
+            'completed',
+            'failed',
+            'paused',
+            'stopped',
+            'interrupted',
+          ].includes(run.state) ||
+          typeof run.summary !== 'string' ||
+          run.summary.length > 4000
+        )
+          throw new Error('Invalid AI task history.');
+      });
+    });
+    return data;
+  }
+
+  save(tasks: SavedAITask[]) {
+    if (!this.available())
+      throw new Error('OS encryption is required to save AI tasks.');
+    const serialized = JSON.stringify(tasks);
+    if (Buffer.byteLength(serialized) > 8 * 1024 * 1024)
+      throw new Error(
+        'Task history is full. Delete old tasks before saving more.'
+      );
+    const temporary = `${this.filename}.tmp`;
+    try {
+      fs.writeFileSync(temporary, this.storage.encryptString(serialized), {
+        mode: 0o600,
+      });
+      fs.renameSync(temporary, this.filename);
+    } finally {
+      fs.rmSync(temporary, { force: true });
+    }
+  }
+}
+
+export class AITaskManager {
+  private tasks: SavedAITask[];
+
+  private activeId?: string;
+
+  private disposed = false;
+
+  constructor(
+    private store: Pick<AITaskStore, 'load' | 'save'>,
+    private runner: (
+      task: SavedAITask,
+      scheduled: boolean
+    ) => Promise<AITaskOutcome>,
+    private available: (resuming?: boolean, scheduled?: boolean) => boolean,
+    private changed: () => void,
+    private now = Date.now
+  ) {
+    this.tasks = store.load();
+    let recovered = false;
+    this.tasks.forEach((task) =>
+      task.runs.forEach((run) => {
+        if (run.state === 'running') {
+          task.enabled = false;
+          run.state = 'interrupted';
+          run.endedAt = this.now();
+          run.summary = 'Kudium Browser closed before this run finished.';
+          recovered = true;
+        }
+      })
+    );
+    if (recovered) store.save(this.tasks);
+  }
+
+  list() {
+    return structuredClone(this.tasks);
+  }
+
+  private commit(tasks: SavedAITask[]) {
+    this.store.save(tasks);
+    this.tasks = tasks;
+    this.changed();
+  }
+
+  create(input: AITaskInput, privateData = false) {
+    const valid = validateAITask(input);
+    if (this.tasks.length >= 100) throw new Error('Keep at most 100 tasks.');
+    if (valid.schedule.kind === 'once' && valid.schedule.at <= this.now())
+      throw new Error('Choose a future run time.');
+    const task: SavedAITask = {
+      ...valid,
+      id: randomUUID(),
+      enabled: true,
+      runs: [],
+      privateData,
+      nextRunAt: valid.schedule.kind === 'once' ? valid.schedule.at : undefined,
+    };
+    if (valid.schedule.kind === 'interval') {
+      if (
+        valid.schedule.startAt !== undefined &&
+        valid.schedule.startAt <= this.now()
+      )
+        throw new Error('Choose a future interval start time.');
+      task.nextRunAt =
+        valid.schedule.startAt || this.now() + valid.schedule.minutes * 60000;
+    }
+    if (valid.schedule.kind === 'daily')
+      task.nextRunAt = nextDailyTaskRun(valid.schedule.time, this.now());
+    this.commit([...this.tasks, task]);
+    return task.id;
+  }
+
+  change(id: string, action: 'delete' | 'toggle') {
+    if (id === this.activeId)
+      throw new Error('Stop this task before changing it.');
+    const tasks = this.list();
+    const task = tasks.find((item) => item.id === id);
+    if (!task) throw new Error('Task not found.');
+    if (action === 'toggle') {
+      task.enabled = !task.enabled;
+      if (
+        task.enabled &&
+        task.schedule.kind === 'once' &&
+        (!task.nextRunAt || task.nextRunAt <= this.now())
+      )
+        throw new Error('Create a new one-time schedule for a future date.');
+    }
+    this.commit(
+      action === 'delete' ? tasks.filter((item) => item.id !== id) : tasks
+    );
+  }
+
+  async run(
+    id: string,
+    scheduled: boolean | undefined = false,
+    resume: (() => Promise<AITaskOutcome>) | undefined = undefined
+  ) {
+    if (this.disposed || this.activeId || !this.available(!!resume, scheduled))
+      throw new Error(
+        'Browser AI is unavailable or waiting for human control.'
+      );
+    const tasks = this.list();
+    const task = tasks.find((item) => item.id === id);
+    if (!task) throw new Error('Task not found.');
+    const paused = task.runs.find((run) => run.state === 'paused');
+    if (resume && !paused) throw new Error('This task has no paused run.');
+    const record = resume
+      ? paused!
+      : {
+          id: randomUUID(),
+          startedAt: this.now(),
+          state: 'running' as const,
+          summary: '',
+        };
+    record.state = 'running';
+    delete record.endedAt;
+    if (!resume) task.runs = [record, ...task.runs].slice(0, 20);
+    if (scheduled) {
+      if (task.schedule.kind === 'once') {
+        task.enabled = false;
+        delete task.nextRunAt;
+      }
+      if (task.schedule.kind === 'interval') {
+        const period = task.schedule.minutes * 60000;
+        const previous = task.nextRunAt || this.now();
+        task.nextRunAt =
+          previous +
+          (Math.floor((this.now() - previous) / period) + 1) * period;
+      }
+      if (task.schedule.kind === 'daily')
+        task.nextRunAt = nextDailyTaskRun(task.schedule.time, this.now());
+    }
+    this.commit(tasks);
+    this.activeId = id;
+    try {
+      const outcome = await (resume ? resume() : this.runner(task, scheduled));
+      if (this.disposed) return;
+      const updated = this.list();
+      const result = updated
+        .find((item) => item.id === id)
+        ?.runs.find((run) => run.id === record.id);
+      if (result) {
+        result.state = outcome.state;
+        result.summary = outcome.summary.slice(0, 4000);
+        result.endedAt = this.now();
+        this.commit(updated);
+      }
+    } catch (error) {
+      if (this.disposed) return;
+      const updated = this.list();
+      const result = updated
+        .find((item) => item.id === id)
+        ?.runs.find((run) => run.id === record.id);
+      if (result) {
+        result.state = 'failed';
+        result.summary = (error as Error).message.slice(0, 4000);
+        result.endedAt = this.now();
+        this.commit(updated);
+      }
+      throw error;
+    } finally {
+      this.activeId = undefined;
+    }
+  }
+
+  async tick() {
+    if (this.disposed || this.activeId || !this.available()) return;
+    const due = this.tasks
+      .filter(
+        (task) =>
+          task.enabled &&
+          task.nextRunAt !== undefined &&
+          task.nextRunAt <= this.now()
+      )
+      .sort((a, b) => a.nextRunAt! - b.nextRunAt!)[0];
+    if (due) await this.run(due.id, true);
+  }
+
+  finishPaused(id: string, summary: string) {
+    const tasks = this.list();
+    const record = tasks
+      .find((task) => task.id === id)
+      ?.runs.find((run) => run.state === 'paused');
+    if (!record) return;
+    record.state = 'stopped';
+    record.summary = summary;
+    record.endedAt = this.now();
+    this.commit(tasks);
+  }
+
+  dispose() {
+    this.disposed = true;
+    if (this.activeId) {
+      const tasks = this.list();
+      const record = tasks
+        .find((task) => task.id === this.activeId)
+        ?.runs.find((run) => run.state === 'running');
+      if (record) {
+        const task = tasks.find((item) => item.id === this.activeId);
+        if (task) task.enabled = false;
+        record.state = 'interrupted';
+        record.summary = 'Browser window closed.';
+        record.endedAt = this.now();
+        this.commit(tasks);
+      }
+    }
+  }
+}

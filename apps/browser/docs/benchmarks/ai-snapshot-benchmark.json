@@ -1,0 +1,22 @@
+{
+  "fixture": "20,000 visible buttons; 250-target snapshot; same text and metadata generation",
+  "comparison": "Previous all-node collection versus bounded TreeWalker; not an Ego comparison",
+  "baseline": {
+    "p50Ms": 3.7999999970197678,
+    "p95Ms": 4.600000001490116,
+    "runs": 10
+  },
+  "bounded": {
+    "p50Ms": 1.3999999985098839,
+    "p95Ms": 1.6000000014901161,
+    "runs": 10
+  },
+  "coverage": {
+    "visitedNodes": 253,
+    "targetLimitReached": true,
+    "traversalLimitReached": false,
+    "textTruncated": true,
+    "textOmitted": false,
+    "maxText": 18000
+  }
+}

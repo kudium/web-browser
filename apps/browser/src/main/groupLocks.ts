@@ -1,0 +1,261 @@
+import fs from 'fs';
+import path from 'path';
+import { randomUUID } from 'crypto';
+import { EventEmitter } from 'events';
+import { app, BrowserWindow, ipcMain, powerMonitor } from 'electron';
+import type { WebContents } from 'electron';
+import type { IApp } from '../types';
+import type { GroupLockState, GroupLockRequest } from '../browser/groupLocks';
+import { groupKey } from '../utils/groups';
+import { watchIPCRequest } from './ipcRequestBinding';
+import {
+  authenticateOS,
+  canUseOSAuthentication,
+} from './passwordManager/authentication';
+
+/** The main process owns persisted protection and ephemeral, per-group grants. */
+export class GroupLockService {
+  private protectedGroups = new Set<string>();
+
+  private grants = new Set<string>();
+
+  private generation = 0;
+
+  private error: string | undefined;
+
+  private events = new EventEmitter();
+
+  private pending = new Map<string, Promise<void>>();
+
+  constructor(private file: string, private authenticate: () => Promise<void>) {
+    const read = (name: string) => {
+      const value = JSON.parse(fs.readFileSync(name, 'utf8'));
+      if (
+        value.version !== 1 ||
+        !Array.isArray(value.groups) ||
+        !value.groups.every(
+          (id: unknown) =>
+            typeof id === 'string' && id.length > 0 && id.length <= 1024
+        )
+      )
+        throw new Error('Invalid group lock settings.');
+      return value.groups as string[];
+    };
+    if (fs.existsSync(file) || fs.existsSync(`${file}.backup`)) {
+      try {
+        this.protectedGroups = new Set(read(file));
+      } catch {
+        try {
+          this.protectedGroups = new Set(read(`${file}.backup`));
+        } catch {
+          this.error =
+            'Group lock settings could not be recovered. Restore the group-locks.json backup before accessing groups.';
+        }
+      }
+    }
+  }
+
+  snapshot(available = true): GroupLockState {
+    return {
+      protected: [...this.protectedGroups],
+      unlocked: [...this.grants],
+      available,
+      ...(this.error ? { error: this.error } : {}),
+    };
+  }
+
+  locked(id: string) {
+    return (
+      !!this.error || (this.protectedGroups.has(id) && !this.grants.has(id))
+    );
+  }
+
+  subscribe(listener: () => void) {
+    this.events.on('change', listener);
+    return () => {
+      this.events.removeListener('change', listener);
+    };
+  }
+
+  revoke() {
+    this.generation += 1;
+    this.grants.clear();
+    this.events.emit('change');
+  }
+
+  private save(groups: Set<string>) {
+    fs.mkdirSync(path.dirname(this.file), { recursive: true });
+    const write = (destination: string, values: Set<string>) => {
+      const temporary = `${destination}.${randomUUID()}.tmp`;
+      try {
+        const descriptor = fs.openSync(temporary, 'wx', 0o600);
+        try {
+          fs.writeFileSync(
+            descriptor,
+            JSON.stringify({ version: 1, groups: [...values] })
+          );
+          fs.fsyncSync(descriptor);
+        } finally {
+          fs.closeSync(descriptor);
+        }
+        fs.renameSync(temporary, destination);
+      } finally {
+        if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+      }
+    };
+    // Recovery may lock more groups, but must never silently drop a new lock.
+    write(`${this.file}.backup`, new Set([...this.protectedGroups, ...groups]));
+    write(this.file, groups);
+    this.protectedGroups = groups;
+  }
+
+  async change(
+    action: GroupLockRequest['action'],
+    id: string,
+    live: () => boolean = () => true
+  ) {
+    if (this.error) throw new Error(this.error);
+    if (!id || id.length > 1024) throw new Error('Choose a group.');
+    if (!live()) throw new Error('Group access was revoked.');
+    if (action === 'protect') {
+      this.save(new Set([...this.protectedGroups, id]));
+      this.grants.delete(id);
+      this.generation += 1;
+      this.events.emit('change');
+      return;
+    }
+    if (action === 'lock') {
+      this.grants.delete(id);
+      this.generation += 1;
+      this.events.emit('change');
+      return;
+    }
+    if (!this.protectedGroups.has(id)) return;
+    if (!this.grants.has(id)) {
+      let request = this.pending.get(id);
+      if (!request) {
+        const { generation } = this;
+        request = this.authenticate().then(() => {
+          if (generation !== this.generation || !live())
+            throw new Error(
+              'The browser or OS locked during authentication. Try again.'
+            );
+          this.grants.add(id);
+          this.events.emit('change');
+          return undefined;
+        });
+        this.pending.set(id, request);
+        request
+          .finally(() => {
+            if (this.pending.get(id) === request) this.pending.delete(id);
+          })
+          .catch(() => {});
+      }
+      await request;
+    }
+    if (!live() || this.locked(id))
+      throw new Error('Group access was revoked.');
+    if (action === 'unprotect') {
+      const next = new Set(this.protectedGroups);
+      next.delete(id);
+      this.save(next);
+      this.grants.delete(id);
+      this.events.emit('change');
+    }
+  }
+}
+let service: GroupLockService | undefined;
+export const getGroupLocks = () => {
+  service ||= new GroupLockService(
+    path.join(app.getPath('userData'), 'group-locks.json'),
+    () => authenticateOS('group')
+  );
+  return service;
+};
+export const isGroupLocked = (tab: IApp) =>
+  getGroupLocks().locked(groupKey(tab));
+export function registerGroupLocks(
+  isTrusted: (contents: WebContents) => boolean,
+  authentication: {
+    authenticate: () => Promise<void>;
+    available: () => Promise<boolean>;
+  } = {
+    authenticate: () => authenticateOS('group'),
+    available: canUseOSAuthentication,
+  }
+) {
+  let available: Promise<boolean> | undefined;
+  let supportedDevice = false;
+  const capability = () => {
+    available ||= authentication.available().then((supported) => {
+      supportedDevice = supported;
+      return supported;
+    });
+    return available;
+  };
+  service ||= new GroupLockService(
+    path.join(app.getPath('userData'), 'group-locks.json'),
+    authentication.authenticate
+  );
+  const locks = service;
+  locks.subscribe(() => {
+    BrowserWindow.getAllWindows()
+      .filter(
+        (window) => !window.isDestroyed() && isTrusted(window.webContents)
+      )
+      .forEach((window) =>
+        window.webContents.send(
+          'group-lock-state',
+          locks.snapshot(supportedDevice)
+        )
+      );
+  });
+  ipcMain.handle(
+    'browser-group-lock',
+    async (event, request: GroupLockRequest) => {
+      if (
+        !isTrusted(event.sender) ||
+        event.senderFrame !== event.sender.mainFrame
+      )
+        throw new Error('Untrusted group lock request.');
+      if (
+        !request ||
+        !['status', 'protect', 'unlock', 'lock', 'unprotect'].includes(
+          request.action
+        )
+      )
+        throw new Error('Invalid group lock action.');
+      const requestBinding = watchIPCRequest(event, isTrusted);
+      try {
+        const supported = await capability();
+        requestBinding.assert();
+        if (request.action !== 'status') {
+          if (!supported)
+            throw new Error(
+              'Group locks require OS authentication on this device.'
+            );
+          if (typeof request.groupId !== 'string')
+            throw new Error('Choose a group.');
+          await locks.change(
+            request.action,
+            request.groupId,
+            requestBinding.active
+          );
+        }
+        requestBinding.assert();
+        return locks.snapshot(supported);
+      } finally {
+        requestBinding.dispose();
+      }
+    }
+  );
+  app
+    .whenReady()
+    .then(() => {
+      powerMonitor.on('lock-screen', () => locks.revoke());
+      powerMonitor.on('suspend', () => locks.revoke());
+      return undefined;
+    })
+    .catch(() => {});
+  app.on('before-quit', () => locks.revoke());
+}

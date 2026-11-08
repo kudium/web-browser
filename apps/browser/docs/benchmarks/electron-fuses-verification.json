@@ -1,0 +1,52 @@
+{
+  "recordedAt": "2026-11-07T06:30:48.926Z",
+  "sourceHashes": {
+    "package.json": "badc2fdbb19e1a95e70421f7eb6ac8a8fb233b82c8e57c881f12af5f2f93eb61",
+    ".erb/scripts/checks.ts": "2f90edeebe6db957430d9f691976642a2cd594db527e9cef3d599cce66766753",
+    ".erb/scripts/fuse-regression.cjs": "30391ee752e60b5546fd6aa94965e2aa4689a397b8a3e1f979b8bfc0e1893ee8",
+    ".erb/scripts/packaged-security-smoke.cjs": "18f47bdacc5279bca3ebfb14974387a370dab923b6df92c42330447823a61073"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "4aea94d85af4336782af0d5b297d033bc5b0ed0f332f176f0938af64701ab5e2",
+      "summary": "132 suites / 671 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "macOS arm64 directory package",
+      "command": "electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-fuse-package",
+      "observedExitCode": 0,
+      "logSha256": "cf724420ee123d5b63d2a101643f036cb1d3cd0ccea872c179159225fb72c97e",
+      "summary": "Native package built; fuse configuration applied before signing; signing explicitly null"
+    },
+    {
+      "name": "packaged security runner",
+      "command": "npm run test:packaged-security -- /tmp/touchbox-fuse-package/mac-arm64/TouchBox.app",
+      "observedExitCode": 0,
+      "logSha256": "db97cc28363d255cab51ef535894401d55fdf5841a2c1cf55943e6d47f8cdf17",
+      "summary": "Default/hardened attack checks and actual application smoke passed"
+    }
+  ],
+  "rawReports": {
+    "fusesSha256": "e43a8f3e78ddb0212bd32ac567713e37e0588f48eb0a50670c2bf838071958f5",
+    "packagedApplicationSha256": "eb939c2a4c3c7fa2156d773b205a689b2a9b6ad07223bc75b64ca3de573cb1bf"
+  },
+  "identitiesMatch": true,
+  "productionBundles": "Existing production build from the preference change; actual packaged main/preload/renderer/HTML entries verified byte-for-byte against current release/app/dist. No app source changes in this fuse turn.",
+  "limitations": [
+    "Only local unsigned/ad-hoc macOS arm64 verified.",
+    "No cookie encryption, signing/notarization/update authenticity or other-platform claim.",
+    "Chromium renderer debugging and file privileges remain separately open.",
+    "Original broad native input/focus gates and private-data/IPC release work remain open.",
+    "No full desktop suite or performance improvement claim."
+  ]
+}

@@ -1,0 +1,502 @@
+[
+  {
+    "label": "Kudium Browser",
+    "items": [
+      {
+        "label": "About Kudium Browser",
+        "role": "about",
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Settings…",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+,"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Services",
+        "role": "services",
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Hide Kudium Browser",
+        "role": "hide",
+        "type": "normal",
+        "accelerator": "Command+H"
+      },
+      {
+        "label": "Hide Others",
+        "role": "hideothers",
+        "type": "normal",
+        "accelerator": "Command+Alt+H"
+      },
+      {
+        "label": "Show All",
+        "role": "unhide",
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Quit Kudium Browser",
+        "role": "quit",
+        "type": "normal",
+        "accelerator": "CommandOrControl+Q"
+      }
+    ]
+  },
+  {
+    "label": "File",
+    "items": [
+      {
+        "label": "New Tab…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "New Group…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "New Space…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Import Group…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Export Current Group…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Open Location…",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+L"
+      },
+      {
+        "label": "Close Tab",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+W"
+      },
+      {
+        "label": "Close Window",
+        "role": "close",
+        "type": "normal",
+        "accelerator": "CommandOrControl+Shift+W"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Print…",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+P"
+      }
+    ]
+  },
+  {
+    "label": "Edit",
+    "items": [
+      {
+        "label": "Undo",
+        "role": "undo",
+        "type": "normal",
+        "accelerator": "CommandOrControl+Z"
+      },
+      {
+        "label": "Redo",
+        "role": "redo",
+        "type": "normal",
+        "accelerator": "Shift+CommandOrControl+Z"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Cut",
+        "role": "cut",
+        "type": "normal",
+        "accelerator": "CommandOrControl+X"
+      },
+      {
+        "label": "Copy",
+        "role": "copy",
+        "type": "normal",
+        "accelerator": "CommandOrControl+C"
+      },
+      {
+        "label": "Paste",
+        "role": "paste",
+        "type": "normal",
+        "accelerator": "CommandOrControl+V"
+      },
+      {
+        "label": "Paste and Match Style",
+        "role": "pasteandmatchstyle",
+        "type": "normal",
+        "accelerator": "Cmd+Option+Shift+V"
+      },
+      {
+        "label": "Select All",
+        "role": "selectall",
+        "type": "normal",
+        "accelerator": "CommandOrControl+A"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Find in Page…",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+F"
+      }
+    ]
+  },
+  {
+    "label": "View",
+    "items": [
+      {
+        "label": "Back",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+["
+      },
+      {
+        "label": "Forward",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+]"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Reload Page",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+R"
+      },
+      {
+        "label": "Reload Without Cache",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+Shift+R"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Zoom In",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+="
+      },
+      {
+        "label": "Zoom Out",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+-"
+      },
+      {
+        "label": "Actual Size",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+0"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Show / Hide Sidebar",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+Shift+S"
+      },
+      {
+        "label": "Enter / Exit Full Screen",
+        "role": "togglefullscreen",
+        "type": "normal",
+        "accelerator": "Control+Command+F"
+      }
+    ]
+  },
+  {
+    "label": "History",
+    "items": [
+      {
+        "label": "Show History",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+Y"
+      },
+      {
+        "label": "Reopen Closed Tab",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+Shift+T"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Show Downloads",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+J"
+      }
+    ]
+  },
+  {
+    "label": "Workspace",
+    "items": [
+      {
+        "label": "Current Group Settings…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Next Tab",
+        "role": null,
+        "type": "normal",
+        "accelerator": "Control+Tab"
+      },
+      {
+        "label": "Previous Tab",
+        "role": null,
+        "type": "normal",
+        "accelerator": "Control+Shift+Tab"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Next Space",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+Alt+Shift+Right"
+      },
+      {
+        "label": "Previous Space",
+        "role": null,
+        "type": "normal",
+        "accelerator": "CommandOrControl+Alt+Shift+Left"
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Manage Groups, Spaces and Archive…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      }
+    ]
+  },
+  {
+    "label": "AI",
+    "items": [
+      {
+        "label": "Open Assistant",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Browser Tasks",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Models, Connections and Skills…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Personal Data…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      }
+    ]
+  },
+  {
+    "label": "Developer",
+    "items": [
+      {
+        "label": "Project Files, Terminals and Scripts…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Website Settings and Hooks…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Extensions",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Manage Extensions…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      }
+    ]
+  },
+  {
+    "label": "Window",
+    "items": [
+      {
+        "label": "Minimize",
+        "role": "minimize",
+        "type": "normal",
+        "accelerator": "CommandOrControl+M"
+      },
+      {
+        "label": "Zoom",
+        "role": "zoom",
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "",
+        "role": null,
+        "type": "separator",
+        "accelerator": null
+      },
+      {
+        "label": "Bring All to Front",
+        "role": "front",
+        "type": "normal",
+        "accelerator": null
+      }
+    ]
+  },
+  {
+    "label": "Help",
+    "items": [
+      {
+        "label": "Kudium Browser Website",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Documentation",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Community",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      },
+      {
+        "label": "Report an Issue…",
+        "role": null,
+        "type": "normal",
+        "accelerator": null
+      }
+    ]
+  }
+]

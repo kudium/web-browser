@@ -1,0 +1,932 @@
+{
+  "recordedAt": "2026-11-07T09:59:14.520Z",
+  "generatorSha256": "8a767ca73b6266a629ab6a3896db642953d456a5632d1b6c0e81dc31974379c3",
+  "summary": {
+    "mainRegistrations": 48,
+    "literalMainChannels": 47,
+    "dynamicMainRegistrations": 1,
+    "preloadCalls": 69,
+    "dynamicPreloadCalls": 3,
+    "generatedScripts": 2
+  },
+  "sourceHashes": {
+    "src/components/UI/AISidebar.tsx": "b4e5240846d9db51877e1aa5997ed0e073a8708e0aabd6584f38e88ccfbf7164",
+    "src/components/View/Downloads/Downloads.tsx": "f658a37fb2cec40bfb560619b504a4bc42f5b3413cb627c2f32f955c7a6b7bf0",
+    "src/components/View/Settings/tabs/ManageApp.tsx": "5831c0c3dada769fabf4a12b17febb5eed28b162094b0fb5622e18beef187ba8",
+    "src/main/ai.ts": "f9f5e11ec4b61feeab50aa83d7bc63c48824e38c45718bbc1431c23d296726d3",
+    "src/main/aiUserInput.ts": "1f41e0feb8eede135b8128fa8a31abde67d6f225f73e8079de1cfaff5bcc01ce",
+    "src/main/downloads.ts": "ca23615cbc6cf8bc4a964ce4acd7c5dc2ced4b83c0826cb8d4cc4e427abe0fa7",
+    "src/main/electronBrowser.ts": "6be24f46be072d141cf87e6ea1ca98537e984ec4b0550e105dd77f52a8a3a9bd",
+    "src/main/extensions.ts": "905518e6f3f1c40a4c34d828f65ee3184baa49120d3c057c6096fd5d6fecc838",
+    "src/main/groupLocks.ts": "bdd106cbc5a24adad1e5d741b2d4304aebff503e5c9f3d0f51ec4d4911b6e5be",
+    "src/main/groupRemoval.ts": "d2362b5b8a144f2bc1cff37f743af5191fd189895e76411bc4aab843a713b51f",
+    "src/main/history.ts": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "src/main/main.ts": "3ba787ea0f4ea33f060f8530816f2a32861a8574d85ef1483110dbc9e405aa5c",
+    "src/main/nativeUi.ts": "7172f9dead682d8829eb026f115a1ca6892e955b9d1718724d71cd706f010163",
+    "src/main/pageCapture.ts": "827b651e85838fde5f6c7af7d1f70d451811a79269e4dfec17357ffb81b91df8",
+    "src/main/passwordManager/index.ts": "04011df174d83f9e841d733a53119a6abb8d21cd09994ef94e78445d6bc4252c",
+    "src/main/preferences.ts": "e3bd6bdee4720cf7d420285bd5d3252a9d21c0b924d32fd16ea7309cf4bfb9e2",
+    "src/main/preload.ts": "0fa41ad7ef5efbcbec55700e01535930f0bd87ce745ca0e135cc683457b8bd07",
+    "src/main/siteDeveloper.ts": "93526fad48348f19650daefb9e1e55b6a8844d8ef6beb4a6639f317036023264",
+    "src/main/siteDeveloperLibrary.ts": "1d13362dce5e2cf60c2ecb07c5e04324b4faa29e073bbd0a1db4fc1c71488869",
+    "src/main/siteDeveloperWindow.ts": "ba1c33ef1f660d3a1ff423f55bf2f563675f4ca14856dc0ac05a426ffc0c4e8a",
+    "src/main/windowCommands.ts": "aa05324b98280af8072c403d71995e19879e6be991cddaf8340fdbde62bfdc2b",
+    "src/utils/EventBus.ts": "17b3a5d3a7766ab584444b49fcdac37277ecc63d924c592697fd44c8356dd9d1"
+  },
+  "registrations": [
+    {
+      "file": "src/main/ai.ts",
+      "line": 4552,
+      "method": "handle",
+      "channel": "ai-tasks",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4575,
+      "method": "handle",
+      "channel": "ai-settings",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4629,
+      "method": "handle",
+      "channel": "ai-models",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4667,
+      "method": "handle",
+      "channel": "ai-conversations",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4780,
+      "method": "handle",
+      "channel": "ai-task-status",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4799,
+      "method": "handle",
+      "channel": "ai-permissions",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4811,
+      "method": "handle",
+      "channel": "ai-groups",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4829,
+      "method": "handle",
+      "channel": "ai-composer-pick",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4891,
+      "method": "handle",
+      "channel": "ai-composer-add",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4907,
+      "method": "handle",
+      "channel": "ai-composer-context",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4911,
+      "method": "handle",
+      "channel": "ai-composer-files",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4919,
+      "method": "handle",
+      "channel": "ai-composer-save",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4986,
+      "method": "handle",
+      "channel": "ai-composer-clear",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 4998,
+      "method": "handle",
+      "channel": "ai-composer-remove",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 5004,
+      "method": "handle",
+      "channel": "ai-run",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 5155,
+      "method": "handle",
+      "channel": "ai-resume",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 5197,
+      "method": "handle",
+      "channel": "ai-stop",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 5265,
+      "method": "handle",
+      "channel": "ai-takeover",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 5293,
+      "method": "handle",
+      "channel": "ai-resume-external",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 5316,
+      "method": "handle",
+      "channel": "ai-personal-agents",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/ai.ts",
+      "line": 5436,
+      "method": "handle",
+      "channel": "ai-mcp",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/aiUserInput.ts",
+      "line": 133,
+      "method": "on",
+      "channel": null,
+      "channelExpression": "channel",
+      "handler": "receive",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/downloads.ts",
+      "line": 370,
+      "method": "handle",
+      "channel": "browser-downloads",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/downloads.ts",
+      "line": 377,
+      "method": "handle",
+      "channel": "browser-download-recovery",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/downloads.ts",
+      "line": 381,
+      "method": "handle",
+      "channel": "browser-download-thumbnail",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/electronBrowser.ts",
+      "line": 1979,
+      "method": "on",
+      "channel": "browser-sync",
+      "handler": "sync",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/electronBrowser.ts",
+      "line": 1980,
+      "method": "on",
+      "channel": "browser-command",
+      "handler": "command",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/groupLocks.ts",
+      "line": 213,
+      "method": "handle",
+      "channel": "browser-group-lock",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/groupRemoval.ts",
+      "line": 72,
+      "method": "handle",
+      "channel": "browser-remove-group",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/history.ts",
+      "line": 153,
+      "method": "handle",
+      "channel": "browser-history",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/main.ts",
+      "line": 266,
+      "method": "on",
+      "channel": "browser-tab-requests-ready",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/nativeUi.ts",
+      "line": 65,
+      "method": "handle",
+      "channel": "browser-native-menu",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/nativeUi.ts",
+      "line": 134,
+      "method": "handle",
+      "channel": "browser-native-confirm",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/nativeUi.ts",
+      "line": 160,
+      "method": "handle",
+      "channel": "browser-emoji-picker",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/nativeUi.ts",
+      "line": 164,
+      "method": "handle",
+      "channel": "browser-space-icon",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/pageCapture.ts",
+      "line": 407,
+      "method": "handle",
+      "channel": "browser-capture",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/passwordManager/index.ts",
+      "line": 181,
+      "method": "handle",
+      "channel": "password-manager",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/preferences.ts",
+      "line": 262,
+      "method": "handle",
+      "channel": "ai-open-preferences",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/preferences.ts",
+      "line": 266,
+      "method": "handle",
+      "channel": "browser-preferences",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/preferences.ts",
+      "line": 284,
+      "method": "handle",
+      "channel": "browser-preference-action",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/siteDeveloper.ts",
+      "line": 170,
+      "method": "handle",
+      "channel": "site-developer-notify",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/siteDeveloper.ts",
+      "line": 238,
+      "method": "on",
+      "channel": "site-developer-config",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/siteDeveloper.ts",
+      "line": 277,
+      "method": "on",
+      "channel": "site-developer-event",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/siteDeveloperLibrary.ts",
+      "line": 57,
+      "method": "handle",
+      "channel": "site-developer-pages",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/siteDeveloperWindow.ts",
+      "line": 131,
+      "method": "on",
+      "channel": "site-developer-command",
+      "handler": "receive",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/windowCommands.ts",
+      "line": 23,
+      "method": "on",
+      "channel": "ipc-create-window",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/main/windowCommands.ts",
+      "line": 57,
+      "method": "on",
+      "channel": "ipc-close-window",
+      "handler": "inline",
+      "review": "pending"
+    },
+    {
+      "file": "src/utils/EventBus.ts",
+      "line": 15,
+      "method": "on",
+      "channel": "ipc-event-bus",
+      "handler": "inline",
+      "review": "pending"
+    }
+  ],
+  "preloadCalls": [
+    {
+      "file": "src/main/preload.ts",
+      "line": 85,
+      "method": "on",
+      "channel": "password-manager-locked",
+      "capability": "electronHandler.onPasswordManagerLock"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 98,
+      "method": "invoke",
+      "channel": "password-manager",
+      "capability": "electronHandler.passwordManager"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 102,
+      "method": "invoke",
+      "channel": "ai-permissions",
+      "capability": "electronHandler.ai.permissions"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 107,
+      "method": "on",
+      "channel": "ai-permissions-changed",
+      "capability": "electronHandler.ai.onPermissions"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 114,
+      "method": "invoke",
+      "channel": "ai-groups",
+      "capability": "electronHandler.ai.groups"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 119,
+      "method": "on",
+      "channel": "ai-scope-changed",
+      "capability": "electronHandler.ai.onScope"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 123,
+      "method": "invoke",
+      "channel": "ai-tasks",
+      "capability": "electronHandler.ai.draftTask"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 126,
+      "method": "invoke",
+      "channel": "ai-tasks",
+      "capability": "electronHandler.ai.tasks"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 129,
+      "method": "invoke",
+      "channel": "ai-tasks",
+      "capability": "electronHandler.ai.createTask"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 132,
+      "method": "invoke",
+      "channel": "ai-tasks",
+      "capability": "electronHandler.ai.taskAction"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 135,
+      "method": "on",
+      "channel": "ai-tasks-changed",
+      "capability": "electronHandler.ai.onTasks"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 141,
+      "method": "invoke",
+      "channel": "ai-mcp",
+      "capability": "electronHandler.ai.mcpStatus"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 146,
+      "method": "invoke",
+      "channel": "ai-personal-agents",
+      "capability": "electronHandler.ai.personalAgents"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 153,
+      "method": "invoke",
+      "channel": "ai-mcp",
+      "capability": "electronHandler.ai.mcpUpdate"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 158,
+      "method": "invoke",
+      "channel": "ai-mcp",
+      "capability": "electronHandler.ai.mcpStdio"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 161,
+      "method": "invoke",
+      "channel": "ai-mcp",
+      "capability": "electronHandler.ai.mcpConnection"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 166,
+      "method": "on",
+      "channel": "ai-mcp-changed",
+      "capability": "electronHandler.ai.onMCP"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 172,
+      "method": "invoke",
+      "channel": "ai-open-preferences",
+      "capability": "electronHandler.ai.openPreferences"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 175,
+      "method": "invoke",
+      "channel": "ai-models",
+      "capability": "electronHandler.ai.models"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 180,
+      "method": "on",
+      "channel": "ai-settings-changed",
+      "capability": "electronHandler.ai.onSettings"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 192,
+      "method": "invoke",
+      "channel": "ai-settings",
+      "capability": "electronHandler.ai.settings"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 198,
+      "method": "invoke",
+      "channel": "ai-composer-pick",
+      "capability": "electronHandler.ai.pickAttachments"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 204,
+      "method": "invoke",
+      "channel": "ai-composer-add",
+      "capability": "electronHandler.ai.addAttachment"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 207,
+      "method": "invoke",
+      "channel": "ai-composer-files",
+      "capability": "electronHandler.ai.savedAttachments"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 210,
+      "method": "invoke",
+      "channel": "ai-composer-save",
+      "capability": "electronHandler.ai.saveAttachment"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 213,
+      "method": "invoke",
+      "channel": "ai-composer-clear",
+      "capability": "electronHandler.ai.clearAttachments"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 216,
+      "method": "invoke",
+      "channel": "ai-composer-remove",
+      "capability": "electronHandler.ai.removeAttachment"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 219,
+      "method": "invoke",
+      "channel": "ai-composer-context",
+      "capability": "electronHandler.ai.attachContext"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 222,
+      "method": "invoke",
+      "channel": "ai-run",
+      "capability": "electronHandler.ai.run"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 227,
+      "method": "invoke",
+      "channel": "ai-conversations",
+      "capability": "electronHandler.ai.conversations"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 234,
+      "method": "on",
+      "channel": "ai-conversations-changed",
+      "capability": "electronHandler.ai.onConversations"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 239,
+      "method": "invoke",
+      "channel": "ai-task-status",
+      "capability": "electronHandler.ai.taskStatus"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 242,
+      "method": "invoke",
+      "channel": "ai-resume",
+      "capability": "electronHandler.ai.resume"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 245,
+      "method": "invoke",
+      "channel": "ai-takeover",
+      "capability": "electronHandler.ai.takeOver"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 248,
+      "method": "invoke",
+      "channel": "ai-resume-external",
+      "capability": "electronHandler.ai.resumeExternal"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 251,
+      "method": "invoke",
+      "channel": "ai-stop",
+      "capability": "electronHandler.ai.stop"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 256,
+      "method": "on",
+      "channel": "ai-event",
+      "capability": "electronHandler.ai.onEvent"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 264,
+      "method": "invoke",
+      "channel": "browser-group-lock",
+      "capability": "electronHandler.groupLocks.request"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 269,
+      "method": "on",
+      "channel": "group-lock-state",
+      "capability": "electronHandler.groupLocks.onState"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 278,
+      "method": "on",
+      "channel": "site-developer-library-changed",
+      "capability": "electronHandler.siteDeveloper.onPagesChanged"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 283,
+      "method": "invoke",
+      "channel": "site-developer-pages",
+      "capability": "electronHandler.siteDeveloper.pages"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 294,
+      "method": "send",
+      "channel": "site-developer-command",
+      "capability": "electronHandler.siteDeveloper.command"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 301,
+      "method": "on",
+      "channel": "site-developer-state",
+      "capability": "electronHandler.siteDeveloper.onState"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 309,
+      "method": "invoke",
+      "channel": "browser-remove-group",
+      "capability": "electronHandler.browser.removeGroup"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 312,
+      "method": "invoke",
+      "channel": "browser-capture",
+      "capability": "electronHandler.browser.capture"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 317,
+      "method": "on",
+      "channel": "preferences-section",
+      "capability": "electronHandler.browser.onPreferenceSection"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 323,
+      "method": "invoke",
+      "channel": "browser-history",
+      "capability": "electronHandler.browser.history"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 328,
+      "method": "on",
+      "channel": "browser-history-changed",
+      "capability": "electronHandler.browser.onHistory"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 333,
+      "method": "invoke",
+      "channel": "browser-downloads",
+      "capability": "electronHandler.browser.downloads"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 336,
+      "method": "invoke",
+      "channel": "browser-download-recovery",
+      "capability": "electronHandler.browser.downloadRecovery"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 339,
+      "method": "invoke",
+      "channel": "browser-download-thumbnail",
+      "capability": "electronHandler.browser.downloadThumbnail"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 344,
+      "method": "on",
+      "channel": "browser-downloads-changed",
+      "capability": "electronHandler.browser.onDownloads"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 349,
+      "method": "invoke",
+      "channel": "browser-native-menu",
+      "capability": "electronHandler.browser.nativeMenu"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 352,
+      "method": "invoke",
+      "channel": "browser-native-confirm",
+      "capability": "electronHandler.browser.confirm"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 355,
+      "method": "invoke",
+      "channel": "browser-emoji-picker",
+      "capability": "electronHandler.browser.showEmojiPicker"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 358,
+      "method": "invoke",
+      "channel": "browser-space-icon",
+      "capability": "electronHandler.browser.chooseSpaceIcon"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 363,
+      "method": "on",
+      "channel": "browser-tab-request",
+      "capability": "electronHandler.browser.onTabRequest"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 364,
+      "method": "send",
+      "channel": "browser-tab-requests-ready",
+      "capability": "electronHandler.browser.onTabRequest"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 373,
+      "method": "invoke",
+      "channel": "browser-preferences",
+      "capability": "electronHandler.browser.preferences"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 385,
+      "method": "invoke",
+      "channel": "browser-preference-action",
+      "capability": "electronHandler.browser.preferenceAction"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 392,
+      "method": "on",
+      "channel": "browser-preferences-changed",
+      "capability": "electronHandler.browser.onPreferences"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 401,
+      "method": "on",
+      "channel": "browser-snapshots",
+      "capability": "electronHandler.browser.onSnapshots"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 409,
+      "method": "on",
+      "channel": "browser-shortcut",
+      "capability": "electronHandler.browser.onShortcut"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 415,
+      "method": "send",
+      "channel": "browser-sync",
+      "capability": "electronHandler.browser.sync"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 418,
+      "method": "send",
+      "channel": "browser-command",
+      "capability": "electronHandler.browser.command"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 423,
+      "method": "on",
+      "channel": "browser-state",
+      "capability": "electronHandler.browser.onState"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 432,
+      "method": "send",
+      "channel": null,
+      "channelExpression": "channel",
+      "capability": "electronHandler.ipcRenderer.sendMessage"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 438,
+      "method": "on",
+      "channel": null,
+      "channelExpression": "channel",
+      "capability": "electronHandler.ipcRenderer.on"
+    },
+    {
+      "file": "src/main/preload.ts",
+      "line": 446,
+      "method": "once",
+      "channel": null,
+      "channelExpression": "channel",
+      "capability": "electronHandler.ipcRenderer.once"
+    }
+  ],
+  "generatedIPC": [
+    {
+      "file": "src/main/aiUserInput.ts",
+      "line": 72,
+      "expressionKind": "TemplateExpression",
+      "note": "Generated script contains IPC; review interpolation and sender/schema manually."
+    },
+    {
+      "file": "src/main/siteDeveloper.ts",
+      "line": 16,
+      "expressionKind": "FirstTemplateToken",
+      "note": "Generated script contains IPC; review interpolation and sender/schema manually."
+    }
+  ],
+  "limitations": [
+    "AST inventory covers own src code, named electron imports and IpcMain typed parameters.",
+    "Generated preload scripts are flagged, not expanded or proven safe.",
+    "Dependency-installed IPC/native messaging is outside this list and needs separate review.",
+    "TypeScript types and inventory coverage are not runtime validation or authorization evidence."
+  ]
+}

@@ -1,0 +1,19 @@
+import fs from 'fs';
+import { randomUUID } from 'crypto';
+
+/** Write private connection settings atomically, with owner-only permissions. */
+export function writePrivateFile(filename: string, text: string) {
+  const temporary = `${filename}.touchbox-${randomUUID()}.tmp`;
+  let descriptor: number | undefined;
+  try {
+    descriptor = fs.openSync(temporary, 'wx', 0o600);
+    fs.writeFileSync(descriptor, text);
+    fs.fsyncSync(descriptor);
+    fs.closeSync(descriptor);
+    descriptor = undefined;
+    fs.renameSync(temporary, filename);
+  } finally {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+    if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+  }
+}

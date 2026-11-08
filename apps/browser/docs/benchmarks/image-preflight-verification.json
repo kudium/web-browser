@@ -1,0 +1,96 @@
+{
+  "recordedAt": "2026-11-07T08:23:54.559522+00:00",
+  "rawReportSha256": "50c1582479a8f8cdce543f0832eb805c549727b860df096c5240f6a3064f9d02",
+  "sourceHashes": {
+    "src/main/imagePreflight.ts": "201429aa875aad2261fdf377d4b459d285e3de5a84c280b53e937fd1f0efe0a9",
+    "src/main/aiComposer.ts": "e5a3b32ea3961827551b8e9ea6424ae1ee9621eec8d0ced924306e0c4a319a9b",
+    "src/main/pageCapture.ts": "827b651e85838fde5f6c7af7d1f70d451811a79269e4dfec17357ffb81b91df8",
+    "src/__tests__/imagePreflight.test.ts": "1135108a7ddd22b82851a0c3f0595177ef218f00a6e07b77335dca53fb3881e8",
+    "src/__tests__/aiComposer.test.ts": "48cacec8fd103cf3fd3adadbba29eca9ed74ab111b259e5de321f15520d316b2",
+    "src/__tests__/pageCapture.test.ts": "716dec849b59ad495453e28e73d721a3349e1a3a11b731b84ee4870e9799d83b",
+    ".erb/scripts/checks.ts": "c3f9c135ca2a0f9bfc2bbe94e693d29222b63fb84724aca0f321186ec2563011",
+    ".erb/scripts/image-preflight-smoke.cjs": "c33131f46fd782b5ce59ca6f61fd66e187690800570354a8b1ec5fc5a1256e0a",
+    ".erb/scripts/ai-composer-smoke.cjs": "e5dc8288d13a897f1487626df52b4066afc5bbadc3f2b9ff38c9c3cadba91447"
+  },
+  "inventoryPath": "docs/security/ipc-inventory-2026-11-07-image-preflight.json",
+  "inventorySha256": "7231e8922aa4734dbda9afb15b449334bf284f89ca48f7c1c7320b4d876cb892",
+  "identitiesVerified": true,
+  "checks": [
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/image-preflight-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "543f8e20eafcfa1a4457ab8043fcd022864fcd8bc1ee5b49ffc7570d14c23f15",
+      "summary": "Four hostile/malformed fixture decoder dispatches; normal native PNG passes"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/image-preflight-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "febf3e0a7d762833ea296250abb038c1b5023c401ee41155aa8f65b730fcc9f4",
+      "summary": "Zero hostile/malformed fixture decoder dispatches; normal native PNG passes"
+    },
+    {
+      "name": "unit suite",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "07ee58201a5213732ad66e1449c86166c5af2d18fd39849b7762ba483612c043",
+      "summary": "139 suites / 704 tests passed; later test-only import/style cleanup separately rechecked"
+    },
+    {
+      "name": "final preflight tests",
+      "command": "npm test -- --runInBand imagePreflight",
+      "observedExitCode": 0,
+      "logSha256": "48e11d01d8cbb09cafb5d3cc9c44829d71e5f989e9c8d3f3e6bb213de08e1c12",
+      "summary": "3 tests passed after test import/style cleanup"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "capture native boundaries",
+      "command": "node node_modules/electron/cli.js .erb/scripts/page-capture-boundary-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "ec22e1f18cdef42f37029a5d740eb3e8e2a6f6b7fbbd3925cc588010a4c9e05e",
+      "summary": "All nine stale/canceled cases reject; normal capture/exports pass"
+    },
+    {
+      "name": "capture native UI",
+      "command": "TOUCHBOX_SMOKE_OUTPUT=docs/evidence/page-capture-lifetime node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --page-capture-only",
+      "observedExitCode": 0,
+      "logSha256": "5bd8c4c5a26b573fc7ce8b1c6bb072a8a644ca262c0da4469b1b9fb8efe513f8",
+      "summary": "Passed real renderer/main capture/crop/clipboard/export/PDF checks"
+    },
+    {
+      "name": "composer native UI",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-composer-smoke.cjs",
+      "observedExitCode": 0,
+      "logSha256": "90fe88b00250201aed5458b6c5af959538a860f5c531ac00082d4a630e5575f8",
+      "summary": "Passed attachment IPC, drop/paste, multimodal provider payload, scope controls and layout"
+    },
+    {
+      "name": "inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "4819236b5d32f4825116a1414106e821e9e8728d45b8cc46435f72dab2633e34",
+      "summary": "Refreshed"
+    }
+  ],
+  "limitations": [
+    "Actual AIComposerAttachments with controlled native decoder dispatch for hostile headers; normal PNG uses actual Electron native decoder. No hostile decoder execution, decoder sandbox, peak memory/CPU, full application or cross-platform claim.",
+    "Capture preflight precedes the second decoder, not original Chromium capture allocation.",
+    "No icon/thumbnail file resource, animation-frame/container, native decoder sandbox, peak CPU/RSS, physical OS auth, full desktop suite, signed/cross-platform or overall speed claim.",
+    "Initial composer UI fixture failed because required group-lock IPC was absent and scope text was hard-coded. Final fixture registers actual group-lock handler with authentication availability explicitly false, and verifies the human scope action against actual group metadata."
+  ]
+}

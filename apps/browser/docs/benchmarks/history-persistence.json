@@ -1,0 +1,186 @@
+{
+  "before": {
+    "measuredAt": "2026-11-06T23:10:51.114Z",
+    "runtime": "v22.23.1",
+    "platform": "darwin/arm64",
+    "sourceSHA256": "49911b770ca61db165999a00bf840350e43de2d1c64a9f6ecfce88e416e68bfd",
+    "method": "Actual bundled history.ts, UI mocked only. One cold read followed by 30 unique visits at each synthetic dataset size, same process and disk. No warmup; batch timer delay captures event-loop blocking. Sync I/O counts exclude fixture construction and bundling.",
+    "workloads": [
+      {
+        "initialRecords": 100,
+        "samples": 30,
+        "coldReadMs": 0.45054199999999867,
+        "operationMedianMs": 0.2962920000000082,
+        "operationP95Ms": 1.3753750000000053,
+        "eventLoopTimerDelayMs": 14.772542000000001,
+        "syncReads": 1,
+        "syncWrites": 30,
+        "syncWrittenBytes": 453570,
+        "resultingRecords": 130
+      },
+      {
+        "initialRecords": 1000,
+        "samples": 30,
+        "coldReadMs": 1.7419170000000008,
+        "operationMedianMs": 0.5109169999999921,
+        "operationP95Ms": 1.1482910000000004,
+        "eventLoopTimerDelayMs": 17.535624999999996,
+        "syncReads": 1,
+        "syncWrites": 30,
+        "syncWrittenBytes": 3990600,
+        "resultingRecords": 1030
+      },
+      {
+        "initialRecords": 10000,
+        "samples": 30,
+        "coldReadMs": 11.567916999999994,
+        "operationMedianMs": 2.548957999999999,
+        "operationP95Ms": 3.722459000000015,
+        "eventLoopTimerDelayMs": 80.51166699999999,
+        "syncReads": 1,
+        "syncWrites": 30,
+        "syncWrittenBytes": 40377825,
+        "resultingRecords": 10000
+      }
+    ],
+    "limitations": [
+      "Node microbenchmark, not Electron whole-app responsiveness or total process memory.",
+      "Timer delay includes scheduling overhead; latency and filesystem cache vary.",
+      "After implementations must preserve durability and deletion ordering and expand I/O accounting if writes become asynchronous."
+    ]
+  },
+  "after": {
+    "measuredAt": "2026-11-06T23:26:28.522Z",
+    "runtime": "v22.23.1",
+    "platform": "darwin/arm64",
+    "sourceSHA256": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3",
+    "persistenceSourceSHA256": "5026a45a5e01175f269f561f4dccfae7f594bfbfd0839d265c04f9d2684f9af9",
+    "method": "Actual bundled history.ts, UI mocked only. One cold read followed by 30 unique visits at each synthetic dataset size, same process and disk. No warmup; batch timer delay captures event-loop blocking. Sync I/O counts exclude fixture construction and bundling.",
+    "workloads": [
+      {
+        "initialRecords": 100,
+        "samples": 30,
+        "coldReadMs": 0.5114170000000087,
+        "operationMedianMs": 0.009832999999986214,
+        "operationP95Ms": 0.3447090000000088,
+        "eventLoopTimerDelayMs": 2.384666999999993,
+        "syncReads": 1,
+        "syncWrites": 0,
+        "syncWrittenBytes": 0,
+        "workerWrites": 1,
+        "workerWrittenBytes": 17423,
+        "durableFlushMs": 27.140833,
+        "batchCompletionMs": 29.285332999999994,
+        "resultingRecords": 130
+      },
+      {
+        "initialRecords": 1000,
+        "samples": 30,
+        "coldReadMs": 1.3562089999999927,
+        "operationMedianMs": 0.03716699999999662,
+        "operationP95Ms": 0.20658400000000654,
+        "eventLoopTimerDelayMs": 2.1786249999999967,
+        "syncReads": 1,
+        "syncWrites": 0,
+        "syncWrittenBytes": 0,
+        "workerWrites": 1,
+        "workerWrittenBytes": 135324,
+        "durableFlushMs": 22.507542,
+        "batchCompletionMs": 24.563541999999998,
+        "resultingRecords": 1030
+      },
+      {
+        "initialRecords": 10000,
+        "samples": 30,
+        "coldReadMs": 10.499374999999986,
+        "operationMedianMs": 0.055542000000002645,
+        "operationP95Ms": 0.5342080000000067,
+        "eventLoopTimerDelayMs": 6.723333999999994,
+        "syncReads": 1,
+        "syncWrites": 0,
+        "syncWrittenBytes": 0,
+        "workerWrites": 1,
+        "workerWrittenBytes": 1346274,
+        "durableFlushMs": 29.881625000000014,
+        "batchCompletionMs": 36.49045899999999,
+        "resultingRecords": 10000
+      }
+    ],
+    "limitations": [
+      "Node microbenchmark, not Electron whole-app responsiveness or total process memory.",
+      "Timer delay includes scheduling overhead; latency and filesystem cache vary.",
+      "Worker I/O is reported from the actual worker commit counters; main-thread spies do not observe worker filesystem calls.",
+      "Visit call duration measures scheduling, not durability; explicit flush waits for file fsync and atomic rename. The lazy worker startup and initial transfer are included in the first visit and batch completion, not the cold read."
+    ]
+  },
+  "confirmation": {
+    "measuredAt": "2026-11-06T23:30:23.494Z",
+    "runtime": "v22.23.1",
+    "platform": "darwin/arm64",
+    "sourceSHA256": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3",
+    "persistenceSourceSHA256": "ad58ecbed68c0129002afa908e4c6e6452b84deb6217907e4e9c5d85e4dcc526",
+    "method": "Actual bundled history.ts, UI mocked only. One cold read followed by 30 unique visits at each synthetic dataset size, same process and disk. No warmup; batch timer delay captures event-loop blocking. Sync I/O counts exclude fixture construction and bundling.",
+    "workloads": [
+      {
+        "initialRecords": 100,
+        "samples": 30,
+        "coldReadMs": 0.5053329999999967,
+        "operationMedianMs": 0.008791999999999689,
+        "operationP95Ms": 0.3648340000000019,
+        "operationMaxMs": 1.360875,
+        "firstVisitMs": 1.360875,
+        "eventLoopTimerDelayMs": 2.423375,
+        "syncReads": 1,
+        "syncWrites": 0,
+        "syncWrittenBytes": 0,
+        "workerWrites": 1,
+        "workerWrittenBytes": 17423,
+        "durableFlushMs": 22.119958,
+        "batchCompletionMs": 24.308000000000003,
+        "resultingRecords": 130
+      },
+      {
+        "initialRecords": 1000,
+        "samples": 30,
+        "coldReadMs": 1.3563749999999999,
+        "operationMedianMs": 0.038083999999997786,
+        "operationP95Ms": 0.2149999999999963,
+        "operationMaxMs": 0.6697500000000005,
+        "firstVisitMs": 0.6697500000000005,
+        "eventLoopTimerDelayMs": 2.1342090000000056,
+        "syncReads": 1,
+        "syncWrites": 0,
+        "syncWrittenBytes": 0,
+        "workerWrites": 1,
+        "workerWrittenBytes": 135324,
+        "durableFlushMs": 21.093458,
+        "batchCompletionMs": 23.108916999999998,
+        "resultingRecords": 1030
+      },
+      {
+        "initialRecords": 10000,
+        "samples": 30,
+        "coldReadMs": 14.779458000000005,
+        "operationMedianMs": 0.07516700000000753,
+        "operationP95Ms": 1.0875840000000068,
+        "operationMaxMs": 3.0258330000000058,
+        "firstVisitMs": 3.0258330000000058,
+        "eventLoopTimerDelayMs": 9.639417000000009,
+        "syncReads": 1,
+        "syncWrites": 0,
+        "syncWrittenBytes": 0,
+        "workerWrites": 1,
+        "workerWrittenBytes": 1346274,
+        "durableFlushMs": 38.602875,
+        "batchCompletionMs": 47.99079200000001,
+        "resultingRecords": 10000
+      }
+    ],
+    "limitations": [
+      "Node microbenchmark, not Electron whole-app responsiveness or total process memory.",
+      "Timer delay includes scheduling overhead; latency and filesystem cache vary.",
+      "Worker I/O is reported from the actual worker commit counters; main-thread spies do not observe worker filesystem calls.",
+      "Visit call duration measures scheduling, not durability; explicit flush waits for file fsync and atomic rename. The lazy worker startup and initial transfer are included in the first visit and batch completion, not the cold read."
+    ]
+  }
+}

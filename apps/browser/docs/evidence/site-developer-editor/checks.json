@@ -1,0 +1,68 @@
+{
+  "checks": [
+    {
+      "width": 820,
+      "theme": "light",
+      "page": 640,
+      "footer": 640,
+      "editor": 274.5,
+      "helperGap": 13,
+      "overflow": false,
+      "highlighted": 2,
+      "direction": "horizontal"
+    },
+    {
+      "width": 820,
+      "theme": "dark",
+      "page": 640,
+      "footer": 640,
+      "editor": 274.5,
+      "helperGap": 13,
+      "overflow": false,
+      "highlighted": 12,
+      "direction": "horizontal"
+    },
+    {
+      "width": 400,
+      "theme": "light",
+      "page": 640,
+      "footer": 640,
+      "editor": 121,
+      "helperGap": 13,
+      "overflow": false,
+      "highlighted": 2,
+      "direction": "vertical"
+    },
+    {
+      "width": 400,
+      "theme": "dark",
+      "page": 640,
+      "footer": 640,
+      "editor": 121,
+      "helperGap": 13,
+      "overflow": false,
+      "highlighted": 12,
+      "direction": "vertical"
+    }
+  ],
+  "native": [
+    "side by side and stacked",
+    "pointer resize",
+    "keyboard resize",
+    "double click reset",
+    "saved pane sizes",
+    "group breadcrumb",
+    "page breadcrumb",
+    "nonmodal",
+    "resizable",
+    "move",
+    "expand",
+    "restore",
+    "preload",
+    "save",
+    "restricted commands",
+    "origin/profile/contents isolation",
+    "cleanup",
+    "browser usable"
+  ]
+}

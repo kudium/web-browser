@@ -1,0 +1,93 @@
+{
+  "recordedAt": "2026-11-07T07:04:14.356785+00:00",
+  "sourceHashes": {
+    "src/main/ai.ts": "54e5bb972edfb2ac3d592f799a3fa2c7751f49838da33094184e95b4f470280f",
+    "src/main/aiDataDisclosure.ts": "969c611ac3139b8b3afc0e9d10837622bf5d5ac2519e7cf3ab761db41c7c1835",
+    "src/__tests__/aiDataDisclosure.test.ts": "8c42f8e63142652da59a852b55a38b790e217675aadec3c576f45f21bd71d7b4",
+    ".erb/scripts/ai-private-fill-smoke.cjs": "567e24983dd2a14054ebe5701fc7384384544c8da3560ae0d76c6b632cd2e848",
+    ".erb/scripts/checks.ts": "f056c26eb21abb72a9511b5aac8fbcedbaba3414c672af9fd5f7d2bdb692286a",
+    "docs/benchmarks/baselines/private-fill/ai.ts.txt": "e3f8e683dc644c068484011c1ad878e97b4d81681ea938375731d0546d5420ce"
+  },
+  "rawReportSha256": "b47ae0b40e4e5dccda03dd897a7c34dc6824adc8131958dca74dcb6d9056634a",
+  "identitiesVerified": true,
+  "newlyBlockedPrivateWebsiteRequests": 9,
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "23af8d57d6dcf45a2bda3f63f0a8baeb009f8279ec210008e60bb944140e2fc4",
+      "summary": "135 suites / 680 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-private-fill-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "21ddad2404e63c35bbcedf7a41040fa7e0a93165d637e7db68b0049d310952b5",
+      "summary": "14 cases; nine stale disclosures sent one private Request body each"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-private-fill-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "66ce3c22dd91245af3915aac5a55de2493e83af48385b55107ea0c96f420a300",
+      "summary": "14 cases; nine stale disclosures blocked with zero private Request bodies"
+    },
+    {
+      "name": "native existing private workflows",
+      "command": "node node_modules/electron/cli.js .erb/scripts/personal-data-ai-smoke.cjs",
+      "observedExitCode": 0,
+      "logSha256": "fb45dfe4d76d5ea48283e030716e68601a25421a0eae77945cd5812de22ed442",
+      "summary": "Passed scoped locked search, secret-free context, writes, capture and filling"
+    },
+    {
+      "name": "native disclosure regression",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-data-disclosure-smoke.cjs",
+      "observedExitCode": 0,
+      "logSha256": "db6b0415ff37ac1e6088ea6d58bbc1d2926db31a5f4ca44a21275cc64d237b48",
+      "summary": "Passed recipient/consent/recovery disclosure regression"
+    },
+    {
+      "name": "directory package",
+      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-private-fill-package",
+      "observedExitCode": 0,
+      "logSha256": "88c37e59cc4f0f4019f542dcc4d0116fd235a8eba28a994a460b73db55a20646",
+      "summary": "Unsigned/ad-hoc macOS arm64"
+    },
+    {
+      "name": "current packaged security",
+      "command": "npm run test:packaged-security -- /tmp/touchbox-private-fill-package/mac-arm64/TouchBox.app",
+      "observedExitCode": 0,
+      "logSha256": "d1b23073c2f0a833575b4e8d6724080039d2f9166288078c4633ff304aa46edc",
+      "summary": "Fuses, native remote-debugging refusal and instrumented production-payload UI/isolation/history/CSP/cleanup pass"
+    }
+  ],
+  "packageAsarSha256": "9252ca26e29ec14c9abdae362388c6d5f17d4d835cb188f9778625456f99f78e",
+  "runtime": {
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "limitations": [
+    "Actual Chromium Request bodies read at synthetic HTTPS protocol endpoint; no socket/TLS server or provider injection evidence.",
+    "Authorized website scripts may send entered values to other destinations; no network allowlist implemented.",
+    "Temporary secure input request/reuse document lifetime remains open.",
+    "No whole-app latency/CPU/memory claim.",
+    "Signed release/Keychain/cookies, other platforms, IPC/file protocol/native resources and existing native input/focus remain open.",
+    "Packaged UI uses test-only ASAR observer with identical production payload; not untouched signed-release UI evidence."
+  ]
+}

@@ -1,0 +1,187 @@
+import { useEffect, useState } from 'react';
+import { AppManager } from './AppManager';
+import { eventBus } from './EventBus';
+import { EVENT_KEY } from './constant';
+import { LocalStorage } from './LocalStorage';
+import { readSavedList, writeSavedList } from './storageRecovery';
+
+export const DEFAULT_SPACE = 'default';
+export const SPACE_KEY = 'touchbox-spaces';
+export const ACTIVE_SPACE_KEY = 'touchbox-active-space';
+export const spaceColors = ['iris', 'blue', 'green', 'amber', 'pink'] as const;
+export const spaceColorNames = {
+  iris: 'Purple',
+  blue: 'Blue',
+  green: 'Green',
+  amber: 'Gold',
+  pink: 'Pink',
+};
+export type SpaceColor = (typeof spaceColors)[number];
+export type SpaceIconName =
+  | 'home'
+  | 'work'
+  | 'explore'
+  | 'code'
+  | 'reading'
+  | 'heart'
+  | 'coffee'
+  | 'layers'
+  | 'star'
+  | 'globe'
+  | 'music'
+  | 'camera'
+  | 'game'
+  | 'rocket'
+  | 'science'
+  | 'travel'
+  | 'shopping'
+  | 'finance'
+  | 'fitness'
+  | 'sun'
+  | 'moon'
+  | 'palette';
+export interface Space {
+  icon?: SpaceIconName;
+  iconImage?: string;
+  iconEmoji?: string;
+  customColor?: string;
+  id: string;
+  name: string;
+  color: SpaceColor;
+  folders: { id: string; name: string }[];
+  selectedAppId?: string;
+}
+export const SpaceManager = {
+  getAll(): Space[] {
+    const seen = new Set<string>();
+    const spaces: Space[] = readSavedList(SPACE_KEY, (value) => {
+      const space = value as Space | null;
+      return (
+        !!space &&
+        typeof space.id === 'string' &&
+        typeof space.name === 'string'
+      );
+    })
+      .map((value) => {
+        const space = value as Space;
+        const defaultIcon =
+          space.name.toLowerCase() === 'personal' ? 'home' : 'layers';
+        const next: Space = {
+          ...space,
+          color: spaceColors.includes(space.color) ? space.color : 'iris',
+          icon: typeof space.icon === 'string' ? space.icon : defaultIcon,
+          folders: Array.isArray(space.folders)
+            ? space.folders.filter(
+                (folder) =>
+                  folder &&
+                  typeof folder.id === 'string' &&
+                  typeof folder.name === 'string'
+              )
+            : [],
+        };
+        (
+          ['iconEmoji', 'iconImage', 'customColor', 'selectedAppId'] as const
+        ).forEach((key) => {
+          if (typeof next[key] !== 'string') delete next[key];
+        });
+        return next;
+      })
+      .filter((space) => {
+        if (seen.has(space.id)) return false;
+        seen.add(space.id);
+        return true;
+      });
+    if (!spaces.length)
+      spaces.push({
+        id: DEFAULT_SPACE,
+        name: 'Personal',
+        color: 'iris',
+        icon: 'home',
+        folders: [],
+      });
+    // Keep saved sessions reachable when their space/folder metadata is missing.
+    AppManager.getAll().forEach((app) => {
+      const id = app.spaceId || DEFAULT_SPACE;
+      let space = spaces.find((entry) => entry.id === id);
+      if (!space) {
+        space = {
+          id,
+          name: 'Recovered space',
+          color: 'iris',
+          icon: 'layers',
+          folders: [],
+        };
+        spaces.push(space);
+      }
+      if (
+        app.folderId &&
+        !space.folders.some((folder) => folder.id === app.folderId)
+      )
+        space.folders.push({ id: app.folderId, name: 'Recovered folder' });
+    });
+    return spaces;
+  },
+  activeId(): string {
+    return LocalStorage.get(ACTIVE_SPACE_KEY) || DEFAULT_SPACE;
+  },
+  select(id: string) {
+    LocalStorage.set(ACTIVE_SPACE_KEY, id);
+    eventBus.dispatch(EVENT_KEY.SPACE_UPDATE);
+  },
+  set(spaces: Space[]) {
+    writeSavedList(SPACE_KEY, spaces);
+    eventBus.dispatch(EVENT_KEY.SPACE_UPDATE);
+  },
+  add(name: string, color: SpaceColor, icon: SpaceIconName = 'layers') {
+    const space = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      color,
+      icon,
+      folders: [],
+    };
+    SpaceManager.set([...SpaceManager.getAll(), space]);
+    SpaceManager.select(space.id);
+    return space;
+  },
+  update(id: string, changes: Partial<Space>) {
+    SpaceManager.set(
+      SpaceManager.getAll().map((space) =>
+        space.id === id ? { ...space, ...changes } : space
+      )
+    );
+  },
+  remove(id: string) {
+    const spaces = SpaceManager.getAll();
+    if (spaces.length === 1) return;
+    const remaining = spaces.filter((space) => space.id !== id);
+    const destination = remaining[0].id;
+    // Preserve instance IDs and sessions when removing an organizational space.
+    AppManager.set(
+      AppManager.getAll().map((item) =>
+        (item.spaceId || DEFAULT_SPACE) === id
+          ? { ...item, spaceId: destination, folderId: undefined }
+          : item
+      )
+    );
+    SpaceManager.set(remaining);
+    if (SpaceManager.activeId() === id) SpaceManager.select(destination);
+  },
+};
+export function useSpaces() {
+  const [spaces, setSpaces] = useState(SpaceManager.getAll);
+  const [activeId, setActiveId] = useState(SpaceManager.activeId);
+  useEffect(
+    () =>
+      eventBus.on(EVENT_KEY.SPACE_UPDATE, () => {
+        setSpaces(SpaceManager.getAll());
+        setActiveId(SpaceManager.activeId());
+      }),
+    []
+  );
+  return {
+    spaces,
+    activeId,
+    active: spaces.find((space) => space.id === activeId) || spaces[0],
+  };
+}

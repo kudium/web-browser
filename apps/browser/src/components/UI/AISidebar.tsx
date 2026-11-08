@@ -1,0 +1,1586 @@
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  PanelLeft,
+  Sparkles,
+  Settings2,
+  Square,
+  ArrowUp,
+  Hand,
+  Play,
+  Plus,
+  X,
+  FileText,
+  ShieldCheck,
+  Layers,
+  Save,
+  Trash2,
+  ListTodo,
+  Code2,
+} from 'lucide-react';
+import { useAIPagePreference } from '../../utils/useAIPagePreference';
+import { AIChatSwitcher } from './AIChatSwitcher';
+import type {
+  AIConversationEvent,
+  AIConversationRequest,
+  AIConversationsState,
+} from '../../browser/aiConversations';
+/* Functional components use parameter defaults instead of deprecated defaultProps. */
+/* eslint-disable react/require-default-props */
+/* Attachment imports preserve order and report individual failures. */
+/* eslint-disable no-await-in-loop, no-restricted-syntax */
+import {
+  AI_ATTACHMENT_BYTES,
+  AI_ATTACHMENT_LIMIT,
+  AIComposerAttachment,
+} from '../../browser/aiComposer';
+import { GroupPicker } from './GroupPicker';
+import { GroupIcon } from './GroupIcon';
+import { AppManager } from '../../utils/AppManager';
+import {
+  AI_CONTEXT_MIME,
+  AI_CONTEXT_LIMIT,
+  AIContextAttachment,
+  AIContextReference,
+  validateAIContext,
+} from '../../browser/aiContext';
+import { AppIcon } from './AppIcon/AppIcon';
+import { AIAccessStatus, AI_ACCESS_MODES } from '../../browser/aiPermissions';
+import { AIGroup, aiGroupId, promptAIReferences } from '../../browser/aiGroups';
+import { eventBus } from '../../utils/EventBus';
+import { EVENT_KEY } from '../../utils/constant';
+import { AIReferencePicker } from './AIReferencePicker';
+import { AIMessage } from './AIMessage';
+import { PanelOverlayContext } from './PanelDialog';
+import { DeveloperSidebar } from './DeveloperSidebar';
+import { AITasksPanel } from './AITasksPanel';
+import { browser } from '../../browser/client';
+import { lockedGroup, useGroupAccess } from '../../utils/groupAccess';
+import type { MCPStatus } from '../../browser/mcp';
+import { AI_DEFAULTS, AIEvent, AISettings } from '../../browser/ai';
+
+const accessIcon = () => <ShieldCheck size={14} />;
+const noPickerIcon = () => null;
+
+export function AISidebar({
+  contextRequest,
+  developerRequest = 0,
+  menuPaneRequest,
+  focusedTabId,
+  onFocusTab,
+  onTabContextMenu,
+  onGroupContextMenu,
+  onManageGroup,
+}: {
+  focusedTabId?: string;
+  developerRequest?: number;
+  menuPaneRequest?: {
+    pane: 'assistant' | 'tasks' | 'developer';
+    token: number;
+  };
+  onFocusTab?: (id: string) => void;
+  contextRequest?: { reference: AIContextReference; token: number };
+  onTabContextMenu?: (id: string) => void;
+  onGroupContextMenu?: (id: string) => void;
+  onManageGroup?: (id: string) => void;
+}) {
+  const [overlayContainer, setOverlayContainer] = useState<HTMLElement | null>(
+    null
+  );
+  const [historyOpen, setHistoryOpen] = useAIPagePreference(
+    'historyOpen',
+    false
+  );
+  const [historyPinned, setHistoryPinned] = useAIPagePreference(
+    'historyPinned',
+    false
+  );
+  useEffect(() => {
+    if (!historyOpen || historyPinned) return undefined;
+    // Native webpages live outside this document; their focus selects the tab.
+    return browser.onTabRequest((request) => {
+      if (request.action === 'select') setHistoryOpen(false);
+    });
+  }, [historyOpen, historyPinned, setHistoryOpen]);
+  const historyToggle = useRef<HTMLButtonElement>(null);
+  const closeHistory = () => {
+    setHistoryOpen(false);
+    historyToggle.current?.focus();
+  };
+  const [permissions, setPermissions] = useState<AIAccessStatus>({
+    mode: 'standard',
+    effectiveMode: 'standard',
+    taskOnly: false,
+  });
+  const [storedGroups, setGroups] = useState<AIGroup[]>([]);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [cursor, setCursor] = useState(0);
+  const [pane, setPane] = useAIPagePreference('pane', 'assistant');
+  useEffect(() => {
+    if (menuPaneRequest) setPane(menuPaneRequest.pane);
+  }, [menuPaneRequest, setPane]);
+  useEffect(() => {
+    if (developerRequest) setPane('developer');
+  }, [developerRequest, setPane]);
+  const [developerVisited, setDeveloperVisited] = useState(false);
+  useEffect(() => {
+    if (pane === 'developer') setDeveloperVisited(true);
+  }, [pane]);
+  const showTasks = pane === 'tasks';
+  const setShowTasks = useCallback(
+    (value: boolean) => setPane(value ? 'tasks' : 'assistant'),
+    [setPane]
+  );
+  const [settings, setSettings] = useState<AISettings>({
+    ...AI_DEFAULTS,
+    hasKey: false,
+    remembered: false,
+  });
+  const [external, setExternal] = useState<MCPStatus>();
+  const [prompt, setPrompt] = useState('');
+  const [attachments, setAttachments] = useState<AIComposerAttachment[]>([]);
+  const [sentFiles, setSentFiles] = useState<AIComposerAttachment[]>([]);
+  const [preview, setPreview] = useAIPagePreference('preview', false);
+  const [contexts, setContexts] = useState<AIContextAttachment[]>([]);
+  const groupAccess = useGroupAccess();
+  const allContextTabs = AppManager.getAll();
+  const contextTabs = allContextTabs.filter(
+    (tab) => !lockedGroup(tab, groupAccess)
+  );
+  const lockedGroupIds = new Set(
+    allContextTabs.filter((tab) => lockedGroup(tab, groupAccess)).map(aiGroupId)
+  );
+  const groups = storedGroups.filter(
+    (group) =>
+      groupAccess.ready && !groupAccess.error && !lockedGroupIds.has(group.id)
+  );
+  const blockedContext =
+    groupId !== null && contexts.some((ref) => ref.groupId !== groupId);
+  const [attaching, setAttaching] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const attachmentRef = useRef<AIComposerAttachment[]>([]);
+  attachmentRef.current = attachments;
+  const [busy, setBusy] = useState(false);
+  const [resumable, setResumable] = useState(false);
+  const [events, setEvents] = useState<AIConversationEvent[]>([]);
+  const [chatState, setChatState] = useState<AIConversationsState>();
+  const [changingChat, setChangingChat] = useState(false);
+  const chatDrafts = useRef<
+    Record<
+      string,
+      {
+        prompt: string;
+        attachments: AIComposerAttachment[];
+        contexts: AIContextAttachment[];
+        sentFiles: AIComposerAttachment[];
+      }
+    >
+  >({});
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [unavailable, setUnavailable] = useState(false);
+  const taskInput = useRef<HTMLTextAreaElement>(null);
+  const showError = useCallback((reason: Error) => {
+    const missing = /No handler registered|Cannot read properties/.test(
+      reason.message
+    );
+    setUnavailable(missing);
+    setError(
+      missing
+        ? 'Restart Kudium Browser to connect the AI service.'
+        : reason.message.replace(
+            /^Error invoking remote method '[^']+': (Error: )?/,
+            ''
+          )
+    );
+  }, []);
+  useEffect(() => {
+    window.electron.ai.savedAttachments?.().then(setSentFiles).catch(showError);
+  }, [showError]);
+  const connect = useCallback(
+    () =>
+      window.electron.ai
+        .settings()
+        .then((value) => {
+          setSettings(value);
+          setUnavailable(false);
+          setError('');
+          return undefined;
+        })
+        .catch(showError),
+    [showError]
+  );
+  useEffect(() => {
+    let mounted = true;
+    const refresh = () => {
+      if (!window.electron.ai.groups) return;
+      window.electron.ai
+        .groups()
+        .then((value) => {
+          if (mounted) {
+            setGroups(value.groups);
+            setGroupId(value.groupId);
+          }
+          return undefined;
+        })
+        .catch(showError);
+    };
+    refresh();
+    const off =
+      'ipcRenderer' in window.electron
+        ? eventBus.on(EVENT_KEY.APP_LIST_UPDATE, refresh)
+        : () => {};
+    const scopeOff = window.electron.ai.onScope?.((next) => {
+      setGroupId(next);
+      refresh();
+    });
+    return () => {
+      mounted = false;
+      off();
+      scopeOff?.();
+    };
+  }, [showError]);
+  useEffect(() => {
+    let mounted = true;
+    setModels([]);
+    if (settings.hasKey && window.electron.ai.models) {
+      window.electron.ai
+        .models()
+        .then((value) => {
+          if (mounted) setModels(value);
+          return undefined;
+        })
+        .catch(() => {});
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [settings.endpoint, settings.hasKey]);
+  const mention = /(?:^|[\s(*_])@([a-z0-9-/]*)$/.exec(prompt.slice(0, cursor));
+  const suggestions = mention
+    ? groups
+        .flatMap<{
+          reference: string;
+          groupId: string;
+          name: string;
+          detail: string;
+          icon: string;
+          kind: 'tab' | 'group';
+          id: string;
+        }>((group) => {
+          const [groupQuery, pageQuery] = mention[1].toLowerCase().split('/');
+          if (!`${group.slug} ${group.name}`.toLowerCase().includes(groupQuery))
+            return [];
+          if (pageQuery !== undefined)
+            return group.tabs
+              .filter((page) =>
+                `${page.name} ${page.slug}`.toLowerCase().includes(pageQuery)
+              )
+              .slice(0, 8)
+              .map((page) => ({
+                reference: `@${group.slug}/${page.slug}`,
+                groupId: group.id,
+                name: page.name,
+                detail: group.name,
+                icon: page.icon,
+                kind: 'tab' as const,
+                id: page.id,
+              }));
+          return [
+            {
+              reference: `@${group.slug}`,
+              groupId: group.id,
+              name: group.name,
+              detail: `${group.tabs.length} tabs`,
+              icon: group.tabs[0]?.icon,
+              kind: 'group' as const,
+              id: group.id,
+            },
+          ];
+        })
+        .slice(0, 8)
+    : [];
+  const blockedMention = groups.find(
+    (group) =>
+      groupId !== null &&
+      group.id !== groupId &&
+      promptAIReferences(prompt).some(
+        (reference) => reference.split('/')[0] === group.slug
+      )
+  );
+  const changeScope = async (next: string) => {
+    try {
+      const value = await window.electron.ai.groups(
+        next === 'all' ? null : next
+      );
+      setGroupId(value.groupId);
+      setGroups(value.groups);
+    } catch (reason) {
+      showError(reason as Error);
+    }
+  };
+  const changeModel = async (model: string) => {
+    try {
+      setSettings(
+        await window.electron.ai.settings({
+          endpoint: settings.endpoint,
+          model,
+          remember: settings.remembered,
+        })
+      );
+    } catch (reason) {
+      showError(reason as Error);
+    }
+  };
+  useEffect(() => {
+    let mounted = true;
+    window.electron.ai
+      .permissions?.()
+      .then((value) => {
+        if (mounted) setPermissions(value);
+        return undefined;
+      })
+      .catch(showError);
+    const off = window.electron.ai.onPermissions?.(setPermissions);
+    return () => {
+      mounted = false;
+      off?.();
+    };
+  }, [showError]);
+  const refreshChats = () => {
+    window.electron.ai
+      .conversations?.({ action: 'list' })
+      .then(setChatState)
+      .catch(showError);
+  };
+  const changeChat = async (request: AIConversationRequest) => {
+    if (changingChat || !chatState) return;
+    if (request.action === 'select' && request.id === chatState.selectedId)
+      return;
+    if (request.action === 'rename' || request.action === 'reorder') {
+      try {
+        setChatState(await window.electron.ai.conversations(request));
+      } catch (reason) {
+        showError(reason as Error);
+      }
+      return;
+    }
+    if (busy || attaching) return;
+    chatDrafts.current[chatState.selectedId] = {
+      prompt,
+      attachments,
+      contexts,
+      sentFiles,
+    };
+    setChangingChat(true);
+    try {
+      const next = await window.electron.ai.conversations({
+        ...request,
+        draft: prompt,
+      } as AIConversationRequest);
+      setChatState(next);
+      setEvents(next.history);
+      const cached = chatDrafts.current[next.selectedId];
+      setPrompt(cached?.prompt ?? next.draft);
+      setAttachments(cached?.attachments || []);
+      setContexts(cached?.contexts || []);
+      setSentFiles(cached?.sentFiles || []);
+      if (
+        request.action === 'delete' &&
+        'id' in request &&
+        !next.conversations.some((chat) => chat.id === request.id)
+      )
+        delete chatDrafts.current[request.id];
+      setResumable(
+        next.conversations.find((chat) => chat.id === next.selectedId)
+          ?.paused || false
+      );
+      setError('');
+      setNotice('');
+    } catch (reason) {
+      showError(reason as Error);
+    } finally {
+      setChangingChat(false);
+    }
+  };
+  const changePermissions = (mode: string) =>
+    window.electron.ai
+      .permissions(mode as AIAccessStatus['mode'])
+      .then(setPermissions)
+      .catch(showError);
+  const log = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    connect();
+    window.electron.ai
+      .mcpStatus()
+      .then(setExternal)
+      .catch(() => {});
+    const externalCleanup = window.electron.ai.onMCP(setExternal);
+    let mounted = true;
+    let receivedEvent = false;
+    window.electron.ai
+      .conversations?.({ action: 'list' })
+      .then((value) => {
+        if (!mounted) return undefined;
+        setChatState(value);
+        if (!receivedEvent) setEvents(value.history);
+        setPrompt((current) => current || value.draft);
+        return undefined;
+      })
+      .catch(showError);
+    const chatsCleanup = window.electron.ai.onConversations?.(setChatState);
+    const eventsCleanup = window.electron.ai.onEvent((event) => {
+      if (event.type === 'activity') return;
+      receivedEvent = true;
+      if (event.type === 'status') setBusy(true);
+      if (
+        event.source !== 'external' &&
+        (event.type === 'error' || event.type === 'handoff')
+      )
+        setResumable(!!event.resumable);
+      if (event.type === 'done') {
+        setBusy(false);
+        if (event.source !== 'external') setResumable(!!event.resumable);
+      } else setEvents((previous) => [...previous, event]);
+    });
+    window.electron.ai
+      .taskStatus()
+      .then((status) => {
+        if (!mounted || receivedEvent) return undefined;
+        setBusy(status.busy);
+        setResumable(status.resumable);
+        if (status.history?.length) setEvents(status.history);
+        const { reason } = status;
+        if (reason && !status.history?.some((event) => event.text === reason))
+          setEvents((previous) => [
+            ...previous,
+            { type: 'handoff', text: reason },
+          ]);
+        return undefined;
+      })
+      .catch(showError);
+    const settingsCleanup = window.electron.ai.onSettings(setSettings);
+    return () => {
+      mounted = false;
+      chatsCleanup?.();
+      eventsCleanup();
+      settingsCleanup();
+      externalCleanup();
+    };
+  }, [connect, showError]);
+  useEffect(() => {
+    log.current?.scrollTo({ top: log.current.scrollHeight });
+  }, [events, error, notice]);
+  useEffect(() => {
+    if (!chatState?.selectedId || changingChat) return undefined;
+    const timer = setTimeout(() => {
+      window.electron.ai
+        .conversations?.({
+          action: 'draft',
+          id: chatState.selectedId,
+          draft: prompt,
+        })
+        .catch(showError);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [prompt, chatState?.selectedId, changingChat, showError]);
+  const latestAction = [...events]
+    .reverse()
+    .find((event) => event.type === 'status');
+  const openSettings = () =>
+    window.electron.ai.openPreferences().catch(showError);
+  const continueTask = async () => {
+    if (changingChat) return false;
+    if (busy || !settings.hasKey || unavailable) return false;
+    setBusy(true);
+    setError('');
+    try {
+      await window.electron.ai.resume();
+      setResumable(false);
+      return true;
+    } catch (reason) {
+      setBusy(false);
+      showError(reason as Error);
+      return false;
+    }
+  };
+  useEffect(
+    () => () => {
+      [
+        ...new Map(
+          [
+            ...attachmentRef.current,
+            ...Object.values(chatDrafts.current).flatMap(
+              (draft) => draft.attachments
+            ),
+          ].map((file) => [file.id, file])
+        ).values(),
+      ].forEach((file) => {
+        window.electron.ai.removeAttachment?.(file.id).catch(() => {});
+      });
+    },
+    []
+  );
+  useEffect(() => {
+    const input = taskInput.current;
+    if (!input) return;
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(160, Math.max(64, input.scrollHeight))}px`;
+  }, [prompt, pane]);
+  const pickAttachments = async () => {
+    if (attaching || busy) return;
+    setAttaching(true);
+    setError('');
+    try {
+      const result = await window.electron.ai.pickAttachments();
+      setAttachments((previous) => [...previous, ...result.attachments]);
+      if (result.errors.length) setError(result.errors.join('\n'));
+    } catch (reason) {
+      showError(reason as Error);
+    } finally {
+      setAttaching(false);
+      taskInput.current?.focus();
+    }
+  };
+  const addFiles = async (files: File[]) => {
+    if (attaching || busy) return;
+    setShowTasks(false);
+    setAttaching(true);
+    setDragging(false);
+    setError('');
+    const errors: string[] = [];
+    for (const file of files.slice(0, AI_ATTACHMENT_LIMIT)) {
+      try {
+        if (file.size > AI_ATTACHMENT_BYTES)
+          throw new Error('Choose a file up to 20 MB.');
+        const added = await window.electron.ai.addAttachment(
+          file.name,
+          new Uint8Array(await file.arrayBuffer())
+        );
+        setAttachments((previous) => [...previous, added]);
+      } catch (reason) {
+        errors.push(`${file.name}: ${(reason as Error).message}`);
+      }
+    }
+    if (files.length > AI_ATTACHMENT_LIMIT)
+      errors.push('Attach up to 8 files.');
+    if (errors.length) setError(errors.join('\n'));
+    setAttaching(false);
+  };
+  const addContext = useCallback(
+    async (payload: string) => {
+      if (attaching) return;
+      setShowTasks(false);
+      setAttaching(true);
+      setError('');
+      try {
+        const reference = validateAIContext(JSON.parse(payload));
+        const added = await window.electron.ai.attachContext(reference);
+        const alreadyIncluded = contexts.some(
+          (ref) =>
+            (ref.kind === added.kind && ref.id === added.id) ||
+            (ref.kind === 'group' && ref.id === added.groupId)
+        );
+        const retained = contexts.filter(
+          (ref) => added.kind !== 'group' || ref.groupId !== added.id
+        );
+        if (!alreadyIncluded && retained.length >= AI_CONTEXT_LIMIT)
+          throw new Error('Attach up to 8 tabs or groups.');
+        setContexts((previous) => {
+          // A group already includes its pages. Keep one reference per target.
+          if (
+            previous.some(
+              (ref) =>
+                (ref.kind === added.kind && ref.id === added.id) ||
+                (ref.kind === 'group' && ref.id === added.groupId)
+            )
+          )
+            return previous;
+          const next = previous.filter(
+            (ref) => added.kind !== 'group' || ref.groupId !== added.id
+          );
+          return [...next, added];
+        });
+        taskInput.current?.focus();
+      } catch (reason) {
+        showError(reason as Error);
+      } finally {
+        setAttaching(false);
+      }
+    },
+    [attaching, contexts, showError, setShowTasks]
+  );
+  const insertMention = (reference: string) => {
+    if (!mention) return;
+    const start = cursor - mention[1].length - 1;
+    const next = `${prompt.slice(0, start)}${reference} ${prompt.slice(
+      cursor
+    )}`;
+    setPrompt(next);
+    const selected = suggestions.find((entry) => entry.reference === reference);
+    if (selected)
+      addContext(JSON.stringify({ kind: selected.kind, id: selected.id }));
+    setCursor(start + reference.length + 1);
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      taskInput.current?.focus();
+      taskInput.current?.setSelectionRange(
+        start + reference.length + 1,
+        start + reference.length + 1
+      );
+    });
+  };
+  const handledRequest = useRef<number>();
+  useEffect(() => {
+    if (
+      attaching ||
+      !contextRequest ||
+      handledRequest.current === contextRequest.token
+    )
+      return;
+    handledRequest.current = contextRequest.token;
+    addContext(JSON.stringify(contextRequest.reference));
+  }, [contextRequest, attaching, addContext]);
+  const saveAttachment = async (file: AIComposerAttachment) => {
+    setError('');
+    setNotice(`Saving ${file.name}…`);
+    setAttaching(true);
+    try {
+      if (await window.electron.ai.saveAttachment(file.id))
+        setNotice(`Saved ${file.name} to Personal Data.`);
+      else setNotice('');
+    } catch (reason) {
+      setNotice('');
+      showError(reason as Error);
+    } finally {
+      setAttaching(false);
+    }
+  };
+  const referenceGroups = groups.filter(
+    (group) =>
+      contexts.some((ref) => ref.groupId === group.id) ||
+      promptAIReferences(prompt).some(
+        (reference) => reference.split('/')[0] === group.slug
+      )
+  );
+  const addReference = (reference: AIContextReference) => {
+    if (reference.kind === 'tab') {
+      const group = groups.find((entry) =>
+        entry.tabs.some((tab) => tab.id === reference.id)
+      );
+      const page = group?.tabs.find((tab) => tab.id === reference.id);
+      if (group && page) {
+        setContexts((previous) =>
+          previous.filter(
+            (entry) => entry.kind !== 'group' || entry.id !== group.id
+          )
+        );
+        setPrompt((current) =>
+          current.replace(
+            new RegExp(`@${group.slug}(?=$|[\\s.,!?;:])`, 'g'),
+            `@${group.slug}/${page.slug}`
+          )
+        );
+      }
+    }
+    addContext(JSON.stringify(reference));
+  };
+  const removeAttachment = async (id: string) => {
+    try {
+      await window.electron.ai.removeAttachment(id);
+      setAttachments((previous) => previous.filter((file) => file.id !== id));
+      setSentFiles((previous) => previous.filter((file) => file.id !== id));
+    } catch (reason) {
+      showError(reason as Error);
+    }
+  };
+  const attachmentMenu = (file: AIComposerAttachment) => {
+    browser
+      .nativeMenu([
+        ...(file.kind === 'document'
+          ? [
+              {
+                id: 'save',
+                label: 'Save to Personal Data…',
+                enabled: !busy && !attaching,
+              },
+            ]
+          : []),
+        { id: 'remove', label: 'Remove attachment', enabled: !busy },
+      ])
+      .then((choice) => {
+        if (choice === 'save' && !busy && !attaching) saveAttachment(file);
+        if (choice === 'remove' && !busy) removeAttachment(file.id);
+        return undefined;
+      })
+      .catch(showError);
+  };
+  const contextScope =
+    !blockedMention &&
+    contexts.length &&
+    contexts.every((ref) => ref.groupId === contexts[0].groupId)
+      ? contexts[0].groupId
+      : 'all';
+  const submit = async () => {
+    let task = prompt.trim();
+    if (!task && contexts.length) task = 'Review the attached browser context.';
+    if (!task && attachments.length) task = 'Review the attached files.';
+    if (
+      !task ||
+      attaching ||
+      changingChat ||
+      busy ||
+      !settings.hasKey ||
+      unavailable ||
+      blockedMention ||
+      blockedContext
+    )
+      return;
+    if (
+      resumable &&
+      !attachments.length &&
+      !contexts.length &&
+      /^(?:please\s+)?(?:resume|continue)(?:\s+(?:(?:the|my|this|original)\s+)?task)?(?:\s+please)?[.!]?$/i.test(
+        task
+      )
+    ) {
+      if (await continueTask()) {
+        setPrompt('');
+        setEvents((previous) => [...previous, { type: 'user', text: task }]);
+      }
+      return;
+    }
+    setBusy(true);
+    setResumable(false);
+    setError('');
+    const sentPrompt = prompt;
+    const sentAttachments = attachments;
+    const sentContexts = contexts;
+    try {
+      await window.electron.ai.run(
+        sentAttachments.length || sentContexts.length
+          ? {
+              prompt: task,
+              attachmentIds: sentAttachments.map((file) => file.id),
+              ...(sentContexts.length
+                ? {
+                    contextReferences: sentContexts.map(({ kind, id }) => ({
+                      kind,
+                      id,
+                    })),
+                  }
+                : {}),
+            }
+          : task
+      );
+      setEvents((previous) => [
+        ...previous,
+        {
+          type: 'user',
+          text: task,
+          attachments: sentAttachments.map(({ id, name, kind }) => ({
+            id,
+            name,
+            kind,
+          })),
+          contexts: sentContexts.map(({ id, name, kind }) => ({
+            id,
+            name,
+            kind,
+          })),
+        },
+      ]);
+      setSentFiles((current) => [...current, ...sentAttachments]);
+      refreshChats();
+      if (chatState)
+        window.electron.ai
+          .conversations?.({
+            action: 'draft',
+            id: chatState.selectedId,
+            draft: '',
+          })
+          .catch(showError);
+      setPrompt((current) => (current === sentPrompt ? '' : current));
+      setContexts((current) =>
+        current.filter(
+          (ref) =>
+            !sentContexts.some(
+              (sent) => sent.kind === ref.kind && sent.id === ref.id
+            )
+        )
+      );
+      setAttachments((current) =>
+        current.filter(
+          (file) => !sentAttachments.some((sent) => sent.id === file.id)
+        )
+      );
+    } catch (reason) {
+      setBusy(false);
+      showError(reason as Error);
+    }
+  };
+  return createElement(
+    PanelOverlayContext.Provider,
+    { value: overlayContainer },
+    <aside
+      className="ai-sidebar"
+      aria-label="AI browser assistant"
+      onContextMenu={(event) => {
+        if (
+          (event.target as HTMLElement).closest(
+            'input,textarea,[contenteditable=true],.ai-markdown,.ai-task-row,.developer-sidebar-page'
+          )
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        browser
+          .nativeMenu([
+            {
+              id: 'assistant',
+              label: 'Assistant',
+              enabled: pane !== 'assistant',
+            },
+            { id: 'tasks', label: 'Tasks', enabled: pane !== 'tasks' },
+            {
+              id: 'developer',
+              label: 'Developer',
+              enabled: pane !== 'developer',
+            },
+            { type: 'separator' },
+            { id: 'settings', label: 'AI settings…' },
+          ])
+          .then((choice) => {
+            if (
+              choice === 'assistant' ||
+              choice === 'tasks' ||
+              choice === 'developer'
+            )
+              setPane(choice);
+            if (choice === 'settings') openSettings();
+            return undefined;
+          })
+          .catch(showError);
+      }}
+      onDragOver={(event) => {
+        if (
+          event.dataTransfer.types.includes(AI_CONTEXT_MIME) ||
+          event.dataTransfer.types.includes('Files')
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.dataTransfer.dropEffect = busy || attaching ? 'none' : 'copy';
+          setDragging(!busy && !attaching);
+        }
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node))
+          setDragging(false);
+      }}
+      onDrop={(event) => {
+        const payload = event.dataTransfer.getData(AI_CONTEXT_MIME);
+        if (!payload && !event.dataTransfer.files.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setDragging(false);
+        if (busy || attaching || changingChat) return;
+        if (payload) {
+          addContext(payload);
+        } else addFiles(Array.from(event.dataTransfer.files));
+      }}
+    >
+      <header className="ai-sidebar-header">
+        {chatState && (
+          <button
+            type="button"
+            ref={historyToggle}
+            className="ai-history-toggle"
+            aria-label="Chat history"
+            title="Chat history"
+            aria-expanded={historyOpen && pane === 'assistant'}
+            aria-controls="ai-chat-history-panel"
+            onClick={() => {
+              if (historyOpen && pane === 'assistant') closeHistory();
+              else {
+                setPane('assistant');
+                setHistoryOpen(true);
+                refreshChats();
+              }
+            }}
+          >
+            <PanelLeft size={16} />
+          </button>
+        )}
+        <div
+          className="ai-sidebar-tabs"
+          role="tablist"
+          aria-label="Assistant tools"
+        >
+          {(['assistant', 'tasks', 'developer'] as const).map((tab) => (
+            <button
+              type="button"
+              key={tab}
+              id={`ai-${tab}-tab`}
+              role="tab"
+              tabIndex={pane === tab ? 0 : -1}
+              onKeyDown={(event) => {
+                const tabs = ['assistant', 'tasks', 'developer'] as const;
+                const index = tabs.indexOf(tab);
+                let next = index;
+                if (event.key === 'ArrowRight')
+                  next = (index + 1) % tabs.length;
+                else if (event.key === 'ArrowLeft')
+                  next = (index + tabs.length - 1) % tabs.length;
+                else if (event.key === 'Home') next = 0;
+                else if (event.key === 'End') next = tabs.length - 1;
+                else return;
+                event.preventDefault();
+                setPane(tabs[next]);
+                document.getElementById(`ai-${tabs[next]}-tab`)?.focus();
+              }}
+              title={
+                {
+                  assistant: 'Assistant',
+                  tasks: 'Tasks',
+                  developer: 'Developer',
+                }[tab]
+              }
+              aria-label={
+                {
+                  assistant: 'Assistant',
+                  tasks: 'Tasks',
+                  developer: 'Developer',
+                }[tab]
+              }
+              aria-selected={pane === tab}
+              aria-controls={`ai-${tab}-panel`}
+              onClick={() => setPane(tab)}
+            >
+              <span className="ai-sidebar-tab-icon" aria-hidden="true">
+                {tab === 'assistant' && <Sparkles size={15} />}
+                {tab === 'tasks' && <ListTodo size={15} />}
+                {tab === 'developer' && <Code2 size={15} />}
+              </span>
+              <span className="ai-sidebar-tab-label">
+                {
+                  {
+                    assistant: 'Assistant',
+                    tasks: 'Tasks',
+                    developer: 'Developer',
+                  }[tab]
+                }
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="ai-header-actions">
+          {(busy || (external?.running && external?.paused)) && (
+            <button
+              type="button"
+              aria-label={
+                external?.paused && !busy
+                  ? 'Resume external AI'
+                  : 'Take control'
+              }
+              title={
+                external?.paused && !busy
+                  ? 'Resume external AI'
+                  : 'Take control'
+              }
+              onClick={() =>
+                (external?.paused && !busy
+                  ? window.electron.ai.resumeExternal()
+                  : window.electron.ai.takeOver()
+                ).catch(showError)
+              }
+            >
+              {external?.paused && !busy ? (
+                <Play size={17} />
+              ) : (
+                <Hand size={17} />
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label="AI settings"
+            title="Connection settings"
+            onClick={openSettings}
+          >
+            <Settings2 size={17} />
+          </button>
+        </div>
+      </header>
+      {(developerVisited || pane === 'developer') && (
+        <DeveloperSidebar
+          onManageGroup={onManageGroup}
+          active={pane === 'developer'}
+          focusedTabId={focusedTabId}
+          onFocusTab={onFocusTab}
+          onTabContextMenu={onTabContextMenu}
+          onGroupContextMenu={onGroupContextMenu}
+        />
+      )}
+      {showTasks && (
+        <div
+          className="ai-sidebar-pane"
+          role="tabpanel"
+          id="ai-tasks-panel"
+          aria-labelledby="ai-tasks-tab"
+        >
+          <AITasksPanel busy={busy} resumable={resumable} />
+        </div>
+      )}
+      {pane === 'assistant' && (
+        <div
+          className={`ai-sidebar-pane ai-assistant-layout${
+            historyOpen ? ' ai-history-open' : ''
+          }${historyPinned ? ' ai-history-pinned' : ''}`}
+          role="tabpanel"
+          id="ai-assistant-panel"
+          aria-labelledby="ai-assistant-tab"
+        >
+          {chatState && historyOpen && (
+            <div id="ai-chat-history-panel" className="ai-chat-history-panel">
+              <AIChatSwitcher
+                state={chatState}
+                busy={busy || attaching}
+                changing={changingChat}
+                onChange={changeChat}
+                pinned={historyPinned}
+                onPin={() => setHistoryPinned((value) => !value)}
+                onClose={closeHistory}
+              />
+            </div>
+          )}
+          <div className="ai-log" ref={log} role="log" aria-live="polite">
+            {!events.length && (
+              <div className="ai-empty">
+                <h3>
+                  {external?.running ? 'External AI ready' : 'How can I help?'}
+                </h3>
+                {!settings.hasKey && (
+                  <button type="button" onClick={openSettings}>
+                    Connect AI
+                  </button>
+                )}
+              </div>
+            )}
+            {events
+              .filter((event) => event.type !== 'status')
+              .map((event, index) => (
+                <div key={index} className={`ai-message ai-${event.type}`}>
+                  <AIMessage
+                    text={event.text}
+                    groups={groups}
+                    onReference={addReference}
+                    onTabContextMenu={onTabContextMenu}
+                    onGroupContextMenu={onGroupContextMenu}
+                  />
+                  {event.type === 'user' &&
+                    !!(event.attachments?.length || event.contexts?.length) && (
+                      <div className="ai-message-assets">
+                        {event.contexts?.map((ref) => (
+                          <button
+                            type="button"
+                            key={`${ref.kind}-${ref.id}`}
+                            title={ref.name}
+                            onClick={() => addReference(ref)}
+                          >
+                            <Layers size={12} />
+                            <span>{ref.name}</span>
+                          </button>
+                        ))}
+                        {event.attachments?.map((file) => (
+                          <span
+                            className="ai-message-file"
+                            key={file.id}
+                            title={`${file.name} · Temporary attachment: available for up to 24 hours; reattach after browser restart`}
+                          >
+                            <FileText size={12} />
+                            <span>{file.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              ))}
+            {notice && (
+              <p className="ai-save-notice" role="status">
+                {notice}
+              </p>
+            )}
+            {error && !unavailable && (
+              <p className="ai-error" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
+          {busy && latestAction && (
+            <div className="ai-current-action" role="status">
+              {latestAction.text}
+            </div>
+          )}
+          {resumable && !busy && (
+            <button
+              type="button"
+              className="ai-retry"
+              disabled={!settings.hasKey || unavailable}
+              onClick={continueTask}
+            >
+              <Play size={14} /> Continue task
+            </button>
+          )}
+          {!!sentFiles.length && (
+            <div className="ai-sent-files">
+              <details>
+                <summary>
+                  {sentFiles.length} temporary{' '}
+                  {sentFiles.length === 1 ? 'file' : 'files'}
+                </summary>
+                <p className="ai-chat-history-note">
+                  Available for up to 24 hours or until the browser closes.
+                </p>
+                {sentFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      attachmentMenu(file);
+                    }}
+                  >
+                    <span title={file.name}>{file.name}</span>
+                    {file.kind === 'document' && (
+                      <button
+                        type="button"
+                        disabled={changingChat || busy || attaching}
+                        onClick={() => saveAttachment(file)}
+                        title="Save to Personal Data"
+                      >
+                        <Save size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={changingChat || busy}
+                      onClick={() => removeAttachment(file.id)}
+                      aria-label={`Forget ${file.name}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  disabled={changingChat || busy}
+                  onClick={async () => {
+                    try {
+                      await window.electron.ai.clearAttachments();
+                      setSentFiles([]);
+                      setAttachments([]);
+                    } catch (reason) {
+                      showError(reason as Error);
+                    }
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Forget files
+                </button>
+              </details>
+            </div>
+          )}
+          <form
+            className={`ai-composer${dragging ? ' ai-composer-dragging' : ''}`}
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            {(blockedMention || blockedContext) && (
+              <div className="ai-scope-notice">
+                {blockedContext
+                  ? 'Attached context is outside the selected group.'
+                  : `@${blockedMention?.slug} is outside scope.`}
+                <button
+                  type="button"
+                  disabled={changingChat || busy}
+                  onClick={() => changeScope(contextScope)}
+                >
+                  {contextScope === 'all'
+                    ? 'Use All groups'
+                    : `Use ${
+                        groups.find((group) => group.id === contextScope)
+                          ?.name || 'attached group'
+                      }`}
+                </button>
+              </div>
+            )}
+            {(!!attachments.length || !!contexts.length) && (
+              <div
+                className="ai-attachments"
+                role="list"
+                aria-label="Attached files and browser context"
+              >
+                {contexts.map((ref) => {
+                  const item = contextTabs.find((tab) =>
+                    ref.kind === 'group'
+                      ? aiGroupId(tab) === ref.id
+                      : tab.id === ref.id
+                  );
+                  return (
+                    <div
+                      className="ai-attachment ai-context-attachment"
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (ref.kind === 'group') onGroupContextMenu?.(ref.id);
+                        else onTabContextMenu?.(ref.id);
+                      }}
+                      key={`${ref.kind}-${ref.id}`}
+                      role="listitem"
+                      aria-label={`${ref.kind === 'group' ? 'Group' : 'Tab'}: ${
+                        ref.name
+                      }`}
+                      title={`${ref.name} · ${
+                        ref.kind === 'group' ? `${ref.tabCount} tabs` : 'Tab'
+                      } · Read on demand`}
+                    >
+                      {ref.kind === 'group' && item ? (
+                        <GroupIcon item={item} tabs={contextTabs} />
+                      ) : (
+                        <AppIcon icon={ref.icon} title={ref.name} />
+                      )}
+                      <span className="ai-attachment-type">
+                        {ref.kind === 'group' ? 'Group' : 'Tab'}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${ref.name} context`}
+                        title={`Remove ${ref.name} context`}
+                        disabled={changingChat || busy}
+                        onClick={() =>
+                          setContexts((previous) =>
+                            previous.filter(
+                              (entry) =>
+                                entry.kind !== ref.kind || entry.id !== ref.id
+                            )
+                          )
+                        }
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {attachments.map((file) => (
+                  <div
+                    className="ai-attachment"
+                    key={file.id}
+                    data-attachment-id={file.id}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      attachmentMenu(file);
+                    }}
+                    role="listitem"
+                    aria-label={file.name}
+                    title={`${file.name} · ${Math.max(
+                      1,
+                      Math.round(file.size / 1024)
+                    )} KB`}
+                  >
+                    {file.preview ? (
+                      <img src={file.preview} alt="" />
+                    ) : (
+                      <FileText size={18} />
+                    )}
+                    {!file.preview && (
+                      <span className="ai-attachment-type">
+                        {file.name.split('.').pop()?.slice(0, 5).toUpperCase()}
+                      </span>
+                    )}
+                    {file.kind === 'document' && (
+                      <button
+                        type="button"
+                        className="ai-attachment-save"
+                        disabled={changingChat || busy || attaching}
+                        onClick={() => saveAttachment(file)}
+                        aria-label={`Save ${file.name} to Personal Data`}
+                        title="Save to Personal Data"
+                      >
+                        <Save size={12} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${file.name}`}
+                      title={`Remove ${file.name}`}
+                      disabled={changingChat || busy}
+                      onClick={() => removeAttachment(file.id)}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <textarea
+              ref={taskInput}
+              onPaste={(event) => {
+                const files = Array.from(event.clipboardData.files);
+                if (files.length) {
+                  event.preventDefault();
+                  addFiles(files);
+                }
+              }}
+              rows={3}
+              aria-label="Task for AI"
+              placeholder="Ask anything, or drop a tab or group…"
+              value={prompt}
+              maxLength={12000}
+              disabled={changingChat}
+              onChange={(event) => {
+                setPrompt(event.target.value);
+                setCursor(event.target.selectionStart);
+                setMentionIndex(0);
+              }}
+              onSelect={(event) =>
+                setCursor(event.currentTarget.selectionStart)
+              }
+              aria-controls={suggestions.length ? 'ai-mentions' : undefined}
+              aria-activedescendant={
+                suggestions.length ? `ai-mention-${mentionIndex}` : undefined
+              }
+              onKeyDown={(event) => {
+                if (
+                  suggestions.length &&
+                  ['ArrowDown', 'ArrowUp', 'Enter', 'Tab'].includes(
+                    event.key
+                  ) &&
+                  !event.shiftKey
+                ) {
+                  event.preventDefault();
+                  if (event.key === 'Enter' || event.key === 'Tab')
+                    insertMention(
+                      suggestions[mentionIndex]?.reference ||
+                        suggestions[0].reference
+                    );
+                  else
+                    setMentionIndex(
+                      (previous) =>
+                        (previous +
+                          (event.key === 'ArrowDown'
+                            ? 1
+                            : suggestions.length - 1)) %
+                        suggestions.length
+                    );
+                  return;
+                }
+                if (event.key === 'Escape') {
+                  setCursor(0);
+                  return;
+                }
+                if (
+                  event.key === 'Enter' &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
+                  event.preventDefault();
+                  submit();
+                }
+              }}
+            />
+            {!!referenceGroups.length && (
+              <div className="ai-draft-references">
+                {referenceGroups.map((group) => (
+                  <AIReferencePicker
+                    key={group.id}
+                    group={group}
+                    disabled={changingChat || busy}
+                    onAdd={addReference}
+                    onTabContextMenu={onTabContextMenu}
+                    onGroupContextMenu={onGroupContextMenu}
+                  />
+                ))}
+              </div>
+            )}
+            {!!prompt && (
+              <button
+                type="button"
+                className="ai-preview-toggle"
+                onClick={() => setPreview(!preview)}
+              >
+                {preview ? 'Hide preview' : 'Preview'}
+              </button>
+            )}
+            {preview && !!prompt && (
+              <div className="ai-draft-preview">
+                <AIMessage
+                  text={prompt}
+                  groups={groups}
+                  onReference={addReference}
+                />
+              </div>
+            )}
+            {!!suggestions.length && (
+              <div
+                className="ai-mentions"
+                id="ai-mentions"
+                role="listbox"
+                aria-label="Group and page references"
+              >
+                {suggestions.map((item, index) => (
+                  <button
+                    type="button"
+                    role="option"
+                    id={`ai-mention-${index}`}
+                    aria-selected={index === mentionIndex}
+                    key={item.reference}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => insertMention(item.reference)}
+                  >
+                    {item.kind === 'group' &&
+                    contextTabs.find((tab) => aiGroupId(tab) === item.id) ? (
+                      <GroupIcon
+                        item={
+                          contextTabs.find((tab) => aiGroupId(tab) === item.id)!
+                        }
+                        tabs={contextTabs}
+                      />
+                    ) : (
+                      <AppIcon icon={item.icon || ''} title={item.name} />
+                    )}
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.detail}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="ai-composer-controls">
+              <button
+                type="button"
+                className="ai-attach-button"
+                aria-label="Attach images or files"
+                title="Attach images or files · 20 MB each"
+                disabled={
+                  busy ||
+                  attaching ||
+                  unavailable ||
+                  attachments.length >= AI_ATTACHMENT_LIMIT
+                }
+                onClick={pickAttachments}
+              >
+                <Plus size={18} />
+              </button>
+              <div className="ai-context-pickers">
+                <GroupPicker
+                  label="AI permissions"
+                  triggerClassName="ai-access-picker"
+                  optionIcon={accessIcon}
+                  placeholder="Search access modes…"
+                  disabled={changingChat || busy || unavailable}
+                  options={AI_ACCESS_MODES.map((mode) => ({
+                    id: mode.id,
+                    name: `${mode.name}${
+                      permissions.taskOnly &&
+                      permissions.effectiveMode === mode.id
+                        ? ' · Task'
+                        : ''
+                    }`,
+                    detail: mode.detail,
+                  }))}
+                  value={permissions.effectiveMode}
+                  onChange={changePermissions}
+                />
+
+                <GroupPicker
+                  label="AI scope"
+                  onContextMenu={onGroupContextMenu}
+                  triggerClassName="ai-group-picker"
+                  placeholder="Search groups…"
+                  disabled={
+                    changingChat || busy || unavailable || !!external?.paused
+                  }
+                  options={[
+                    {
+                      id: 'all',
+                      name: 'All groups',
+                      leadingIcon: <Layers size={14} />,
+                    },
+                    ...groups.map((group) => ({
+                      id: group.id,
+                      name: group.name,
+                      detail: `@${group.slug}`,
+                      icon: group.tabs[0]?.icon,
+                    })),
+                  ]}
+                  value={groupId ?? 'all'}
+                  onChange={changeScope}
+                />
+              </div>
+              {settings.hasKey && (
+                <GroupPicker
+                  label="AI model"
+                  triggerClassName="ai-model-picker"
+                  optionIcon={noPickerIcon}
+                  placeholder="Search models or enter ID…"
+                  allowCustom
+                  disabled={changingChat || busy || unavailable}
+                  options={[...new Set([settings.model, ...models])].map(
+                    (model) => ({ id: model, name: model })
+                  )}
+                  value={settings.model}
+                  onChange={changeModel}
+                />
+              )}
+              <span className="ai-composer-state" role="status">
+                {attaching && 'Adding…'}
+                {!attaching && busy && 'Working…'}
+              </span>
+              {busy ? (
+                <button
+                  type="button"
+                  className="ai-send-button"
+                  aria-label="Stop AI task"
+                  title="Stop AI task"
+                  onClick={() =>
+                    window.electron.ai
+                      .stop()
+                      .catch((reason) => setError(reason.message))
+                  }
+                >
+                  <Square size={14} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="ai-send-button"
+                  title="Send task"
+                  disabled={
+                    changingChat ||
+                    !settings.hasKey ||
+                    (!prompt.trim() &&
+                      !attachments.length &&
+                      !contexts.length) ||
+                    attaching ||
+                    unavailable ||
+                    !!blockedMention ||
+                    blockedContext
+                  }
+                  aria-label="Send AI task"
+                >
+                  <ArrowUp size={17} />
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
+      <div className="ai-overlay-layer" ref={setOverlayContainer} />
+    </aside>
+  );
+}

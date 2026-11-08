@@ -1,0 +1,466 @@
+[
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "idle",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 92.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 145.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 198
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "working",
+    "takeover": true,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 81.328125
+      },
+      {
+        "label": "Tasks",
+        "right": 122.6640625
+      },
+      {
+        "label": "Developer",
+        "right": 164
+      },
+      {
+        "label": "Take control",
+        "right": 207
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "done",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 92.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 145.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 198
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 240,
+    "theme": "light",
+    "state": "paused",
+    "takeover": false,
+    "resume": true,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 81.328125
+      },
+      {
+        "label": "Tasks",
+        "right": 122.6640625
+      },
+      {
+        "label": "Developer",
+        "right": 164
+      },
+      {
+        "label": "Resume external AI",
+        "right": 207
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "idle",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 92.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 145.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 198
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "working",
+    "takeover": true,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 81.328125
+      },
+      {
+        "label": "Tasks",
+        "right": 122.6640625
+      },
+      {
+        "label": "Developer",
+        "right": 164
+      },
+      {
+        "label": "Take control",
+        "right": 207
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "done",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 92.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 145.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 198
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 240,
+    "theme": "dark",
+    "state": "paused",
+    "takeover": false,
+    "resume": true,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 81.328125
+      },
+      {
+        "label": "Tasks",
+        "right": 122.6640625
+      },
+      {
+        "label": "Developer",
+        "right": 164
+      },
+      {
+        "label": "Resume external AI",
+        "right": 207
+      },
+      {
+        "label": "AI settings",
+        "right": 241
+      }
+    ],
+    "right": 241
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "idle",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 146
+      },
+      {
+        "label": "Tasks",
+        "right": 252
+      },
+      {
+        "label": "Developer",
+        "right": 358
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "working",
+    "takeover": true,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 134.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 229.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 324
+      },
+      {
+        "label": "Take control",
+        "right": 367
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "done",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 146
+      },
+      {
+        "label": "Tasks",
+        "right": 252
+      },
+      {
+        "label": "Developer",
+        "right": 358
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "state": "paused",
+    "takeover": false,
+    "resume": true,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 134.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 229.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 324
+      },
+      {
+        "label": "Resume external AI",
+        "right": 367
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "idle",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 146
+      },
+      {
+        "label": "Tasks",
+        "right": 252
+      },
+      {
+        "label": "Developer",
+        "right": 358
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "working",
+    "takeover": true,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 134.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 229.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 324
+      },
+      {
+        "label": "Take control",
+        "right": 367
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "done",
+    "takeover": false,
+    "resume": false,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 146
+      },
+      {
+        "label": "Tasks",
+        "right": 252
+      },
+      {
+        "label": "Developer",
+        "right": 358
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "state": "paused",
+    "takeover": false,
+    "resume": true,
+    "overflow": false,
+    "buttons": [
+      {
+        "label": "Assistant",
+        "right": 134.6640625
+      },
+      {
+        "label": "Tasks",
+        "right": 229.3359375
+      },
+      {
+        "label": "Developer",
+        "right": 324
+      },
+      {
+        "label": "Resume external AI",
+        "right": 367
+      },
+      {
+        "label": "AI settings",
+        "right": 401
+      }
+    ],
+    "right": 401
+  }
+]

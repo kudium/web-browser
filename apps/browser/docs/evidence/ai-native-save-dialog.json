@@ -1,0 +1,39 @@
+{
+  "gate": "Native save destination and original-download MCP continuation, native cancellation",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "electron": "45.0.0",
+    "chrome": "156.0.8078.48"
+  },
+  "fixtureSHA256": "3782a25a0e954ee19a2d5d7bd37f418a82e3d7c3117b6c5abed768df575a30d8",
+  "stages": [
+    {
+      "stage": "CHOOSE_SAVE",
+      "window": "TouchBox Save Test",
+      "defaultDirectory": "/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-save-dialog-1CJUSs",
+      "saveName": "chosen-test.txt",
+      "downloadId": "9faa0578-9cba-4583-955f-0f7d224400eb"
+    },
+    {
+      "stage": "WAITING_ON_ORIGINAL_DOWNLOAD"
+    },
+    {
+      "stage": "SAVED_AND_REATTACHED",
+      "sameDownloadId": "9faa0578-9cba-4583-955f-0f7d224400eb",
+      "requests": 1
+    },
+    {
+      "stage": "CANCEL_SAVE",
+      "window": "TouchBox Save Test"
+    },
+    {
+      "stage": "PASS",
+      "checks": "real native save destination, same-download wait, verified bytes, native reattachment, cancellation",
+      "electron": "45.0.0",
+      "chrome": "156.0.8078.48"
+    }
+  ],
+  "interaction": "CUA accessibility controls on a disposable Electron bundle with a distinct app identity; no native save dialog mock or product file-path override. AI action approval is fixture-approved; approval UI is tested separately.",
+  "limits": "Human destination choice; does not implement agent-selected native save destinations or programmatic picker dismissal."
+}

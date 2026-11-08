@@ -1,0 +1,1274 @@
+[
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "off",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "waiting",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "running",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "success",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "error",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "before",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "Before loadBefore load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "css",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "CSSCSS"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "help",
+    "left": 170,
+    "right": 630,
+    "bottom": 564,
+    "footer": 564,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "focus",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "logs",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "empty",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "import",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "import-error",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "hover",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "badge-waiting",
+    "badge": "waiting"
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "badge-running",
+    "badge": "running"
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "badge-success",
+    "badge": "success"
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "badge-error",
+    "badge": "error"
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "off",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "waiting",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "running",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "success",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "error",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "before",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "Before loadBefore load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "css",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "CSSCSS"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "help",
+    "left": 170,
+    "right": 630,
+    "bottom": 564,
+    "footer": 564,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "focus",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "logs",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "empty",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "import",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "import-error",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "hover",
+    "left": 170,
+    "right": 630,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 195,
+      "right": 605
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "badge-waiting",
+    "badge": "waiting"
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "badge-running",
+    "badge": "running"
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "badge-success",
+    "badge": "success"
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "badge-error",
+    "badge": "error"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "off",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "waiting",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "running",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "success",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "error",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "before",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "Before loadBefore load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "css",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "CSSCSS"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "help",
+    "left": 16,
+    "right": 384,
+    "bottom": 564,
+    "footer": 564,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "focus",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "logs",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "empty",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "import",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "import-error",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "hover",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "badge-waiting",
+    "badge": "waiting"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "badge-running",
+    "badge": "running"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "badge-success",
+    "badge": "success"
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "badge-error",
+    "badge": "error"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "off",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "waiting",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "running",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "success",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "error",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "before",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "Before loadBefore load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "css",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "CSSCSS"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "help",
+    "left": 16,
+    "right": 384,
+    "bottom": 564,
+    "footer": 564,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "focus",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "logs",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "empty",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "import",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "import-error",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "hover",
+    "left": 16,
+    "right": 384,
+    "bottom": 584,
+    "footer": 584,
+    "scroll": true,
+    "overflow": false,
+    "textarea": {
+      "left": 33,
+      "right": 367
+    },
+    "hintGap": 13,
+    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "tabs": [
+      "DeveloperDeveloper",
+      "After loadAfter load"
+    ]
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "badge-waiting",
+    "badge": "waiting"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "badge-running",
+    "badge": "running"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "badge-success",
+    "badge": "success"
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "badge-error",
+    "badge": "error"
+  }
+]

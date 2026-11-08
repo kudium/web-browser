@@ -1,0 +1,170 @@
+{
+  "measuredAt": "2026-11-07T00:09:55.221Z",
+  "electron": "45.0.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "durationMs": 391.254583,
+  "sourceSHA256": {
+    "src/main/ai.ts": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533",
+    "src/main/aiActionApproval.ts": "3f5905dc7308f8384199751fb5746e2dfb74b21a8a9c675e42985a5335d2da2f",
+    "src/browser/aiPermissions.ts": "884452a252c1e224bc4481f7c53d4c5829fdb65eed6b283251466c9f36f6d08e"
+  },
+  "method": "Real Electron websites, actual registerAI, official MCP HTTP client, synthetic page effects and locally intercepted native reviews; no external AI provider or accounts.",
+  "results": [
+    {
+      "case": "click Continue",
+      "reviews": 1,
+      "effects": 0
+    },
+    {
+      "case": "click Continuar",
+      "reviews": 1,
+      "effects": 0
+    },
+    {
+      "case": "select_options Account action",
+      "reviews": 1,
+      "effects": 0
+    },
+    {
+      "case": "press_key Continue",
+      "reviews": 1,
+      "effects": 0
+    },
+    {
+      "case": "approved interaction",
+      "reviews": 1,
+      "effects": 1
+    },
+    {
+      "case": "same URL document reload",
+      "blocked": true
+    },
+    {
+      "case": "profile reassignment",
+      "blocked": true
+    },
+    {
+      "case": "access changed and restored during approval",
+      "blocked": true
+    },
+    {
+      "case": "owner changed while native dialog holds dispatch",
+      "blocked": true
+    },
+    {
+      "case": "Standard new origin declined",
+      "reviews": 1,
+      "blocked": true
+    },
+    {
+      "case": "Standard new origin approved",
+      "reviews": 1,
+      "completed": true
+    },
+    {
+      "case": "Standard same origin",
+      "reviews": 0
+    },
+    {
+      "case": "Ask first without unload handler",
+      "reviews": 1,
+      "completed": true
+    },
+    {
+      "case": "Ask first with unload handler",
+      "reviews": 1,
+      "completed": true
+    }
+  ],
+  "limitations": [
+    "Provider prompt-injection/data-release paths remain independent requirements.",
+    "Scope/owner binding applies to the updated navigation and generic DOM action paths; complete privileged IPC inventory remains open."
+  ],
+  "confirmations": [
+    {
+      "measuredAt": "2026-11-07T00:15:43.011Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "durationMs": 89.91191700000002,
+      "sourceSHA256": {
+        "src/main/ai.ts": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533",
+        "src/main/aiActionApproval.ts": "e14c56d6636b226bef8017388976f95d188964255bcf9546237d4202d4abed1f",
+        "src/browser/aiPermissions.ts": "884452a252c1e224bc4481f7c53d4c5829fdb65eed6b283251466c9f36f6d08e"
+      },
+      "method": "Real Electron websites, actual registerAI, official MCP HTTP client, synthetic page effects and locally intercepted native reviews; no external AI provider or accounts.",
+      "results": [
+        {
+          "case": "click Continue",
+          "reviews": 1,
+          "effects": 0
+        },
+        {
+          "case": "click Continuar",
+          "reviews": 1,
+          "effects": 0
+        },
+        {
+          "case": "select_options Account action",
+          "reviews": 1,
+          "effects": 0
+        },
+        {
+          "case": "press_key Continue",
+          "reviews": 1,
+          "effects": 0
+        },
+        {
+          "case": "approved interaction",
+          "reviews": 1,
+          "effects": 1
+        },
+        {
+          "case": "same URL document reload",
+          "blocked": true
+        },
+        {
+          "case": "profile reassignment",
+          "blocked": true
+        },
+        {
+          "case": "access changed and restored during approval",
+          "blocked": true
+        },
+        {
+          "case": "owner changed while native dialog holds dispatch",
+          "blocked": true
+        },
+        {
+          "case": "Standard new origin declined",
+          "reviews": 1,
+          "blocked": true
+        },
+        {
+          "case": "Standard new origin approved",
+          "reviews": 1,
+          "completed": true
+        },
+        {
+          "case": "Standard same origin",
+          "reviews": 0
+        },
+        {
+          "case": "Ask first without unload handler",
+          "reviews": 1,
+          "completed": true
+        },
+        {
+          "case": "Ask first with unload handler",
+          "reviews": 1,
+          "completed": true
+        }
+      ],
+      "limitations": [
+        "Provider prompt-injection/data-release paths remain independent requirements.",
+        "Scope/owner binding applies to the updated navigation and generic DOM action paths; complete privileged IPC inventory remains open."
+      ]
+    }
+  ]
+}

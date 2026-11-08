@@ -1,0 +1,83 @@
+{
+  "recordedAt": "2026-11-07T06:19:18.523Z",
+  "sourceHashes": {
+    "src/main/preferences.ts": "f1b6ee00098ba0c1414e0aaf6a3367a02842322669bda981e416d42fed13ca66",
+    "src/__tests__/preferences.test.ts": "bbd1ef2ba9f5782bd2d361f1c46389ecf0fd5869032e1ca84e73cdabce4b5058",
+    ".erb/scripts/preferences-benchmark.cjs": "645bf915ae4cb2443c3d61d82d46d3a164436de16dceba1fa38c0498bb8cea1f",
+    ".erb/scripts/checks.ts": "5a0c5b1cbb108d06117c74e1cdcbaf82cc7f79f4dfccd054546ded4d87aa22ba"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "39c53d5ed303cb42f2815ee76919c88da344be4306f3c586026b3b54445e590b",
+      "summary": "132 suites / 671 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "native component before",
+      "command": "node .erb/scripts/preferences-benchmark.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "58cc1574e7842a042bdc476bdb731b9d4e3d4792f759d3758c34f766ad19e9e5",
+      "summary": "Passed"
+    },
+    {
+      "name": "native component after",
+      "command": "node .erb/scripts/preferences-benchmark.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "0581250e089325c8c39efc6212c814cea2b36eaefab2be62add7cae6960cd119",
+      "summary": "Passed"
+    },
+    {
+      "name": "native component confirmation",
+      "command": "node .erb/scripts/preferences-benchmark.cjs confirmation",
+      "observedExitCode": 0,
+      "logSha256": "8ec60dbd0b6da9fbbef22c208759aa92967427cd5ce0cf2c7cc99770141077f9",
+      "summary": "Passed"
+    },
+    {
+      "name": "short production workspace",
+      "command": "node .erb/scripts/workspace-performance.cjs confirmation --quick",
+      "observedExitCode": 0,
+      "logSha256": "2c92c74fc147d7f7c42faf2e98922bb429049c9ca2b3136cf9a116bb779a8102",
+      "summary": "Two 10-tab launches; 30 warm switches each; reads 600 -> 0 in both appearances"
+    }
+  ],
+  "checkRunner": {
+    "styleExitCode": 0,
+    "note": "Native preference probe added after full lint/types; runner style checked separately."
+  },
+  "reports": {
+    "componentSha256": "0ae1f5aa2b92d7e090b037e36aa35b23710fc0ff0f5bcc4b7a904d9e09386941",
+    "workspaceSha256": "574daa814d167263ca18767d1d2b1b7fb3dd9643fa311a5c8c2e7682873351e4"
+  },
+  "workspaceComparison": {
+    "beforePhase": "after",
+    "afterPhase": "confirmation",
+    "sourceDifferences": [
+      "src/main/preferences.ts"
+    ],
+    "rendererBundlesIdentical": true,
+    "scope": "One 10-tab launch per appearance per phase. Deterministic I/O evidence; no whole-app latency or memory claim."
+  },
+  "limitations": [
+    "Manual JSON edits require restart.",
+    "Cold initialization copies/freezes; no repeated cold launches.",
+    "Native input and sidebar focus checks remain failed/unverified.",
+    "Packaged/platform and broader security release gates remain open."
+  ]
+}

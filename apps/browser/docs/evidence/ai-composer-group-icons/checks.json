@@ -1,0 +1,4838 @@
+[
+  {
+    "name": "long-labels",
+    "width": 240,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 138.96875,
+              "top": 535,
+              "bottom": 547,
+              "center": 541
+            },
+            {
+              "left": 129.96875,
+              "right": 141.96875,
+              "top": 532,
+              "bottom": 544,
+              "center": 538
+            },
+            {
+              "left": 132.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 541,
+              "center": 535
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 240,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 138.96875,
+              "top": 535,
+              "bottom": 547,
+              "center": 541
+            },
+            {
+              "left": 129.96875,
+              "right": 141.96875,
+              "top": 532,
+              "bottom": 544,
+              "center": 538
+            },
+            {
+              "left": 132.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 541,
+              "center": 535
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 240,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 250.98048400878906,
+      "top": 197.04132080078125,
+      "bottom": 517.0121459960938,
+      "width": 288,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 240,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 250.9808807373047,
+      "top": 197.04049682617188,
+      "bottom": 517.0119018554688,
+      "width": 288,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 240,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 250.98048400878906,
+      "top": 311.0340576171875,
+      "bottom": 551.0121459960938,
+      "width": 288,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 300,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 40,
+        "left": 88,
+        "right": 128,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 60,
+        "left": 132,
+        "right": 192,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 64,
+        "left": 196,
+        "right": 260,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 264,
+        "right": 294,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 132,
+            "right": 192,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 135,
+            "right": 153,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 157,
+            "right": 189,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 135,
+              "right": 147,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 138,
+              "right": 150,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 141,
+              "right": 153,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 300,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 40,
+        "left": 88,
+        "right": 128,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 60,
+        "left": 132,
+        "right": 192,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 64,
+        "left": 196,
+        "right": 260,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 264,
+        "right": 294,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 132,
+            "right": 192,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 135,
+            "right": 153,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 157,
+            "right": 189,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 135,
+              "right": 147,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 138,
+              "right": 150,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 141,
+              "right": 153,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 300,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 310.9876708984375,
+      "top": 231.02041625976562,
+      "bottom": 551.0059814453125,
+      "width": 348,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 300,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 310.9543151855469,
+      "top": 231.07562255859375,
+      "bottom": 551.022216796875,
+      "width": 348,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 300,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 310.9749755859375,
+      "top": 365.0291748046875,
+      "bottom": 551.01220703125,
+      "width": 348,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 320,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 45.109375,
+        "left": 88,
+        "right": 133.109375,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 72.921875,
+        "left": 137.109375,
+        "right": 210.03125,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 65.96875,
+        "left": 214.03125,
+        "right": 280,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 284,
+        "right": 314,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 137.109375,
+            "right": 210.03125,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 140.109375,
+            "right": 158.109375,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 162.109375,
+            "right": 207.03125,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 140.109375,
+              "right": 152.109375,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 143.109375,
+              "right": 155.109375,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 146.109375,
+              "right": 158.109375,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 320,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 45.109375,
+        "left": 88,
+        "right": 133.109375,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 72.921875,
+        "left": 137.109375,
+        "right": 210.03125,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 65.96875,
+        "left": 214.03125,
+        "right": 280,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 284,
+        "right": 314,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 137.109375,
+            "right": 210.03125,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 140.109375,
+            "right": 158.109375,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 162.109375,
+            "right": 207.03125,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 140.109375,
+              "right": 152.109375,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 143.109375,
+              "right": 155.109375,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 146.109375,
+              "right": 158.109375,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 320,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 330.9749450683594,
+      "top": 231.03866577148438,
+      "bottom": 551.0113525390625,
+      "width": 368,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 320,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 330.9731140136719,
+      "top": 231.04147338867188,
+      "bottom": 551.01220703125,
+      "width": 368,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 320,
+    "theme": "light",
+    "popup": {
+      "left": 37,
+      "right": 330.9732360839844,
+      "top": 365.0290832519531,
+      "bottom": 551.0121459960938,
+      "width": 368,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 368,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 163.4140625,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 154.4140625,
+              "right": 166.4140625,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 157.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 368,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 163.4140625,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 154.4140625,
+              "right": 166.4140625,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 157.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 368,
+    "theme": "light",
+    "popup": {
+      "left": 59,
+      "right": 378.9707946777344,
+      "top": 231.0413818359375,
+      "bottom": 551.01220703125,
+      "width": 416,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 368,
+    "theme": "light",
+    "popup": {
+      "left": 59,
+      "right": 378.9846496582031,
+      "top": 231.02175903320312,
+      "bottom": 551.0064086914062,
+      "width": 416,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 368,
+    "theme": "light",
+    "popup": {
+      "left": 59,
+      "right": 378.9462585449219,
+      "top": 365.0536193847656,
+      "bottom": 551.0223999023438,
+      "width": 416,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 480,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 80.921875,
+        "left": 90,
+        "right": 170.921875,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 134.1953125,
+        "left": 176.921875,
+        "right": 311.1171875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 120.8828125,
+        "left": 317.1171875,
+        "right": 438,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 444,
+        "right": 474,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 176.921875,
+            "right": 311.1171875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 179.921875,
+            "right": 197.921875,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 201.921875,
+            "right": 290.1171875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 179.921875,
+              "right": 191.921875,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 182.921875,
+              "right": 194.921875,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 185.921875,
+              "right": 197.921875,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 480,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 80.921875,
+        "left": 90,
+        "right": 170.921875,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 134.1953125,
+        "left": 176.921875,
+        "right": 311.1171875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 120.8828125,
+        "left": 317.1171875,
+        "right": 438,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 444,
+        "right": 474,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 176.921875,
+            "right": 311.1171875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 179.921875,
+            "right": 197.921875,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 201.921875,
+            "right": 290.1171875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 179.921875,
+              "right": 191.921875,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 182.921875,
+              "right": 194.921875,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 185.921875,
+              "right": 197.921875,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 480,
+    "theme": "light",
+    "popup": {
+      "left": 90,
+      "right": 409.9705505371094,
+      "top": 231.04171752929688,
+      "bottom": 551.0122680664062,
+      "width": 528,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 480,
+    "theme": "light",
+    "popup": {
+      "left": 171,
+      "right": 490.97064208984375,
+      "top": 231.04159545898438,
+      "bottom": 551.01220703125,
+      "width": 528,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 480,
+    "theme": "light",
+    "popup": {
+      "left": 171,
+      "right": 490.946044921875,
+      "top": 365.0538330078125,
+      "bottom": 551.0224609375,
+      "width": 528,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 640,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 207,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 198,
+              "right": 210,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 201,
+              "right": 213,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 640,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 207,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 198,
+              "right": 210,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 201,
+              "right": 213,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 640,
+    "theme": "light",
+    "popup": {
+      "left": 90,
+      "right": 409.970703125,
+      "top": 231.04150390625,
+      "bottom": 551.01220703125,
+      "width": 688,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 640,
+    "theme": "light",
+    "popup": {
+      "left": 192,
+      "right": 511.94647216796875,
+      "top": 231.07583618164062,
+      "bottom": 551.0223388671875,
+      "width": 688,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 640,
+    "theme": "light",
+    "popup": {
+      "left": 331,
+      "right": 650.9705810546875,
+      "top": 365.02935791015625,
+      "bottom": 551.0122680664062,
+      "width": 688,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 240,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 138.96875,
+              "top": 535,
+              "bottom": 547,
+              "center": 541
+            },
+            {
+              "left": 129.96875,
+              "right": 141.96875,
+              "top": 532,
+              "bottom": 544,
+              "center": 538
+            },
+            {
+              "left": 132.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 541,
+              "center": 535
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 240,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 138.96875,
+              "top": 535,
+              "bottom": 547,
+              "center": 541
+            },
+            {
+              "left": 129.96875,
+              "right": 141.96875,
+              "top": 532,
+              "bottom": 544,
+              "center": 538
+            },
+            {
+              "left": 132.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 541,
+              "center": 535
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 240,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 250.9904022216797,
+      "top": 197.02032470703125,
+      "bottom": 517.0059814453125,
+      "width": 288,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 240,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 250.96429443359375,
+      "top": 197.07562255859375,
+      "bottom": 517.022216796875,
+      "width": 288,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 240,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 250.96412658691406,
+      "top": 311.06256103515625,
+      "bottom": 551.0223388671875,
+      "width": 288,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 300,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 40,
+        "left": 88,
+        "right": 128,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 60,
+        "left": 132,
+        "right": 192,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 64,
+        "left": 196,
+        "right": 260,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 264,
+        "right": 294,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 132,
+            "right": 192,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 135,
+            "right": 153,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 157,
+            "right": 189,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 135,
+              "right": 147,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 138,
+              "right": 150,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 141,
+              "right": 153,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 300,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 40,
+        "left": 88,
+        "right": 128,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 60,
+        "left": 132,
+        "right": 192,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 64,
+        "left": 196,
+        "right": 260,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 264,
+        "right": 294,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 132,
+            "right": 192,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 135,
+            "right": 153,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 157,
+            "right": 189,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 135,
+              "right": 147,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 138,
+              "right": 150,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 141,
+              "right": 153,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 300,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 310.9749755859375,
+      "top": 231.04141235351562,
+      "bottom": 551.01220703125,
+      "width": 348,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 300,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 310.9541015625,
+      "top": 231.075927734375,
+      "bottom": 551.0223388671875,
+      "width": 348,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 300,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 310.9739685058594,
+      "top": 365.03033447265625,
+      "bottom": 551.0126953125,
+      "width": 348,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 320,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 45.109375,
+        "left": 88,
+        "right": 133.109375,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 72.921875,
+        "left": 137.109375,
+        "right": 210.03125,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 65.96875,
+        "left": 214.03125,
+        "right": 280,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 284,
+        "right": 314,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 137.109375,
+            "right": 210.03125,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 140.109375,
+            "right": 158.109375,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 162.109375,
+            "right": 207.03125,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 140.109375,
+              "right": 152.109375,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 143.109375,
+              "right": 155.109375,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 146.109375,
+              "right": 158.109375,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 320,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 45.109375,
+        "left": 88,
+        "right": 133.109375,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 72.921875,
+        "left": 137.109375,
+        "right": 210.03125,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 65.96875,
+        "left": 214.03125,
+        "right": 280,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 284,
+        "right": 314,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 137.109375,
+            "right": 210.03125,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 140.109375,
+            "right": 158.109375,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 162.109375,
+            "right": 207.03125,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 140.109375,
+              "right": 152.109375,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 143.109375,
+              "right": 155.109375,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 146.109375,
+              "right": 158.109375,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 320,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 330.9731750488281,
+      "top": 231.0413818359375,
+      "bottom": 551.01220703125,
+      "width": 368,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 320,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 330.9508056640625,
+      "top": 231.07583618164062,
+      "bottom": 551.0223388671875,
+      "width": 368,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 320,
+    "theme": "dark",
+    "popup": {
+      "left": 37,
+      "right": 330.9731140136719,
+      "top": 365.0292053222656,
+      "bottom": 551.01220703125,
+      "width": 368,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 368,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 163.4140625,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 154.4140625,
+              "right": 166.4140625,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 157.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 368,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 163.4140625,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 154.4140625,
+              "right": 166.4140625,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 157.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 368,
+    "theme": "dark",
+    "popup": {
+      "left": 59,
+      "right": 378.9866943359375,
+      "top": 231.01885986328125,
+      "bottom": 551.0055541992188,
+      "width": 416,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 368,
+    "theme": "dark",
+    "popup": {
+      "left": 59,
+      "right": 378.9706726074219,
+      "top": 231.04153442382812,
+      "bottom": 551.01220703125,
+      "width": 416,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 368,
+    "theme": "dark",
+    "popup": {
+      "left": 59,
+      "right": 378.9461669921875,
+      "top": 365.0537109375,
+      "bottom": 551.0224609375,
+      "width": 416,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 480,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 80.921875,
+        "left": 90,
+        "right": 170.921875,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 134.1953125,
+        "left": 176.921875,
+        "right": 311.1171875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 120.8828125,
+        "left": 317.1171875,
+        "right": 438,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 444,
+        "right": 474,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 176.921875,
+            "right": 311.1171875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 179.921875,
+            "right": 197.921875,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 201.921875,
+            "right": 290.1171875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 179.921875,
+              "right": 191.921875,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 182.921875,
+              "right": 194.921875,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 185.921875,
+              "right": 197.921875,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 480,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 80.921875,
+        "left": 90,
+        "right": 170.921875,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 134.1953125,
+        "left": 176.921875,
+        "right": 311.1171875,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 120.8828125,
+        "left": 317.1171875,
+        "right": 438,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 444,
+        "right": 474,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 176.921875,
+            "right": 311.1171875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 179.921875,
+            "right": 197.921875,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 201.921875,
+            "right": 290.1171875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 179.921875,
+              "right": 191.921875,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 182.921875,
+              "right": 194.921875,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 185.921875,
+              "right": 197.921875,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 480,
+    "theme": "dark",
+    "popup": {
+      "left": 90,
+      "right": 409.9707946777344,
+      "top": 231.0413818359375,
+      "bottom": 551.01220703125,
+      "width": 528,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 480,
+    "theme": "dark",
+    "popup": {
+      "left": 171,
+      "right": 490.9464111328125,
+      "top": 231.075927734375,
+      "bottom": 551.0223388671875,
+      "width": 528,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 480,
+    "theme": "dark",
+    "popup": {
+      "left": 171,
+      "right": 490.97076416015625,
+      "top": 365.0291748046875,
+      "bottom": 551.01220703125,
+      "width": 528,
+      "height": 648
+    }
+  },
+  {
+    "name": "long-labels",
+    "width": 640,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 207,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 198,
+              "right": 210,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 201,
+              "right": 213,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "keyboard-focus",
+    "width": 640,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 207,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 198,
+              "right": 210,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 201,
+              "right": 213,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "AI permissions",
+    "width": 640,
+    "theme": "dark",
+    "popup": {
+      "left": 90,
+      "right": 409.9852294921875,
+      "top": 231.02093505859375,
+      "bottom": 551.0061645507812,
+      "width": 688,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI scope",
+    "width": 640,
+    "theme": "dark",
+    "popup": {
+      "left": 192,
+      "right": 511.98577880859375,
+      "top": 231.0201416015625,
+      "bottom": 551.0059204101562,
+      "width": 688,
+      "height": 648
+    }
+  },
+  {
+    "name": "AI model",
+    "width": 640,
+    "theme": "dark",
+    "popup": {
+      "left": 331,
+      "right": 650.9708251953125,
+      "top": 365.02911376953125,
+      "bottom": 551.0121459960938,
+      "width": 688,
+      "height": 648
+    }
+  },
+  {
+    "name": "working-disabled",
+    "width": 320,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 45.109375,
+        "left": 88,
+        "right": 133.109375,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 72.921875,
+        "left": 137.109375,
+        "right": 210.03125,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 65.96875,
+        "left": 214.03125,
+        "right": 280,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 284,
+        "right": 314,
+        "top": 557,
+        "title": "Stop AI task",
+        "label": "Stop AI task",
+        "disabled": false
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 137.109375,
+            "right": 210.03125,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 140.109375,
+            "right": 158.109375,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 162.109375,
+            "right": 207.03125,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 140.109375,
+              "right": 152.109375,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 143.109375,
+              "right": 155.109375,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 146.109375,
+              "right": 158.109375,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "working-disabled",
+    "width": 320,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 45.109375,
+        "left": 88,
+        "right": 133.109375,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 72.921875,
+        "left": 137.109375,
+        "right": 210.03125,
+        "top": 557,
+        "title": "AI scope: Create a short KudiTrust feature video by telling the complete project story with a very long group name",
+        "label": "AI scope",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 65.96875,
+        "left": 214.03125,
+        "right": 280,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": true
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 284,
+        "right": 314,
+        "top": 557,
+        "title": "Stop AI task",
+        "label": "Stop AI task",
+        "disabled": false
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 137.109375,
+            "right": 210.03125,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 140.109375,
+            "right": 158.109375,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 162.109375,
+            "right": 207.03125,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 140.109375,
+              "right": 152.109375,
+              "top": 569,
+              "bottom": 581,
+              "center": 575
+            },
+            {
+              "left": 143.109375,
+              "right": 155.109375,
+              "top": 566,
+              "bottom": 578,
+              "center": 572
+            },
+            {
+              "left": 146.109375,
+              "right": 158.109375,
+              "top": 563,
+              "bottom": 575,
+              "center": 569
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-work",
+    "width": 240,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Work",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 547,
+              "center": 538
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-image",
+    "width": 240,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Image group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 547,
+              "center": 538
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-fallback",
+    "width": 240,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Fallback group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 547,
+              "center": 538
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-work",
+    "width": 368,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Work",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-image",
+    "width": 368,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Image group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-fallback",
+    "width": 368,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Fallback group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-work",
+    "width": 640,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Work",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 213,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-image",
+    "width": 640,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Image group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 213,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-fallback",
+    "width": 640,
+    "theme": "light",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Fallback group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 213,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-work",
+    "width": 240,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Work",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 547,
+              "center": 538
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-image",
+    "width": 240,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Image group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 547,
+              "center": 538
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-fallback",
+    "width": 240,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 67.96875,
+        "left": 52,
+        "right": 119.96875,
+        "top": 523,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 112.03125,
+        "left": 123.96875,
+        "right": 236,
+        "top": 523,
+        "title": "AI scope: Fallback group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 116,
+        "left": 86,
+        "right": 202,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 52,
+        "right": 82,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 206,
+        "right": 236,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 123.96875,
+            "right": 236,
+            "top": 523,
+            "bottom": 553,
+            "center": 538
+          },
+          "slot": {
+            "left": 126.96875,
+            "right": 144.96875,
+            "top": 529,
+            "bottom": 547,
+            "center": 538
+          },
+          "label": {
+            "left": 148.96875,
+            "right": 233,
+            "top": 529.75,
+            "bottom": 546.25,
+            "center": 538
+          },
+          "icons": [
+            {
+              "left": 126.96875,
+              "right": 144.96875,
+              "top": 529,
+              "bottom": 547,
+              "center": 538
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-work",
+    "width": 368,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Work",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-image",
+    "width": 368,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Image group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-fallback",
+    "width": 368,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 56.4140625,
+        "left": 88,
+        "right": 144.4140625,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 92.2734375,
+        "left": 148.4140625,
+        "right": 240.6875,
+        "top": 557,
+        "title": "AI scope: Fallback group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 83.3125,
+        "left": 244.6875,
+        "right": 328,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 332,
+        "right": 362,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 148.4140625,
+            "right": 240.6875,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 151.4140625,
+            "right": 169.4140625,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 173.4140625,
+            "right": 237.6875,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 151.4140625,
+              "right": 169.4140625,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-work",
+    "width": 640,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Work",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 213,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-image",
+    "width": 640,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Image group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 213,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "icon-fallback",
+    "width": 640,
+    "theme": "dark",
+    "data": [
+      {
+        "selector": ".ai-access-picker",
+        "width": 96,
+        "left": 90,
+        "right": 186,
+        "top": 557,
+        "title": "AI permissions: Full access",
+        "label": "AI permissions",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-group-picker",
+        "width": 160,
+        "left": 192,
+        "right": 352,
+        "top": 557,
+        "title": "AI scope: Fallback group",
+        "label": "AI scope",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-model-picker",
+        "width": 144,
+        "left": 358,
+        "right": 502,
+        "top": 557,
+        "title": "AI model: gemini-3.8-flash-preview-with-a-deliberately-long-model-identifier",
+        "label": "AI model",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-attach-button",
+        "width": 30,
+        "left": 54,
+        "right": 84,
+        "top": 557,
+        "title": "Attach images or files · 20 MB each",
+        "label": "Attach images or files",
+        "disabled": false
+      },
+      {
+        "selector": ".ai-send-button",
+        "width": 30,
+        "left": 604,
+        "right": 634,
+        "top": 557,
+        "title": "Send task",
+        "label": "Send AI task",
+        "disabled": true
+      },
+      {
+        "icons": {
+          "button": {
+            "left": 192,
+            "right": 352,
+            "top": 557,
+            "bottom": 587,
+            "center": 572
+          },
+          "slot": {
+            "left": 195,
+            "right": 213,
+            "top": 563,
+            "bottom": 581,
+            "center": 572
+          },
+          "label": {
+            "left": 217,
+            "right": 331,
+            "top": 563.75,
+            "bottom": 580.25,
+            "center": 572
+          },
+          "icons": [
+            {
+              "left": 195,
+              "right": 213,
+              "top": 563,
+              "bottom": 581,
+              "center": 572
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

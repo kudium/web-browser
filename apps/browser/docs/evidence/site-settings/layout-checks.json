@@ -1,0 +1,642 @@
+[
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "default",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "expanded",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "capture-menu",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [
+      {
+        "left": 194,
+        "right": 340.3828125,
+        "top": 339,
+        "bottom": 451
+      }
+    ],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "permission-menu",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "muted",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "loading",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "blocked",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "empty",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "light",
+    "scenario": "insecure",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "default",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "expanded",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "capture-menu",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [
+      {
+        "left": 194,
+        "right": 340.3828125,
+        "top": 339,
+        "bottom": 451
+      }
+    ],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "permission-menu",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "muted",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "loading",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "blocked",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "empty",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 800,
+    "theme": "dark",
+    "scenario": "insecure",
+    "dialog": {
+      "left": 170,
+      "right": 630,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "default",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "expanded",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "capture-menu",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [
+      {
+        "left": 32,
+        "right": 178.3828125,
+        "top": 345,
+        "bottom": 457
+      }
+    ],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "permission-menu",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "muted",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "loading",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "blocked",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "empty",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "light",
+    "scenario": "insecure",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "default",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "expanded",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "capture-menu",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [
+      {
+        "left": 32,
+        "right": 178.3828125,
+        "top": 345,
+        "bottom": 457
+      }
+    ],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "permission-menu",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": true
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "muted",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "loading",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "blocked",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "empty",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": false,
+    "menu": false
+  },
+  {
+    "width": 400,
+    "theme": "dark",
+    "scenario": "insecure",
+    "dialog": {
+      "left": 16,
+      "right": 384,
+      "top": 32,
+      "bottom": 584
+    },
+    "footer": 584,
+    "scroll": true,
+    "panels": [],
+    "detailsGap": 8,
+    "expanded": true,
+    "menu": false
+  }
+]

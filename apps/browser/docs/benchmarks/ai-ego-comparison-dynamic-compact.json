@@ -1,0 +1,630 @@
+{
+  "measuredAt": "2026-11-05T15:07:17.102Z",
+  "touchboxFormat": "compact",
+  "fixture": "100 buttons plus Name / Apply form; each Apply awaits localhost response delayed 75ms",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48",
+    "egoGuide": "2.2.0",
+    "cpu": "Apple M1 Max"
+  },
+  "method": "Interleaved SDK/MCP calls on one machine; first observation reported separately, two warmups excluded, 20 measured rounds per operation. Dynamic workflow waits for a 75ms localhost response and verifies final status. TouchBox uses six public API calls; Ego uses five. No AI inference or CLI process startup included.",
+  "limitations": [
+    "TouchBox uses authenticated localhost Streamable HTTP MCP; Ego uses its documented Page SDK transport. These are different transport paths.",
+    "TouchBox native approval dialogs are accepted by a fixture stub; no human decision latency included.",
+    "TouchBox observes between input and click then uses wait_until for final observation; Ego waits for expected status and takes a final snapshot. TouchBox issues six public API calls; Ego issues five. TouchBox wait_until returns a detailed snapshot, followed by compact final observation.",
+    "The localhost response has a controlled 75ms delay; this is a dynamic DOM/network fixture, not a remote production application.",
+    "Snapshots have different semantic schemas. Fixture fits the viewport; Ego uses full_page and TouchBox discovers all 102 controls (below its 250 cap).",
+    "One local static fixture cannot establish complete parity or general browser superiority."
+  ],
+  "failures": 0,
+  "retries": 0,
+  "touchbox": {
+    "cold": {
+      "ms": 10.401667000000089,
+      "bytes": 6141,
+      "controls": 102,
+      "verified": true,
+      "apiCalls": 1
+    },
+    "snapshot": {
+      "runs": 20,
+      "p50Ms": 3.8872919999994338,
+      "p95Ms": 7.133625000002212,
+      "samples": [
+        {
+          "ms": 3.071208999999726,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 5.289416999999958,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 5.190624999999272,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 7.133625000002212,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 3.8872919999994338,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 3.0821670000004815,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 3.0353329999998095,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 2.9995840000010503,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 4.319625000000087,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 5.806417000003421,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 2.703709000001254,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 3.8015830000003916,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 4.645124999999098,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 5.369249999999738,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 3.5495410000003176,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 6.588999999999942,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 3.52033400000073,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 5.567290999999386,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 2.5027919999993173,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        },
+        {
+          "ms": 3.244290999995428,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 1
+        }
+      ]
+    },
+    "workflow": {
+      "runs": 20,
+      "p50Ms": 124.88666699999885,
+      "p95Ms": 137.5915419999983,
+      "samples": [
+        {
+          "ms": 124.88666699999885,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 137.5915419999983,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 131.47891700000037,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 134.27429200000188,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 118.7209580000017,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 129.15529199999946,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 124.98737500000061,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 126.31516600000032,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 120.74479199999769,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 122.85558299999684,
+          "bytes": 6157,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 122.749917000001,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 121.89050000000134,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 122.04083399999945,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 121.53458299999693,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 124.68566700000156,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 132.5201249999991,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 124.5700829999987,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 123.2479170000006,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 130.2981249999939,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        },
+        {
+          "ms": 133.4151669999992,
+          "bytes": 6159,
+          "controls": 102,
+          "verified": true,
+          "apiCalls": 6
+        }
+      ]
+    }
+  },
+  "ego": {
+    "cold": {
+      "ms": 12.258542000003217,
+      "bytes": 4634,
+      "verified": true,
+      "controls": 102,
+      "apiCalls": 1
+    },
+    "snapshot": {
+      "runs": 20,
+      "p50Ms": 11.108707999999751,
+      "p95Ms": 17.138083999998344,
+      "samples": [
+        {
+          "ms": 11.573958000000857,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 7.113291000001482,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 17.138083999998344,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 8.633166999999958,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 9.664874999994936,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 10.199500000002445,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 12.520125000002736,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 9.453291999998328,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 15.428499999994528,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 8.816500000000815,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 10.708334000002651,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 11.108707999999751,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 10.478875000000698,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 14.637082999994163,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 13.987208999998984,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 11.733000000000175,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 14.49004099999729,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 10.58720799999719,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 13.982332999999926,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        },
+        {
+          "ms": 10.926417000002402,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 1
+        }
+      ]
+    },
+    "workflow": {
+      "runs": 20,
+      "p50Ms": 1059.4790839999987,
+      "p95Ms": 1133.797749999998,
+      "samples": [
+        {
+          "ms": 865.9652910000004,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1083.3373750000028,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 832.7021670000031,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1088.111499999999,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 813.0857499999984,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1133.797749999998,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 812.414125000003,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1124.9811249999984,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 816.362083,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1074.6937499999985,
+          "bytes": 4662,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 824.281707999995,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1078.3870000000024,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 884.408749999995,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1114.0318340000013,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 826.6995420000021,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1079.2414169999975,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 771.8397909999985,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1059.4790839999987,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 879.0665829999998,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        },
+        {
+          "ms": 1076.555082999992,
+          "bytes": 4664,
+          "verified": true,
+          "controls": 102,
+          "apiCalls": 5
+        }
+      ]
+    }
+  }
+}

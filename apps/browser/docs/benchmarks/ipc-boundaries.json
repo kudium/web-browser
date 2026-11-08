@@ -1,0 +1,221 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T07:26:25.335Z",
+    "phase": "before",
+    "probeSha256": "44b124db460a8da1fe07baaf0d71ba46710167a372100c09bd2c430eaa96514e",
+    "sourceHashes": {
+      "src/main/groupLocks.ts": "ca3fc95bf5bcaeeb660a33d9f04a9b942552b2344beba0ef481de29cf3175290",
+      "src/main/preferences.ts": "f1b6ee00098ba0c1414e0aaf6a3367a02842322669bda981e416d42fed13ca66",
+      "src/main/preload.ts": "41945279c3aca6c7d436a50c92103e92ac6d2b037c9196551b2611a5fd82d935"
+    },
+    "bundleHashes": {
+      "runtime": "a99641ed8c5edcc7646c0d03a6014a9e74a5892dfb9a4486eff7b12625e0967c",
+      "preload": "1276dfb186a8391be860a56dd76ad6bb38c5f0c1c6565c13667ca99128858832"
+    },
+    "overrides": [
+      "Exact phase-specific groupLocks/preferences sources",
+      "Fixture extension profile/toolbar enumeration",
+      "Fixture native-dialog forwarding",
+      "Fixture extension browser-action registration"
+    ],
+    "dependencyHashes": {
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/main/passwordManager/authentication.ts": "41158fa6cec549735d3c14447610f4443bf91c74a1248428c72309235e7ed444",
+      "src/browser/advancedPreferences.ts": "83ce1c832e6d5a1df2947cc6e93a1db78d0ca046b294c6bfd023f279d5362cfb",
+      "node_modules/tldts/dist/cjs/index.js": "f5e00f84b688d0fba6eca57b8e4265b6daf1aa2716ffffdd8fef6ec3a2202b92",
+      "src/main/browserIdentity.ts": "adc77d4fc1ac37d09738b44ad1790214bf3f57d306357751108ff3f428b3eeb2",
+      "src/main/siteData.ts": "1447db80c7ee29200ff3d8b76e3a63f5b038ab625bc4b82af5c5c5308006b634",
+      "src/main/historyPersistence.ts": "ad58ecbed68c0129002afa908e4c6e6452b84deb6217907e4e9c5d85e4dcc526",
+      "src/main/history.ts": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3",
+      "src/main/advancedPreferences.ts": "f475bf2240ee8f02619bf3c7dc8a6acecee3dc4b80903e9b76c7c19a6edcb2b4",
+      "src/browser/cloudSync.ts": "2b7826c5e59c2c8b6ce6d7009a2d5b9d3af26f6540ff2a3db79d666d6e5bec8d",
+      "src/browser/shortcuts.ts": "1505fc8df85d19e307122fb2484288da60255431d0d457992224da907509e69a",
+      "src/browser/sleepingTabs.ts": "fcd027a85566610fedfc2cc6571ac961046f00568887f0f13a68c3e68f489e7f",
+      "src/browser/searchEngines.ts": "bf1ace8ba521835e9d7f89a5ea2c61ffdece1953c00520f0dbfc89c337dc89c6",
+      "src/browser/preferences.ts": "34eac1559c4a3e8ab497b7c57bb60d9eb0dc9b9d8f76e1e3362c2c0e688efe1e"
+    },
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "results": [
+      {
+        "case": "navigation while capability check pending",
+        "sameFrame": true,
+        "protectedAfter": true
+      },
+      {
+        "case": "same URL reload during unlock",
+        "accepted": true,
+        "unlocked": true,
+        "protected": true
+      },
+      {
+        "case": "same URL reload during unprotect",
+        "accepted": true,
+        "unlocked": false,
+        "protected": false
+      },
+      {
+        "case": "normal approved group unlock",
+        "unlocked": true
+      },
+      {
+        "case": "same URL reload during preference reset",
+        "accepted": true,
+        "effect": true
+      },
+      {
+        "case": "same URL reload during preference choose-download-directory",
+        "accepted": true,
+        "effect": true
+      },
+      {
+        "case": "same URL reload during preference clear-data",
+        "accepted": true,
+        "effect": true
+      },
+      {
+        "case": "same URL reload during preference clear-cache",
+        "accepted": true,
+        "effect": true
+      },
+      {
+        "case": "normal preference directory selection",
+        "updated": true
+      },
+      {
+        "case": "foreign window authority",
+        "blocked": 2
+      },
+      {
+        "case": "generic preload channel escape",
+        "sendAccepted": true,
+        "received": 1,
+        "subscriptionAccepted": [
+          true,
+          true
+        ],
+        "delivered": 2
+      },
+      {
+        "case": "declared legacy channels remain usable",
+        "accepted": true
+      }
+    ],
+    "limitations": [
+      "Actual native frame identities/handlers and production preload bridge; extension browser-action registration is stubbed.",
+      "Native capability/auth/dialog responses are fixture controlled; no physical OS authentication, extension installation or signed package.",
+      "The generic channel restriction narrows the bridge; it is not proof of a UI injection exploit or complete IPC security."
+    ]
+  },
+  "after": {
+    "recordedAt": "2026-11-07T07:26:26.198Z",
+    "phase": "after",
+    "probeSha256": "44b124db460a8da1fe07baaf0d71ba46710167a372100c09bd2c430eaa96514e",
+    "sourceHashes": {
+      "src/main/groupLocks.ts": "bdd106cbc5a24adad1e5d741b2d4304aebff503e5c9f3d0f51ec4d4911b6e5be",
+      "src/main/preferences.ts": "e3bd6bdee4720cf7d420285bd5d3252a9d21c0b924d32fd16ea7309cf4bfb9e2",
+      "src/main/preload.ts": "643e60414b2872bb77b6dd4d7d922b21ea5aa99945c82e6368069c2c9d0e1392"
+    },
+    "bundleHashes": {
+      "runtime": "785752eeb3c9ed64e7be0e8f94951ea3d11af0ce1ed40f5bab6a9e5652b3fed8",
+      "preload": "ffb9d1c668884fe94843e0e14c9582a97addfb566d4a1b160f0ca3ae1a727b94"
+    },
+    "overrides": [
+      "Exact phase-specific groupLocks/preferences sources",
+      "Fixture extension profile/toolbar enumeration",
+      "Fixture native-dialog forwarding",
+      "Fixture extension browser-action registration"
+    ],
+    "dependencyHashes": {
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+      "src/main/passwordManager/authentication.ts": "41158fa6cec549735d3c14447610f4443bf91c74a1248428c72309235e7ed444",
+      "src/browser/advancedPreferences.ts": "83ce1c832e6d5a1df2947cc6e93a1db78d0ca046b294c6bfd023f279d5362cfb",
+      "node_modules/tldts/dist/cjs/index.js": "f5e00f84b688d0fba6eca57b8e4265b6daf1aa2716ffffdd8fef6ec3a2202b92",
+      "src/main/browserIdentity.ts": "adc77d4fc1ac37d09738b44ad1790214bf3f57d306357751108ff3f428b3eeb2",
+      "src/main/siteData.ts": "1447db80c7ee29200ff3d8b76e3a63f5b038ab625bc4b82af5c5c5308006b634",
+      "src/main/historyPersistence.ts": "ad58ecbed68c0129002afa908e4c6e6452b84deb6217907e4e9c5d85e4dcc526",
+      "src/main/history.ts": "1dc862ebcd2201b09c87a996aaa77c90addb17a6f6aa2b7895a78e9c1a5c1eb3",
+      "src/main/advancedPreferences.ts": "f475bf2240ee8f02619bf3c7dc8a6acecee3dc4b80903e9b76c7c19a6edcb2b4",
+      "src/browser/cloudSync.ts": "2b7826c5e59c2c8b6ce6d7009a2d5b9d3af26f6540ff2a3db79d666d6e5bec8d",
+      "src/browser/shortcuts.ts": "1505fc8df85d19e307122fb2484288da60255431d0d457992224da907509e69a",
+      "src/browser/sleepingTabs.ts": "fcd027a85566610fedfc2cc6571ac961046f00568887f0f13a68c3e68f489e7f",
+      "src/browser/searchEngines.ts": "bf1ace8ba521835e9d7f89a5ea2c61ffdece1953c00520f0dbfc89c337dc89c6",
+      "src/browser/preferences.ts": "34eac1559c4a3e8ab497b7c57bb60d9eb0dc9b9d8f76e1e3362c2c0e688efe1e"
+    },
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "results": [
+      {
+        "case": "navigation while capability check pending",
+        "sameFrame": true,
+        "protectedAfter": false
+      },
+      {
+        "case": "same URL reload during unlock",
+        "accepted": false,
+        "unlocked": false,
+        "protected": true
+      },
+      {
+        "case": "same URL reload during unprotect",
+        "accepted": false,
+        "unlocked": false,
+        "protected": true
+      },
+      {
+        "case": "normal approved group unlock",
+        "unlocked": true
+      },
+      {
+        "case": "same URL reload during preference reset",
+        "accepted": false,
+        "effect": false
+      },
+      {
+        "case": "same URL reload during preference choose-download-directory",
+        "accepted": false,
+        "effect": false
+      },
+      {
+        "case": "same URL reload during preference clear-data",
+        "accepted": false,
+        "effect": false
+      },
+      {
+        "case": "same URL reload during preference clear-cache",
+        "accepted": false,
+        "effect": false
+      },
+      {
+        "case": "normal preference directory selection",
+        "updated": true
+      },
+      {
+        "case": "foreign window authority",
+        "blocked": 2
+      },
+      {
+        "case": "generic preload channel escape",
+        "sendAccepted": false,
+        "received": 0,
+        "subscriptionAccepted": [
+          false,
+          false
+        ],
+        "delivered": 0
+      },
+      {
+        "case": "declared legacy channels remain usable",
+        "accepted": true
+      }
+    ],
+    "limitations": [
+      "Actual native frame identities/handlers and production preload bridge; extension browser-action registration is stubbed.",
+      "Native capability/auth/dialog responses are fixture controlled; no physical OS authentication, extension installation or signed package.",
+      "The generic channel restriction narrows the bridge; it is not proof of a UI injection exploit or complete IPC security."
+    ]
+  }
+}

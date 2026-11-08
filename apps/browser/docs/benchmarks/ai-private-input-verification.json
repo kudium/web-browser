@@ -1,0 +1,101 @@
+{
+  "recordedAt": "2026-11-07T07:13:04.484577+00:00",
+  "sourceHashes": {
+    "src/main/ai.ts": "cf3123f6c8e2d54394b97446bacf8e89e26bea6ef74fb27bb0d3852f3442b899",
+    "src/main/aiPrivateInputLease.ts": "47a0ceab6f386a879f06e22855d2c71774a419f450e2b6b060b40c4a414c2818",
+    "src/main/aiUserInput.ts": "1f41e0feb8eede135b8128fa8a31abde67d6f225f73e8079de1cfaff5bcc01ce",
+    "src/__tests__/aiPrivateInputLease.test.ts": "663bf1286b9ec1c2f55247111b638110bf68ed17d9dc4eac2aa7482c333e19d3",
+    ".erb/scripts/checks.ts": "05e1442f1838548976b60079a23b671bac1bb39e8d24d365c46e55abcdc9a7c2",
+    ".erb/scripts/ai-private-input-smoke.cjs": "101e5636caa0b8fde9ce975376a4d4df25778ce389a89216dbac05586d28830a",
+    "docs/benchmarks/baselines/private-input/ai.ts.txt": "54e5bb972edfb2ac3d592f799a3fa2c7751f49838da33094184e95b4f470280f"
+  },
+  "rawReportSha256": "c968ae1d8871c5ae60e69ac7a8b042734dd10ee37d57e2a2cf4730cfa6b5c7c1",
+  "identitiesVerified": true,
+  "newlyBlockedPrivateWebsiteRequests": 8,
+  "checks": [
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "0a8b0a6ca3fb7d4bf95622763f08d5b96592d16dbbe92a1150983e2fafbc597f",
+      "summary": "136 suites / 688 tests passed; final form copy checked in native fixture"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed; final form copy and runner style checked separately"
+    },
+    {
+      "name": "final form/runner style",
+      "command": "npx eslint src/main/aiUserInput.ts .erb/scripts/checks.ts",
+      "observedExitCode": 0,
+      "logSha256": "8e5dabf477c1c056ea319121271995de1b3330931f71b3edc4d43f1fe06d34ee",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed including final form copy"
+    },
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-private-input-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "ee69dd178b1964cb85dd133db9f76602bfd0a1352a6871eef5610d329f0978c0",
+      "summary": "12 cases; eight stale private Request bodies sent"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-private-input-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "b6ee0bd936daf3075a43538690a00d64629b7e716d49ce8526066cd1d59c19a9",
+      "summary": "12 cases; eight stale disclosures rejected with zero private Request bodies"
+    },
+    {
+      "name": "existing personal data workflows",
+      "command": "node node_modules/electron/cli.js .erb/scripts/personal-data-ai-smoke.cjs",
+      "observedExitCode": 0,
+      "logSha256": "fb45dfe4d76d5ea48283e030716e68601a25421a0eae77945cd5812de22ed442",
+      "summary": "Passed"
+    },
+    {
+      "name": "saved-data fill/upload regression",
+      "command": "node node_modules/electron/cli.js .erb/scripts/ai-private-fill-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "66ce3c22dd91245af3915aac5a55de2493e83af48385b55107ea0c96f420a300",
+      "summary": "All 14 native cases pass"
+    },
+    {
+      "name": "directory package",
+      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-private-input-package",
+      "observedExitCode": 0,
+      "logSha256": "243ba89827d23b1d8010a9343a7bf900885a77e9b4fcb9882967811b734addb0",
+      "summary": "Unsigned/ad-hoc macOS arm64"
+    },
+    {
+      "name": "current packaged security",
+      "command": "npm run test:packaged-security -- /tmp/touchbox-private-input-package/mac-arm64/TouchBox.app",
+      "observedExitCode": 0,
+      "logSha256": "eafd9cf959710f87da475f9da2d65ebc1e404ca552bdd65c2ea663390874cba1",
+      "summary": "Fuses, actual-package remote-debugging refusal and instrumented production-payload UI/preload/isolation/history/CSP/cleanup pass"
+    }
+  ],
+  "runtime": {
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "limitations": [
+    "Actual sandboxed secure form/MCP/Chromium Request bodies at synthetic HTTPS protocol endpoint; no TLS socket server or external provider injection.",
+    "OS lock-screen event is emitted natively; no physical locked-session/Keychain proof.",
+    "Timer/crash cleanup tested at unit scope; no whole-app latency/CPU/memory claim.",
+    "Lifetime begins at collection/validation; removal drops references and does not guarantee string zeroization.",
+    "Authorized websites may transmit/display values; arbitrary downstream network/DOM races, full IPC, native input/focus and signed/cross-platform release remain open.",
+    "Packaged UI uses a test-only ASAR observer with identical production payload; not signed untouched-release UI verification."
+  ],
+  "packageAsarSha256": "2d0148fa053a1cbd1b06b80a87244ac480930361e30760f0b61712257fa4d313"
+}

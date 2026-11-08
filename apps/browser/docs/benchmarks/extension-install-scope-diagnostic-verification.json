@@ -1,0 +1,14 @@
+{
+  "nativeProbe": {
+    "exitCode": 0,
+    "log": "docs/benchmarks/extension-install-scope-diagnostic-logs/native.log",
+    "sha256": "9bd036a6a37e61d96b934d10b6300cdf838b4db3266f93c67fbb6d4482efaa61"
+  },
+  "sourceHashes": {
+    "src/main/extensions.ts": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e"
+  },
+  "probeSha256": "838fe635007be657d33d1f42cd6bd90c3108bdabf1b11bf52395fc583df3075e",
+  "baselineSha256": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+  "state": "Violation reproduced; no repair or production readiness claimed."
+}

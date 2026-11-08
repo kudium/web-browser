@@ -1,0 +1,8 @@
+{
+  "mode": "Electron --disable-gpu",
+  "source": ".erb/scripts/ai-activity-smoke.cjs",
+  "sourceSha256": "1f2a0d0cb5625cc153b42a15945680785a28283827e2c465a4e2e339e5c92706",
+  "exitCode": 0,
+  "screenshotsSkipped": false,
+  "productionSourceChanged": false
+}

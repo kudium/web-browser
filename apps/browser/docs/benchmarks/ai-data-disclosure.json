@@ -1,0 +1,514 @@
+{
+  "before": {
+    "measuredAt": "2026-11-07T00:28:38.973Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533",
+    "method": "Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.",
+    "results": [
+      {
+        "case": "standard read_personal_data",
+        "reviews": 0,
+        "disclosed": true
+      },
+      {
+        "case": "full search_personal_data",
+        "reviews": 0,
+        "disclosed": true
+      },
+      {
+        "case": "full read_personal_data",
+        "reviews": 0,
+        "disclosed": true
+      },
+      {
+        "case": "full list_saved_logins",
+        "reviews": 0,
+        "disclosed": true
+      },
+      {
+        "case": "provider denied",
+        "requests": 2,
+        "reviews": 0,
+        "disclosed": true
+      },
+      {
+        "case": "provider approved",
+        "requests": 2,
+        "reviews": 0,
+        "disclosed": true
+      }
+    ],
+    "limitations": [
+      "Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.",
+      "Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.",
+      "No external accounts, production providers or packaged installer are used."
+    ]
+  },
+  "after": {
+    "measuredAt": "2026-11-07T00:30:56.928Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "mainSourceSHA256": "05c548171aacd488e856648d750bce3d4b07622b3627bb2901647b75bf07e2fa",
+    "method": "Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.",
+    "results": [
+      {
+        "case": "standard read_personal_data",
+        "reviews": 1,
+        "disclosed": false
+      },
+      {
+        "case": "full search_personal_data",
+        "reviews": 1,
+        "disclosed": false
+      },
+      {
+        "case": "full read_personal_data",
+        "reviews": 1,
+        "disclosed": false
+      },
+      {
+        "case": "full list_saved_logins",
+        "reviews": 1,
+        "disclosed": false
+      },
+      {
+        "case": "explicit external-client disclosure",
+        "reviews": 1,
+        "disclosed": true
+      },
+      {
+        "case": "record consent changed and restored",
+        "blocked": true
+      },
+      {
+        "case": "profile changed",
+        "blocked": true
+      },
+      {
+        "case": "same URL document replaced",
+        "blocked": true
+      },
+      {
+        "case": "host document replaced",
+        "blocked": true
+      },
+      {
+        "case": "access changed and restored",
+        "blocked": true
+      },
+      {
+        "case": "Stop during disclosure review",
+        "blocked": true
+      },
+      {
+        "case": "provider denied",
+        "requests": 2,
+        "reviews": 1,
+        "disclosed": false
+      },
+      {
+        "case": "provider approved",
+        "requests": 2,
+        "reviews": 1,
+        "disclosed": true
+      }
+    ],
+    "limitations": [
+      "Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.",
+      "Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.",
+      "No external accounts, production providers or packaged installer are used."
+    ],
+    "validationNote": "The access-change fixture was refused by the existing pending-action guard on its first change request. It does not demonstrate access changed and restored. Later confirmations use an accurate case label."
+  },
+  "confirmations": [
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T00:33:47.492Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "mainSourceSHA256": "4f255fdbb46ccab5ea195a461cef8b4f66cb901f8f99715a79d981c1ce2e1533",
+      "method": "Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.",
+      "results": [
+        {
+          "case": "standard read_personal_data",
+          "reviews": 0,
+          "disclosed": true
+        },
+        {
+          "case": "full search_personal_data",
+          "reviews": 0,
+          "disclosed": true
+        },
+        {
+          "case": "full read_personal_data",
+          "reviews": 0,
+          "disclosed": true
+        },
+        {
+          "case": "full list_saved_logins",
+          "reviews": 0,
+          "disclosed": true
+        },
+        {
+          "case": "provider denied",
+          "requests": 2,
+          "reviews": 0,
+          "disclosed": true
+        },
+        {
+          "case": "provider approved",
+          "requests": 2,
+          "reviews": 0,
+          "disclosed": true
+        },
+        {
+          "case": "new recipient, prior private conversation declined",
+          "reviews": 0,
+          "requests": 2,
+          "disclosed": true
+        }
+      ],
+      "limitations": [
+        "Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.",
+        "Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.",
+        "No external accounts, production providers or packaged installer are used."
+      ]
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T00:34:08.032Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "mainSourceSHA256": "d137926d43eab3254b1abd6681d22b7e2193c51948b85daf4e1bc5c8b10dce25",
+      "method": "Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.",
+      "results": [
+        {
+          "case": "standard read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full search_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full list_saved_logins",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "explicit external-client disclosure",
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "record consent changed and restored",
+          "blocked": true
+        },
+        {
+          "case": "profile changed",
+          "blocked": true
+        },
+        {
+          "case": "same URL document replaced",
+          "blocked": true
+        },
+        {
+          "case": "host document replaced",
+          "blocked": true
+        },
+        {
+          "case": "access change request refused while disclosure is pending",
+          "blocked": true
+        },
+        {
+          "case": "Stop during disclosure review",
+          "blocked": true
+        },
+        {
+          "case": "provider denied",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "provider approved",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "new recipient, prior private conversation declined",
+          "reviews": 1,
+          "requests": 0,
+          "disclosed": false
+        }
+      ],
+      "limitations": [
+        "Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.",
+        "Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.",
+        "No external accounts, production providers or packaged installer are used."
+      ]
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T00:35:19.496Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "mainSourceSHA256": "d0f908bc20077248ae7a3c43a82f0841ac9ae8e1cf932cdf7668815fd318feed",
+      "method": "Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.",
+      "results": [
+        {
+          "case": "standard read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full search_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full list_saved_logins",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "explicit external-client disclosure",
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "record consent changed and restored",
+          "blocked": true
+        },
+        {
+          "case": "profile changed",
+          "blocked": true
+        },
+        {
+          "case": "same URL document replaced",
+          "blocked": true
+        },
+        {
+          "case": "host document replaced",
+          "blocked": true
+        },
+        {
+          "case": "access change request refused while disclosure is pending",
+          "blocked": true
+        },
+        {
+          "case": "Stop during disclosure review",
+          "blocked": true
+        },
+        {
+          "case": "provider denied",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "provider approved",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "new recipient, prior private conversation declined",
+          "reviews": 1,
+          "requests": 0,
+          "disclosed": false
+        }
+      ],
+      "limitations": [
+        "Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.",
+        "Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.",
+        "No external accounts, production providers or packaged installer are used."
+      ]
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:11:49.995Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "mainSourceSHA256": "0c7a79f12fb9a04dfc858e23fc88a9810748453c7b4ece7769e954b23249d124",
+      "method": "Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.",
+      "results": [
+        {
+          "case": "standard read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full search_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full list_saved_logins",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "explicit external-client disclosure",
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "record consent changed and restored",
+          "blocked": true
+        },
+        {
+          "case": "profile changed",
+          "blocked": true
+        },
+        {
+          "case": "same URL document replaced",
+          "blocked": true
+        },
+        {
+          "case": "host document replaced",
+          "blocked": true
+        },
+        {
+          "case": "access change request refused while disclosure is pending",
+          "blocked": true
+        },
+        {
+          "case": "Stop during disclosure review",
+          "blocked": true
+        },
+        {
+          "case": "provider denied",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "provider approved",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "new recipient, prior private conversation declined",
+          "reviews": 1,
+          "requests": 0,
+          "disclosed": false
+        }
+      ],
+      "limitations": [
+        "Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.",
+        "Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.",
+        "No external accounts, production providers or packaged installer are used."
+      ]
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T07:01:13.908Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "mainSourceSHA256": "eeacb952ef8228ceae3875f7a88ac8bff8b21314f00d20e1a469ef8796f1109e",
+      "method": "Actual Electron registerAI/encrypted vault, official local MCP client and deterministic local HTTP model provider. Synthetic facts only; native message-box responses controlled by the fixture.",
+      "results": [
+        {
+          "case": "standard read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full search_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full read_personal_data",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "full list_saved_logins",
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "explicit external-client disclosure",
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "record consent changed and restored",
+          "blocked": true
+        },
+        {
+          "case": "profile changed",
+          "blocked": true
+        },
+        {
+          "case": "same URL document replaced",
+          "blocked": true
+        },
+        {
+          "case": "host document replaced",
+          "blocked": true
+        },
+        {
+          "case": "access change request refused while disclosure is pending",
+          "blocked": true
+        },
+        {
+          "case": "Stop during disclosure review",
+          "blocked": true
+        },
+        {
+          "case": "provider denied",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": false
+        },
+        {
+          "case": "provider approved",
+          "requests": 2,
+          "reviews": 1,
+          "disclosed": true
+        },
+        {
+          "case": "new recipient, prior private conversation declined",
+          "reviews": 1,
+          "requests": 0,
+          "disclosed": false
+        }
+      ],
+      "limitations": [
+        "Approved provider/client disclosures are intentional and can remain in conversation/checkpoints.",
+        "Downstream navigation/form/hook containment and previously disclosed conversation revocation remain separate requirements.",
+        "No external accounts, production providers or packaged installer are used."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+webbrowser.kudium.com {
+  encode zstd gzip
+  request_body {
+    max_size 12MB
+  }
+  handle_path /downloads/* {
+    root * /srv/releases
+    file_server
+  }
+  handle {
+    reverse_proxy web:3000
+  }
+}

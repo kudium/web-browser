@@ -1,0 +1,162 @@
+[
+  {
+    "width": 620,
+    "theme": "light",
+    "state": "empty",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "state": "populated",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "state": "editor",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 620,
+    "theme": "light",
+    "state": "setup",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "state": "empty",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "state": "populated",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "state": "editor",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 620,
+    "theme": "dark",
+    "state": "setup",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "empty",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "populated",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "editor",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "state": "setup",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "empty",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "populated",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "editor",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "state": "setup",
+    "noOverflow": true,
+    "headerAligned": true,
+    "footerVisible": true,
+    "emptyTableHidden": true,
+    "singleAddAction": true
+  }
+]

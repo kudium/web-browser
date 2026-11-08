@@ -1,0 +1,38 @@
+[
+  {
+    "appearance": "light",
+    "width": 800,
+    "focus": "cancel",
+    "footer": 352,
+    "height": 352,
+    "overflow": false,
+    "detail": "This removes the group and its 2 saved tabs. Its login profile is shared with another group, so shared session data will be kept. Personal Data saved locally for this group will be deleted; browser-wide originals are kept. This cannot be undone."
+  },
+  {
+    "appearance": "light",
+    "width": 400,
+    "focus": "cancel",
+    "footer": 320,
+    "height": 320,
+    "overflow": false,
+    "detail": "This removes the group and its 2 saved tabs. Its login profile is shared with another group, so shared session data will be kept. Personal Data saved locally for this group will be deleted; browser-wide originals are kept. This cannot be undone."
+  },
+  {
+    "appearance": "dark",
+    "width": 800,
+    "focus": "cancel",
+    "footer": 352,
+    "height": 352,
+    "overflow": false,
+    "detail": "This removes the group and its 2 saved tabs. Its login profile is shared with another group, so shared session data will be kept. Personal Data saved locally for this group will be deleted; browser-wide originals are kept. This cannot be undone."
+  },
+  {
+    "appearance": "dark",
+    "width": 400,
+    "focus": "cancel",
+    "footer": 320,
+    "height": 320,
+    "overflow": false,
+    "detail": "This removes the group and its 2 saved tabs. Its login profile is shared with another group, so shared session data will be kept. Personal Data saved locally for this group will be deleted; browser-wide originals are kept. This cannot be undone."
+  }
+]

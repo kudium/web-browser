@@ -1,0 +1,1 @@
+ALTER TABLE "sync_accounts" ADD COLUMN "change_count" integer DEFAULT 0 NOT NULL;

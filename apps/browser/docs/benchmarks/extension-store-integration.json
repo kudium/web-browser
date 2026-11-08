@@ -1,0 +1,162 @@
+{
+  "before": {
+    "sourceSha256": "905518e6f3f1c40a4c34d828f65ee3184baa49120d3c057c6096fd5d6fecc838",
+    "dependencies": {
+      "electron-chrome-extensions": {
+        "version": "4.10.0",
+        "entrySha256": "e67fb477ca9167709856203a1b217464abccfb027be9134f8fbd8021f6ca8d46",
+        "preloadSha256": "03a5eecb3532bb6bd494c50d4e0360c3e6ef7895552bec3a8d96b0c986573849"
+      },
+      "electron-chrome-web-store": {
+        "version": "0.13.0",
+        "entrySha256": "1067d84b8bd8010cae96239b188dcbc77265fd37cf6f7dd7bcd8814d94471b27",
+        "preloadSha256": "46dc49be10c911cce297de9d1e706bf251e374220b0a9c71d198a1eae0bb78ea"
+      }
+    },
+    "electron": "45.0.0",
+    "probeSha256": "b51e75de5a501eab05b4225c3e4916796a67bda7abd434abe88a1d7719457095",
+    "bindingSha256": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "results": [
+      {
+        "name": "same-origin child frame",
+        "result": "enabled"
+      },
+      {
+        "loaded": {
+          "a": false,
+          "b": true,
+          "store": true
+        },
+        "name": "navigation",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": false,
+          "b": true,
+          "store": true
+        },
+        "name": "target restored",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": false,
+          "b": true,
+          "store": true
+        },
+        "name": "queued target restored",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": false,
+          "b": true,
+          "store": true
+        },
+        "name": "owner restored",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": false,
+          "b": true,
+          "store": true
+        },
+        "name": "normal",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      }
+    ],
+    "scope": "Actual installed electron-chrome-extensions/electron-chrome-web-store engines, native main/child IPC, local Manifest V3 extension loaded in three real sessions and catalog/native unload effects. Local HTTPS protocol and controlled review; fixture-only subframe preload enables attacks. No remote store download/install, signed package or physical input claim."
+  },
+  "after": {
+    "sourceSha256": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "dependencies": {
+      "electron-chrome-extensions": {
+        "version": "4.10.0",
+        "entrySha256": "e67fb477ca9167709856203a1b217464abccfb027be9134f8fbd8021f6ca8d46",
+        "preloadSha256": "03a5eecb3532bb6bd494c50d4e0360c3e6ef7895552bec3a8d96b0c986573849"
+      },
+      "electron-chrome-web-store": {
+        "version": "0.13.0",
+        "entrySha256": "1067d84b8bd8010cae96239b188dcbc77265fd37cf6f7dd7bcd8814d94471b27",
+        "preloadSha256": "46dc49be10c911cce297de9d1e706bf251e374220b0a9c71d198a1eae0bb78ea"
+      }
+    },
+    "electron": "45.0.0",
+    "probeSha256": "b51e75de5a501eab05b4225c3e4916796a67bda7abd434abe88a1d7719457095",
+    "bindingSha256": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "results": [
+      {
+        "name": "same-origin child frame",
+        "error": "Error invoking remote method 'chromeWebstore.getExtensionStatus': Error: Untrusted extension store request"
+      },
+      {
+        "loaded": {
+          "a": true,
+          "b": true,
+          "store": true
+        },
+        "name": "navigation",
+        "result": "user_cancelled",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": true,
+          "b": true,
+          "store": true
+        },
+        "name": "target restored",
+        "result": "user_cancelled",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": true,
+          "b": true,
+          "store": true
+        },
+        "name": "queued target restored",
+        "error": "This window or its access changed. Try the action again.",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": true,
+          "b": true,
+          "store": true
+        },
+        "name": "owner restored",
+        "result": "user_cancelled",
+        "catalogChanged": false,
+        "navigationSubscriptions": 0
+      },
+      {
+        "loaded": {
+          "a": false,
+          "b": true,
+          "store": true
+        },
+        "name": "normal",
+        "result": "success",
+        "catalogChanged": true,
+        "navigationSubscriptions": 0
+      }
+    ],
+    "scope": "Actual installed electron-chrome-extensions/electron-chrome-web-store engines, native main/child IPC, local Manifest V3 extension loaded in three real sessions and catalog/native unload effects. Local HTTPS protocol and controlled review; fixture-only subframe preload enables attacks. No remote store download/install, signed package or physical input claim."
+  }
+}

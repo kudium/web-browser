@@ -1,0 +1,69 @@
+{
+  "recordedAt": "2026-11-07T07:40:35.113998+00:00",
+  "rawReportSha256": "42dc5b3c745ca2759c55a2935b1949ccf2bfec8c5381e271c96ab53362082359",
+  "sourceHashes": {
+    "src/main/ai.ts": "67f21249d4261b60fbc97479c479e3b50653104153bbda43d5cef16b4e3f5c50",
+    "src/main/mcp.ts": "774e6e09946e1aa5b348e3ed1a817e68f6632b6dedab7a0927911846c032193c",
+    "src/main/personalAgentConnections.ts": "9aa8dba604bdbb172420cd1767c092cd48922c9f61f2959804576b66c0cfe8b5",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "src/__tests__/personalAgentConnections.test.ts": "391f167993744d198dae56edf66b1427f2adf996f795543f2476037d0c168dac",
+    ".erb/scripts/checks.ts": "5bce95ea11e28a839aaf9b9fb9f4f012ab2267570616275f51a3030ac8f72d64",
+    ".erb/scripts/mcp-ownership-smoke.cjs": "5d2d70e7d26adbee970921eda163a7d2625812cf6cf98d68fd4b91a495355d08"
+  },
+  "inventoryPath": "docs/security/ipc-inventory-2026-11-07-mcp-ownership.json",
+  "inventorySha256": "92f3160bb72ab3131bdd709aad6d73c78c6b89201f232565505b2ca3da2fe54c",
+  "identitiesVerified": true,
+  "newlyBlockedStaleRequests": 9,
+  "pendingListenerClientToolCallsBefore": 3,
+  "pendingListenerClientToolCallsAfter": 0,
+  "competingRotationPrevented": true,
+  "checks": [
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/mcp-ownership-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "ac0b83890dd007087c438c6e9edebf869bcfb86c702b650b89371a4db126e69f",
+      "summary": "Nine stale requests accepted; three pending-listener SDK/tool calls accepted; competing rotation writes revoked credential"
+    },
+    {
+      "name": "native after",
+      "command": "node node_modules/electron/cli.js .erb/scripts/mcp-ownership-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "d67c39ad183beff54d3894fd12d4707808bf829345b54a3ffea298564b544ca4",
+      "summary": "Nine stale requests blocked; three pending-listener SDK/tool calls refused; competing rotation rejected; normal enable/connect/disconnect/settings access pass"
+    },
+    {
+      "name": "unit",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "4aea2639ca9490e3bb0db3dc4af3a052560c0d5ca9f4f7dfea6d40ac7793de58",
+      "summary": "137 suites / 694 tests passed"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "inventory refresh",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "44ffe149d41b71ca2a3f2628796725c76475e92d2aa2cd7d11de00803fe339bd",
+      "summary": "48 registrations / 47 fixed channels / 69 preload calls; counts unchanged"
+    }
+  ],
+  "limitations": [
+    "Actual AI/controller/agent handlers, native same-URL main-frame reloads, real loopback listener/SDK initialize and list-tools, isolated configuration/registry/backups. Test-only exports expose the real controller and schedule beforeStart; Node listen completion and native dialog results are held. No stubs for controller/config mutation. Not production preload serialization, actual external agent integration, model tool/private-data traffic, physical human-input/OS-auth, signed distribution or whole-app performance.",
+    "Interrupted restart stops existing external control; disabled-state persistence requires a successful filesystem write.",
+    "No current-package, full desktop suite, real external agent integration, downstream private-data containment, file-race/resource-limit, signed/cross-platform or whole-app performance verification."
+  ]
+}

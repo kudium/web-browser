@@ -1,0 +1,209 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T08:14:09.652Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "73dde79b0517f4c4c54e05ac403320f2f90d362e7d77298802cbf4453de0e39a",
+    "runtimeBundleSha256": "9aa37b79cdd5e3e27cb859e0d6d6050ade29fea408901eb4155002262e7496b3",
+    "sourceHashes": {
+      "src/main/pageCapture.ts": "46f3451952e927f083c6a61c62e2b50929248c7650e5929e19f934917a9684ea",
+      "src/browser/pageCapture.ts": "53ee5eda9ce6ab997f57e89511e4e76892c7b8e5003694d70d79e4a4800aa44d"
+    },
+    "dependencyHashes": {
+      "src/main/aiProtocol.ts": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+      "src/main/aiScreenshot.ts": "023de55559faf943011ec69c09e42eaca7af7783de47053f7b0f35d4df58820e"
+    },
+    "normal": [
+      "visible/full native pixels",
+      "PNG save",
+      "immutable PDF survives target navigation",
+      "native crop/clipboard dispatch"
+    ],
+    "cases": [
+      {
+        "name": "pendingPixelsHostReload",
+        "accepted": true,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "pendingPDFHostReload",
+        "accepted": true,
+        "destinationChanged": true,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "targetOwnershipLost",
+        "accepted": true,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "savedPreviewHostReload",
+        "accepted": true,
+        "destinationChanged": false,
+        "clipboardWrites": 1,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "PNGDialogHostReload",
+        "accepted": true,
+        "destinationChanged": true,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "PDFDialogHostReload",
+        "accepted": true,
+        "destinationChanged": true,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "PNGDialogCancel",
+        "accepted": true,
+        "destinationChanged": true,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "PDFDialogCancel",
+        "accepted": true,
+        "destinationChanged": true,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "writeBeforeCommitHostReload",
+        "accepted": true,
+        "destinationChanged": true,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0
+      },
+      {
+        "name": "malformedCrop",
+        "accepted": true,
+        "clipboardWrites": 1
+      },
+      {
+        "name": "replacementRegistration",
+        "accepted": false,
+        "error": "Untrusted page capture request."
+      }
+    ],
+    "scope": "Actual PageCaptureService/registered handler/native host and target documents, Chromium pixels/printing and filesystem writes. Clipboard dispatch is recorded without modifying the OS clipboard; native UI copy is checked separately. Save selection and native pixel/PDF completion/write promises are held after real operations; ownership callback is explicitly toggled. Direct handler calls use native identities; production preload/UI integration is checked separately. No decoder containment, hostile native/file resources, physical OS input, signed/cross-platform or whole-app performance claim. Clipboard and rename dispatch are irreversible commit boundaries; revocation after dispatch is not rollback."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T08:19:52.944Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "probeSha256": "73dde79b0517f4c4c54e05ac403320f2f90d362e7d77298802cbf4453de0e39a",
+    "runtimeBundleSha256": "9bc3c9ed8cd0e63a8442aa1890e6b2b1d986232ad2684af2b968269fb1d53980",
+    "sourceHashes": {
+      "src/main/pageCapture.ts": "827b651e85838fde5f6c7af7d1f70d451811a79269e4dfec17357ffb81b91df8",
+      "src/browser/pageCapture.ts": "fe0fa938b3eb25fa09b2ea94887567d1583374c9177c8a1afab4a1de1ae90e7c"
+    },
+    "dependencyHashes": {
+      "src/main/aiProtocol.ts": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+      "src/main/aiScreenshot.ts": "023de55559faf943011ec69c09e42eaca7af7783de47053f7b0f35d4df58820e",
+      "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+      "src/main/imagePreflight.ts": "201429aa875aad2261fdf377d4b459d285e3de5a84c280b53e937fd1f0efe0a9"
+    },
+    "normal": [
+      "visible/full native pixels",
+      "PNG save",
+      "immutable PDF survives target navigation",
+      "native crop/clipboard dispatch"
+    ],
+    "cases": [
+      {
+        "name": "pendingPixelsHostReload",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "Capture window changed. Take another screenshot."
+      },
+      {
+        "name": "pendingPDFHostReload",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "Capture window changed. Take another screenshot."
+      },
+      {
+        "name": "targetOwnershipLost",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "Capture window or tab closed."
+      },
+      {
+        "name": "savedPreviewHostReload",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "This capture expired. Take another screenshot."
+      },
+      {
+        "name": "PNGDialogHostReload",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "This window or its access changed. Try the action again."
+      },
+      {
+        "name": "PDFDialogHostReload",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "This window or its access changed. Try the action again."
+      },
+      {
+        "name": "PNGDialogCancel",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "Capture canceled."
+      },
+      {
+        "name": "PDFDialogCancel",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "Capture canceled."
+      },
+      {
+        "name": "writeBeforeCommitHostReload",
+        "accepted": false,
+        "destinationChanged": false,
+        "clipboardWrites": 0,
+        "retainedTemporaryFiles": 0,
+        "error": "Capture window changed. Take another screenshot."
+      },
+      {
+        "name": "malformedCrop",
+        "accepted": false,
+        "clipboardWrites": 0,
+        "error": "Select an area inside the captured page."
+      },
+      {
+        "name": "replacementRegistration",
+        "accepted": true
+      }
+    ],
+    "scope": "Actual PageCaptureService/registered handler/native host and target documents, Chromium pixels/printing and filesystem writes. Clipboard dispatch is recorded without modifying the OS clipboard; native UI copy is checked separately. Save selection and native pixel/PDF completion/write promises are held after real operations; ownership callback is explicitly toggled. Direct handler calls use native identities; production preload/UI integration is checked separately. No decoder containment, hostile native/file resources, physical OS input, signed/cross-platform or whole-app performance claim. Clipboard and rename dispatch are irreversible commit boundaries; revocation after dispatch is not rollback."
+  }
+}

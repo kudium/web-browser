@@ -1,0 +1,311 @@
+{
+  "before": {
+    "measuredAt": "2026-11-07T01:20:41.409Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "htmlSHA256": "41dbcbbe03573d060a23c7211553759f6d59ee62caf5c8180ecb76cbda37f28d",
+    "rendererSHA256": "2db96930abe23d6e2d653f498e15a0fb1d6fcc50c82ff5c3e28900c1c3e1b8e4",
+    "rendered": {
+      "heading": "Edit group",
+      "inputs": 3,
+      "style": "flex",
+      "bridge": "function"
+    },
+    "effects": [
+      "inline-script",
+      "event-handler",
+      "local-script"
+    ],
+    "violations": [],
+    "baseChanged": true,
+    "inputs": 3,
+    "received": [
+      "/fetch",
+      "/frame",
+      "/object",
+      "/beacon"
+    ],
+    "errors": [],
+    "method": "Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service."
+  },
+  "confirmations": [
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:22:28.700Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "htmlSHA256": "41dbcbbe03573d060a23c7211553759f6d59ee62caf5c8180ecb76cbda37f28d",
+      "rendererSHA256": "2db96930abe23d6e2d653f498e15a0fb1d6fcc50c82ff5c3e28900c1c3e1b8e4",
+      "rendered": {
+        "heading": "Edit group",
+        "inputs": 3,
+        "style": "flex",
+        "bridge": "function"
+      },
+      "effects": [
+        "inline-script",
+        "event-handler",
+        "local-script"
+      ],
+      "violations": [],
+      "baseChanged": true,
+      "inputs": 3,
+      "received": [
+        "/fetch",
+        "/form",
+        "/object",
+        "/beacon"
+      ],
+      "injectedIPC": [
+        "injected-inline",
+        "injected-handler",
+        "injected-local"
+      ],
+      "errors": [],
+      "method": "Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service."
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:23:55.805Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "htmlSHA256": "41dbcbbe03573d060a23c7211553759f6d59ee62caf5c8180ecb76cbda37f28d",
+      "rendererSHA256": "2db96930abe23d6e2d653f498e15a0fb1d6fcc50c82ff5c3e28900c1c3e1b8e4",
+      "rendered": {
+        "heading": "Edit group",
+        "inputs": 3,
+        "style": "flex",
+        "bridge": "function"
+      },
+      "effects": [
+        "inline-script",
+        "event-handler",
+        "local-script"
+      ],
+      "violations": [],
+      "baseChanged": true,
+      "inputs": 3,
+      "policy": "script-src 'self' 'unsafe-inline'",
+      "received": [
+        "/fetch",
+        "/form",
+        "/object",
+        "/beacon"
+      ],
+      "injectedIPC": [
+        "injected-inline",
+        "injected-handler",
+        "injected-local"
+      ],
+      "tamperExecuted": true,
+      "integrityErrors": [],
+      "errors": [],
+      "method": "Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service."
+    },
+    {
+      "phase": "before",
+      "measuredAt": "2026-11-07T01:26:12.104Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "probeSourceSHA256": "7a82633581f10ed522a271e4ff43ef15e8ae39d3a54fd30d67a161e768a04766",
+      "htmlSHA256": "41dbcbbe03573d060a23c7211553759f6d59ee62caf5c8180ecb76cbda37f28d",
+      "rendererSHA256": "2db96930abe23d6e2d653f498e15a0fb1d6fcc50c82ff5c3e28900c1c3e1b8e4",
+      "rendered": {
+        "heading": "Edit group",
+        "inputs": 3,
+        "style": "flex",
+        "bridge": "function"
+      },
+      "effects": [
+        "inline-script",
+        "event-handler",
+        "local-script"
+      ],
+      "violations": [],
+      "baseChanged": true,
+      "inputs": 3,
+      "policy": "script-src 'self' 'unsafe-inline'",
+      "received": [
+        "/fetch",
+        "/form",
+        "/object",
+        "/beacon"
+      ],
+      "injectedIPC": [
+        "injected-inline",
+        "injected-handler",
+        "injected-local"
+      ],
+      "tamperExecuted": true,
+      "integrityErrors": [],
+      "errors": [],
+      "method": "Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service."
+    },
+    {
+      "phase": "after",
+      "measuredAt": "2026-11-07T01:26:13.368Z",
+      "electron": "45.0.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "probeSourceSHA256": "7a82633581f10ed522a271e4ff43ef15e8ae39d3a54fd30d67a161e768a04766",
+      "htmlSHA256": "030d18b3d386980a62ca266c9cf26b5023041457c07f8d7e4e84adb905fbc499",
+      "rendererSHA256": "2db96930abe23d6e2d653f498e15a0fb1d6fcc50c82ff5c3e28900c1c3e1b8e4",
+      "rendered": {
+        "heading": "Edit group",
+        "inputs": 3,
+        "style": "flex",
+        "bridge": "function"
+      },
+      "effects": [],
+      "violations": [
+        {
+          "directive": "script-src-elem",
+          "blocked": "inline"
+        },
+        {
+          "directive": "script-src-attr",
+          "blocked": "inline"
+        },
+        {
+          "directive": "script-src-elem",
+          "blocked": "file"
+        },
+        {
+          "directive": "base-uri",
+          "blocked": "http://127.0.0.1:54187/base/"
+        },
+        {
+          "directive": "connect-src",
+          "blocked": "http://127.0.0.1:54187/fetch"
+        },
+        {
+          "directive": "connect-src",
+          "blocked": "http://127.0.0.1:54187/beacon"
+        },
+        {
+          "directive": "object-src",
+          "blocked": "http://127.0.0.1:54187/object"
+        },
+        {
+          "directive": "frame-src",
+          "blocked": "http://127.0.0.1:54187/"
+        },
+        {
+          "directive": "form-action",
+          "blocked": "http://127.0.0.1:54187/form?"
+        },
+        {
+          "directive": "frame-src",
+          "blocked": "http://127.0.0.1:54187/"
+        }
+      ],
+      "baseChanged": false,
+      "inputs": 3,
+      "policy": "default-src 'none'; script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: crx: https: http:; font-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'",
+      "received": [],
+      "injectedIPC": [],
+      "tamperExecuted": false,
+      "integrityErrors": [
+        "Failed to find a valid digest in the 'integrity' attribute for resource 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-hCCSKb/tampered/renderer.js' with computed SHA-256 integrity 'nzJRID/qVIRI8qEE9E88UOr6fzD3SGSAEnsJJSmSn+k='. The resource has been blocked."
+      ],
+      "errors": [
+        "Executing inline script violates the following Content Security Policy directive 'script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ=''. Either the 'unsafe-inline' keyword, a hash ('sha256-pXYHJ/qHRKGtYetdE7JrKwDTBEoUTckWtkkF1rt9Ncs='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+        "Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+        "Loading the script 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-hCCSKb/renderer/untrusted-local.js' violates the following Content Security Policy directive: \"script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.",
+        "Setting the document's base URI to 'http://127.0.0.1:54187/base/' violates the following Content Security Policy directive: \"base-uri 'none'\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:54187/fetch' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
+        "Fetch API cannot load http://127.0.0.1:54187/fetch. Refused to connect because it violates the document's Content Security Policy.",
+        "Connecting to 'http://127.0.0.1:54187/beacon' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
+        "Loading plugin data from 'http://127.0.0.1:54187/object' violates the following Content Security Policy directive: \"object-src 'none'\". The action has been blocked.",
+        "Framing 'http://127.0.0.1:54187/' violates the following Content Security Policy directive: \"frame-src 'none'\". The request has been blocked.\n",
+        "Sending form data to 'http://127.0.0.1:54187/form?' violates the following Content Security Policy directive: \"form-action 'none'\". The request has been blocked.\n",
+        "Framing 'http://127.0.0.1:54187/' violates the following Content Security Policy directive: \"frame-src 'none'\". The request has been blocked.\n"
+      ],
+      "method": "Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service."
+    }
+  ],
+  "after": {
+    "measuredAt": "2026-11-07T01:24:07.563Z",
+    "electron": "45.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "htmlSHA256": "030d18b3d386980a62ca266c9cf26b5023041457c07f8d7e4e84adb905fbc499",
+    "rendererSHA256": "2db96930abe23d6e2d653f498e15a0fb1d6fcc50c82ff5c3e28900c1c3e1b8e4",
+    "rendered": {
+      "heading": "Edit group",
+      "inputs": 3,
+      "style": "flex",
+      "bridge": "function"
+    },
+    "effects": [],
+    "violations": [
+      {
+        "directive": "script-src-elem",
+        "blocked": "inline"
+      },
+      {
+        "directive": "script-src-attr",
+        "blocked": "inline"
+      },
+      {
+        "directive": "script-src-elem",
+        "blocked": "file"
+      },
+      {
+        "directive": "base-uri",
+        "blocked": "http://127.0.0.1:54026/base/"
+      },
+      {
+        "directive": "connect-src",
+        "blocked": "http://127.0.0.1:54026/fetch"
+      },
+      {
+        "directive": "connect-src",
+        "blocked": "http://127.0.0.1:54026/beacon"
+      },
+      {
+        "directive": "object-src",
+        "blocked": "http://127.0.0.1:54026/object"
+      },
+      {
+        "directive": "frame-src",
+        "blocked": "http://127.0.0.1:54026/"
+      },
+      {
+        "directive": "form-action",
+        "blocked": "http://127.0.0.1:54026/form?"
+      },
+      {
+        "directive": "frame-src",
+        "blocked": "http://127.0.0.1:54026/"
+      }
+    ],
+    "baseChanged": false,
+    "inputs": 3,
+    "policy": "default-src 'none'; script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: crx: https: http:; font-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'",
+    "received": [],
+    "injectedIPC": [],
+    "tamperExecuted": false,
+    "integrityErrors": [
+      "Failed to find a valid digest in the 'integrity' attribute for resource 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-KI4TIk/tampered/renderer.js' with computed SHA-256 integrity 'nzJRID/qVIRI8qEE9E88UOr6fzD3SGSAEnsJJSmSn+k='. The resource has been blocked."
+    ],
+    "errors": [
+      "Executing inline script violates the following Content Security Policy directive 'script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ=''. Either the 'unsafe-inline' keyword, a hash ('sha256-pXYHJ/qHRKGtYetdE7JrKwDTBEoUTckWtkkF1rt9Ncs='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+      "Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+      "Loading the script 'file:///var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-renderer-csp-KI4TIk/renderer/untrusted-local.js' violates the following Content Security Policy directive: \"script-src 'sha256-LblpMKviPW4tZT9JjhWg+x1vzFDIL/XD4okAwcPhuOQ='\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.",
+      "Setting the document's base URI to 'http://127.0.0.1:54026/base/' violates the following Content Security Policy directive: \"base-uri 'none'\". The action has been blocked.",
+      "Connecting to 'http://127.0.0.1:54026/fetch' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
+      "Fetch API cannot load http://127.0.0.1:54026/fetch. Refused to connect because it violates the document's Content Security Policy.",
+      "Connecting to 'http://127.0.0.1:54026/beacon' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
+      "Loading plugin data from 'http://127.0.0.1:54026/object' violates the following Content Security Policy directive: \"object-src 'none'\". The action has been blocked.",
+      "Framing 'http://127.0.0.1:54026/' violates the following Content Security Policy directive: \"frame-src 'none'\". The request has been blocked.\n",
+      "Sending form data to 'http://127.0.0.1:54026/form?' violates the following Content Security Policy directive: \"form-action 'none'\". The request has been blocked.\n",
+      "Framing 'http://127.0.0.1:54026/' violates the following Content Security Policy directive: \"frame-src 'none'\". The request has been blocked.\n"
+    ],
+    "method": "Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service."
+  }
+}

@@ -1,0 +1,317 @@
+{
+  "before": {
+    "recordedAt": "2026-11-07T07:30:44.781Z",
+    "platform": "darwin",
+    "arch": "arm64",
+    "electron": "45.0.0",
+    "probeSha256": "955383b448f1cc3c4648b614f6b213195400bc60bbc144558d48c59250306b6c",
+    "runtimeBundleSha256": "90ab2488d2dc892aae8ecd15d23325f19af0c28089486e095cef54f761671f08",
+    "sourceHashes": {
+      "src/main/ai.ts": "cf3123f6c8e2d54394b97446bacf8e89e26bea6ef74fb27bb0d3852f3442b899",
+      "src/main/aiComposer.ts": "419dd8c9bb1ba95750e5c432d95d5b0f6ec54d8ec34fb3b2d3686f5472590001",
+      "src/main/passwordManager/index.ts": "e11ed437200a434fb72f1d3ce80629a4d67bca38de836bae0d6acee47736fa43"
+    },
+    "dependencyHashes": {
+      "src/main/aiUserInput.ts": "1f41e0feb8eede135b8128fa8a31abde67d6f225f73e8079de1cfaff5bcc01ce",
+      "src/main/aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+      "src/main/aiOriginalUploads.ts": "030d3a2d7ec0661d7ace7a1468d3ab3a16fe66e3b1972e6523a60a5be5560c5f",
+      "src/browser/aiComposer.ts": "343d22c537a701b309bfdf8eaa4a83594cc9f6b2fd0b03f42c2c4976bde9c856",
+      "src/main/passwordManager/documents.ts": "a05e9ac99e4da80cd7d46d138cd0491361de54339efd176b6d17ac433591ceb5",
+      "src/main/aiAttachmentFile.ts": "03635680f87ef6ba718cf113e1e799c759f36453bde32197bd053ed0e3e14868",
+      "src/main/aiPrivateInputLease.ts": "47a0ceab6f386a879f06e22855d2c71774a419f450e2b6b060b40c4a414c2818",
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+      "src/browser/aiContext.ts": "17dd129b0ae1bc2de608365b8989183190cee21c3c30945a15dc77c47782d9ef",
+      "src/main/aiComposerPreferences.ts": "65b3deae0818ccbc7469072ca107b4e6e0943725e7e5f285284cd641b4615f9d",
+      "src/browser/passwordManager.ts": "a84b2f70e8fb43c81cb4982c3944230d78b90d7fd2e4a2d4548d7279dabfb920",
+      "src/main/passwordManager/records.ts": "443eae12c864fcf3232d4307fce7aca19b7c9dc75a37f85558d0b2572fdc1aff",
+      "src/main/passwordManager/vault.ts": "e5e1cc948bcdbf638a24650902ccf80959a70916535924bbc10b2fec2c45674c",
+      "src/main/passwordManager/fill.ts": "e8a01de7b0c10732a14454124cadb1e5f169e90971a3aafdcd199109e9d76e5c",
+      "src/main/passwordManager/authentication.ts": "41158fa6cec549735d3c14447610f4443bf91c74a1248428c72309235e7ed444",
+      "src/browser/siteDeveloper.ts": "4f54feb516025d20d9b012d44a50e2a9531139190cfe75e29baabab747db93a8",
+      "src/main/siteSettings.ts": "f78f1d2a27f8a422c0dfceec0ef86c427fb33db4955b2a086b3a974c9904aae8",
+      "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+      "src/main/groupLocks.ts": "bdd106cbc5a24adad1e5d741b2d4304aebff503e5c9f3d0f51ec4d4911b6e5be",
+      "src/main/hookWebhook.ts": "73996efab5e538516f22ed007f4ff0595c12ea800a6947b7367233e36b00a0b4",
+      "src/main/hookNotifications.ts": "46c3aac7ae26d4b2264dd0611edb300afb92bce15e17fac06bcf6ba1b0996aed",
+      "src/main/siteDeveloper.ts": "93526fad48348f19650daefb9e1e55b6a8844d8ef6beb4a6639f317036023264",
+      "src/main/dialogs.ts": "3f48c55da759c6ad2b0c8ec3f6d2e6e777031381e1556341c5387f0e2ae91ca7",
+      "src/main/passwordManager/capture.ts": "9e44f99fc50117e536c01a131f6d871618c52fd19f0d62bd007d62647e41aa7c",
+      "src/browser/aiTasks.ts": "99d9c803012ecdddf9d4dc1b0d132818ee09d2fd2ee4934d3f80b233311de06e",
+      "src/main/aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+      "src/browser/aiExtraction.ts": "2107c290aa55f37b41810ca171b10c5b134849dcae5148449db301793585c98f",
+      "src/browser/aiPermissions.ts": "884452a252c1e224bc4481f7c53d4c5829fdb65eed6b283251466c9f36f6d08e",
+      "src/browser/aiSnapshot.ts": "5ea0dd5dec1dcf11ee4e772516fe32cfed932d6b2001da1dcda111de453e3d1c",
+      "src/browser/aiObservationFormat.ts": "705681fd5a4ac53b7fde87a447e73cfb508845dded7d72a03c489d1051f4cf05",
+      "src/browser/aiDrawing.ts": "20060c45d6a0615e6e80eb9727d5ae3971ae785b6fcc1841a7926e52fdbb04c1",
+      "src/main/aiNavigation.ts": "7dab0743c6cb6e0b349321fa9b5b9ad94c220cc93e0241b8bb4704122c43610b",
+      "src/main/aiTabs.ts": "040986e1cbc419206d399e74be67a708e5d305adf73ea678c912349fe52c3198",
+      "src/main/aiObservation.ts": "0c047e4a66b92c7d58729283533072b926077f93cfba0db3c64c1acb54db5e61",
+      "src/main/aiProtocol.ts": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+      "src/main/aiDialogs.ts": "9dc6c1aaea7261b86b9791f43a96b77cca8a42e4cd8ac038cb1c4f921b601134",
+      "src/main/aiAttachments.ts": "af8cf898db3a6c37b8744e2838b9dc8b6c66564adad5226f54a3b78016197551",
+      "src/main/aiFileChooser.ts": "dbe5ed2521d12d09aca19bd7ea54416343dda84ac4b721aa7f401709dd695435",
+      "src/main/aiHTMLDrag.ts": "387b60270c1841b8b94a3c4caedc96f1c04dfe74b77b45dc67a18fa935e7e1f5",
+      "src/main/aiTransport.ts": "83bbb9a435bd8adfa64407164b592a46fa9f7a42ad2f6170593f54656a0b2fd7",
+      "src/main/aiFrames.ts": "4d4d96f16e1ed7eb77189c9b1fce8e248c6fc7b9df99461c490974f65fa348bc",
+      "src/browser/aiWheel.ts": "2b05f425e1eb25309a0097686b7e44652c7f06583ff0fd848a63731d81d31dab",
+      "src/browser/ai.ts": "608fe61c6e052e4b92f403dd92f99d0af0e1431b2563873692df4841c1d2ea7b",
+      "src/browser/aiWait.ts": "c43b188a78032b5e0600069435100063d125b507f6a6b00c971ee4c1abaa133f",
+      "src/main/aiWait.ts": "1e619ead214433bb89b345becd9aece4659b6f56f2c1228b17c6a89e36c74b69",
+      "src/main/aiProviderRequest.ts": "6b3bc537068a07c9efec49a38a5617049863f811b39a07b8fdf87940ed9400ed",
+      "src/main/aiActionApproval.ts": "e14c56d6636b226bef8017388976f95d188964255bcf9546237d4202d4abed1f",
+      "src/main/aiDataDisclosure.ts": "969c611ac3139b8b3afc0e9d10837622bf5d5ac2519e7cf3ab761db41c7c1835",
+      "src/main/aiActivityPresentation.ts": "4e200071bed00bc47949e2aae0336ded1db15e8c222ca492cca2c7c6966e31bc",
+      "src/main/aiActivityLayer.ts": "bec762c6107d327178b9e0214c17c9121603af331374a9ca8a1166138a6e9174",
+      "src/main/aiRecovery.ts": "fa4033ae79058654ee32726c333fab52d3b28bde28f04dcb2c864fc50dbca5d0",
+      "src/main/aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+      "src/main/aiScreenshot.ts": "023de55559faf943011ec69c09e42eaca7af7783de47053f7b0f35d4df58820e",
+      "src/browser/aiHandoff.ts": "e09b47ba6c2dadfe1c452045b0cc93d1962f7435fb20630b0f0089e3ed3fda65",
+      "src/browser/aiSelect.ts": "b57d7763ca09c31230e6cae2e95fd0a1855a5d7ce747832da69c5cf4ff66068d",
+      "src/browser/aiToolSchemas.ts": "26152ec68e56761b2453eec22a6d64fc89ee69b551f05107f05924641e0a33a2",
+      "src/browser/aiKeys.ts": "efc3f20da3224e5e7e54f424ff29038386fb82ee26bb1978d5f672a6111ade06",
+      "src/main/aiInterrupt.ts": "63eec02aab9bdb90cdccd2ce9ecd0c1b71fb809c474382545dece78f40422ee5",
+      "src/browser/mcp.ts": "8329aeebf7c3147d7eaa2b2a99451e4997402e6666108fb619c1004392f32b40",
+      "src/browser/personalAgents.ts": "160f17e90407bb2055793d098c3221f1deaab47318ad10b7cdcc02250cc28d90",
+      "src/main/privateFile.ts": "7e872b56f63113b6bac9d20b9f9b5af28873cac4e4a4b81f0dd37944f4ba8e71",
+      "src/main/mcp.ts": "f0b293ef45ee346e5d7a2f981e1d4fdb3ba5be6c7bf5e8f549596a74c5a8c8e0",
+      "src/main/personalAgentConnections.ts": "c18822c154389fdd93d86a7cbf773287af3cade30f293dff57c1cd87eabcee55"
+    },
+    "normal": [
+      {
+        "name": "privateBrowser",
+        "accepted": true,
+        "encryptedRecordsCreated": 1
+      },
+      {
+        "name": "aiGroup",
+        "accepted": true,
+        "encryptedRecordsCreated": 1
+      },
+      {
+        "name": "cancel",
+        "accepted": false,
+        "encryptedRecordsCreated": 0
+      }
+    ],
+    "cases": [
+      {
+        "name": "dialogChatSwitchBack",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "dialogSameURLReload",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "extractedThenChatSwitch",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "extractedThenRemove",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "capabilityChatSwitch",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "capabilityAuthRevoked",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "destinationTabReplaced",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "groupScopeChangedBack",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      },
+      {
+        "name": "serviceDisposedAfterExtraction",
+        "accepted": true,
+        "encryptedRecordsCreated": 1,
+        "credentialWrites": 1
+      }
+    ],
+    "scope": "Actual registerAI/savePersonalDocument/native main-frame identity and actual encrypted PasswordVault writes. Test-only module exports replace the vault with an isolated real PasswordVault for each case. Dialog/extraction/capability scheduling and OS credential adapter are explicit fixture controls; lock-screen is a native event emission, not physical OS lock. No production preload IPC serialization, real Keychain, provider traffic or latency claim."
+  },
+  "after": {
+    "recordedAt": "2026-11-07T07:30:55.339Z",
+    "platform": "darwin",
+    "arch": "arm64",
+    "electron": "45.0.0",
+    "probeSha256": "955383b448f1cc3c4648b614f6b213195400bc60bbc144558d48c59250306b6c",
+    "runtimeBundleSha256": "e0243464781ba1d50ab00a446767eb9882bfb2d7f962ad656e03e8e8d0142ae7",
+    "sourceHashes": {
+      "src/main/ai.ts": "0f5641833346a386f0e1d43dac565e0ba29ff54e3bb0be010cec9fac9b443c28",
+      "src/main/aiComposer.ts": "164393d043e1a6770b371bda5d52ffcfa6d0baaee4877797a590e87f23de9806",
+      "src/main/passwordManager/index.ts": "6ed4931018b41b91a75720817a52e93a731214ead93efd4172e0deea64e479b9"
+    },
+    "dependencyHashes": {
+      "src/main/aiUserInput.ts": "1f41e0feb8eede135b8128fa8a31abde67d6f225f73e8079de1cfaff5bcc01ce",
+      "src/main/aiConversations.ts": "a0d33d3bad08eeb8e34c20274d4fea6e93cc8d718da41d48cb3b0b6f0374e796",
+      "src/main/aiOriginalUploads.ts": "030d3a2d7ec0661d7ace7a1468d3ab3a16fe66e3b1972e6523a60a5be5560c5f",
+      "src/browser/aiComposer.ts": "343d22c537a701b309bfdf8eaa4a83594cc9f6b2fd0b03f42c2c4976bde9c856",
+      "src/main/passwordManager/documents.ts": "a05e9ac99e4da80cd7d46d138cd0491361de54339efd176b6d17ac433591ceb5",
+      "src/main/aiAttachmentFile.ts": "03635680f87ef6ba718cf113e1e799c759f36453bde32197bd053ed0e3e14868",
+      "src/main/aiPrivateInputLease.ts": "47a0ceab6f386a879f06e22855d2c71774a419f450e2b6b060b40c4a414c2818",
+      "src/utils/groups.ts": "d65fd63fcca8f2ea059efeb49c95eaa60cf607713ed7fb9b232b1948c542909c",
+      "src/browser/aiGroups.ts": "a0ddc5ffab122567285803607e6b7cf7fde3789a1cc2e8405ce2f2ba106a14ed",
+      "src/browser/aiContext.ts": "17dd129b0ae1bc2de608365b8989183190cee21c3c30945a15dc77c47782d9ef",
+      "src/main/aiComposerPreferences.ts": "65b3deae0818ccbc7469072ca107b4e6e0943725e7e5f285284cd641b4615f9d",
+      "src/browser/passwordManager.ts": "a84b2f70e8fb43c81cb4982c3944230d78b90d7fd2e4a2d4548d7279dabfb920",
+      "src/main/passwordManager/records.ts": "443eae12c864fcf3232d4307fce7aca19b7c9dc75a37f85558d0b2572fdc1aff",
+      "src/main/passwordManager/vault.ts": "e5e1cc948bcdbf638a24650902ccf80959a70916535924bbc10b2fec2c45674c",
+      "src/main/passwordManager/fill.ts": "e8a01de7b0c10732a14454124cadb1e5f169e90971a3aafdcd199109e9d76e5c",
+      "src/main/passwordManager/authentication.ts": "41158fa6cec549735d3c14447610f4443bf91c74a1248428c72309235e7ed444",
+      "src/browser/siteDeveloper.ts": "4f54feb516025d20d9b012d44a50e2a9531139190cfe75e29baabab747db93a8",
+      "src/main/siteSettings.ts": "f78f1d2a27f8a422c0dfceec0ef86c427fb33db4955b2a086b3a974c9904aae8",
+      "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+      "src/main/groupLocks.ts": "bdd106cbc5a24adad1e5d741b2d4304aebff503e5c9f3d0f51ec4d4911b6e5be",
+      "src/main/hookWebhook.ts": "73996efab5e538516f22ed007f4ff0595c12ea800a6947b7367233e36b00a0b4",
+      "src/main/hookNotifications.ts": "46c3aac7ae26d4b2264dd0611edb300afb92bce15e17fac06bcf6ba1b0996aed",
+      "src/main/siteDeveloper.ts": "93526fad48348f19650daefb9e1e55b6a8844d8ef6beb4a6639f317036023264",
+      "src/main/dialogs.ts": "3f48c55da759c6ad2b0c8ec3f6d2e6e777031381e1556341c5387f0e2ae91ca7",
+      "src/main/passwordManager/capture.ts": "9e44f99fc50117e536c01a131f6d871618c52fd19f0d62bd007d62647e41aa7c",
+      "src/browser/aiTasks.ts": "99d9c803012ecdddf9d4dc1b0d132818ee09d2fd2ee4934d3f80b233311de06e",
+      "src/main/aiTasks.ts": "8e514ce0605c51c81d9d378c27701ee538ad8bf40717500af514f71caa401399",
+      "src/browser/aiExtraction.ts": "2107c290aa55f37b41810ca171b10c5b134849dcae5148449db301793585c98f",
+      "src/browser/aiPermissions.ts": "884452a252c1e224bc4481f7c53d4c5829fdb65eed6b283251466c9f36f6d08e",
+      "src/browser/aiSnapshot.ts": "5ea0dd5dec1dcf11ee4e772516fe32cfed932d6b2001da1dcda111de453e3d1c",
+      "src/browser/aiObservationFormat.ts": "705681fd5a4ac53b7fde87a447e73cfb508845dded7d72a03c489d1051f4cf05",
+      "src/browser/aiDrawing.ts": "20060c45d6a0615e6e80eb9727d5ae3971ae785b6fcc1841a7926e52fdbb04c1",
+      "src/main/aiNavigation.ts": "7dab0743c6cb6e0b349321fa9b5b9ad94c220cc93e0241b8bb4704122c43610b",
+      "src/main/aiTabs.ts": "040986e1cbc419206d399e74be67a708e5d305adf73ea678c912349fe52c3198",
+      "src/main/aiObservation.ts": "0c047e4a66b92c7d58729283533072b926077f93cfba0db3c64c1acb54db5e61",
+      "src/main/aiProtocol.ts": "11a773f3154640e8815f2f99097494a98da1024150f53868caaffa1b56057c4c",
+      "src/main/aiDialogs.ts": "9dc6c1aaea7261b86b9791f43a96b77cca8a42e4cd8ac038cb1c4f921b601134",
+      "src/main/aiAttachments.ts": "af8cf898db3a6c37b8744e2838b9dc8b6c66564adad5226f54a3b78016197551",
+      "src/main/aiFileChooser.ts": "dbe5ed2521d12d09aca19bd7ea54416343dda84ac4b721aa7f401709dd695435",
+      "src/main/aiHTMLDrag.ts": "387b60270c1841b8b94a3c4caedc96f1c04dfe74b77b45dc67a18fa935e7e1f5",
+      "src/main/aiTransport.ts": "83bbb9a435bd8adfa64407164b592a46fa9f7a42ad2f6170593f54656a0b2fd7",
+      "src/main/aiFrames.ts": "4d4d96f16e1ed7eb77189c9b1fce8e248c6fc7b9df99461c490974f65fa348bc",
+      "src/browser/aiWheel.ts": "2b05f425e1eb25309a0097686b7e44652c7f06583ff0fd848a63731d81d31dab",
+      "src/browser/ai.ts": "608fe61c6e052e4b92f403dd92f99d0af0e1431b2563873692df4841c1d2ea7b",
+      "src/browser/aiWait.ts": "c43b188a78032b5e0600069435100063d125b507f6a6b00c971ee4c1abaa133f",
+      "src/main/aiWait.ts": "1e619ead214433bb89b345becd9aece4659b6f56f2c1228b17c6a89e36c74b69",
+      "src/main/aiProviderRequest.ts": "6b3bc537068a07c9efec49a38a5617049863f811b39a07b8fdf87940ed9400ed",
+      "src/main/aiActionApproval.ts": "e14c56d6636b226bef8017388976f95d188964255bcf9546237d4202d4abed1f",
+      "src/main/aiDataDisclosure.ts": "969c611ac3139b8b3afc0e9d10837622bf5d5ac2519e7cf3ab761db41c7c1835",
+      "src/main/aiActivityPresentation.ts": "4e200071bed00bc47949e2aae0336ded1db15e8c222ca492cca2c7c6966e31bc",
+      "src/main/aiActivityLayer.ts": "bec762c6107d327178b9e0214c17c9121603af331374a9ca8a1166138a6e9174",
+      "src/main/aiRecovery.ts": "fa4033ae79058654ee32726c333fab52d3b28bde28f04dcb2c864fc50dbca5d0",
+      "src/main/aiCheckpoint.ts": "801399034d1f52bdecd211f480c139be086dff11de25beb2a0bb041551f6858f",
+      "src/main/aiScreenshot.ts": "023de55559faf943011ec69c09e42eaca7af7783de47053f7b0f35d4df58820e",
+      "src/browser/aiHandoff.ts": "e09b47ba6c2dadfe1c452045b0cc93d1962f7435fb20630b0f0089e3ed3fda65",
+      "src/browser/aiSelect.ts": "b57d7763ca09c31230e6cae2e95fd0a1855a5d7ce747832da69c5cf4ff66068d",
+      "src/browser/aiToolSchemas.ts": "26152ec68e56761b2453eec22a6d64fc89ee69b551f05107f05924641e0a33a2",
+      "src/browser/aiKeys.ts": "efc3f20da3224e5e7e54f424ff29038386fb82ee26bb1978d5f672a6111ade06",
+      "src/main/aiInterrupt.ts": "63eec02aab9bdb90cdccd2ce9ecd0c1b71fb809c474382545dece78f40422ee5",
+      "src/browser/mcp.ts": "8329aeebf7c3147d7eaa2b2a99451e4997402e6666108fb619c1004392f32b40",
+      "src/browser/personalAgents.ts": "160f17e90407bb2055793d098c3221f1deaab47318ad10b7cdcc02250cc28d90",
+      "src/main/privateFile.ts": "7e872b56f63113b6bac9d20b9f9b5af28873cac4e4a4b81f0dd37944f4ba8e71",
+      "src/main/mcp.ts": "f0b293ef45ee346e5d7a2f981e1d4fdb3ba5be6c7bf5e8f549596a74c5a8c8e0",
+      "src/main/personalAgentConnections.ts": "c18822c154389fdd93d86a7cbf773287af3cade30f293dff57c1cd87eabcee55"
+    },
+    "normal": [
+      {
+        "name": "privateBrowser",
+        "accepted": true,
+        "encryptedRecordsCreated": 1
+      },
+      {
+        "name": "aiGroup",
+        "accepted": true,
+        "encryptedRecordsCreated": 1
+      },
+      {
+        "name": "cancel",
+        "accepted": false,
+        "encryptedRecordsCreated": 0
+      }
+    ],
+    "cases": [
+      {
+        "name": "dialogChatSwitchBack",
+        "accepted": false,
+        "error": "Chat or access changed while saving. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "dialogSameURLReload",
+        "accepted": false,
+        "error": "Chat or access changed while saving. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "extractedThenChatSwitch",
+        "accepted": false,
+        "error": "Chat or access changed while saving. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "extractedThenRemove",
+        "accepted": false,
+        "error": "Chat or access changed while saving. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "capabilityChatSwitch",
+        "accepted": false,
+        "error": "Chat or access changed while saving. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "capabilityAuthRevoked",
+        "accepted": false,
+        "error": "Personal Data access changed. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "destinationTabReplaced",
+        "accepted": false,
+        "error": "Group changed while saving. Try again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "groupScopeChangedBack",
+        "accepted": false,
+        "error": "Chat or access changed while saving. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      },
+      {
+        "name": "serviceDisposedAfterExtraction",
+        "accepted": false,
+        "error": "Chat or access changed while saving. Save the file again.",
+        "encryptedRecordsCreated": 0,
+        "credentialWrites": 0
+      }
+    ],
+    "scope": "Actual registerAI/savePersonalDocument/native main-frame identity and actual encrypted PasswordVault writes. Test-only module exports replace the vault with an isolated real PasswordVault for each case. Dialog/extraction/capability scheduling and OS credential adapter are explicit fixture controls; lock-screen is a native event emission, not physical OS lock. No production preload IPC serialization, real Keychain, provider traffic or latency claim."
+  }
+}

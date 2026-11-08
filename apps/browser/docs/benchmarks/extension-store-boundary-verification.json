@@ -1,0 +1,47 @@
+{
+  "checks": {
+    "before": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-boundary-logs/before.log",
+      "sha256": "e154ccf36ded93aef069e3f94be7a99cbafc183fe20aa42d320e569fc3f7e460"
+    },
+    "after": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-boundary-logs/after.log",
+      "sha256": "ebb1a390259a8cbf9b623f0a3bee7f2863e5001dee850e4c915a65b45f7c7013"
+    },
+    "unit": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-boundary-logs/unit.log",
+      "sha256": "8a7d9850d68a3838569f369da2d6b3e60b04668ba908d73f440a2c8aff35b4a0"
+    },
+    "tests": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-boundary-logs/tests.log",
+      "sha256": "5dcb08dae71b04d3b688cdf6e09d8280eef6c930efb7bfd39202fcb8ce3798f2"
+    },
+    "lint": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-boundary-logs/lint.log",
+      "sha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc"
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "docs/benchmarks/extension-store-boundary-logs/build.log",
+      "sha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c"
+    }
+  },
+  "sourceHashes": {
+    "src/main/extensions.ts": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "src/__tests__/extensions.test.ts": "2705ec1f2ffbd1be797aabf83885eb88ea411b6009280d31855e03879804edd9",
+    ".erb/scripts/extension-store-boundary-smoke.cjs": "f4376e3301bb64a941f1d3ad1911edf2cba7d27e0f74dcaabbea8695fb6fb837",
+    ".erb/scripts/checks.ts": "bca249710e7ccbeb31c0731b3453c0ade20faa265a3d71369315c4be907082e1",
+    "docs/benchmarks/baselines/extension-store-boundary/extensions.ts.txt": "905518e6f3f1c40a4c34d828f65ee3184baa49120d3c057c6096fd5d6fecc838",
+    "docs/benchmarks/extension-store-boundary.json": "7d3e5c3596dd80f4329f3156b019f730b23b3805ac1aa0857db42ff63f8b8bb6",
+    "docs/security/ipc-inventory-2026-11-07-extension-store-boundary.json": "af6f29aa120024236a01fb935a414fb14d6c434f797079e378de4470fedb58b8"
+  },
+  "unitSuites": 142,
+  "unitTests": 732,
+  "scope": "Actual main/child native IPC and catalog policy writes; extension engines/native review adapted. No installed extension removal, live store or dependency-router claim."
+}

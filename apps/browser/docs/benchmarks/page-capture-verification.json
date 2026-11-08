@@ -1,0 +1,86 @@
+{
+  "recordedAt": "2026-11-07T08:23:54.559522+00:00",
+  "rawReportSha256": "1f2963eddb23b8cf97c21a6c22f3edbbad6b3db96d1f62bd95d2427a57607ad2",
+  "sourceHashes": {
+    "src/main/pageCapture.ts": "827b651e85838fde5f6c7af7d1f70d451811a79269e4dfec17357ffb81b91df8",
+    "src/browser/pageCapture.ts": "fe0fa938b3eb25fa09b2ea94887567d1583374c9177c8a1afab4a1de1ae90e7c",
+    "src/main/electronBrowser.ts": "6be24f46be072d141cf87e6ea1ca98537e984ec4b0550e105dd77f52a8a3a9bd",
+    "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
+    "src/__tests__/pageCapture.test.ts": "716dec849b59ad495453e28e73d721a3349e1a3a11b731b84ee4870e9799d83b",
+    ".erb/scripts/checks.ts": "c3f9c135ca2a0f9bfc2bbe94e693d29222b63fb84724aca0f321186ec2563011",
+    ".erb/scripts/page-capture-boundary-smoke.cjs": "73dde79b0517f4c4c54e05ac403320f2f90d362e7d77298802cbf4453de0e39a",
+    ".erb/scripts/browser-ui-smoke.cjs": "0cd929cd29d1052348c7763ca1b26e0c44347109e093673cbc0b8c3d0c9001c0",
+    "src/main/imagePreflight.ts": "201429aa875aad2261fdf377d4b459d285e3de5a84c280b53e937fd1f0efe0a9"
+  },
+  "inventoryPath": "docs/security/ipc-inventory-2026-11-07-image-preflight.json",
+  "inventorySha256": "7231e8922aa4734dbda9afb15b449334bf284f89ca48f7c1c7320b4d876cb892",
+  "identitiesVerified": true,
+  "newlyBlockedStaleOrCanceledRequests": 9,
+  "preservedExportDestinations": 6,
+  "checks": [
+    {
+      "name": "native before",
+      "command": "node node_modules/electron/cli.js .erb/scripts/page-capture-boundary-smoke.cjs before",
+      "observedExitCode": 0,
+      "logSha256": "1ef0e477a6d43cc4af84a737a50e720c1936757d001f694312ad59731a3a2210",
+      "summary": "Nine stale/canceled requests accepted; six destination files overwritten"
+    },
+    {
+      "name": "unit suite",
+      "command": "npm test -- --runInBand",
+      "observedExitCode": 0,
+      "logSha256": "07ee58201a5213732ad66e1449c86166c5af2d18fd39849b7762ba483612c043",
+      "summary": "139 suites / 704 tests passed; later test-only import/style cleanup separately rechecked"
+    },
+    {
+      "name": "final preflight tests",
+      "command": "npm test -- --runInBand imagePreflight",
+      "observedExitCode": 0,
+      "logSha256": "48e11d01d8cbb09cafb5d3cc9c44829d71e5f989e9c8d3f3e6bb213de08e1c12",
+      "summary": "3 tests passed after test import/style cleanup"
+    },
+    {
+      "name": "lint/types",
+      "command": "npm run lint",
+      "observedExitCode": 0,
+      "logSha256": "f213ee725f273c87f6a3ca14247a313bd81c6b492eef46f79e42124cffcacdcc",
+      "summary": "Passed"
+    },
+    {
+      "name": "production build",
+      "command": "npm run build",
+      "observedExitCode": 0,
+      "logSha256": "9ce4ec7a1e2c08f18354dbdc957536878cf8ff38e204b14f26fb123a7932247c",
+      "summary": "Passed"
+    },
+    {
+      "name": "capture native boundaries",
+      "command": "node node_modules/electron/cli.js .erb/scripts/page-capture-boundary-smoke.cjs after",
+      "observedExitCode": 0,
+      "logSha256": "ec22e1f18cdef42f37029a5d740eb3e8e2a6f6b7fbbd3925cc588010a4c9e05e",
+      "summary": "All nine stale/canceled cases reject; normal capture/exports pass"
+    },
+    {
+      "name": "capture native UI",
+      "command": "TOUCHBOX_SMOKE_OUTPUT=docs/evidence/page-capture-lifetime node node_modules/electron/cli.js .erb/scripts/browser-ui-smoke.cjs --page-capture-only",
+      "observedExitCode": 0,
+      "logSha256": "5bd8c4c5a26b573fc7ce8b1c6bb072a8a644ca262c0da4469b1b9fb8efe513f8",
+      "summary": "Passed real renderer/main capture/crop/clipboard/export/PDF checks"
+    },
+    {
+      "name": "inventory",
+      "command": "node .erb/scripts/ipc-inventory.cjs",
+      "observedExitCode": 0,
+      "logSha256": "4819236b5d32f4825116a1414106e821e9e8728d45b8cc46435f72dab2633e34",
+      "summary": "Refreshed"
+    }
+  ],
+  "limitations": [
+    "Actual PageCaptureService/registered handler/native host and target documents, Chromium pixels/printing and filesystem writes. Clipboard dispatch is recorded without modifying the OS clipboard; native UI copy is checked separately. Save selection and native pixel/PDF completion/write promises are held after real operations; ownership callback is explicitly toggled. Direct handler calls use native identities; production preload/UI integration is checked separately. No decoder containment, hostile native/file resources, physical OS input, signed/cross-platform or whole-app performance claim. Clipboard and rename dispatch are irreversible commit boundaries; revocation after dispatch is not rollback.",
+    "No full desktop suite rerun, signed distribution, cross-platform validation or whole-app speed claim.",
+    "Two obsolete real-clipboard probes overlapped before the final controlled probe. Prior user clipboard contents may have been replaced and cannot be recovered. Final boundary evidence does not touch the OS clipboard; the later UI probe ran alone.",
+    "Temporary export is exclusive and private on this POSIX host; best-effort cleanup is not crash/power-loss durability or destination-path race containment."
+  ],
+  "previousRawReportSha256": "36445d09414e1d82adfa96ff6a80bbf02d2781671afec15e6f1e70508baec7ce",
+  "refreshedFor": "Image preflight follow-up; current capture source and native/UI verification supersede earlier after report."
+}
