@@ -1,3 +1,5 @@
+import { releasePublishing, type PublishingConfig } from './release-publishing';
+import { registerReleases } from './releases';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { bodyLimit } from 'hono/body-limit';
@@ -12,7 +14,7 @@ import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest } from './releases';
 import { homepage, documentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage } from './pages';
 import { tutorials } from './tutorials';
-export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins }: { db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
+export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing }: { publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
   const app = new Hono<{ Variables: { account: string } }>();
   const store = syncStore(db);
   const authenticate = auth ? authenticateSession(auth) : testAuthenticate;
@@ -33,6 +35,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     return c.json({ error: 'internal_error' }, 500);
   });
   app.notFound(c => c.json({ error: 'not_found' }, 404));
+  if (publishing) app.route('/', releasePublishing(publishing, manifests => registerReleases(db, manifests)));
   app.get('/health', c => c.json({ status: 'ok' }));
   app.get('/ready', async c => { try { await db.execute(sql`select 1`); return c.json({ status: 'ready', sync: authenticate ? 'configured' : 'unconfigured' }); } catch { return c.json({ status: 'unavailable' }, 503); } });
   app.get('/', c => c.html(homepage()));

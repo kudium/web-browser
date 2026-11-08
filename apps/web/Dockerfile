@@ -7,6 +7,8 @@ COPY --chown=bun:bun public ./public
 COPY --chown=bun:bun scripts ./scripts
 COPY --chown=bun:bun drizzle ./drizzle
 ENV NODE_ENV=production PORT=3000
+RUN mkdir -p /app/release-assets && chown bun:bun /app/release-assets
+VOLUME ["/app/release-assets"]
 USER bun
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD bun -e 'const r = await fetch("http://127.0.0.1:3000/ready"); if (!r.ok) process.exit(1)'
