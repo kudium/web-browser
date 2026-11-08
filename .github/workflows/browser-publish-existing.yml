@@ -1,0 +1,46 @@
+name: Publish existing signed Mac build
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing stable or beta release tag"
+        required: true
+        type: string
+      run_id:
+        description: "Browser release run with successful signed Mac build jobs"
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: browser-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ contains(inputs.tag, '-beta.') && 'browser-beta' || 'browser-stable' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - name: Require verified signed builds from this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.run_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: node scripts/ci/verify-existing-macos-build.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-darwin-*
+          path: release-artifacts
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+      - name: Verify public downloads and publish feeds
+        env:
+          RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.tag }}
+        run: node scripts/ci/publish-browser-release.mjs release-artifacts macos
