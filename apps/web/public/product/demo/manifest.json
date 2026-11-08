@@ -1,0 +1,106 @@
+{
+  "createdAt": "2026-11-08T05:46:30.968Z",
+  "source": "Production React components in Electron; real projectFiles service and real WebContentsView pages. Public popular websites with five groups of four tabs and fetched site favicons. Atlas Studio is a fictional linked local project. Script list and hook activity are seeded fixtures. AI shows an unsent draft with a real reference attachment; no fabricated assistant answer. Terminal output is from a real demo test run. Browser page layers are captured and placed at their actual native view bounds.",
+  "checks": [
+    {
+      "image": "workspace-light.png",
+      "expectedText": "Development",
+      "verified": true
+    },
+    {
+      "image": "workspace-dark.png",
+      "expectedText": "Development",
+      "verified": true
+    },
+    {
+      "image": "ai-context.png",
+      "expectedText": "project-brief.md",
+      "verified": true
+    },
+    {
+      "image": "developer-workspace.png",
+      "expectedText": "atlas-studio",
+      "verified": true
+    },
+    {
+      "image": "developer-files.png",
+      "expectedText": "README.md",
+      "verified": true
+    },
+    {
+      "image": "developer-terminal.png",
+      "expectedText": "1 pass",
+      "verified": true
+    },
+    {
+      "image": "project-files-light.png",
+      "expectedText": "README.md",
+      "verified": true
+    },
+    {
+      "image": "project-editor-light.png",
+      "expectedText": "completion",
+      "verified": true
+    },
+    {
+      "image": "project-files-dark.png",
+      "expectedText": "README.md",
+      "verified": true
+    },
+    {
+      "image": "project-editor-dark.png",
+      "expectedText": "completion",
+      "verified": true
+    },
+    {
+      "image": "file-filter.png",
+      "expectedText": "README.md",
+      "verified": true
+    },
+    {
+      "image": "project-scripts.png",
+      "expectedText": "Start development server",
+      "verified": true
+    },
+    {
+      "image": "site-hooks-light.png",
+      "expectedText": "Project page ready",
+      "verified": true
+    },
+    {
+      "image": "site-hooks-dark.png",
+      "expectedText": "Project page ready",
+      "verified": true
+    },
+    {
+      "image": "project-terminal.png",
+      "expectedText": "1 pass",
+      "verified": true
+    },
+    {
+      "image": "design-workspace.png",
+      "expectedText": "Social",
+      "verified": true
+    },
+    {
+      "image": "social-workspace.png",
+      "expectedText": "Social",
+      "verified": true
+    },
+    {
+      "image": "sidebar-expanded.png",
+      "expectedText": "Favorite groups",
+      "verified": true
+    },
+    {
+      "image": "sidebar-collapsed.png",
+      "expectedText": "Switch group",
+      "verified": true
+    },
+    {
+      "image": "address-group-picker.png",
+      "expectedText": "Search switch group",
+      "verified": true
+    }
+  ]
+}

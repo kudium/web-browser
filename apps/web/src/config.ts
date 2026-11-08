@@ -1,4 +1,4 @@
-export const serviceOrigin = 'https://webbrowser.kudium.com';
+export const serviceOrigin = 'https://browser.kudium.com';
 export type AuthConfig = { secret: string; baseURL: string; smtpURL?: string; smtpFrom?: string };
 export function authConfig(env: Record<string, string | undefined>): AuthConfig {
   const secret = env.BETTER_AUTH_SECRET;
