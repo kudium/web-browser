@@ -98,7 +98,7 @@ export function renderAIMessage(text: string, groups: AIGroup[] = []) {
       const start = match.index! + (match[0].startsWith('@') ? 0 : 1);
       fragment.append(document.createTextNode(value.slice(offset, start)));
       const link = document.createElement('a');
-      link.href = `#touchbox-reference-${encodeURIComponent(group.id)}${
+      link.href = `#kudiumbrowser-reference-${encodeURIComponent(group.id)}${
         page ? `/${encodeURIComponent(page.id)}` : ''
       }`;
       link.className = 'ai-inline-reference';
@@ -147,14 +147,14 @@ export function AIMessage({
       if (!link) return;
       event.preventDefault();
       const [groupId, tabId] = (link.getAttribute('href') || '')
-        .slice('#touchbox-reference-'.length)
+        .slice('#kudiumbrowser-reference-'.length)
         .split('/')
         .map(decodeURIComponent);
       const group = groups.find((entry) => entry.id === groupId);
       if (!group) return;
       if (tabId)
         window.dispatchEvent(
-          new CustomEvent('touchbox-ai-focus-tab', { detail: tabId })
+          new CustomEvent('kudiumbrowser-ai-focus-tab', { detail: tabId })
         );
       setSelected(group);
     };
@@ -172,7 +172,7 @@ export function AIMessage({
           const link = target.closest<HTMLAnchorElement>('a');
           if (link?.classList.contains('ai-inline-reference')) {
             const [groupId, tabId] = (link.getAttribute('href') || '')
-              .slice('#touchbox-reference-'.length)
+              .slice('#kudiumbrowser-reference-'.length)
               .split('/')
               .map(decodeURIComponent);
             const group = groups.find((entry) => entry.id === groupId);

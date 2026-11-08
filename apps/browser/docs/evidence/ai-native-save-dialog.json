@@ -10,8 +10,8 @@
   "stages": [
     {
       "stage": "CHOOSE_SAVE",
-      "window": "TouchBox Save Test",
-      "defaultDirectory": "/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/touchbox-save-dialog-1CJUSs",
+      "window": "KudiumBrowser Save Test",
+      "defaultDirectory": "/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-save-dialog-1CJUSs",
       "saveName": "chosen-test.txt",
       "downloadId": "9faa0578-9cba-4583-955f-0f7d224400eb"
     },
@@ -25,7 +25,7 @@
     },
     {
       "stage": "CANCEL_SAVE",
-      "window": "TouchBox Save Test"
+      "window": "KudiumBrowser Save Test"
     },
     {
       "stage": "PASS",

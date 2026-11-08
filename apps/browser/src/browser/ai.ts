@@ -5,6 +5,7 @@ export interface AISettings {
   remembered: boolean;
 }
 export interface AIEvent {
+  workingTabIds?: string[];
   source?: 'external';
   tabId?: string;
   active?: boolean;
@@ -13,6 +14,7 @@ export interface AIEvent {
   text: string;
 }
 export interface AITaskStatus {
+  workingTabIds?: string[];
   activeTabId?: string;
   busy: boolean;
   resumable: boolean;

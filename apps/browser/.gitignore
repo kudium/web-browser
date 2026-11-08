@@ -28,4 +28,4 @@ npm-debug.log.*
 *.sass.d.ts
 *.scss.d.ts
 
-assets/native/touchbox-password-auth
+assets/native/kudiumbrowser-password-auth

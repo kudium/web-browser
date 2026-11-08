@@ -3,7 +3,7 @@ const fs = require('fs'),
   os = require('os'),
   path = require('path'),
   assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-task-form-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-task-form-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   stdin: {
@@ -26,7 +26,7 @@ fs.writeFileSync(
     show: true,
     width: 380,
     height: 640,
-    title: 'TouchBox task form fixture',
+    title: 'KudiumBrowser task form fixture',
   });
   await host.loadFile(path.join(root, 'ui.html'));
   await new Promise((r) => setTimeout(r, 150));
@@ -54,7 +54,7 @@ fs.writeFileSync(
   host.setSize(380, 640);
   await new Promise((r) => setTimeout(r, 80));
   fs.writeFileSync(
-    '/tmp/touchbox-task-form.png',
+    '/tmp/kudiumbrowser-task-form.png',
     (await host.webContents.capturePage()).toPNG()
   );
   host.destroy();

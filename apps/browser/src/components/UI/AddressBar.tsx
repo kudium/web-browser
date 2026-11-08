@@ -20,6 +20,7 @@ export function AddressBar({
   tools,
   navigation,
   groupBadge,
+  mediaControl,
 }: {
   placement: 'sidebar' | 'header';
   inputProps: InputHTMLAttributes<HTMLInputElement>;
@@ -34,6 +35,7 @@ export function AddressBar({
   tools: ReactNode;
   navigation?: ReactNode;
   groupBadge?: ReactNode;
+  mediaControl?: ReactNode;
 }) {
   const extensionsId = useId();
   return (
@@ -52,6 +54,7 @@ export function AddressBar({
           autoComplete="off"
           spellCheck={false}
         />
+        {mediaControl}
         <ChromeIconButton
           icon={Link}
           label="Copy current URL"
@@ -116,4 +119,5 @@ AddressBar.defaultProps = {
   developer: undefined,
   navigation: null,
   groupBadge: null,
+  mediaControl: null,
 };

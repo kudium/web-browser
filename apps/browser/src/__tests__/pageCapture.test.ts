@@ -241,7 +241,7 @@ it('exports Chromium print layout only after the native save destination is chos
     preferCSSPageSize: true,
   });
   expect(fs.writeFile).toHaveBeenCalledWith(
-    expect.stringContaining('.touchbox-capture-'),
+    expect.stringContaining('.kudiumbrowser-capture-'),
     Buffer.from('%PDF-fixture'),
     expect.objectContaining({ flag: 'wx', mode: 0o600 })
   );

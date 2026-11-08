@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Switch, Callout } from '@radix-ui/themes';
 import type { MCPStatus } from '../../../browser/mcp';
+import { PreferenceHint } from '../../UI/PreferenceHint';
 import { PersonalAgentSettings } from './PersonalAgentSettings';
 
 const message = (reason: unknown) =>
@@ -11,6 +12,8 @@ const message = (reason: unknown) =>
   );
 
 export function ExternalAISettings() {
+  const [writeInstructions, setWriteInstructions] = useState(true);
+  const [instructionsReady, setInstructionsReady] = useState(false);
   const [status, setStatus] = useState<MCPStatus>();
   const [port, setPort] = useState(43187);
   const [busy, setBusy] = useState(false);
@@ -38,6 +41,18 @@ export function ExternalAISettings() {
   };
   useEffect(() => {
     let alive = true;
+    window.electron.browser
+      .preferences('get')
+      .then((value) => {
+        if (alive) {
+          setWriteInstructions(value.writeBrowserInstructions);
+          setInstructionsReady(true);
+        }
+        return undefined;
+      })
+      .catch((reason) => {
+        if (alive) setError(message(reason));
+      });
     window.electron.ai
       .mcpStatus()
       .then((value) => {
@@ -140,6 +155,70 @@ export function ExternalAISettings() {
   if (busy) serviceAction = 'Connecting…';
   return (
     <section className="external-ai-settings" aria-label="External AI control">
+      <div className="preference-card">
+        <div className="preference-row">
+          <div>
+            <strong>Connect your coding agent</strong>
+            <p className="ai-model-help">
+              Enable external control, run setup, then approve in Kudium.
+            </p>
+          </div>
+          <Button
+            variant="soft"
+            onClick={() =>
+              navigator.clipboard
+                .writeText('npx @kudiumbrowser/mcp setup')
+                .then(() => setNotice('Setup command copied.'))
+                .catch((reason) => setError(message(reason)))
+            }
+          >
+            Copy setup command
+          </Button>
+        </div>
+        <div className="preference-row">
+          <code>npx @kudiumbrowser/mcp setup</code>
+          <PreferenceHint label="Coding agent setup">
+            Supports Codex, Claude Code, Cursor and VS Code. Requires Node 22+.
+            Restart your agent after setup. Reset the connection token below to
+            revoke access.
+          </PreferenceHint>
+        </div>
+        <div className="preference-row">
+          <div className="preference-label">
+            <strong>Project browser instructions</strong>
+            <PreferenceHint label="Project browser instructions">
+              Add BROWSER.md and a reference in AGENTS.md when linking a folder.
+              Includes setup instructions and linked group context, never
+              credentials. Turning this off stops future updates and keeps
+              existing files.
+            </PreferenceHint>
+          </div>
+          <Switch
+            aria-label="Project browser instructions"
+            checked={writeInstructions}
+            disabled={busy || !instructionsReady}
+            onCheckedChange={async (value) => {
+              setBusy(true);
+              try {
+                const next = await window.electron.browser.preferences(
+                  'update',
+                  { writeBrowserInstructions: value }
+                );
+                setWriteInstructions(next.writeBrowserInstructions);
+              } catch (reason) {
+                setError(message(reason));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </div>
+      </div>
+      {notice && (
+        <p role="status" className="ai-model-help">
+          {notice}
+        </p>
+      )}
       <PersonalAgentSettings
         revision={revision}
         busy={busy}

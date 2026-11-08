@@ -20,7 +20,8 @@ export async function transferGroup(
   host: BrowserWindow,
   tabs: () => IApp[],
   action: unknown,
-  id: unknown
+  id: unknown,
+  filePath?: string
 ): Promise<GroupTransferResult | null> {
   if (action === 'export') {
     const source = tabs().find((tab) => tab.id === id && !tab.archived);
@@ -35,7 +36,7 @@ export async function transferGroup(
       ),
     ];
     const data: PortableGroup = {
-      format: 'touchbox-group',
+      format: 'kudiumbrowser-group',
       version: 1,
       name: source.sessionName || source.name,
       slug: source.sessionSlug,
@@ -57,7 +58,7 @@ export async function transferGroup(
     };
     parsePortableGroup(data);
     const result = await dialog.showSaveDialog(host, {
-      defaultPath: `${data.name.replace(/[^\w .-]/g, '_')}.touchbox-group.json`,
+      defaultPath: `${data.name.replace(/[^\w .-]/g, '_')}.kudiumbrowser-group.json`,
       filters: [{ name: 'Kudium Browser Group', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {
@@ -73,12 +74,16 @@ export async function transferGroup(
   }
   if (action !== 'import' || typeof id !== 'string' || id.length > 200)
     throw new Error('Choose a group transfer action.');
-  const selected = await dialog.showOpenDialog(host, {
-    properties: ['openFile'],
-    filters: [{ name: 'Kudium Browser Group', extensions: ['json'] }],
-  });
-  if (selected.canceled || !selected.filePaths[0]) return null;
-  const file = await fs.promises.open(selected.filePaths[0], 'r');
+  let selectedPath = filePath;
+  if (!selectedPath) {
+    const selected = await dialog.showOpenDialog(host, {
+      properties: ['openFile'],
+      filters: [{ name: 'Kudium Browser Group', extensions: ['json'] }],
+    });
+    if (selected.canceled || !selected.filePaths[0]) return null;
+    [selectedPath] = selected.filePaths;
+  }
+  const file = await fs.promises.open(selectedPath, 'r');
   let data: PortableGroup;
   try {
     const stat = await file.stat();

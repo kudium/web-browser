@@ -15,6 +15,10 @@ import { showBrowserDialog } from '../main/dialogs';
 import { inspectDiscardCandidate } from '../main/tabDiscard';
 import { bindDownloadSource } from '../main/downloads';
 
+jest.mock('../main/localStorage', () => ({
+  safeStorage: jest.requireMock('electron').safeStorage,
+}));
+
 jest.mock('../main/ai', () => ({ registerAI: jest.fn(() => jest.fn()) }));
 jest.mock('../main/pageCapture', () => ({
   registerPageCapture: jest.fn(() => jest.fn()),
@@ -51,6 +55,7 @@ jest.mock('../main/siteSettings', () => {
 });
 
 jest.mock('../main/preferences', () => ({
+  enablePagePinchZoom: jest.fn(),
   applyBrowserPreferences: jest.fn(),
   getBrowserPreferences: () => ({
     advanced: jest.requireActual('../browser/advancedPreferences')
@@ -85,7 +90,7 @@ jest.mock('electron', () => {
   const { EventEmitter: Emitter } = jest.requireActual('events');
   const filesystem = jest.requireActual('fs');
   const directory = filesystem.mkdtempSync(
-    `${jest.requireActual('os').tmpdir()}/touchbox-browser-test-`
+    `${jest.requireActual('os').tmpdir()}/kudiumbrowser-browser-test-`
   );
   return {
     app: Object.assign(new Emitter(), { getPath: () => directory }),
@@ -252,9 +257,9 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     (result) => result.value
   );
   expect(views.map((view) => view.options.webPreferences.partition)).toEqual([
-    'persist:touchbox-one',
-    'persist:touchbox-two',
-    'persist:touchbox-one',
+    'persist:kudiumbrowser-one',
+    'persist:kudiumbrowser-two',
+    'persist:kudiumbrowser-one',
   ]);
   expect(views[0].setBounds).toHaveBeenCalledWith({
     x: 76,
@@ -587,7 +592,7 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     -1
   )!.value;
   expect(focusedView.options.webPreferences.partition).toBe(
-    'persist:touchbox-new'
+    'persist:kudiumbrowser-new'
   );
   await new Promise((resolve) => {
     setTimeout(resolve, 0);

@@ -12,7 +12,24 @@ function run(command: string, args: string[]) {
 
 const [check, ...args] = process.argv.slice(2);
 
-if (check === 'packaged-security') {
+if (check === 'storage-migration') {
+  run(process.execPath, [
+    require.resolve('jest/bin/jest'),
+    '--runInBand',
+    'src/__tests__/secureStorage.test.ts',
+    'src/__tests__/storageMigration.test.ts',
+    'src/__tests__/storageReleaseGate.test.ts',
+    'src/__tests__/storageSchemas.test.ts',
+    'src/__tests__/aiCheckpoint.test.ts',
+    'src/__tests__/aiTasks.test.ts',
+    'src/__tests__/aiConversations.test.ts',
+    'src/__tests__/passwordVault.test.ts',
+  ]);
+  if (args.includes('--native')) {
+    run(process.execPath, [path.join(__dirname, 'secure-storage-smoke.cjs')]);
+    run(process.execPath, [path.join(__dirname, 'legacy-identity-smoke.cjs')]);
+  }
+} else if (check === 'packaged-security') {
   if (args.length !== 1) throw new Error('Supply the packaged .app path.');
   run(process.execPath, ['.erb/scripts/fuse-regression.cjs', args[0]]);
   run(process.execPath, [

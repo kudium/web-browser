@@ -1,6 +1,6 @@
 const {app,BrowserWindow}=require('electron');
 const fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-tab-edge-'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-tab-edge-'));
 const out=path.resolve('docs/evidence/horizontal-tab-add');fs.mkdirSync(out,{recursive:true});app.setPath('userData',path.join(root,'profile'));
 fs.writeFileSync(path.join(root,'preview.tsx'),`
 import React from ${JSON.stringify(require.resolve('react'))};

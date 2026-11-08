@@ -15,8 +15,8 @@ These are single local before/after measurements, not latency distributions or a
 To reproduce from the repository, finish builds/tests first, then run each command separately:
 
 ```sh
-TOUCHBOX_LONG_PATH_FIXTURE=dense TOUCHBOX_DRAWING_INTERPOLATION=baseline npx electron .erb/scripts/mcp-smoke.cjs --oop-frames
-TOUCHBOX_LONG_PATH_FIXTURE=dense npx electron .erb/scripts/mcp-smoke.cjs --oop-frames
+KUDIUMBROWSER_LONG_PATH_FIXTURE=dense KUDIUMBROWSER_DRAWING_INTERPOLATION=baseline npx electron .erb/scripts/mcp-smoke.cjs --oop-frames
+KUDIUMBROWSER_LONG_PATH_FIXTURE=dense npx electron .erb/scripts/mcp-smoke.cjs --oop-frames
 ```
 
 The baseline flag replaces only the interpolation function in the disposable test bundle using a TypeScript AST. It does not edit product files or alter validation, approvals, target checks or frame routing. `LONG_PATH` output records the timed action; assertions inspect the actual canvas afterward. Without the dense fixture flag the suite uses a 128-point zigzag, which still needs many interpolation movements.

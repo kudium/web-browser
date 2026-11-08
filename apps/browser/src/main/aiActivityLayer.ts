@@ -43,7 +43,7 @@ export class AIActivityLayer {
         !this.disposed &&
         this.view === view &&
         this.tabId &&
-        event.message === 'touchbox-ai-explicit-takeover'
+        event.message === 'kudiumbrowser-ai-explicit-takeover'
       )
         this.takeover();
     });

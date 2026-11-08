@@ -5,7 +5,7 @@ const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
 const root = path.resolve(__dirname, '../..'), phase = process.argv[2] || 'after';
 assert(['before', 'after'].includes(phase));
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-private-fill-')); app.setPath('userData', temporary);
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-private-fill-')); app.setPath('userData', temporary);
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 const source = fs.readFileSync(path.join(root, phase === 'before' ? 'docs/benchmarks/baselines/private-fill/ai.ts.txt' : 'src/main/ai.ts'), 'utf8');
 const url = 'https://private-fill.fixture.test/', fact = 'synthetic-private-fill-73921';
@@ -31,10 +31,11 @@ const content = result => JSON.parse(result.content.find(block => block.type ===
   const document = {...record,id:'document',kind:'knowledge',fields:[],document:{name:'synthetic-private.txt',mime:'text/plain',text:fact,content:Buffer.from(fact).toString('base64')}};
   vault.save(record); vault.save(document); ai.registerPasswordManager(()=>false,{authenticateOS:async()=>{}});
   tabs = [{id:'first',name:'Fixture',url,icon:'',sessionId:'fixture'}];
+  await ai.initializeLocalStorage();
   dispose = ai.registerAI(host,{tabs:()=>tabs,focused:()=> 'first',contents:id=>id==='first'?view.webContents:undefined});
   const evaluate = code => host.webContents.executeJavaScript(code);
   const reserve = net.createServer(); await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve)); const port=reserve.address().port; await new Promise(resolve=>reserve.close(resolve));
-  await evaluate(`test.mcp('update',{enabled:true,port:${port}})`); const connection=(await evaluate("test.mcp('connection')")).mcpServers.touchbox;
+  await evaluate(`test.mcp('update',{enabled:true,port:${port}})`); const connection=(await evaluate("test.mcp('connection')")).mcpServers.kudiumbrowser;
   client = new Client({name:'private-fill-fixture',version:'1'},{capabilities:{}}); await client.connect(new StreamableHTTPClientTransport(new URL(connection.url),{requestInit:{headers:connection.headers}}));
   const results = [];
   const cases = [

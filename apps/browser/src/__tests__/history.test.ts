@@ -30,7 +30,7 @@ jest.mock('electron', () => ({
 let directory: string;
 const file = () => path.join(directory, 'browsing-history.json');
 beforeEach(() => {
-  directory = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-history-'));
+  directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-history-'));
   (app.getPath as jest.Mock).mockReturnValue(directory);
   (app as any).removeAllListeners();
   jest.clearAllMocks();

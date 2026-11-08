@@ -1,0 +1,12 @@
+{
+  "name": "@kudiumbrowser/mcp",
+  "version": "0.1.0",
+  "description": "Connect local AI agents to Kudium Browser",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kudium/web-browser.git", "directory": "packages/mcp" },
+  "bin": { "kudium-mcp": "cli.cjs" },
+  "engines": { "node": ">=22" },
+  "files": ["cli.cjs", "bridge.cjs", "README.md"],
+  "scripts": { "test": "node --test test.cjs" },
+  "publishConfig": { "access": "public" }
+}

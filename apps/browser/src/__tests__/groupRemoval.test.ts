@@ -75,6 +75,8 @@ function fixture(apps: IApp[] = [source]) {
   return {
     run: (sender = contents, senderFrame = frame) =>
       handler({ sender, senderFrame }, 'one'),
+    choose: () =>
+      handler({ sender: contents, senderFrame: frame }, 'one', true),
     clear,
     unloaded,
     dispose,
@@ -83,7 +85,7 @@ function fixture(apps: IApp[] = [source]) {
 }
 let temporary: string;
 beforeEach(() => {
-  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-removal-test-'));
+  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-removal-test-'));
   (app.getPath as jest.Mock).mockReturnValue(temporary);
   jest.clearAllMocks();
   (isGroupLocked as jest.Mock).mockReturnValue(false);
@@ -112,7 +114,7 @@ it('deletes the unique profile only after explicit confirmation', async () => {
   const f = fixture();
   try {
     expect(await f.run()).toEqual({ removed: true, ids: ['one'] });
-    expect(session.fromPartition).toHaveBeenCalledWith('persist:touchbox-work');
+    expect(session.fromPartition).toHaveBeenCalledWith('persist:kudiumbrowser-work');
     expect(f.clear.clearStorageData).toHaveBeenCalledTimes(1);
     expect(f.clear.clearCache).toHaveBeenCalledTimes(1);
     expect(removeSiteProfile).toHaveBeenCalledWith('work');
@@ -137,7 +139,7 @@ it('preserves a profile referenced by another group, including archived groups',
     expect(f.clear.clearStorageData).not.toHaveBeenCalled();
     expect(removeSiteProfile).not.toHaveBeenCalled();
     expect((showBrowserDialog as jest.Mock).mock.calls[0][1].detail).toContain(
-      'shared session data will be kept'
+      'Shared and browser-wide data will be kept'
     );
   } finally {
     f.dispose();
@@ -179,7 +181,7 @@ it('does not report removal when session cleanup fails', async () => {
   }
 });
 
-it('authenticates and removes group-local Personal Data after confirmation', async () => {
+it('removes group-local Personal Data after confirmation without authentication', async () => {
   (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 1 });
   (passwordVault as jest.Mock).mockReturnValue({
     status: () => ({ initialized: true }),
@@ -191,23 +193,21 @@ it('authenticates and removes group-local Personal Data after confirmation', asy
   const f = fixture();
   try {
     expect(await f.run()).toEqual({ removed: true, ids: ['one'] });
-    expect(authenticatePersonalData).toHaveBeenCalledTimes(1);
+    expect(authenticatePersonalData).not.toHaveBeenCalled();
     expect(remove).toHaveBeenCalledWith('group:work', 'delete');
   } finally {
     f.dispose();
   }
 });
-it('authentication cancellation preserves the session and does not delete local Personal Data', async () => {
-  (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 1 });
+it('confirmation cancellation preserves the session and local Personal Data', async () => {
+  (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 0 });
   (passwordVault as jest.Mock).mockReturnValue({
     status: () => ({ initialized: true }),
   });
-  (authenticatePersonalData as jest.Mock).mockRejectedValueOnce(
-    new Error('Authentication cancelled')
-  );
   const f = fixture();
   try {
-    await expect(f.run()).rejects.toThrow('Authentication cancelled');
+    expect(await f.run()).toEqual({ removed: false });
+    expect(authenticatePersonalData).not.toHaveBeenCalled();
     expect(withPersonalData).not.toHaveBeenCalled();
     expect(f.clear.clearStorageData).not.toHaveBeenCalled();
   } finally {
@@ -223,6 +223,40 @@ it('rejects a group that becomes locked during confirmation', async () => {
       return { response: 1 };
     });
     await expect(f.run()).rejects.toThrow('Unload');
+    expect(f.clear.clearStorageData).not.toHaveBeenCalled();
+  } finally {
+    f.dispose();
+  }
+});
+
+it('removes a blank group without asking for confirmation', async () => {
+  const f = fixture([{ ...source, url: 'about:blank' }]);
+  try {
+    expect(await f.run()).toEqual({ removed: true, ids: ['one'] });
+    expect(showBrowserDialog).not.toHaveBeenCalled();
+    expect(f.clear.clearStorageData).toHaveBeenCalledTimes(1);
+  } finally {
+    f.dispose();
+  }
+});
+
+it('offers Cancel, Archive and Delete in one dialog and does not delete when Archive is chosen', async () => {
+  const f = fixture();
+  (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 1 });
+  try {
+    await expect(f.choose()).resolves.toEqual({
+      removed: false,
+      archive: true,
+    });
+    expect(showBrowserDialog).toHaveBeenCalledTimes(1);
+    expect(showBrowserDialog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        buttons: ['Cancel', 'Archive', 'Delete'],
+        cancelId: 0,
+        defaultId: 0,
+      })
+    );
     expect(f.clear.clearStorageData).not.toHaveBeenCalled();
   } finally {
     f.dispose();

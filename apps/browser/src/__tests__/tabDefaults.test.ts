@@ -1,5 +1,6 @@
 import {
   retainTabHistory,
+  savedNavigationURL,
   tabDefaultURL,
   tabResumeURL,
   validTabDefaultURL,
@@ -66,4 +67,47 @@ test('saved defaults persist through storage and layout validation', () => {
   expect(
     isBrowserLayout({ ...layout, apps: [{ ...tab, tabDefaultURL: 42 }] })
   ).toBe(false);
+});
+
+test('live navigation survives saved layout reload, including same-page URL changes', () => {
+  const original = {
+    ...tab,
+    url: 'https://www.google.com/search?q=example',
+    tabDefaultURL: undefined,
+  };
+  AppManager.set([original]);
+  [
+    'https://example.com/article',
+    'https://example.com/article#details',
+  ].forEach((url) => {
+    const current = AppManager.getAll()[0];
+    const state = {
+      id: current.id,
+      url,
+      title: 'Article',
+      discarded: false,
+      initialLoading: false,
+      loading: false,
+      canGoBack: true,
+      canGoForward: false,
+    };
+    AppManager.update('id', current.id, {
+      ...current,
+      url: savedNavigationURL(current, state),
+    });
+    const restored = JSON.parse(JSON.stringify(AppManager.getAll()))[0];
+    expect(tabResumeURL(restored)).toBe(url);
+  });
+});
+test('initial restoration does not overwrite the saved destination', () => {
+  const state = {
+    id: tab.id,
+    url: 'about:blank',
+    title: '',
+    initialLoading: true,
+    loading: true,
+    canGoBack: false,
+    canGoForward: false,
+  };
+  expect(savedNavigationURL(tab, state)).toBe(tab.url);
 });

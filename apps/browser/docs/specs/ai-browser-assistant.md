@@ -1,6 +1,6 @@
 # AI browser assistant
 
-External AI control is available through the local MCP server without a TouchBox model API key. Setup, tools, access revocation, and the stdio bridge are documented in `mcp/README.md`. The sidebar keeps only the composer, a short empty state, and the current action; configuration and external access live in Preferences.
+External AI control is available through the local MCP server without a Kudium Browser model API key. Setup, tools, access revocation, and the stdio bridge are documented in `mcp/README.md`. The sidebar keeps only the composer, a short empty state, and the current action; configuration and external access live in Preferences.
 
 Drag the AI panel’s left edge to resize it. Its width is saved locally and adapts to available window space. With the handle focused, arrow keys resize (Shift makes larger steps), Home/End select the minimum/maximum, and Enter or double-click restores the default.
 

@@ -121,7 +121,7 @@ export async function attachAIChooser(
       throw new Error('This file chooser accepts one file.');
     const world = await send('Page.createIsolatedWorld', {
       frameId,
-      worldName: 'touchbox-ai-control',
+      worldName: 'kudiumbrowser-ai-control',
     });
     const node = await send('DOM.resolveNode', {
       backendNodeId: chooser.backendNodeId,

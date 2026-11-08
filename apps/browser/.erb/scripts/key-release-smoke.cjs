@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '../..'),
   phase = process.argv[2] || 'after';
 assert(['before', 'after'].includes(phase));
 const temporary = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'touchbox-key-release-')
+  path.join(os.tmpdir(), 'kudiumbrowser-key-release-')
 );
 app.setPath('userData', temporary);
 const source = fs.readFileSync(

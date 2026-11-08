@@ -8,7 +8,7 @@ const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const {
   StreamableHTTPClientTransport,
 } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-dialog-smoke-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-dialog-smoke-'));
 app.setPath('userData', root);
 app.commandLine.appendSwitch('site-per-process');
 require('esbuild').buildSync({
@@ -66,6 +66,7 @@ const decode = (result) => {
   await view.webContents.loadURL(url);
   const tabs = [{ id: 'first', name: 'Fixture', url, sessionId: 'fixture' }];
   const pages = new Map([['first', view.webContents]]);
+  await require(path.join(root, 'ai.cjs')).initializeLocalStorage();
   const dispose = require(path.join(root, 'ai.cjs')).registerAI(host, {
     tabs: () => tabs,
     focused: () => 'first',
@@ -83,7 +84,7 @@ const decode = (result) => {
   const evaluate = (code) => host.webContents.executeJavaScript(code);
   await evaluate(`test.mcp('update',{enabled:true,port:${port}})`);
   const connection = (await evaluate(`test.mcp('connection')`)).mcpServers
-    .touchbox;
+    .kudiumbrowser;
   const client = new Client(
     { name: 'dialog-smoke', version: '1' },
     { capabilities: {} }

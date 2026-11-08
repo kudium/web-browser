@@ -5,13 +5,41 @@ if (showcase) {
   const tabs = [...showcase.querySelectorAll("[data-slide]")];
   let current = 0;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  let timer;
+  let hovered = false;
+  function schedule() {
+    clearTimeout(timer);
+    if (
+      slides.length < 2 ||
+      reduced.matches ||
+      document.hidden ||
+      hovered ||
+      showcase.contains(document.activeElement)
+    ) return;
+    timer = setTimeout(() => select(current + 1), 6000);
+  }
   function select(index) {
     current = (index + slides.length) % slides.length;
     track.scrollTo({
       left: slides[current].offsetLeft - slides[0].offsetLeft,
       behavior: reduced.matches ? "instant" : "smooth",
     });
+    schedule();
   }
+  showcase.addEventListener("mouseenter", () => {
+    hovered = true;
+    schedule();
+  });
+  showcase.addEventListener("mouseleave", () => {
+    hovered = false;
+    schedule();
+  });
+  showcase.addEventListener("focusin", schedule);
+  showcase.addEventListener("focusout", () => setTimeout(schedule, 0));
+  track.addEventListener("pointerdown", () => clearTimeout(timer));
+  track.addEventListener("scrollend", schedule);
+  document.addEventListener("visibilitychange", schedule);
+  reduced.addEventListener("change", schedule);
   tabs.forEach((tab, index) =>
     tab.addEventListener("click", () => select(index))
   );
@@ -41,6 +69,7 @@ if (showcase) {
     { root: track, threshold: 0.6 }
   );
   slides.forEach((slide) => observer.observe(slide));
+  schedule();
 }
 
 const sidebarDemo = document.querySelector(".sidebar-demo");

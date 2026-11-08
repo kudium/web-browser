@@ -14,7 +14,7 @@ jest.mock('electron-chrome-web-store', () => ({
 
 it('owns a bounded package copy, reviews actual permissions and rejects changed or added files', async () => {
   const root = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'touchbox-package-unit-')
+    path.join(os.tmpdir(), 'kudiumbrowser-package-unit-')
   );
   const source = path.join(root, 'source');
   await fs.mkdir(source);
@@ -57,7 +57,7 @@ it('owns a bounded package copy, reviews actual permissions and rejects changed 
 });
 
 it('rejects a package with another identity and removes rejected staging data', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'touchbox-package-id-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'kudiumbrowser-package-id-'));
   const source = path.join(root, 'source');
   await fs.mkdir(source);
   await fs.writeFile(
@@ -87,7 +87,7 @@ it('rejects a package with another identity and removes rejected staging data', 
 
 it('rejects symlinks and revoked ownership before committing a package', async () => {
   const root = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'touchbox-package-revoke-')
+    path.join(os.tmpdir(), 'kudiumbrowser-package-revoke-')
   );
   const source = path.join(root, 'source');
   await fs.mkdir(source);

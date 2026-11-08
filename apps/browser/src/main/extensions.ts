@@ -201,7 +201,7 @@ export function extensionRemoteAuthority(
     )
   );
 }
-Object.defineProperty(global, Symbol.for('touchbox.extensionRemoteAuthority'), {
+Object.defineProperty(global, Symbol.for('kudiumbrowser.extensionRemoteAuthority'), {
   configurable: true,
   value: extensionRemoteAuthority,
 });
@@ -653,9 +653,9 @@ export function configureExtensionStore(
             technicalDetail: `Extension: ${id}\nVersion: ${
               prepared.manifest.version
             }\n${prepared.permissions.join('\n')}`,
-            detail: 'Each session keeps separate extension data.',
+            detail: 'Each group keeps separate extension data.',
             scope: [
-              { label: 'All sessions, including future sessions', response: 2 },
+              { label: 'All groups, including future groups', response: 2 },
               {
                 label: destination.name
                   .replace(/(?: \(new session\))+$/g, '')
@@ -664,7 +664,7 @@ export function configureExtensionStore(
               },
             ],
             buttons: ['Cancel', 'Install extension', 'Install extension'],
-            defaultId: 1,
+            defaultId: 2,
             cancelId: 0,
           }),
           expired,
@@ -991,8 +991,7 @@ export function extensionMenu(
               click: () =>
                 showBrowserDialog(owner, {
                   message: `${item.name} · ${profile.name}`,
-                  detail:
-                    'This extension encountered an error in this session.',
+                  detail: 'This extension encountered an error in this group.',
                   technicalDetail:
                     failures.get(`${profile.id}:${item.id}`) ||
                     'Unknown extension error',

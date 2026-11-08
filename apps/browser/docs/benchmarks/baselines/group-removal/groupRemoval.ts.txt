@@ -135,7 +135,7 @@ export function registerGroupRemoval(
         }
         if (!plan.sharedProfile) {
           const profile = session.fromPartition(
-            `persist:touchbox-${loginProfileKey(source)}`
+            `persist:kudiumbrowser-${loginProfileKey(source)}`
           );
           await profile.clearStorageData();
           await profile.clearCache();

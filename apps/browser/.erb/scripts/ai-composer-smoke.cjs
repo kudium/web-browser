@@ -3,7 +3,7 @@ const { app, BrowserWindow, dialog, nativeImage } = require('electron');
 const fs = require('fs'), path = require('path'), os = require('os'), http = require('http'), assert = require('assert');
 const iconReview = process.argv.includes('--group-icons');
 if(iconReview)process.argv.push('--controls');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-ai-composer-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-ai-composer-'));
 const out = path.resolve(iconReview?'docs/evidence/ai-composer-group-icons':process.argv.includes('--controls')?'docs/evidence/ai-composer-controls':'docs/evidence/ai-composer');
 fs.mkdirSync(out, { recursive: true });
 app.setPath('userData', path.join(root, 'profile'));
@@ -105,7 +105,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   }
  }
  // Browser reference drops stay compact, preserve scope, and send bounded metadata only.
- const dropContext=async(kind,id)=>{await run(`(()=>{const data=new DataTransfer();data.setData('application/x-touchbox-ai-context',JSON.stringify({kind:${JSON.stringify(kind)},id:${JSON.stringify(id)}}));document.querySelector('.ai-sidebar').dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:data}));})()`);await wait(160)};
+ const dropContext=async(kind,id)=>{await run(`(()=>{const data=new DataTransfer();data.setData('application/x-kudiumbrowser-ai-context',JSON.stringify({kind:${JSON.stringify(kind)},id:${JSON.stringify(id)}}));document.querySelector('.ai-sidebar').dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:data}));})()`);await wait(160)};
  const readingId=(await run(`window.electron.ai.groups()`)).groups.find(g=>g.slug==='reading').id;
  await run(`window.electron.ai.groups(${JSON.stringify(readingId)})`);
  await dropContext('tab','work');assert(await run(`document.querySelector('[aria-label="Send AI task"]').disabled`));assert.equal((await run(`window.electron.ai.groups()`)).groupId,readingId,'Drop must not change scope');

@@ -14,7 +14,7 @@ const storage = {
 } as unknown as typeof safeStorage;
 let root: string;
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-chats-test-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-chats-test-'));
 });
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 it.each([true, false])(

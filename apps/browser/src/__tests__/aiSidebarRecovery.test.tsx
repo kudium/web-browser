@@ -269,7 +269,7 @@ it('deduplicates dropped browser references, replaces tabs with their group, and
       dataTransfer: {
         getData: () => JSON.stringify({ kind, id }),
         files: [],
-        types: ['application/x-touchbox-ai-context'],
+        types: ['application/x-kudiumbrowser-ai-context'],
       },
     });
   drop('tab', 'one');
@@ -333,7 +333,7 @@ it('requires a human scope change for an attached tab outside the selected group
     dataTransfer: {
       getData: () => JSON.stringify({ kind: 'tab', id: 'mail' }),
       files: [],
-      types: ['application/x-touchbox-ai-context'],
+      types: ['application/x-kudiumbrowser-ai-context'],
     },
   });
   await screen.findByRole('listitem', { name: 'Tab: Mail' });
@@ -386,12 +386,12 @@ it('hides takeover for an idle external server and restores it only during activ
 it.each([false, true])(
   'native webpage focus dismisses only unpinned chat history (pinned=%s)',
   async (pinned) => {
-    localStorage.setItem('touchbox-ai-page-historyOpen', 'false');
+    localStorage.setItem('kudiumbrowser-ai-page-historyOpen', 'false');
     localStorage.setItem(
-      'touchbox-ai-page-historyPinned',
+      'kudiumbrowser-ai-page-historyPinned',
       JSON.stringify(pinned)
     );
-    localStorage.setItem('touchbox-ai-page-pane', '"assistant"');
+    localStorage.setItem('kudiumbrowser-ai-page-pane', '"assistant"');
     const mock = mockAI();
     Object.assign(mock.ai, {
       conversations: jest.fn().mockResolvedValue({
@@ -424,8 +424,8 @@ it.each([false, true])(
       ).toBe(pinned)
     );
     view.unmount();
-    localStorage.removeItem('touchbox-ai-page-historyOpen');
-    localStorage.removeItem('touchbox-ai-page-historyPinned');
-    localStorage.removeItem('touchbox-ai-page-pane');
+    localStorage.removeItem('kudiumbrowser-ai-page-historyOpen');
+    localStorage.removeItem('kudiumbrowser-ai-page-historyPinned');
+    localStorage.removeItem('kudiumbrowser-ai-page-pane');
   }
 );

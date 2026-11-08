@@ -1,7 +1,7 @@
 // Production sidebar, AI IPC and deterministic local provider in a disposable profile.
 const {app,BrowserWindow,dialog}=require('electron');
 const fs=require('fs'),path=require('path'),os=require('os'),http=require('http'),assert=require('assert');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-ai-chats-'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-ai-chats-'));
 const out=path.resolve('docs/evidence/ai-conversations');fs.mkdirSync(out,{recursive:true});app.setPath('userData',path.join(root,'profile'));
 const build=require('esbuild').buildSync;
 build({entryPoints:['src/main/ai.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(root,'ai.cjs')});
@@ -13,6 +13,7 @@ const bodies=[];let hold=false;
 const provider=http.createServer((req,res)=>{if(req.url.endsWith('/models'))return res.end(JSON.stringify({data:[{id:'fixture'}]}));let raw='';req.on('data',c=>raw+=c);req.on('end',()=>{const body=JSON.parse(raw);if(body.messages[0].content.startsWith('Generate a concise chat title')){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({choices:[{message:{role:'assistant',content:body.messages.at(-1).content.includes('Beta')?'Beta investigation':'Alpha investigation'}}]}));}bodies.push(body);if(hold)return;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({choices:[{message:{role:'assistant',content:body.messages.at(-1).content.includes('Beta')?'Beta answer':'Alpha answer'}}]}));});});
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{await app.whenReady();await new Promise(r=>provider.listen(0,'127.0.0.1',r));const w=new BrowserWindow({width:440,height:640,useContentSize:true,show:true,webPreferences:{preload:path.join(root,'preload.cjs'),contextIsolation:true}});
+await require(path.join(root,'ai.cjs')).initializeLocalStorage();
 const tabs=[{id:'page',sessionId:'work',name:'Fixture',url:'https://example.com',icon:''}];const dispose=require(path.join(root,'ai.cjs')).registerAI(w,{tabs:()=>tabs,focused:()=>tabs[0].id,contents:()=>undefined});
 const run=code=>w.webContents.executeJavaScript(code);const until=async(test)=>{for(let i=0;i<120;i++){if(await test())return;await wait(50);}throw new Error('Fixture timeout');};
 await w.loadFile(path.join(root,'index.html'));await wait(200);

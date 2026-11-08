@@ -8,7 +8,7 @@ if (
   !fs.existsSync(path.join(bundle, 'Contents/embedded.provisionprofile'))
 ) {
   throw new Error(
-    'Supply a TouchBox.app containing the approved provisioning profile'
+    'Supply a KudiumBrowser.app containing the approved provisioning profile'
   );
 }
 execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', bundle], {
@@ -27,7 +27,7 @@ const entitlements = JSON.parse(
 );
 if (
   entitlements['com.apple.application-identifier'] !==
-    '79VCL28M9P.com.kudium.touchbox' ||
+    '79VCL28M9P.com.kudium.kudiumbrowser' ||
   entitlements['com.apple.developer.team-identifier'] !== '79VCL28M9P' ||
   entitlements['com.apple.developer.web-browser.public-key-credential'] !== true
 ) {

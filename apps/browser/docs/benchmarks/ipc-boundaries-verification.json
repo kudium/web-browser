@@ -62,14 +62,14 @@
     },
     {
       "name": "directory package",
-      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-ipc-package",
+      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/kudiumbrowser-ipc-package",
       "observedExitCode": 0,
       "logSha256": "398cc338045a78ac6fb4a27f763c935665586d463deb38b910bfd8990a03b465",
       "summary": "Unsigned/ad-hoc macOS arm64"
     },
     {
       "name": "packaged security",
-      "command": "npm run test:packaged-security -- /tmp/touchbox-ipc-package/mac-arm64/TouchBox.app",
+      "command": "npm run test:packaged-security -- /tmp/kudiumbrowser-ipc-package/mac-arm64/KudiumBrowser.app",
       "observedExitCode": 0,
       "logSha256": "76b48e707aeadc33e52679a3c57e6fd0d5780a8f307466e81026baac1f491ddc",
       "summary": "Fuse/debugging tests and instrumented production-payload UI/preload/isolation/history/CSP/cleanup passed; unsigned/ad-hoc macOS arm64, not untouched signed-release UI verification"

@@ -4,7 +4,7 @@ const fs = require('fs'),
   os = require('os'),
   path = require('path'),
   assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-activity-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-activity-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/aiActivityLayer.ts'],
@@ -25,7 +25,7 @@ const pause = () => new Promise((resolve) => setTimeout(resolve, 120));
   await app.whenReady();
   const host = new BrowserWindow({
     show: true,
-    title: 'TouchBox activity regression',
+    title: 'KudiumBrowser activity regression',
     width: 700,
     height: 500,
   });

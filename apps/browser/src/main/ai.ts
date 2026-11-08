@@ -5,7 +5,6 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
-  safeStorage,
   webContents,
   WebContents,
   IpcMainInvokeEvent,
@@ -14,6 +13,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
+import { safeStorage } from './localStorage';
 import { loadSkillLink } from './aiSkillLink';
 import { AISkillsStore, loadSkillFolder, skillFromText } from './aiSkills';
 import { requestAIInput, privateFieldTargets } from './aiUserInput';
@@ -150,6 +150,9 @@ import {
 } from '../browser/ai';
 import type { IApp } from '../types';
 import type { DownloadRecord } from '../browser/downloads';
+
+// Embedders and isolated desktop fixtures prepare storage before registering AI.
+export { initializeLocalStorage } from './localStorage';
 
 // Configuration outlives the browsing window so Preferences remains usable.
 let externalShutdown = Promise.resolve();
@@ -312,7 +315,7 @@ export function readAIPage(maxText = 18000, wantedLabel = '', wantedRole = '') {
     const rect = node.getBoundingClientRect();
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
   });
-  (window as any).touchboxAISnapshot = {
+  (window as any).kudiumbrowserAISnapshot = {
     id: snapshotId,
     url: window.location.href,
     entries: nodes.map((node, index) => ({
@@ -530,7 +533,7 @@ export function actAIPage(
       .trim()
       .slice(0, 180);
   };
-  const snapshot = (window as any).touchboxAISnapshot;
+  const snapshot = (window as any).kudiumbrowserAISnapshot;
   if (
     !snapshot ||
     (snapshotId && snapshot.id !== snapshotId) ||
@@ -1016,6 +1019,7 @@ export function registerAI(
   let taskStoreError = '';
   let pauseRequested = false;
   let workingTabId: string | undefined;
+  const workingTabIds = new Set<string>();
   let referencedGroupId: string | undefined;
   let { accessMode } = composerPreferences.value;
   let taskAccessMode: AIAccessMode | undefined;
@@ -1459,6 +1463,7 @@ export function registerAI(
     rememberEvent(event);
     if (event.type === 'status') {
       workingTabId = event.tabId || scopeTab();
+      if (workingTabId) workingTabIds.add(workingTabId);
       activityLayer?.set(workingTabId);
       if (!host.isDestroyed())
         host.webContents.send('ai-event', {
@@ -1466,15 +1471,18 @@ export function registerAI(
           text: '',
           tabId: workingTabId,
           active: true,
+          workingTabIds: [...workingTabIds],
         });
     }
     if (event.type === 'done' || event.type === 'handoff') {
+      workingTabIds.clear();
       activityLayer?.set();
       if (!host.isDestroyed())
         host.webContents.send('ai-event', {
           type: 'activity',
           text: '',
           active: false,
+          workingTabIds: [],
         });
     }
     if (!host.isDestroyed())
@@ -3686,7 +3694,7 @@ export function registerAI(
                 );
                 await pointer(point, undefined, false);
                 const node = await runProgram(
-                  `window.touchboxAISnapshot.entries[${target}].node`,
+                  `window.kudiumbrowserAISnapshot.entries[${target}].node`,
                   false
                 );
                 if (!node.objectId)
@@ -4803,6 +4811,13 @@ export function registerAI(
         throw new Error(
           'OS encryption is unavailable. Use a session-only key.'
         );
+      if (
+        fs.existsSync(settingsFile) &&
+        !safeStorage.isFileAvailable(settingsFile)
+      )
+        throw new Error(
+          'Saved provider settings need recovery before they can be changed. Their encrypted file has been preserved.'
+        );
       fs.writeFileSync(
         settingsFile,
         JSON.stringify({
@@ -4990,6 +5005,7 @@ export function registerAI(
     }
     return {
       activeTabId: run || externalRun ? workingTabId : undefined,
+      workingTabIds: run || externalRun ? [...workingTabIds] : [],
       busy: !!run || !!externalRun,
       resumable: !!activeCheckpoint,
       reason: activeCheckpoint?.reason,
@@ -5416,6 +5432,18 @@ export function registerAI(
   mcp = createMCPController({
     filename: path.join(app.getPath('userData'), 'mcp-settings.json'),
     beforeStart: externalShutdown,
+    approveConnector: async () => {
+      if (host.isDestroyed()) return false;
+      const answer = await showBrowserDialog(host, {
+        message: 'Allow the Kudium MCP connector?',
+        detail:
+          'Your agent can use the browser with your existing group permissions. Revoke access in External AI.',
+        buttons: ['Cancel', 'Allow'],
+        defaultId: 0,
+        cancelId: 0,
+      });
+      return !host.isDestroyed() && answer.response === 1;
+    },
     stop: () => {
       stopOwnedWork(false).catch(() => {});
     },
@@ -5658,11 +5686,11 @@ export function registerAI(
           mode: 0o600,
         });
         const candidates = app.isPackaged
-          ? [path.join(process.resourcesPath, 'mcp', 'touchbox-mcp.cjs')]
+          ? [path.join(process.resourcesPath, 'mcp', 'kudiumbrowser-mcp.cjs')]
           : [
-              path.join(app.getAppPath(), 'mcp', 'touchbox-mcp.cjs'),
-              path.join(__dirname, '../../mcp/touchbox-mcp.cjs'),
-              path.join(process.cwd(), 'mcp', 'touchbox-mcp.cjs'),
+              path.join(app.getAppPath(), 'mcp', 'kudiumbrowser-mcp.cjs'),
+              path.join(__dirname, '../../mcp/kudiumbrowser-mcp.cjs'),
+              path.join(process.cwd(), 'mcp', 'kudiumbrowser-mcp.cjs'),
             ];
         const bridge = candidates.find((candidate) => fs.existsSync(candidate));
         if (!bridge)
@@ -5672,7 +5700,7 @@ export function registerAI(
 
         return {
           mcpServers: {
-            touchbox: { command: 'node', args: [bridge, configPath] },
+            kudiumbrowser: { command: 'node', args: [bridge, configPath] },
           },
         };
       }

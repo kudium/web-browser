@@ -107,7 +107,7 @@ it('keeps user images through screenshot tool turns and strips private transport
 
 it('persists selected defaults atomically and recovers invalid preferences', () => {
   const root = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-composer-test-')
+    path.join(os.tmpdir(), 'kudiumbrowser-composer-test-')
   );
   try {
     const file = path.join(root, 'preferences.json');

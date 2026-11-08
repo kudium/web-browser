@@ -235,3 +235,17 @@ it('expires stalled transport without accepting or retaining queued work', async
     jest.useRealTimers();
   }
 });
+it('accepts a bounded ICO favicon supplied by a loaded website', () => {
+  const header = Buffer.alloc(22);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(1, 4);
+  header[6] = 1;
+  header[7] = 1;
+  header.writeUInt16LE(1, 10);
+  header.writeUInt16LE(32, 12);
+  header.writeUInt32LE(png.length, 14);
+  header.writeUInt32LE(22, 18);
+  expect(() =>
+    validateFaviconDimensions(Buffer.concat([header, png]))
+  ).not.toThrow();
+});

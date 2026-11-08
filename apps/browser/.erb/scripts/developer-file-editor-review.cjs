@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs'), path = require('path'), os = require('os'), assert = require('assert');
 const project = path.resolve(__dirname, '../..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-file-editor-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-file-editor-'));
 const output = path.join(project, 'docs/evidence/developer-file-editor');
 fs.mkdirSync(output, { recursive: true });
 app.setPath('userData', path.join(temp, 'profile'));
@@ -15,7 +15,7 @@ fs.writeFileSync(target, original);
 fs.writeFileSync(path.join(folder, 'README.md'), '# Project\n');
 fs.writeFileSync(path.join(temp, 'preload.cjs'), `const { contextBridge, ipcRenderer } = require('electron'); contextBridge.exposeInMainWorld('electron', { siteDeveloper: { files: (...args) => ipcRenderer.invoke('files', ...args) } });`);
 fs.writeFileSync(path.join(temp, 'preview.tsx'), `import React from 'react'; import {createRoot} from 'react-dom/client'; import {Theme} from '@radix-ui/themes'; import '@radix-ui/themes/styles.css'; import ${JSON.stringify(path.join(project, 'src/renderer/index.css'))}; import {DeveloperFiles} from ${JSON.stringify(path.join(project, 'src/components/UI/DeveloperFiles'))}; import {EditorView} from '@uiw/react-codemirror';
-const theme = new URLSearchParams(location.search).get('theme'); localStorage.setItem('touchbox-appearance', theme); window.editFile = value => {const view = EditorView.findFromDOM(document.querySelector('.cm-editor')); view.dispatch({changes:{from:0,to:view.state.doc.length,insert:value}})};
+const theme = new URLSearchParams(location.search).get('theme'); localStorage.setItem('kudiumbrowser-appearance', theme); window.editFile = value => {const view = EditorView.findFromDOM(document.querySelector('.cm-editor')); view.dispatch({changes:{from:0,to:view.state.doc.length,insert:value}})};
 createRoot(document.getElementById('root')).render(<Theme appearance={theme}><aside className="ai-sidebar" style={{position:'relative',width:'100%',height:'100vh',padding:16,boxSizing:'border-box'}}><header style={{marginBottom:12}}>Project files</header><DeveloperFiles sourceId="review" projectName="hocasa" projectPath=${JSON.stringify(folder)} onClose={()=>{window.closedFiles=true}} /></aside></Theme>);`);
 esbuild.buildSync({entryPoints:[path.join(temp,'preview.tsx')],bundle:true,platform:'browser',jsx:'automatic',outfile:path.join(temp,'preview.js'),nodePaths:[path.join(project,'node_modules')]});
 fs.writeFileSync(path.join(temp,'index.html'), '<html><head><link rel="stylesheet" href="preview.css"></head><body><div id="root"></div><script src="preview.js"></script></body></html>');

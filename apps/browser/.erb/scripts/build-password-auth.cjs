@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 if (process.platform === 'darwin') {
-  const output = path.resolve('assets/native/touchbox-password-auth');
+  const output = path.resolve('assets/native/kudiumbrowser-password-auth');
   fs.mkdirSync(path.dirname(output), { recursive: true });
   const run = (args) => {
     const result = spawnSync('xcrun', args, { stdio: 'inherit' });

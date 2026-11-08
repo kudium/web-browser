@@ -58,14 +58,14 @@
     },
     {
       "name": "native directory package",
-      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-import-package",
+      "command": "npx electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/kudiumbrowser-import-package",
       "observedExitCode": 0,
       "logSha256": "aafd763a737a3e495f0f606bc7a7ccc1645c87b1d4062abca60a0ea55524ad47",
       "summary": "Unsigned/ad-hoc macOS arm64"
     },
     {
       "name": "current packaged security",
-      "command": "npm run test:packaged-security -- /tmp/touchbox-import-package/mac-arm64/TouchBox.app",
+      "command": "npm run test:packaged-security -- /tmp/kudiumbrowser-import-package/mac-arm64/KudiumBrowser.app",
       "observedExitCode": 0,
       "logSha256": "358a17ee3ded6328821a818f72a3d2ec64d7897154db42fffd84d28ac065c223",
       "summary": "Fuses, actual-package remote debugging refusal and instrumented production-payload UI/preload/website isolation/history/CSP/cleanup pass"

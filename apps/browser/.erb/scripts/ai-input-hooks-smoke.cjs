@@ -1,7 +1,7 @@
 const {app,BrowserWindow,nativeTheme}=require('electron');
 const fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert');
 const {buildSync}=require('esbuild');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-input-hooks-'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-input-hooks-'));
 app.setPath('userData',path.join(root,'profile'));
 const out=path.resolve('docs/evidence/ai-input-hooks');fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(root,'main.ts'),`export {requestAIInput,aiInputHTML} from ${JSON.stringify(path.resolve('src/main/aiUserInput'))};`);

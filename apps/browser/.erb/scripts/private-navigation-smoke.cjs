@@ -16,7 +16,7 @@ const {
 const root = path.resolve(__dirname, '../..');
 const phase = process.argv[2] || 'after';
 const temporary = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'touchbox-private-navigation-')
+  path.join(os.tmpdir(), 'kudiumbrowser-private-navigation-')
 );
 app.setPath('userData', temporary);
 app.on('window-all-closed', () => {});
@@ -190,6 +190,7 @@ app
     runtime.registerPasswordManager(() => false, {
       authenticateOS: async () => {},
     });
+    await runtime.initializeLocalStorage();
     dispose = runtime.registerAI(host, {
       tabs: () => tabs,
       focused: () => 'first',
@@ -204,7 +205,7 @@ app
     });
     await evaluate(`fixture.mcp('update',{enabled:true,port:${port}})`);
     const connection = (await evaluate("fixture.mcp('connection')")).mcpServers
-      .touchbox;
+      .kudiumbrowser;
     client = new Client(
       { name: 'private-navigation-fixture', version: '1' },
       { capabilities: {} }

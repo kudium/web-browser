@@ -59,7 +59,7 @@ async function saveExport(
 ) {
   const temporary = path.join(
     path.dirname(file),
-    `.touchbox-capture-${randomUUID()}.tmp`
+    `.kudiumbrowser-capture-${randomUUID()}.tmp`
   );
   try {
     assertCurrent();

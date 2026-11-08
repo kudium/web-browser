@@ -8,7 +8,7 @@ export function writePrivateFile(
   text: string,
   options: { durable?: boolean } = {}
 ) {
-  const temporary = `${filename}.touchbox-${randomUUID()}.tmp`;
+  const temporary = `${filename}.kudiumbrowser-${randomUUID()}.tmp`;
   let descriptor: number | undefined;
   try {
     descriptor = fs.openSync(temporary, 'wx', 0o600);

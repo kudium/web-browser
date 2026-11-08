@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
 export type Appearance = 'system' | 'light' | 'dark';
-const key = 'touchbox-appearance';
-const change = 'touchbox-appearance-change';
+const key = 'kudiumbrowser-appearance';
+const change = 'kudiumbrowser-appearance-change';
 export function getAppearance(): Appearance {
   const value = localStorage.getItem(key);
   return value === 'light' || value === 'dark' ? value : 'system';

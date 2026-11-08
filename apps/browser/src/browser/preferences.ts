@@ -6,8 +6,13 @@ import { SearchEngine, defaultSearchEngines } from './searchEngines';
 /** Shared, engine-neutral preferences. Add controls to the registry below. */
 export interface BrowserPreferences {
   advanced: AdvancedPreferences;
+  automaticallyDownloadUpdates: boolean;
+  automaticallyInstallUpdates: boolean;
+  shareUsageDiagnostics: boolean;
+  writeBrowserInstructions: boolean;
   tabDisplayMode: 'horizontal' | 'hover' | 'click';
   folderHoverPreviews: boolean;
+  showUnpinnedGroups: boolean;
   addressBarPlacement: 'sidebar' | 'header';
   addressBarExtensionsExpanded: boolean;
   showExtensionIcons: boolean;
@@ -34,8 +39,13 @@ export interface BrowserPreferences {
 }
 export const defaultPreferences: BrowserPreferences = {
   advanced: defaultAdvanced,
+  automaticallyDownloadUpdates: true,
+  automaticallyInstallUpdates: true,
+  shareUsageDiagnostics: true,
+  writeBrowserInstructions: true,
   tabDisplayMode: 'horizontal',
   folderHoverPreviews: true,
+  showUnpinnedGroups: false,
   addressBarPlacement: 'sidebar',
   addressBarExtensionsExpanded: true,
   showExtensionIcons: true,
@@ -71,6 +81,46 @@ export interface PreferenceControl {
   options?: { label: string; value: string | number }[];
 }
 export const preferenceControls: PreferenceControl[] = [
+  {
+    key: 'writeBrowserInstructions',
+    section: 'ai',
+    title: 'Project browser instructions',
+    description:
+      'Add BROWSER.md and a reference in AGENTS.md when linking a project. Contains connection instructions and group context, never credentials. Turning this off stops future updates; existing files are kept.',
+    kind: 'toggle',
+  },
+  {
+    key: 'automaticallyDownloadUpdates',
+    section: 'updates',
+    title: 'Automatically download updates',
+    description:
+      'Download new versions in the background. Turn this off to choose when to download from the sidebar banner.',
+    kind: 'toggle',
+  },
+  {
+    key: 'automaticallyInstallUpdates',
+    section: 'updates',
+    title: 'Install downloaded updates when I quit',
+    description:
+      'Install a ready update when you quit the browser. Your browsing is never interrupted by an automatic restart. Turn this off to install only when you choose Restart to update.',
+    kind: 'toggle',
+  },
+  {
+    key: 'shareUsageDiagnostics',
+    section: 'privacy',
+    title: 'Share usage and diagnostics',
+    description:
+      'Help improve Kudium with anonymous feature usage and error types through PostHog. Website content, chats, file paths and credentials are never included.',
+    kind: 'toggle',
+  },
+  {
+    key: 'showUnpinnedGroups',
+    section: 'appearance',
+    title: 'Unpinned groups',
+    description:
+      'Show a separate section below pinned groups. When off, all groups appear together above the divider.',
+    kind: 'toggle',
+  },
   {
     key: 'tabDisplayMode',
     section: 'appearance',
@@ -248,7 +298,7 @@ export interface PreferenceInfo {
   extensionCatalog?: { id: string; name: string }[];
   profiles: PreferenceProfile[];
   languages: string[];
-  versions: { touchbox: string; engine: string; chromium: string };
+  versions: { kudiumbrowser: string; engine: string; chromium: string };
 }
 export type PreferenceAction =
   | 'network-test'

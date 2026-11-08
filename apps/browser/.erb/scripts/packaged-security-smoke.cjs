@@ -13,7 +13,7 @@ const appPath = path.resolve(process.argv[2] || '');
 assert.equal(process.platform, 'darwin');
 assert(appPath.endsWith('.app') && fs.existsSync(appPath), 'Supply a packaged .app');
 const root = path.resolve(__dirname, '../..');
-const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-packaged-security-'));
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-packaged-security-'));
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const hash = (data) => crypto.createHash('sha256').update(data).digest('hex');
 const until = async (read, label, ms = 12000) => {

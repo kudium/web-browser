@@ -208,7 +208,7 @@ export function ExtensionPicker({
           <Text size="2" color="gray">
             {query
               ? 'No matching extensions'
-              : 'No extensions available in this session'}
+              : 'No extensions available in this group'}
           </Text>
         )}
       </div>

@@ -175,7 +175,7 @@ export async function withAIFrame<T>(
       await enable(frame.sessionId);
       const world = await send(
         'Page.createIsolatedWorld',
-        { frameId, worldName: 'touchbox-ai-control' },
+        { frameId, worldName: 'kudiumbrowser-ai-control' },
         frame.sessionId
       );
       const scopedSend = (
@@ -214,7 +214,7 @@ export async function withAIFrame<T>(
             );
             const context = await send(
               'Page.createIsolatedWorld',
-              { frameId: parent.id, worldName: 'touchbox-ai-control' },
+              { frameId: parent.id, worldName: 'kudiumbrowser-ai-control' },
               parent.sessionId
             );
             const node = await send(
@@ -438,7 +438,7 @@ export async function executeAIPageProtocol(
     const { frameTree } = await send('Page.getFrameTree');
     const { executionContextId } = await send('Page.createIsolatedWorld', {
       frameId: frameTree.frame.id,
-      worldName: 'touchbox-ai-control',
+      worldName: 'kudiumbrowser-ai-control',
     });
     if (!contents.getURL()) {
       const initial = await send('Runtime.evaluate', {

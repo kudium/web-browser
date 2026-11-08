@@ -11,7 +11,7 @@ async function run() {
   if (!['before', 'after'].includes(phase))
     throw new Error('Expected before or after');
   const temporary = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'touchbox-provider-')
+    path.join(os.tmpdir(), 'kudiumbrowser-provider-')
   );
   const requests = [];
   const server = http.createServer((request, response) => {

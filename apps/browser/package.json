@@ -16,7 +16,7 @@
   ],
   "homepage": "https://kudium.com",
   "bugs": {
-    "url": "https://github.com/samtax01/TouchBox/issues"
+    "url": "https://github.com/samtax01/KudiumBrowser/issues"
   },
   "browser": {
     "fs": true,
@@ -25,7 +25,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/samtax01/TouchBox.git"
+    "url": "git+https://github.com/samtax01/KudiumBrowser.git"
   },
   "license": "MIT",
   "author": {
@@ -52,7 +52,11 @@
     "lint": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts lint",
     "postinstall": "node .erb/scripts/patch-native-messaging.cjs",
     "predev": "node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs && node .erb/scripts/brand-development-app.cjs",
-    "prebuild": "node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs"
+    "prebuild": "node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs",
+    "test:migrations": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts storage-migration",
+    "test:migrations:native": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts storage-migration --native",
+    "release:verify-migrations": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-release-gate.ts",
+    "storage:recovery": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-recovery.ts"
   },
   "browserslist": [],
   "prettier": {
@@ -125,8 +129,10 @@
     ]
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/search": "^6.7.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@radix-ui/themes": "^3.3.0",
     "@toon-format/toon": "^4.4.0",
@@ -145,6 +151,7 @@
     "mammoth": "^1.11.0",
     "marked": "^15.0.12",
     "pdfjs-dist": "^4.10.38",
+    "posthog-node": "^5.63.1",
     "react": "^18.3.1",
     "react-arborist": "4.0.1",
     "react-dnd": "16.0.1",
@@ -153,9 +160,7 @@
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^7.18.4",
     "tldts": "^7.4.19",
-    "yaml": "^2.9.1",
-    "@codemirror/commands": "^6.11.1",
-    "@codemirror/search": "^6.7.2"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.21.5",
@@ -231,7 +236,7 @@
   },
   "build": {
     "productName": "Kudium Browser",
-    "appId": "com.kudium.touchbox",
+    "appId": "com.kudium.kudiumbrowser",
     "asar": true,
     "electronFuses": {
       "runAsNode": false,
@@ -308,9 +313,9 @@
     "publish": {
       "provider": "github",
       "owner": "samtax01",
-      "repo": "TouchBox"
+      "repo": "KudiumBrowser"
     },
-    "copyright": "Copyright \u00a9 2026 Kudium",
+    "copyright": "Copyright © 2026 Kudium",
     "protocols": [
       {
         "name": "Web pages",

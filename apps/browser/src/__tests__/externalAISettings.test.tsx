@@ -12,6 +12,11 @@ beforeEach(() => {
   };
   Object.assign(window, {
     electron: {
+      browser: {
+        preferences: jest
+          .fn()
+          .mockResolvedValue({ writeBrowserInstructions: true }),
+      },
       ai: {
         personalAgents: jest.fn().mockResolvedValue({
           agents: [
@@ -34,14 +39,16 @@ beforeEach(() => {
           .mockResolvedValue({ ...status, enabled: true, running: true }),
         mcpConnection: jest.fn().mockResolvedValue({
           mcpServers: {
-            touchbox: {
+            kudiumbrowser: {
               url: status.url,
               headers: { Authorization: 'Bearer test-token' },
             },
           },
         }),
         mcpStdio: jest.fn().mockResolvedValue({
-          mcpServers: { touchbox: { command: 'node', args: ['bridge.cjs'] } },
+          mcpServers: {
+            kudiumbrowser: { command: 'node', args: ['bridge.cjs'] },
+          },
         }),
       },
     },

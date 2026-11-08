@@ -17,9 +17,9 @@ const os = require('os');
 const http = require('http');
 const crypto = require('crypto');
 const assert = require('assert');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-ego-benchmark-'));
-const controlPath = '/tmp/touchbox-comparison-control.json';
-const format = process.env.TOUCHBOX_BENCHMARK_FORMAT || 'detailed';
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-ego-benchmark-'));
+const controlPath = '/tmp/kudiumbrowser-comparison-control.json';
+const format = process.env.KUDIUMBROWSER_BENCHMARK_FORMAT || 'detailed';
 assert(['detailed', 'compact'].includes(format));
 const secret = crypto.randomBytes(32).toString('hex');
 const samples = { snapshot: [], workflow: [] };
@@ -104,7 +104,7 @@ const summarize = (values) => {
         );
         const report = {
           measuredAt: new Date().toISOString(),
-          touchboxFormat: format,
+          kudiumbrowserFormat: format,
           fixture: '100 buttons plus Name / Apply form; no network after load',
           environment: {
             platform: process.platform,
@@ -117,16 +117,16 @@ const summarize = (values) => {
           method:
             'Interleaved SDK/MCP calls on one machine; first observation reported separately, two warmups excluded, 20 measured rounds per operation. Workflow uses each product recommended observation cadence. No AI inference or CLI process startup included.',
           limitations: [
-            'TouchBox uses authenticated localhost Streamable HTTP MCP; Ego uses its documented Page SDK transport. These are different transport paths.',
-            'TouchBox native approval dialogs are accepted by a fixture stub; no human decision latency included.',
-            'TouchBox workflow observes before, between and after actions; Ego observes before and after. Both verify final status.',
-            'Snapshots have different semantic schemas. Fixture fits the viewport; Ego uses full_page and TouchBox discovers all 102 controls (below its 250 cap).',
+            'KudiumBrowser uses authenticated localhost Streamable HTTP MCP; Ego uses its documented Page SDK transport. These are different transport paths.',
+            'KudiumBrowser native approval dialogs are accepted by a fixture stub; no human decision latency included.',
+            'KudiumBrowser workflow observes before, between and after actions; Ego observes before and after. Both verify final status.',
+            'Snapshots have different semantic schemas. Fixture fits the viewport; Ego uses full_page and KudiumBrowser discovers all 102 controls (below its 250 cap).',
             'One local static fixture cannot establish complete parity or general browser superiority.',
           ],
           failures: 0,
           retries: 0,
-          touchbox: {
-            cold: input.coldTouchbox,
+          kudiumbrowser: {
+            cold: input.coldKudiumBrowser,
             snapshot: summarize(samples.snapshot),
             workflow: summarize(samples.workflow),
           },
@@ -146,7 +146,7 @@ const summarize = (values) => {
         res.end(
           JSON.stringify({
             output,
-            touchbox: report.touchbox.snapshot.p50Ms,
+            kudiumbrowser: report.kudiumbrowser.snapshot.p50Ms,
             ego: report.ego.snapshot.p50Ms,
           })
         );
@@ -204,9 +204,9 @@ const summarize = (values) => {
   const config = await host.webContents.executeJavaScript(
     `benchmark.mcp('update',{enabled:true,port:${port}}).then(()=>benchmark.mcp('connection'))`
   );
-  const connection = config.mcpServers.touchbox;
+  const connection = config.mcpServers.kudiumbrowser;
   client = new Client(
-    { name: 'touchbox-comparison', version: '1' },
+    { name: 'kudiumbrowser-comparison', version: '1' },
     { capabilities: {} }
   );
   await client.connect(

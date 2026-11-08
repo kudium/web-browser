@@ -1,3 +1,4 @@
+import type { AppUpdateAction, AppUpdateState } from './appUpdates';
 import type { SiteDeveloperConfig, SiteDeveloperState } from './siteDeveloper';
 import type { PageCaptureRequest, PageCaptureResult } from './pageCapture';
 import type { HistoryAction, HistoryRecord } from './history';
@@ -6,6 +7,12 @@ import type {
   DownloadRecord,
   DownloadRecoveryInfo,
 } from './downloads';
+import type {
+  AccountSyncAction,
+  AccountSyncInput,
+  AccountSyncStatus,
+  RestoredWorkspace,
+} from './accountSync';
 import type { CloudSyncStatus } from './cloudSync';
 import type { ShortcutAction } from './shortcuts';
 import type { NativeMenuItem, NativePrompt } from './nativeUi';
@@ -35,6 +42,12 @@ export interface BrowserTabRequest {
   app?: IApp;
 }
 
+export interface PictureInPictureState {
+  available: boolean;
+  active: boolean;
+  busy?: boolean;
+  error?: string;
+}
 export interface BrowserState {
   id: string;
   url: string;
@@ -43,6 +56,7 @@ export interface BrowserState {
   muted?: boolean;
   audible?: boolean;
   mediaPlaying?: boolean;
+  pictureInPicture?: PictureInPictureState;
   siteSettings?: {
     origin: string;
     permissions: Record<string, 'ask' | 'allow' | 'block'>;
@@ -92,6 +106,7 @@ export interface BrowserCommand {
     | 'find'
     | 'clear-data'
     | 'toggle-mute'
+    | 'toggle-picture-in-picture'
     | 'set-permission'
     | 'reset-permissions'
     | 'close-group'
@@ -131,7 +146,10 @@ export interface BrowserSnapshot {
 export type { BrowserPreferences } from './preferences';
 
 export interface BrowserClient {
-  removeGroup(id: string): Promise<{ removed: boolean; ids?: string[] }>;
+  removeGroup(
+    id: string,
+    allowArchive?: boolean
+  ): Promise<{ removed: boolean; ids?: string[]; archive?: boolean }>;
   capture(request: PageCaptureRequest): Promise<PageCaptureResult>;
   nativeMenu(items: NativeMenuItem[]): Promise<string | null>;
   confirm(prompt: NativePrompt): Promise<boolean>;
@@ -146,10 +164,18 @@ export interface BrowserClient {
   onDownloads(callback: (records: DownloadRecord[]) => void): () => void;
   sync(layout: BrowserLayout): void;
   command(command: BrowserCommand): void;
+  accountSync(
+    action: AccountSyncAction,
+    input?: AccountSyncInput
+  ): Promise<AccountSyncStatus | RestoredWorkspace>;
   preferences(
     action: 'get' | 'open' | 'update',
-    patch?: Partial<BrowserPreferences>
+    patch?: Partial<BrowserPreferences> & {
+      section?: 'archive' | 'sync' | 'import' | 'passwords';
+    }
   ): Promise<BrowserPreferences>;
+  appUpdates(action: AppUpdateAction): Promise<AppUpdateState>;
+  onAppUpdates(callback: (state: AppUpdateState) => void): () => void;
   preferenceAction(
     action: PreferenceAction,
     profileId?: string

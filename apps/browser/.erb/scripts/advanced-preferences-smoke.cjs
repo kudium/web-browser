@@ -1,7 +1,7 @@
 // Native engine regression using disposable sessions, local websites and a local proxy.
 const {app,BrowserWindow,session}=require('electron');
 const assert=require('assert'),fs=require('fs'),path=require('path'),os=require('os'),http=require('http');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-advanced-'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-advanced-'));
 app.setPath('userData',root);
 require('esbuild').buildSync({entryPoints:['src/main/advancedPreferences.ts'],bundle:true,platform:'node',external:['electron','./siteData'],outfile:path.join(root,'advanced.cjs')});
 fs.writeFileSync(path.join(root,'siteData.js'),'exports.clearSessionSiteData = session => session.clearData({dataTypes:["cookies","localStorage","indexedDB","serviceWorkers"]});');
@@ -26,7 +26,7 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
   await Promise.all([listen(server),listen(proxy),app.whenReady()]);
   const url=`http://127.0.0.1:${server.address().port}/`;
-  const profile=session.fromPartition('persist:touchbox-fixture');
+  const profile=session.fromPartition('persist:kudiumbrowser-fixture');
   const window=new BrowserWindow({show:false,webPreferences:{session:profile,sandbox:true}});
   const c=window.webContents;
   const settings={...defaultAdvanced,acceptLanguages:'en-CA,fr',webrtc:'disable_non_proxied_udp'};
@@ -54,7 +54,7 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   runtime.applyAdvancedContents(c,settings,'work');await runtime.waitForBrowserNetwork(c);
   const response=await profile.fetch('http://not-a-real-host.test/proxy-fixture');
   assert.equal(await response.text(),'proxy reached');assert.equal(proxyCalls,1,'Session must route through selected proxy');
-  const direct=session.fromPartition('persist:touchbox-direct');const second=new BrowserWindow({show:false,webPreferences:{session:direct,sandbox:true}});
+  const direct=session.fromPartition('persist:kudiumbrowser-direct');const second=new BrowserWindow({show:false,webPreferences:{session:direct,sandbox:true}});
   runtime.applyAdvancedContents(second.webContents,settings,'personal');await runtime.waitForBrowserNetwork(second.webContents);
   await direct.fetch(url);assert.equal(proxyCalls,1,'Other sessions must inherit the global system proxy');
   console.log('PASS: clean cross-site identity, language headers, WebRTC policy, inline/external script and image blocking, site exception/zoom, HTTP cookie filtering, and isolated proxy routing');

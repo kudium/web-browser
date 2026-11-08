@@ -1,0 +1,11 @@
+# Local storage encryption
+
+Before opening stores or windows, startup initializes the asynchronous Electron OS encryptor and a random 256-bit data key. The native identity is frozen as `Kudium Browser`, with the selected userData path preserved. Marketing branding must use display titles rather than changing the native identity.
+
+`secure-storage/key.json` stores the OS-wrapped key and versioned metadata. Local AI data, remembered provider keys, OS credentials and vault summaries use authenticated AES-256-GCM format-1 envelopes. The master-password-encrypted vault body retains its format. OS key changes rewrap the same data key and archive the earlier wrapped-key JSON; unreadable keys are never replaced. The unwrapped key stays in main-process memory and is cleared on shutdown.
+
+Legacy conversion preserves encrypted originals and the wrapped key in a durable migration transaction, validates supported schemas and exact plaintext round-trip equality, stages replacements, checks source hashes, commits per file and resumes after interruption. Unsupported versions and unreadable records remain preserved and unavailable to their stores. Persistent secrets are disabled when OS encryption is unavailable or uses `basic_text`; the browser can still start. Two distinct healthy launch receipts do not delete backups. Already-converted records do not acquire retroactive original backups.
+
+Development-only legacy identity recovery uses a separate Electron helper with private parent IPC, no plaintext logging or disk writes, and no release execution. Native tests use disposable profiles. OS identity, profile, signer and keychain continuity must also be tested with actual previous signed releases; development success alone is insufficient.
+
+See the [migration and release safety specification](../specs/storage-migration-and-release-safety.md) for contracts, recovery commands, future format requirements, retention and release evidence. Recovery exports contain an older encrypted snapshot plus its wrapped key; retain the active profile because later edits are not included. Electron-owned cookies/native databases require separate signed upgrade checks and an offline full-profile backup.

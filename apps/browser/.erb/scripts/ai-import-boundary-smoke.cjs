@@ -2,7 +2,7 @@
 const fs=require('fs'),path=require('path'),os=require('os'),crypto=require('crypto'),assert=require('assert/strict');
 const {app,BrowserWindow,ipcMain,dialog}=require('electron');
 const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after';assert(['before','after'].includes(phase));
-const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-import-boundary-'));app.setPath('userData',temporary);
+const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-import-boundary-'));app.setPath('userData',temporary);
 const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
 const sourceFiles=['src/main/ai.ts','src/main/aiComposer.ts'];
 const source=file=>fs.readFileSync(path.join(root,phase==='before'?'docs/benchmarks/baselines/ai-imports/'+path.basename(file)+'.txt':file),'utf8');
@@ -19,6 +19,7 @@ async function run(){
  const ai=require(bundle),originalAdd=ai.AIComposerAttachments.prototype.add;
  ai.AIComposerAttachments.prototype.add=async function(...args){store=this;addCount+=1;if(paused&&addCount===paused.at){paused.entered.resolve();await paused.release.promise}return originalAdd.apply(this,args)};
  host=new BrowserWindow({show:false,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});await host.loadURL('data:text/html,Import fixture');
+ await ai.initializeLocalStorage();
  dispose=ai.registerAI(host,{tabs:()=>[],focused:()=>undefined,contents:()=>undefined});
  const event=()=>({sender:host.webContents,senderFrame:host.webContents.mainFrame});
  const call=(channel,...args)=>handlers.get(channel)(event(),...args);

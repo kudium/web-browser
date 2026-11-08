@@ -21,18 +21,18 @@ it('validates templates and safely encodes custom searches', () => {
   ).toThrow('%s');
   expect(() => validateSearchEngines([])).toThrow();
   localStorage.setItem(
-    'touchbox-search-engines',
+    'kudiumbrowser-search-engines',
     JSON.stringify([
       {
         id: 'custom',
         name: 'Custom',
-        url: 'https://example.com/search?q=%s&source=touchbox',
+        url: 'https://example.com/search?q=%s&source=kudiumbrowser',
       },
     ])
   );
-  localStorage.setItem('touchbox-search-engine', 'custom');
+  localStorage.setItem('kudiumbrowser-search-engine', 'custom');
   expect(resolveAddress('coffee & tea')).toBe(
-    'https://example.com/search?q=coffee%20%26%20tea&source=touchbox'
+    'https://example.com/search?q=coffee%20%26%20tea&source=kudiumbrowser'
   );
   localStorage.clear();
 });

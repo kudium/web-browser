@@ -51,7 +51,7 @@
   ],
   "limitations": [
     "Single runs are not latency distributions or broad performance evidence.",
-    "Internal TouchBox comparison; not an Ego comparison.",
+    "Internal KudiumBrowser comparison; not an Ego comparison.",
     "Two-endpoint drags retain twelve steps. Sparse zigzag paths still require more movements."
   ],
   "reproduction": {

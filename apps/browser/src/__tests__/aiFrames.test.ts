@@ -71,7 +71,7 @@ it('routes isolated frame programs to the owning renderer group', async () => {
   ).resolves.toEqual({ observed: true });
   expect(send).toHaveBeenCalledWith(
     'Page.createIsolatedWorld',
-    { frameId: 'child', worldName: 'touchbox-ai-control' },
+    { frameId: 'child', worldName: 'kudiumbrowser-ai-control' },
     'child-session'
   );
   expect(send).toHaveBeenCalledWith(
@@ -278,7 +278,7 @@ it('executes adopted main-page programs in the same stable isolated world as fra
   );
   expect(send).toHaveBeenCalledWith('Page.createIsolatedWorld', {
     frameId: 'parent',
-    worldName: 'touchbox-ai-control',
+    worldName: 'kudiumbrowser-ai-control',
   });
   expect(send).toHaveBeenCalledWith('Runtime.evaluate', {
     expression: 'fixedProgram()',

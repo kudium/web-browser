@@ -68,7 +68,7 @@ window.showAIPointer=point=>{
   clearTimeout(hideTimer);hideTimer=setTimeout(()=>pointer.classList.remove('visible'),2400);
 };
 window.resetAIActivity=()=>{clearTimeout(hideTimer);clearTimeout(clickTimer);pointer.className='agent-pointer';button.disabled=false;endDrag()};
-button.addEventListener('click',event=>{if(!event.isTrusted||button.disabled)return;button.disabled=true;console.debug('touchbox-ai-explicit-takeover')});
+button.addEventListener('click',event=>{if(!event.isTrusted||button.disabled)return;button.disabled=true;console.debug('kudiumbrowser-ai-explicit-takeover')});
 addEventListener('wheel',event=>event.preventDefault(),{passive:false});
 addEventListener('keydown',event=>{if(event.key==='Tab'||event.target===button||event.target===handle)return;event.preventDefault()});
 </script></body></html>`;

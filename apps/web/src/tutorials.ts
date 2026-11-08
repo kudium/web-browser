@@ -6,6 +6,8 @@ export type Tutorial = {
   path: string;
   steps: [string, string][];
   image?: string;
+  imageAlt?: string;
+  imageCaption?: string;
   note?: string;
 };
 export const tutorials: Tutorial[] = [
@@ -165,6 +167,23 @@ export const tutorials: Tutorial[] = [
       ],
     ],
     note: "A configured model is required. Demo photography does not fabricate a successful live AI response.",
+  },
+  {
+    slug: "ai-active-tabs",
+    title: "Track the tabs AI is working on",
+    category: "AI",
+    summary: "See AI activity, inspect the working tabs, and jump straight to a page.",
+    path: "Browser → AI button → Assistant → Active AI tabs",
+    image: "ai-active-tabs",
+    imageAlt: "Kudium’s AI activity popup with two sample tabs, their icons, an Active now indicator, and the animated-border badge above the input",
+    imageCaption: "Actual activity controls with two illustrative sample tabs. Click to enlarge.",
+    steps: [
+      ["Watch the AI button", "While AI works with pages, the existing AI button in the browser toolbar shows a count of tabs used in the current run. Select it to open the AI panel, then choose Assistant."],
+      ["Open Active AI tabs", "Above the Assistant input, select the Active AI tabs badge. Its animated color border and spinner indicate activity. The popup lists tab icons and titles."],
+      ["Read each tab’s status", "Active now marks the page AI is currently using. Used in this run marks a page it has already worked with during this run. The count includes both; it does not mean every listed page is being used simultaneously."],
+      ["Jump to a working page", "Select a tab row to open that page and close the popup. The list follows AI activity and clears when the run finishes or AI hands control back."],
+    ],
+    note: "The illustration uses sample activity, not a live AI response. With reduced motion enabled, the border and spinner stay still. Only tabs the AI has used appear here; this is not a list of every tab it can access.",
   },
   {
     slug: "ai-permissions",
@@ -470,29 +489,17 @@ export const tutorials: Tutorial[] = [
   },
   {
     slug: "sync-and-updates",
-    title: "Understand sync and updates",
+    title: "Sync your browser across devices",
     category: "Settings",
-    summary: "Check what is available in the current build.",
-    path: "Settings → Sync / About Kudium Browser",
+    summary: "Connect your Kudium account and protect your synced browsing data.",
+    path: "Preferences → Sync",
     steps: [
-      [
-        "Inspect Sync",
-        "Open Settings → Sync and read the current provider and connection state.",
-      ],
-      [
-        "Check availability",
-        "The Kudium account backend exists, but desktop account connection and encryption-key onboarding are not complete. Website sign-in does not activate desktop sync.",
-      ],
-      [
-        "Check your version",
-        "Open About Kudium Browser for version and engine information.",
-      ],
-      [
-        "Read service details",
-        "Use the backend documentation for update manifests, encrypted record storage and deployment configuration.",
-      ],
+      ["Connect your account", "Open Preferences → Sync → Connect account. Sign in on browser.kudium.com, compare the device code with Preferences, and approve only a connection you started."],
+      ["Save your recovery key", "On your first device, save the recovery key in your password manager, confirm that you saved it, and select Start encrypted sync. On another device, sign in and enter that same key. Kudium’s server cannot recover the key."],
+      ["Choose what to sync", "Select workspace organization, open tabs, portable browser preferences, and optional Kudium saved passwords. Unlock Personal Data and choose Sync saved passwords to upload logins; restore them explicitly on another device. Sync uploads encrypted per-device snapshots periodically. You can pause sync or disconnect at any time."],
+      ["Continue on another device", "Use Sync now to refresh. Choose Restore as new groups for another device’s workspace, or Use preferences to apply its portable preferences. Existing local tabs are kept."],
     ],
-    note: "No published website download builds are available yet. Do not treat a sync placeholder as a completed two-device workflow.",
+    note: "This flow requires the updated desktop build and the deployed device-authorization backend. iCloud is a separate integration and remains unavailable. Apple iCloud Passwords requires Apple approval for Kudium. Group-only credentials, passkeys, cookies, AI API keys, and AI chat history remain local.",
   },
 ];
 

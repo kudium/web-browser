@@ -1,6 +1,6 @@
 {
   "measuredAt": "2026-11-05T15:11:20.119Z",
-  "touchboxFormat": "compact",
+  "kudiumbrowserFormat": "compact",
   "compactWait": true,
   "fixture": "100 buttons plus Name / Apply form; each Apply awaits localhost response delayed 75ms",
   "environment": {
@@ -11,18 +11,18 @@
     "egoGuide": "2.2.0",
     "cpu": "Apple M1 Max"
   },
-  "method": "Interleaved SDK/MCP calls on one machine; first observation reported separately, two warmups excluded, 20 measured rounds per operation. Dynamic workflow waits for a 75ms localhost response and verifies final status. TouchBox uses five public API calls with compactWait, six otherwise; Ego uses five. No AI inference or CLI process startup included.",
+  "method": "Interleaved SDK/MCP calls on one machine; first observation reported separately, two warmups excluded, 20 measured rounds per operation. Dynamic workflow waits for a 75ms localhost response and verifies final status. KudiumBrowser uses five public API calls with compactWait, six otherwise; Ego uses five. No AI inference or CLI process startup included.",
   "limitations": [
-    "TouchBox uses authenticated localhost Streamable HTTP MCP; Ego uses its documented Page SDK transport. These are different transport paths.",
-    "TouchBox native approval dialogs are accepted by a fixture stub; no human decision latency included.",
-    "TouchBox compact wait returns the final observation directly. Both products use five public API calls per workflow.",
+    "KudiumBrowser uses authenticated localhost Streamable HTTP MCP; Ego uses its documented Page SDK transport. These are different transport paths.",
+    "KudiumBrowser native approval dialogs are accepted by a fixture stub; no human decision latency included.",
+    "KudiumBrowser compact wait returns the final observation directly. Both products use five public API calls per workflow.",
     "The localhost response has a controlled 75ms delay; this is a dynamic DOM/network fixture, not a remote production application.",
-    "Snapshots have different semantic schemas. Fixture fits the viewport; Ego uses full_page and TouchBox discovers all 102 controls (below its 250 cap).",
+    "Snapshots have different semantic schemas. Fixture fits the viewport; Ego uses full_page and KudiumBrowser discovers all 102 controls (below its 250 cap).",
     "One local static fixture cannot establish complete parity or general browser superiority."
   ],
   "failures": 0,
   "retries": 0,
-  "touchbox": {
+  "kudiumbrowser": {
     "cold": {
       "ms": 11.583083999999872,
       "bytes": 6141,

@@ -6,6 +6,10 @@ import {
 import { hookScriptHash } from '../main/hookNotifications';
 import { aiToolParameters } from '../browser/aiToolSchemas';
 
+jest.mock('../main/localStorage', () => ({
+  safeStorage: jest.requireMock('electron').safeStorage,
+}));
+
 const hook = {
   id: 'account',
   name: 'Account',

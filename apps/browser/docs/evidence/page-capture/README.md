@@ -7,7 +7,7 @@ The user-facing service reuses the AI's compositor/protocol PNG helper; AI paylo
 Verification:
 
 ```sh
-TOUCHBOX_SMOKE_OUTPUT=docs/evidence/page-capture \
+KUDIUMBROWSER_SMOKE_OUTPUT=docs/evidence/page-capture \
 node_modules/electron/dist/Electron.app/Contents/MacOS/Electron \
 .erb/scripts/browser-ui-smoke.cjs --page-capture-only
 ```

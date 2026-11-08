@@ -13,7 +13,7 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
   key: K,
   fallback: AIPagePreferences[K]
 ) {
-  const storageKey = `touchbox-ai-page-${key}`;
+  const storageKey = `kudiumbrowser-ai-page-${key}`;
   const [value, setValue] = useState<AIPagePreferences[K]>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');

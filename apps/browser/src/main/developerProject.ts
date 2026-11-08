@@ -7,9 +7,15 @@ import type {
   DeveloperProject,
   ProjectAction,
 } from '../browser/developerProject';
+import {
+  updateBrowserProjectContext,
+  BrowserProjectGroup,
+} from './browserProjectContext';
 import { writePrivateFile } from './privateFile';
 import { openProjectEditor } from './projectEditors';
 import { openSystemTerminal } from './projectSystemTerminal';
+
+import { getBrowserPreferences } from './preferences';
 
 const run = promisify(execFile);
 const filename = () =>
@@ -32,6 +38,19 @@ function read(): Record<string, string> {
 }
 export function linkedProjectFolder(key: string) {
   return read()[key];
+}
+export function linkProjectFolder(
+  key: string,
+  folder: string,
+  group: BrowserProjectGroup
+) {
+  const previous = read()[key];
+  const next = { ...read(), [key]: folder };
+  if (getBrowserPreferences().writeBrowserInstructions)
+    updateBrowserProjectContext(folder, key, group);
+  if (previous && previous !== folder && fs.existsSync(previous))
+    updateBrowserProjectContext(previous, key, null);
+  writePrivateFile(filename(), JSON.stringify(next));
 }
 export function repositoryURL(remote: string): string | undefined {
   try {
@@ -118,27 +137,39 @@ export async function projectAction(
   action: ProjectAction,
   ensureAccess: () => void,
   editorId?: string,
-  folderPath?: string
+  folderPath?: string,
+  group?: BrowserProjectGroup
 ): Promise<DeveloperProject | null> {
   ensureAccess();
-  if (action === 'link') {
-    const result = await dialog.showOpenDialog(host, {
-      title: 'Link project folder',
-      buttonLabel: 'Link folder',
-      properties: ['openDirectory'],
-    });
+  if (action === 'link' || action === 'choose-folder') {
+    const result = folderPath
+      ? { canceled: false, filePaths: [folderPath] }
+      : await dialog.showOpenDialog(host, {
+          title: 'Link project folder',
+          buttonLabel: 'Link folder',
+          properties: ['openDirectory'],
+        });
     ensureAccess();
     if (!result.canceled && result.filePaths[0]) {
       const folder = await fs.promises.realpath(result.filePaths[0]);
       if (!(await fs.promises.stat(folder)).isDirectory())
         throw new Error('Choose a project folder.');
-      const next = { ...read(), [key]: folder };
       ensureAccess();
-      writePrivateFile(filename(), JSON.stringify(next));
+      if (action === 'choose-folder')
+        return { name: path.basename(folder), path: folder, available: true };
+      linkProjectFolder(
+        key,
+        folder,
+        group || { name: path.basename(folder), slug: '' }
+      );
     }
   }
+  if (action === 'choose-folder') return null;
   if (action === 'unlink') {
     const next = read();
+    const previous = next[key];
+    if (previous && fs.existsSync(previous))
+      updateBrowserProjectContext(previous, key, null);
     delete next[key];
     writePrivateFile(filename(), JSON.stringify(next));
   }
@@ -146,6 +177,14 @@ export async function projectAction(
   if (!folder) return null;
   const project = await describe(folder);
   ensureAccess();
+  if (
+    action === 'get' &&
+    project.available &&
+    group &&
+    getBrowserPreferences().writeBrowserInstructions
+  )
+    if (getBrowserPreferences().writeBrowserInstructions)
+      updateBrowserProjectContext(folder, key, group);
   if (['get', 'link', 'unlink'].includes(action)) return project;
   if (!project.available)
     throw new Error(

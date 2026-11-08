@@ -16,7 +16,7 @@ const root = path.resolve(__dirname, '../..'),
   scenario = process.argv[3] || 'selected';
 assert(['before', 'after'].includes(phase));
 const temporary = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'touchbox-owned-install-')
+  path.join(os.tmpdir(), 'kudiumbrowser-owned-install-')
 );
 app.setPath('userData', temporary);
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');

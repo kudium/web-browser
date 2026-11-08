@@ -1,4 +1,4 @@
-# TouchBox production readiness review
+# Kudium Browser production readiness review
 
 Current privacy scope (user-confirmed November 7): approved websites may process
 shared saved data through their own services. Recipient-specific disclosure and
@@ -28,11 +28,11 @@ tabs or preferences were changed.
   popup dismissal and narrow-window behavior in Arc.
 - [ ] Inspect folder context menus and drag/reorder in a disposable space.
 - [ ] Compare profile switching, keyboard traversal and website/browser shortcut
-  priority; document each observed behavior before choosing TouchBox changes.
+  priority; document each observed behavior before choosing Kudium Browser changes.
 
 ## Extension toolbar findings and fixes
 
-TouchBox places extension actions beside Preferences at the top right. Its
+Kudium Browser places extension actions beside Preferences at the top right. Its
 Electron dependency previously retained the old profile observer when React
 changed the partition attribute. `connectedCallback` subscribes and
 `disconnectedCallback` releases the observer, while `attributeChangedCallback`
@@ -70,7 +70,7 @@ run on profile switches. Same-profile tab changes keep the observer.
 - [ ] Verify passkey/Apple entitlement boundaries; do not claim pending vendor
   integration works (passkeys-and-browser-security.md).
 - [ ] Verify opt-in iCloud sync, conflict handling and sensitive-data boundaries;
-  dedicated TouchBox sync API remains planned per user instruction.
+  dedicated Kudium Browser sync API remains planned per user instruction.
 - [ ] Review production dependency vulnerabilities and supported Electron release.
 - [ ] Packaged app startup, signing/notarization, updates and recovery behavior.
 - [ ] Full unit/type/lint gates plus appropriately scoped desktop regressions.
@@ -185,7 +185,7 @@ The space-title Electron check also verifies collapsed-space persistence after
 reload, then native menu/rename and responsive layout behavior. Whole-project
 lint/types and production build pass for this sidebar change.
 
-## Arc extension menu and TouchBox toolbar
+## Arc extension menu and Kudium Browser toolbar
 
 Arc's Extensions menu was successfully opened after unlock. Observed: installed
 extensions form a compact list, followed by “Add Extension…” and “Manage
@@ -194,7 +194,7 @@ popup geometry, pinning and folder menus remain unverified. Screenshot capture
 was unavailable for Arc. No extension access or user configuration was changed.
 
 - [x] Inspect Arc's top-level extension-menu list and add/manage grouping.
-- [x] TouchBox dedicated Extensions toolbar button opens the native management
+- [x] Kudium Browser dedicated Extensions toolbar button opens the native management
   menu directly, using the selected session's effective login profile.
 - [x] Add live Appearance preference “Show extension icons in toolbar”; hiding
   icons removes the action-list observer but retains the management button.
@@ -263,8 +263,8 @@ memory. Atomic writes update the cache only after rename succeeds.
   This measures lookup CPU/I/O cost, not whole-browser navigation or GPU cost.
 - [x] Whole-project lint/types, focused permissions/browser tests and build pass.
 
-Site settings changes through TouchBox apply immediately; manual edits to this
-internal JSON file require restarting TouchBox. No live external-file editor or
+Site settings changes through Kudium Browser apply immediately; manual edits to this
+internal JSON file require restarting Kudium Browser. No live external-file editor or
 watcher is provided, and no file I/O is added to the hot lookup path.
 
 Electron `--site-settings-only` passes: responsive dialog, connection details,
@@ -413,7 +413,7 @@ stress and packaged release checks remain open.
   (`^22.22.2 || ^24.15.0 || >=26.0.0`).
 - [x] Build a local unsigned macOS arm64 directory app using electron-builder
   26.15.3 / Electron 45.0.0, with publishing disabled and signing explicitly null.
-- [x] Inspect real bundle: `com.kudium.touchbox`, main/preload/renderer entries
+- [x] Inspect real bundle: `com.kudium.kudiumbrowser`, main/preload/renderer entries
   present, retired catalog absent from resources and development fixture excluded.
 - [x] Launch actual packaged executable with disposable `--user-data-dir`.
   Inspector evidence confirms that profile, ready/visible/non-loading main window,

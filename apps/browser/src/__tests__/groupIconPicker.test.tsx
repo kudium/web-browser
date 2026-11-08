@@ -98,57 +98,43 @@ it('preserves the icon when image selection is cancelled or fails and restores t
   expect(AppManager.getAll()[0].sessionIconImage).toBeUndefined();
 });
 
-it('saves an optional home page and lets it be cleared without blocking other settings', async () => {
-  const item = AppManager.getAll()[0];
+it('edits tab addresses directly and preserves group identity', async () => {
   const close = jest.fn();
-  const { unmount } = render(
+  render(
     <Theme>
-      <GroupEditor item={item} close={close} />
+      <GroupEditor item={AppManager.getAll()[0]} close={close} />
     </Theme>
   );
-  fireEvent.change(screen.getByLabelText('Group home page'), {
+  fireEvent.change(screen.getByLabelText('Tab address: Work'), {
     target: { value: 'https://example.com/home' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
   await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
-  expect(AppManager.getAll()[0].sessionHomeURL).toBe(
-    'https://example.com/home'
-  );
-  unmount();
-  render(
-    <Theme>
-      <GroupEditor item={AppManager.getAll()[0]} close={close} />
-    </Theme>
-  );
-  fireEvent.change(screen.getByLabelText('Group home page'), {
-    target: { value: '' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-  await waitFor(() => expect(close).toHaveBeenCalledTimes(2));
-  expect(AppManager.getAll()[0].sessionHomeURL).toBeUndefined();
+  expect(AppManager.getAll()[0].url).toBe('https://example.com/home');
+  expect(AppManager.getAll()[0].sessionId).toBe('work');
 });
-
-it('shows a useful error for an invalid home page even when Advanced is collapsed', async () => {
+it('rejects non-web tab addresses without saving', async () => {
   const close = jest.fn();
   render(
     <Theme>
       <GroupEditor item={AppManager.getAll()[0]} close={close} />
     </Theme>
   );
-  fireEvent.change(screen.getByLabelText('Group home page'), {
-    target: { value: 'broken address' },
+  fireEvent.change(screen.getByLabelText('Tab address: Work'), {
+    target: { value: 'javascript:alert(1)' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Enter a full home-page URL, or leave it blank.'
+    'Use an HTTP or HTTPS tab address.'
   );
   expect(close).not.toHaveBeenCalled();
+  expect(AppManager.getAll()[0].url).toBe('https://example.com');
 });
 
 it('opens Developer for this group without saving the group settings form', async () => {
   const close = jest.fn();
   const opened = jest.fn();
-  window.addEventListener('touchbox-open-group-developer', opened);
+  window.addEventListener('kudiumbrowser-open-group-developer', opened);
   try {
     render(
       <Theme>
@@ -160,6 +146,6 @@ it('opens Developer for this group without saving the group settings form', asyn
     expect(opened.mock.calls[0][0].detail).toBe('work');
     expect(close).toHaveBeenCalledTimes(1);
   } finally {
-    window.removeEventListener('touchbox-open-group-developer', opened);
+    window.removeEventListener('kudiumbrowser-open-group-developer', opened);
   }
 });

@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { serviceOrigin } from "./config";
 import { tutorials, type Tutorial } from "./tutorials";
+const githubUrl = "https://github.com/kudium/web-browser";
+const sponsorsUrl = "https://github.com/sponsors/kudium";
 function Layout({
   children,
   docs = false,
@@ -41,7 +43,7 @@ function Layout({
           />
         )}
         <link rel="icon" href="/assets/product/origin-logo.png" />
-        <link rel="stylesheet" href="/assets/site.css?v=12" />
+        <link rel="stylesheet" href="/assets/site.css?v=14" />
       </head>
       <body>
         <header>
@@ -74,9 +76,11 @@ function Layout({
           <a className="brand" href="/">
             Kudium
           </a>
-          <span>A little more room for you.</span>
+          <span>Free and open source.</span>
           <a href="/tutorials">Tutorials</a>
           <a href="/docs">Documentation</a>
+          <a href={githubUrl}>GitHub</a>
+          <a href={sponsorsUrl}>Support Kudium</a>
         </footer>
       </body>
     </html>
@@ -112,7 +116,7 @@ export function homepage() {
                 {[
                   [
                     "design-workspace",
-                    "Your day. Beautifully organised.",
+                    "Organise your day with tab groups.",
                     "Social, work, design, development, and reading. Five groups, twenty everyday tabs, and your favorite tools within reach.",
                   ],
                   [
@@ -122,27 +126,32 @@ export function homepage() {
                   ],
                   [
                     "social-workspace",
-                    "Your favourite corners of the internet.",
+                    "Keep your social tabs together.",
                     "YouTube, Reddit, Instagram, and LinkedIn. Keep your social tabs together, with a separate home for work.",
                   ],
                   [
                     "ai-context",
-                    "A little help. Right where you work.",
+                    "Chat with AI beside your page.",
                     "Keep your page in view while you bring a project brief into the AI sidebar and plan your next move.",
                   ],
                   [
+                    "ai-active-tabs",
+                    "See which tabs AI is working on.",
+                    "Open Active AI tabs above the Assistant input to see tab icons, activity status, and a shortcut to each page. Illustrated with two sample tabs.",
+                  ],
+                  [
                     "developer-workspace",
-                    "From browsing to building.",
+                    "Link your project to a tab group.",
                     "Link a local project to your development group. Keep its files and tools beside the web.",
                   ],
                   [
                     "developer-files",
-                    "Your project, within reach.",
+                    "Browse and edit your project files.",
                     "Browse folders, filter files, and edit source without losing your place.",
                   ],
                   [
                     "developer-terminal",
-                    "Less switching. More shipping.",
+                    "Run and test in the built-in terminal.",
                     "Run commands and check your project in the built-in terminal. This is a real test run.",
                   ],
                 ].map(([image, title, description], index) => (
@@ -150,7 +159,7 @@ export function homepage() {
                     className="hero-slide"
                     id={`workflow-${index}`}
                     key={image}
-                    aria-label={`${index + 1} of 7`}
+                    aria-label={`${index + 1} of 8`}
                   >
                     <div className="hero-screen">
                       <img
@@ -173,6 +182,7 @@ export function homepage() {
                             "sidebar-and-group-picker",
                             "spaces-and-groups",
                             "ai-assistant",
+                            "ai-active-tabs",
                             "developer-project",
                             "file-manager",
                             "project-terminal",
@@ -199,6 +209,7 @@ export function homepage() {
                     "Focus",
                     "Social",
                     "AI assistant",
+                    "AI activity",
                     "Developer",
                     "Files",
                     "Terminal",
@@ -223,11 +234,6 @@ export function homepage() {
               </div>
             </div>
             <script src="/assets/showcase.js?v=2" defer />
-            <p className="hero-platforms">
-              Available for macOS, Windows, and Linux.
-              <br />
-              <span>Downloads open as builds are published.</span>
-            </p>
           </section>
           <section
             className="product-chapter focus-chapter"
@@ -236,19 +242,20 @@ export function homepage() {
           >
             <div className="chapter-heading">
               <h2 id="focus-title">
-                Your tabs, together.
+                Separate groups.
                 <br />
-                Your page, wide open.
+                Separate logins.
               </h2>
               <p>
-                Give work, socials, and side projects their own groups. Hide the
-                sidebar when it’s time to focus. Everything stays a click away.
+                Each tab group can keep its own website logins. Stay signed in to
+                work and personal accounts side by side, then switch groups
+                without signing out or opening another browser window.
               </p>
               <a
                 className="text-link"
-                href="/tutorials/sidebar-and-group-picker"
+                href="/tutorials/spaces-and-groups"
               >
-                Explore focused browsing <span aria-hidden="true">›</span>
+                Explore groups and separate logins <span aria-hidden="true">›</span>
               </a>
             </div>
             <div className="sidebar-demo" aria-label="Compare sidebar layouts">
@@ -303,7 +310,7 @@ export function homepage() {
               <article>
                 <div className="detail-copy">
                   <h3>
-                    Change context.
+                    Switch tab groups.
                     <br />
                     Keep your focus.
                   </h3>
@@ -331,7 +338,7 @@ export function homepage() {
               <article>
                 <div className="detail-copy">
                   <h3>
-                    Your daily essentials.
+                    Your favourite tools.
                     <br />
                     Always close.
                   </h3>
@@ -366,9 +373,9 @@ export function homepage() {
           >
             <div className="chapter-heading">
               <h2 id="developer-title">
-                Your browser.
+                Your project files.
                 <br />
-                And your next build.
+                Your browser workspace.
               </h2>
               <p>
                 Link a local project to a group. Keep documentation, a live
@@ -395,25 +402,25 @@ export function homepage() {
             <div className="developer-details">
               {[
                 [
-                  "Files that stay in context.",
+                  "Browse and edit project files.",
                   "Browse folders, filter by filename, and edit and save source in your linked local project.",
                   "file-manager",
                   "Explore files",
                 ],
                 [
-                  "A terminal that belongs here.",
+                  "Run commands in the built-in terminal.",
                   "Run commands from your project directory. Open terminal tabs and keep output beside your preview.",
                   "project-terminal",
                   "Open the terminal",
                 ],
                 [
-                  "Your repeatable commands.",
+                  "Save and run project scripts.",
                   "Save project scripts for the work you run often. Give each one a clear name and working directory.",
                   "scripts-and-terminal",
                   "Set up scripts",
                 ],
                 [
-                  "Tools for the page itself.",
+                  "DevTools, website hooks and styles.",
                   "Inspect pages with DevTools. Configure website hooks and styles for the sites you work with.",
                   "devtools-and-config",
                   "Explore developer tools",
@@ -439,13 +446,20 @@ export function homepage() {
             aria-labelledby="assistant-title"
           >
             <div className="chapter-heading">
-              <h2 id="assistant-title">Stay with the idea.</h2>
+              <h2 id="assistant-title">AI help for your pages and projects.</h2>
               <p>
                 Bring a page or project brief into the conversation. Your
                 assistant sits beside the web, with your context close at hand.
               </p>
               <a className="text-link" href="/tutorials/ai-assistant">
                 Meet the assistant <span aria-hidden="true">›</span>
+              </a>
+              <p>
+                Follow the count on the AI button, then open Active AI tabs above
+                the Assistant input to see which page is active and jump to it.
+              </p>
+              <a className="text-link" href="/tutorials/ai-active-tabs">
+                Track AI tabs <span aria-hidden="true">›</span>
               </a>
             </div>
             <figure className="chapter-screen">
@@ -464,52 +478,45 @@ export function homepage() {
           </section>
           <section className="campaign-download" id="download">
             <div className="download-heading">
-              <img
-                src="/assets/product/origin-logo.png"
-                width="42"
-                height="46"
-                alt=""
-                loading="lazy"
-              />
-              <h2>Find your new space.</h2>
-              <p>One browser. A world of possibilities.</p>
+              <h2>Download Kudium Browser.</h2>
+              <p>Your tabs, AI, and projects. Together.</p>
             </div>
             <div className="platform-grid">
               {(["darwin", "win32", "linux"] as const).map((platform, i) => (
                 <article key={platform}>
                   <h3>{["macOS", "Windows", "Linux"][i]}</h3>
-                  <p>
-                    {
-                      [
-                        "For Apple silicon and Intel.",
-                        "For ARM and Intel / AMD.",
-                        "For ARM and Intel / AMD.",
-                      ][i]
-                    }
-                  </p>
                   <a
                     className="platform-link"
                     href={`/download/${platform}/arm64`}
                   >
-                    {i === 0 ? "Apple silicon" : "ARM64"}{" "}
-                    <span aria-hidden="true">↓</span>
+                    {i === 0 ? "Apple silicon" : "ARM64"}
                   </a>
                   <a
                     className="platform-link"
                     href={`/download/${platform}/x64`}
                   >
-                    {i === 0 ? "Intel Mac" : "Intel / AMD"}{" "}
-                    <span aria-hidden="true">↓</span>
+                    {i === 0 ? "Intel Mac" : "Intel / AMD"}
                   </a>
                 </article>
               ))}
             </div>
             <p className="availability">
-              Builds become available here when a release is published.{" "}
+              Free and open source.{" "}
               <a href="/docs#updates">
-                About updates <span aria-hidden="true">›</span>
+                About updates
               </a>
             </p>
+          </section>
+          <section className="community-section" aria-labelledby="community-title">
+            <h2 id="community-title">Made better, together.</h2>
+            <p>
+              Support the project or help build what comes next.
+            </p>
+            <div className="community-links">
+              <a className="text-link" href={sponsorsUrl}>Sponsor</a>
+              <a className="text-link" href={`${githubUrl}/issues`}>Report an issue</a>
+              <a className="text-link" href={`${githubUrl}/pulls`}>Contribute</a>
+            </div>
           </section>
         </main>
       </Layout>
@@ -523,7 +530,7 @@ export function documentation() {
       <Layout docs>
         <main className="docs-layout">
           <aside className="docs-nav">
-            <span className="eyebrow">DOCUMENTATION</span>
+
             <a href="/tutorials">Browser tutorials ↗</a>
             <a href="#overview">Service overview</a>
             <a href="#updates">App updates</a>
@@ -533,20 +540,16 @@ export function documentation() {
           </aside>
           <div className="docs-content">
             <section id="overview">
-              <span className="eyebrow">BUILD WITH KUDIUM</span>
+
               <h1>
-                A workspace.
-                <br />A connected foundation.
+                Kudium service documentation.
               </h1>
               <p className="lead">
                 A Bun + Hono service for release distribution, encrypted sync
                 records and these React pages.
               </p>
               <div className="callout">
-                Desktop updates currently use GitHub Releases. Account sync in
-                the desktop app is still a setup placeholder. This service
-                provides the backend; connecting desktop accounts and
-                provisioning encryption keys are separate steps.
+                Desktop account sync uses device approval, an on-device recovery key, and encrypted per-device snapshots. The updated app and backend must both be deployed. Native iCloud sync is a separate integration.
               </div>
             </section>
             <section id="updates">
@@ -598,9 +601,7 @@ export function documentation() {
               <div className="callout">
                 Storage accepts encrypted envelopes, but cannot verify their
                 cryptographic authenticity. Clients must authenticate and
-                decrypt incoming records. Key enrollment, recovery, device
-                revocation and desktop browser-mediated account connection are
-                not implemented by this service.
+                decrypt incoming records. Desktop sign-in uses Better Auth device authorization. The first device creates a random recovery key; another device must provide it to decrypt data. Account sessions can be revoked from the account page.
               </div>
               <p>
                 Create records with <code>If-None-Match: *</code>. Update or
@@ -732,11 +733,9 @@ export function tutorialIndex() {
       <Layout title="Tutorials" canonicalPath="/tutorials">
         <main className="tutorial-hub">
           <div className="tutorial-heading">
-            <p className="feature-label">KUDIUM BROWSER GUIDES</p>
+
             <h1>
-              Make yourself
-              <br />
-              at home.
+              Kudium Browser tutorials.
             </h1>
             <p>
               From your first tab to your next project.
@@ -770,9 +769,6 @@ export function tutorialIndex() {
                       key={t.slug}
                       href={`/tutorials/${t.slug}`}
                     >
-                      <span className="feature-label">
-                        {t.steps.length} STEPS
-                      </span>
                       <h3>{t.title}</h3>
                       <p>{t.summary}</p>
                       <span className="text-link">
@@ -784,7 +780,7 @@ export function tutorialIndex() {
             </section>
           ))}
           <div className="tutorial-service">
-            <h2>Building with the service?</h2>
+            <h2>Kudium service documentation</h2>
             <p>
               Read the backend documentation for updates, encrypted sync and
               deployment.
@@ -813,11 +809,10 @@ export function tutorialPage(tutorial: Tutorial) {
           <a className="text-link" href="/tutorials">
             ‹ All tutorials
           </a>
-          <p className="feature-label">{tutorial.category}</p>
+
           <h1>{tutorial.title}</h1>
           <p className="lead">{tutorial.summary}</p>
           <div className="tutorial-path">
-            <span>IN THE APP</span>
             <p>{tutorial.path}</p>
           </div>
           {tutorial.image && (
@@ -828,14 +823,13 @@ export function tutorialPage(tutorial: Tutorial) {
               >
                 <img
                   src={`/assets/product/demo/${tutorial.image}.webp?v=3`}
-                  alt={`${tutorial.title} in the real Kudium Browser interface with fictional Atlas Studio demo data`}
+                  alt={tutorial.imageAlt || `${tutorial.title} in the real Kudium Browser interface with fictional Atlas Studio demo data`}
                   width="1280"
                   height="800"
                 />
               </a>
               <figcaption>
-                Real app interface. Fictional Atlas Studio demo data. Click to
-                enlarge.
+                {tutorial.imageCaption || "Real app interface. Fictional Atlas Studio demo data. Click to enlarge."}
               </figcaption>
             </figure>
           )}
@@ -849,7 +843,7 @@ export function tutorialPage(tutorial: Tutorial) {
           </ol>
           {tutorial.note && <div className="callout">{tutorial.note}</div>}
           <div className="tutorial-related">
-            <h2>Keep exploring.</h2>
+            <h2>Related browser tutorials</h2>
             {related.map((t) => (
               <a key={t.slug} href={`/tutorials/${t.slug}`}>
                 {t.title} <span aria-hidden="true">›</span>
@@ -868,11 +862,9 @@ export function unavailablePage() {
     renderToStaticMarkup(
       <Layout>
         <main className="unavailable">
-          <span className="eyebrow">DOWNLOADS</span>
+
           <h1>
-            This build isn’t
-            <br />
-            published yet.
+            This download isn’t available yet.
           </h1>
           <p>There’s no release for this platform and architecture yet.</p>
           <a className="button" href="/#download">
@@ -892,12 +884,12 @@ export function authPage(
     reset = page === "reset-password",
     forgot = page === "forgot-password";
   const title = signup
-    ? "Make yourself at home."
+    ? "Create your Kudium account."
     : reset
-    ? "Choose a new password."
+    ? "Reset your Kudium password."
     : forgot
-    ? "Let’s get you back in."
-    : "Welcome back.";
+    ? "Recover your Kudium account."
+    : "Sign in to Kudium.";
   const available = configured && (!(forgot || reset) || mailEnabled);
   return (
     "<!doctype html>" +
@@ -905,7 +897,6 @@ export function authPage(
       <Layout privatePage>
         <main className="auth-layout">
           <section className="auth-intro">
-            <span className="eyebrow">YOUR KUDIUM ACCOUNT</span>
             <h1>{title}</h1>
             <p>One account for your browser workspace.</p>
             <p className="auth-note">
@@ -1021,12 +1012,10 @@ export function accountPage(
       <Layout privatePage>
         <main className="auth-layout">
           <section className="auth-intro">
-            <span className="eyebrow">YOUR WORKSPACE ACCOUNT</span>
-            <h1>Welcome, {name}.</h1>
-            <p>{email}</p>
+            <h1>Your account dashboard.</h1>
+            <p>{name} · {email}</p>
             <p className="auth-note">
-              Your account is connected. Desktop sync connection is coming in a
-              future update.
+              Connect your desktop app in Preferences → Sync. Your recovery key unlocks encrypted browsing data across devices.
             </p>
           </section>
           <section className="auth-card">
@@ -1040,6 +1029,9 @@ export function accountPage(
               Read about encrypted sync →
             </a>
             <hr />
+            <h2>Signed-in devices and sessions</h2>
+            <div data-account-sessions />
+            <p>Revoke a lost device to stop future sync access. Data already downloaded cannot be erased remotely.</p>
             <button className="button" data-sign-out>
               Sign out →
             </button>
@@ -1047,7 +1039,12 @@ export function accountPage(
           </section>
         </main>
         <script src="/assets/auth.js" defer />
+        <script src="/assets/sessions.js" defer />
       </Layout>
     )
   );
+}
+
+export function devicePage() {
+  return renderToStaticMarkup(<Layout title="Connect Kudium Browser" privatePage><main className="auth-page"><section className="auth-card"><h1>Connect your browser</h1><p>Approve only a request you started in Kudium Browser. Compare this code with the one shown in Preferences.</p><strong data-device-code></strong><p>Connecting signs this device into your account. Sync starts only after you set up your encryption key and choose what to sync in the app.</p><button data-device-approve disabled>Approve this device</button><button data-device-deny disabled>Cancel</button><p data-device-message role="status">Checking request…</p></section></main><script src="/assets/device.js" defer /></Layout>);
 }

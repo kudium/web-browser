@@ -21,10 +21,10 @@ it('restores navigation separately for each project without file contents', () =
   );
 });
 it('recovers from corrupted storage and bounds invalid metadata', () => {
-  localStorage.setItem('touchbox-file-position:broken', '{');
+  localStorage.setItem('kudiumbrowser-file-position:broken', '{');
   expect(readFilePosition('broken').folder).toBe('');
   localStorage.setItem(
-    'touchbox-file-position:bad',
+    'kudiumbrowser-file-position:bad',
     JSON.stringify({
       folder: 42,
       expanded: ['src', null],

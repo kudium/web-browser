@@ -23,11 +23,13 @@ import {
   Blocks,
   Code2,
   Info,
+  ArrowDownToLine,
 } from 'lucide-react';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import { PasswordManager } from './PasswordManager';
 import { AISettingsPage } from './AISettingsPage';
 import { GroupPicker } from '../../UI/GroupPicker';
+import { BrowserImportSettings } from './BrowserImportSettings';
 import { SyncSettings } from './SyncSettings';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { AdvancedSettings } from './AdvancedSettings';
@@ -40,11 +42,25 @@ import {
   PreferenceAction,
   PreferenceInfo,
 } from '../../../browser/preferences';
+import { AppUpdateSettings } from './AppUpdateSettings';
 import { Workspace } from './tabs/Workspace';
 import { TabOption } from './tabs/TabOption';
 
 // Add a navigation entry here and preference controls in browser/preferences.ts.
 const sections = [
+  {
+    id: 'updates',
+    title: 'Updates',
+    icon: Download,
+    description: 'Check for new versions, download updates and choose when to restart and install.',
+  },
+  {
+    id: 'import',
+    title: 'Import from a browser',
+    icon: ArrowDownToLine,
+    description:
+      'Import bookmarks or links from your default browser, Arc, Chrome, Dia, Edge, Safari, Firefox, and other browsers.',
+  },
   {
     id: 'network',
     title: 'Network',
@@ -163,6 +179,7 @@ const sections = [
 const sectionOrder = [
   'search',
   'sync',
+  'import',
   'appearance',
   'startup',
   'ai',
@@ -178,6 +195,7 @@ const sectionOrder = [
   'network',
   'compatibility',
   'developer',
+  'updates',
   'about',
 ];
 export const preferenceSections = sectionOrder.map(
@@ -437,6 +455,8 @@ export function Settings() {
                 {item.description}
               </PreferenceHint>
             </header>
+            {item.id === 'updates' && <AppUpdateSettings />}
+            {item.id === 'import' && <BrowserImportSettings />}
             {item.id === 'ai' && <AISettingsPage />}
             {item.id === 'passwords' && <PasswordManager />}
             <div
@@ -445,6 +465,7 @@ export function Settings() {
                   'ai',
                   'passwords',
                   'sync',
+                  'import',
                   'apps',
                   'spaces',
                   'archive',
@@ -829,7 +850,7 @@ export function Settings() {
                       <strong>Kudium Browser</strong>
                       <p>By Kudium</p>
                       <p>
-                        Version {info?.versions.touchbox || '—'} · Electron{' '}
+                        Version {info?.versions.kudiumbrowser || '—'} · Electron{' '}
                         {info?.versions.engine || '—'} · Chromium{' '}
                         {info?.versions.chromium || '—'}
                       </p>

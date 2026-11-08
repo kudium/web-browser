@@ -89,8 +89,8 @@ production hardening gate; they are not controlled by the main inspector fuse.
 Reproduce the local package with:
 
 ```sh
-node node_modules/electron-builder/out/cli/cli.js --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-fuse-package
-npm run test:packaged-security -- /tmp/touchbox-fuse-package/mac-arm64/TouchBox.app
+node node_modules/electron-builder/out/cli/cli.js --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/kudiumbrowser-fuse-package
+npm run test:packaged-security -- /tmp/kudiumbrowser-fuse-package/mac-arm64/Kudium Browser.app
 ```
 
 Build current production bundles first if application sources changed. These

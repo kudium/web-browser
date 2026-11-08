@@ -172,7 +172,7 @@ export class AITaskManager {
           task.enabled = false;
           run.state = 'interrupted';
           run.endedAt = this.now();
-          run.summary = 'TouchBox closed before this run finished.';
+          run.summary = 'KudiumBrowser closed before this run finished.';
           recovered = true;
         }
       })

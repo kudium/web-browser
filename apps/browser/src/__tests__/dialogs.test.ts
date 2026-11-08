@@ -149,3 +149,18 @@ it('shows every imported page and an inert expandable preview of all hooks', () 
   expect(html).toContain('Hooks stay disabled');
   expect(html).toContain("document.getElementById('cancel')?.focus()");
 });
+
+it('renders all close-group choices with their original responses', () => {
+  const html = dialogDocument({
+    message: 'Close group?',
+    buttons: ['Cancel', 'Archive', 'Delete'],
+    cancelId: 0,
+    defaultId: 0,
+    destructive: true,
+  });
+  expect(html).toContain('data-response="0">Cancel</button>');
+  expect(html).toContain('data-response="1" class="primary">Archive</button>');
+  expect(html).toContain(
+    'data-response="2" class="primary destructive">Delete</button>'
+  );
+});

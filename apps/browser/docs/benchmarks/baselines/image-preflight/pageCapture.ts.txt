@@ -58,7 +58,7 @@ async function saveExport(
 ) {
   const temporary = path.join(
     path.dirname(file),
-    `.touchbox-capture-${randomUUID()}.tmp`
+    `.kudiumbrowser-capture-${randomUUID()}.tmp`
   );
   try {
     assertCurrent();
@@ -78,7 +78,7 @@ async function saveExport(
       );
     if (code === 'EACCES' || code === 'EPERM')
       throw new Error(
-        'TouchBox can’t save to this folder. Choose a folder you can write to.'
+        'KudiumBrowser can’t save to this folder. Choose a folder you can write to.'
       );
     throw new Error(
       'Could not save this file. Choose another location and try again.'

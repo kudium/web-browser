@@ -136,12 +136,15 @@ export const AppManager = {
     app.position = existingApps.length + 1;
     app.sessionId = app.sessionId || crypto.randomUUID();
     app.spaceId =
-      app.spaceId || localStorage.getItem('touchbox-active-space') || 'default';
+      app.spaceId ||
+      localStorage.getItem('kudiumbrowser-active-space') ||
+      'default';
     app.pinned = app.pinned ?? true;
     app.sessionName = app.sessionName || app.name;
     assertGroupChanges(existingApps, [...existingApps, app]);
     existingApps.push(app);
     writeSavedList(STORAGE_KEY.USER_APPS, assignGroupSlugs(existingApps));
+    window.electron?.telemetry?.feature('tab_created');
     // Broadcast update
     eventBus.dispatch(EVENT_KEY.APP_LIST_UPDATE);
   },

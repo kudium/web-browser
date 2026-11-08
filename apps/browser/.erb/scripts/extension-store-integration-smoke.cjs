@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '../..'),
   phase = process.argv[2] || 'after';
 assert(['before', 'after'].includes(phase));
 const temporary = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'touchbox-store-integration-')
+  path.join(os.tmpdir(), 'kudiumbrowser-store-integration-')
 );
 app.setPath('userData', temporary);
 const source = fs.readFileSync(
@@ -57,7 +57,7 @@ app
           setup(build) {
             build.onLoad({ filter: /\/src\/main\/dialogs\.ts$/ }, () => ({
               contents:
-                'export const showBrowserDialog=(...args)=>global.__touchboxStoreReview(...args);',
+                'export const showBrowserDialog=(...args)=>global.__kudiumbrowserStoreReview(...args);',
               loader: 'js',
             }));
           },
@@ -185,7 +185,7 @@ app
       const ready = new Promise((resolve) => {
         started = resolve;
       });
-      global.__touchboxStoreReview = () =>
+      global.__kudiumbrowserStoreReview = () =>
         new Promise((resolve) => {
           approve = resolve;
           started();

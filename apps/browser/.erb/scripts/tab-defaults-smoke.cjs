@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 process.argv.push('--group-close-only');
-process.env.TOUCHBOX_SMOKE_OUTPUT = path.resolve('docs/evidence/tab-defaults');
+process.env.KUDIUMBROWSER_SMOKE_OUTPUT = path.resolve('docs/evidence/tab-defaults');
 let source = fs.readFileSync(path.resolve('.erb/scripts/browser-ui-smoke.cjs'), 'utf8');
 source = source.replace("if (process.argv.includes('--tab-discard-only')) global.setInterval", 'if (true) global.setInterval');
 source = source.replace('if (milliseconds === 60000) idleCheck = callback;', 'if (milliseconds === 60000 && callback.toString().includes("checkingIdle")) idleCheck = callback;');

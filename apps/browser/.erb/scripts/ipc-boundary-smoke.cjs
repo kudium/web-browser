@@ -2,7 +2,7 @@
 const fs=require('fs'),path=require('path'),os=require('os'),crypto=require('crypto'),assert=require('assert/strict');
 const {app,BrowserWindow,ipcMain,dialog,session}=require('electron');
 const root=path.resolve(__dirname,'../..'),phase=process.argv[2]||'after';assert(['before','after'].includes(phase));
-const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-ipc-boundary-'));app.setPath('userData',temporary);
+const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-ipc-boundary-'));app.setPath('userData',temporary);
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const source=file=>fs.readFileSync(path.join(root,phase==='before'?'docs/benchmarks/baselines/ipc-boundaries/'+path.basename(file)+'.txt':file),'utf8');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));

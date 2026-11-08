@@ -15,7 +15,7 @@ const savedHandoffTest = process.argv.includes('--saved-task-handoff');
 const scheduledTaskTest = process.argv.includes('--saved-schedule');
 const savedTaskTest = process.argv.includes('--saved-task') || savedHandoffTest || scheduledTaskTest;
 let handedOff = false;
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-visible-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-visible-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
   entryPoints: ['src/main/ai.ts'],
@@ -98,7 +98,7 @@ const server = http.createServer(async (req, res) => {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const host = new BrowserWindow({
     show: true,
-    title: 'TouchBox visible action fixture',
+    title: 'KudiumBrowser visible action fixture',
     webPreferences: { preload: path.join(root, 'preload.cjs') },
   });
   const page = new WebContentsView();
@@ -109,6 +109,7 @@ const server = http.createServer(async (req, res) => {
   );
   let focused = 'page';
   dialog.showMessageBox = async () => ({ response: 1 });
+  await require(path.join(root, 'ai.cjs')).initializeLocalStorage();
   const dispose = require(path.join(root, 'ai.cjs')).registerAI(host, {
     tabs: () => [{ id: 'page', name: 'Test', url: page.webContents.getURL() }],
     focused: () => focused,

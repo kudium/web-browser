@@ -3,13 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 function patchSource(source) {
-  if (source.includes('// TouchBox: owned extension updates v2')) return source;
+  if (source.includes('// KudiumBrowser: owned extension updates v2')) return source;
   const replace = (before, after) => {
     if (!source.includes(before)) throw new Error('Extension update patch needs review: ' + before.slice(0, 70));
     source = source.replace(before, after);
   };
-  if (!source.includes('// TouchBox: owned extension updates v1')) {
-  replace('async function updateExtension(session, update) {', 'async function updateExtension(session, update, applyUpdate) {\n  // TouchBox: owned extension updates v1\n  if (typeof applyUpdate !== "function") throw new Error("An owned update review is required");');
+  if (!source.includes('// KudiumBrowser: owned extension updates v1')) {
+  replace('async function updateExtension(session, update) {', 'async function updateExtension(session, update, applyUpdate) {\n  // KudiumBrowser: owned extension updates v1\n  if (typeof applyUpdate !== "function") throw new Error("An owned update review is required");');
   const start = source.indexOf('  d4("downloaded update %s@%s", extensionId, update.version);');
   const end = source.indexOf('async function checkForUpdates(session)', start);
   if (start < 0 || end < 0) throw new Error('Extension update load patch needs review');
@@ -38,7 +38,7 @@ function patchSource(source) {
     chunks.push(Buffer.from(chunk));
   }
   const text = Buffer.concat(chunks).toString("utf8");`);
-  return source.replace('// TouchBox: owned extension updates v1', '// TouchBox: owned extension updates v2');
+  return source.replace('// KudiumBrowser: owned extension updates v1', '// KudiumBrowser: owned extension updates v2');
 }
 function patchInstalled() {
   const root = path.resolve(__dirname, '../..');

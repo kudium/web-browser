@@ -31,14 +31,14 @@ it('reconnects extension observers when changing login profiles, but keeps them 
   }
   const { container, rerender } = render(
     <ExtensionActions
-      context={{ profile: 'persist:touchbox-a', tab: '1' }}
+      context={{ profile: 'persist:kudiumbrowser-a', tab: '1' }}
       order={null}
     />
   );
   const first = container.firstChild;
   rerender(
     <ExtensionActions
-      context={{ profile: 'persist:touchbox-a', tab: '2' }}
+      context={{ profile: 'persist:kudiumbrowser-a', tab: '2' }}
       order={null}
     />
   );
@@ -46,16 +46,16 @@ it('reconnects extension observers when changing login profiles, but keeps them 
   expect((first as Element).getAttribute('tab')).toBe('2');
   rerender(
     <ExtensionActions
-      context={{ profile: 'persist:touchbox-b', tab: '3' }}
+      context={{ profile: 'persist:kudiumbrowser-b', tab: '3' }}
       order={null}
     />
   );
   expect(container.firstChild).not.toBe(first);
-  expect(connected).toEqual(['persist:touchbox-a', 'persist:touchbox-b']);
-  expect(disconnected).toEqual(['persist:touchbox-a']);
+  expect(connected).toEqual(['persist:kudiumbrowser-a', 'persist:kudiumbrowser-b']);
+  expect(disconnected).toEqual(['persist:kudiumbrowser-a']);
   rerender(<ExtensionActions context={undefined} order={null} />);
   expect(container.childNodes).toHaveLength(0);
-  expect(disconnected).toEqual(['persist:touchbox-a', 'persist:touchbox-b']);
+  expect(disconnected).toEqual(['persist:kudiumbrowser-a', 'persist:kudiumbrowser-b']);
 });
 
 it('updates pinned icons live, keeps DOM focus order aligned and applies policy to newly loaded actions', async () => {

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import type { safeStorage } from 'electron';
+import type { SynchronousSecureStorage } from './secureStorage';
 import type { AICheckpoint } from './aiCheckpoint';
 import type {
   AIConversationEvent,
@@ -32,9 +32,9 @@ export class AIConversationStore {
 
   private preserveOriginal = false;
 
-  constructor(private file: string, private storage: typeof safeStorage) {
+  constructor(private file: string, private storage: SynchronousSecureStorage) {
     try {
-      if (this.available() && fs.existsSync(file)) {
+      if (this.available() && fs.existsSync(this.file)) {
         if (fs.statSync(file).size > 20 * 1024 * 1024)
           throw new Error('History is too large');
         const saved = JSON.parse(storage.decryptString(fs.readFileSync(file)));
@@ -103,6 +103,9 @@ export class AIConversationStore {
       this.storageNotice =
         'Saved chats could not be restored. New chats remain available in this session.';
     }
+    if (!this.available() && fs.existsSync(this.file))
+      this.storageNotice =
+        'Saved chats could not be restored. Their encrypted file has been preserved.';
     if (!this.chats.length) this.chats.push(AIConversationStore.blank());
     if (!this.chats.some((chat) => chat.id === this.selectedId))
       this.selectedId = this.chats[0].id;
@@ -111,7 +114,8 @@ export class AIConversationStore {
   private available() {
     return (
       this.storage.isEncryptionAvailable() &&
-      this.storage.getSelectedStorageBackend?.() !== 'basic_text'
+      this.storage.getSelectedStorageBackend?.() !== 'basic_text' &&
+      this.storage.isFileAvailable?.(this.file) !== false
     );
   }
 

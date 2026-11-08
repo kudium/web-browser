@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-group-icon-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-group-icon-'));
 const out = path.resolve('docs/evidence/group-settings');
 fs.mkdirSync(out, { recursive: true });
 app.setPath('userData', path.join(root, 'profile'));

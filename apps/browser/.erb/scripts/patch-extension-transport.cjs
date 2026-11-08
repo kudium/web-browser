@@ -2,15 +2,15 @@
 const fs = require('fs');
 const path = require('path');
 function patchSource(source) {
-  if (source.includes('// TouchBox: authenticated bounded CRX v1')) return source;
+  if (source.includes('// KudiumBrowser: authenticated bounded CRX v1')) return source;
   const esm = source.includes('import * as path5');
-  source = (esm ? 'import * as touchboxCrypto from "node:crypto";\nimport * as touchboxZlib from "node:zlib";\n' :
-    'const touchboxCrypto = require("node:crypto");\nconst touchboxZlib = require("node:zlib");\n') + source;
+  source = (esm ? 'import * as kudiumbrowserCrypto from "node:crypto";\nimport * as kudiumbrowserZlib from "node:zlib";\n' :
+    'const kudiumbrowserCrypto = require("node:crypto");\nconst kudiumbrowserZlib = require("node:zlib");\n') + source;
   const replace = (before, after) => {
     if (!source.includes(before)) throw new Error('Extension transport patch needs dependency review: ' + before.slice(0, 80));
     source = source.replace(before, after);
   };
-  replace('function parseCrx(buffer) {', `// TouchBox: authenticated bounded CRX v1
+  replace('function parseCrx(buffer) {', `// KudiumBrowser: authenticated bounded CRX v1
 function parseCrx(buffer) {
   if (buffer.length < 12 || buffer.length > 64 * 1024 * 1024 || buffer.readUInt32LE(4) !== 3 ||
       buffer.readUInt32LE(8) > 1024 * 1024 || 12 + buffer.readUInt32LE(8) >= buffer.length)
@@ -18,7 +18,7 @@ function parseCrx(buffer) {
   replace('const keyProof = crxFileHeader.sha256_with_rsa.find((proof) => {', 'const keyProof = [...crxFileHeader.sha256_with_rsa, ...crxFileHeader.sha256_with_ecdsa].find((proof) => {');
   replace('    extensionId = declaredCrxId;\n    publicKey = keyProof.public_key;', `    const signed = crxFileHeader.signed_header_data;
     const length = Buffer.alloc(4); length.writeUInt32LE(signed.length);
-    const verifier = touchboxCrypto.createVerify("sha256");
+    const verifier = kudiumbrowserCrypto.createVerify("sha256");
     verifier.update(Buffer.from("CRX3 SignedData\\0"));
     verifier.update(length); verifier.update(signed); verifier.update(contents);
     if (!keyProof.signature || !verifier.verify({ key: keyProof.public_key, format: "der", type: "spki" }, keyProof.signature))
@@ -55,7 +55,7 @@ function parseCrx(buffer) {
     if (entry.isDirectory) { await fs2.promises.mkdir(output, { recursive: true, mode: 0o700 }); continue; }
     const compressed = entry.getCompressedData();
     const data = entry.header.method === 0 ? compressed : await new Promise((resolve, reject) => {
-      touchboxZlib.inflateRaw(compressed, { maxOutputLength: Math.max(1, entry.header.size) }, (error, data) => error ? reject(error) : resolve(data));
+      kudiumbrowserZlib.inflateRaw(compressed, { maxOutputLength: Math.max(1, entry.header.size) }, (error, data) => error ? reject(error) : resolve(data));
     });
     if (data.length !== entry.header.size) throw new Error("Invalid extension archive size");
     await fs2.promises.mkdir(path3.dirname(output), { recursive: true, mode: 0o700 });

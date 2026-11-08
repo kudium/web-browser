@@ -13,6 +13,12 @@ import { installFocusModality } from '../utils/focusModality';
 export function AppSelectedView() {
   const view = new URL(window.location.href).searchParams.get('view') as View;
 
+  useEffect(() => {
+    if (view === 'settings')
+      window.electron?.telemetry?.feature('settings_opened');
+    if (view === 'downloads')
+      window.electron?.telemetry?.feature('downloads_opened');
+  }, [view]);
   switch (view) {
     case 'site-developer':
       return <SiteDeveloperPage />;

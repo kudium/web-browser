@@ -2,13 +2,18 @@ import { IApp } from '../types';
 import { SiteDeveloperConfig, validDeveloperConfig } from './siteDeveloper';
 
 export interface PortableGroup {
-  format: 'touchbox-group';
+  format: 'kudiumbrowser-group';
   version: 1;
   name: string;
   slug?: string;
   emoji?: string;
   homeURL?: string;
-  pages: { name: string; url: string; pinned?: boolean; defaultURL?: string }[];
+  pages: {
+    name: string;
+    url: string;
+    pinned?: boolean;
+    defaultURL?: string;
+  }[];
   developer: { origin: string; config: SiteDeveloperConfig }[];
 }
 export interface GroupTransferResult {
@@ -27,7 +32,7 @@ export function parsePortableGroup(value: unknown): PortableGroup {
   };
   if (
     !group ||
-    group.format !== 'touchbox-group' ||
+    group.format !== 'kudiumbrowser-group' ||
     group.version !== 1 ||
     typeof group.name !== 'string' ||
     !group.name.trim() ||

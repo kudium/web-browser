@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-personal-ui-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-personal-ui-'));
 app.setPath('userData', path.join(root, 'profile'));
 const source = path.join(root, 'preview.tsx');
 const react = require.resolve('react');

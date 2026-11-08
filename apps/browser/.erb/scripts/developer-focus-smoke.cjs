@@ -1,7 +1,7 @@
 const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('fs'),os=require('os'),path=require('path'),assert=require('assert');
 const {buildSync}=require('esbuild');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-developer-focus-'));
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-developer-focus-'));
 app.setPath('userData',path.join(root,'profile'));
 const out=path.resolve('docs/evidence/developer-focus');fs.mkdirSync(out,{recursive:true});
 const tabs=[{id:'one',name:'Example',url:'https://example.com',sessionId:'work',sessionName:'Work',icon:''},{id:'two',name:'Other',url:'https://other.test',sessionId:'other',sessionName:'Other group',icon:''}];

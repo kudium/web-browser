@@ -18,7 +18,7 @@ Run:
 
 ```sh
 node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .erb/scripts/ai-reference-files-smoke.cjs
-TOUCHBOX_SMOKE_OUTPUT=docs/evidence/ai-reference-files/browser node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .erb/scripts/browser-ui-smoke.cjs --ai-context-only
+KUDIUMBROWSER_SMOKE_OUTPUT=docs/evidence/ai-reference-files/browser node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .erb/scripts/browser-ui-smoke.cjs --ai-context-only
 ```
 
 See `results.json` and `browser/results.json` for the native checks. No system clipboard operations are part of these fixtures.

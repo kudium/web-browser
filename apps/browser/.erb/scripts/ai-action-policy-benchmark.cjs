@@ -8,7 +8,7 @@ const esbuild = require('esbuild');
 const { execFileSync } = require('child_process');
 const { JSDOM } = require('jsdom');
 async function run() {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-ai-policy-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-ai-policy-'));
   const ref = 'de2eae3bdf2f346d66dc91a6ef5aeda9581c0603';
   const main = fs.readFileSync('src/main/ai.ts', 'utf8');
   const ast = ts.createSourceFile('ai.ts', main, ts.ScriptTarget.Latest, true);

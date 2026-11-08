@@ -3,12 +3,12 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cryp
 const {spawnSync}=require('node:child_process'),asar=require('@electron/asar'),plist=require('plist');
 const root=path.resolve(__dirname,'../..'),appPath=path.resolve(process.argv[2]||'');
 assert.equal(process.platform,'darwin');assert(appPath.endsWith('.app')&&fs.existsSync(appPath));
-const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'touchbox-packaged-observer-'));
+const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'kudiumbrowser-packaged-observer-'));
 const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
 const observer=String.raw`
 const fs=require('fs'),path=require('path'),http=require('http');
 const {app,webContents}=require('electron');
-const directory=process.env.TOUCHBOX_TEST_PROFILE,result=process.env.TOUCHBOX_TEST_RESULT;
+const directory=process.env.KUDIUMBROWSER_TEST_PROFILE,result=process.env.KUDIUMBROWSER_TEST_RESULT;
 app.setPath('userData',directory);
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(read,label)=>{const deadline=Date.now()+12000;while(Date.now()<deadline){if(await read())return;await wait(25)}throw new Error('Timed out: '+label)};
@@ -56,7 +56,7 @@ async function run(){
  info.ElectronAsarIntegrity={'Resources/app.asar':{algorithm:'SHA256',hash:hash(asar.getRawHeader(archive).headerString)}};fs.writeFileSync(infoPath,plist.build(info));
  const sign=spawnSync('codesign',['--sign','-','--force','--preserve-metadata=entitlements,requirements,flags,runtime','--deep',fixture],{encoding:'utf8'});assert.equal(sign.status,0,sign.stderr);
  const directory=path.join(temporary,'profile');fs.mkdirSync(directory);const resultFile=path.join(temporary,'result.json');
- const child=spawnSync(path.join(fixture,'Contents/MacOS',info.CFBundleExecutable),['--user-data-dir='+directory,'--remote-debugging-port=0'],{env:{...process.env,NODE_OPTIONS:'',ELECTRON_RUN_AS_NODE:'',TOUCHBOX_TEST_PROFILE:directory,TOUCHBOX_TEST_RESULT:resultFile},encoding:'utf8',timeout:30000});
+ const child=spawnSync(path.join(fixture,'Contents/MacOS',info.CFBundleExecutable),['--user-data-dir='+directory,'--remote-debugging-port=0'],{env:{...process.env,NODE_OPTIONS:'',ELECTRON_RUN_AS_NODE:'',KUDIUMBROWSER_TEST_PROFILE:directory,KUDIUMBROWSER_TEST_RESULT:resultFile},encoding:'utf8',timeout:30000});
  assert.equal(child.status,0,(child.error?.message||'')+' '+child.stderr?.slice(-1800));assert(fs.existsSync(resultFile));
  const report={recordedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,probeSha256:hash(fs.readFileSync(__filename)),observerSha256:hash(observer),appAsarSha256:hash(fs.readFileSync(original)),instrumentedAsarSha256:hash(fs.readFileSync(archive)),productionEntries:hashes,checks:{currentProductionEntries:true,...JSON.parse(fs.readFileSync(resultFile))},exitCode:child.status,logSha256:hash((child.stdout||'')+(child.stderr||'')),method:'Test-only trusted bootstrap observer in a disposable rewrapped/ad-hoc ASAR copy. Main/preload/renderer/HTML bytes match actual package and current production build. No production code exception or external debugging transport; fixed renderer checks run from native main observer. Does not prove untouched shipped-package UI, trusted signing, pending quit flushing, native chooser/extension flows or platform parity.'};
  const output=path.join(root,'docs/benchmarks/packaged-security.json');if(fs.existsSync(output)){const{previousRuns=[],...previous}=JSON.parse(fs.readFileSync(output));report.previousRuns=[...previousRuns,previous]}

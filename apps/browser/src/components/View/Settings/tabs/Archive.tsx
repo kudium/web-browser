@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Button, Checkbox, Text } from '@radix-ui/themes';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, ChevronDown } from 'lucide-react';
 import { BulkActions } from './BulkActions';
 import { useAppList } from '../../../../utils/hooks/useAppList';
 import { AppManager } from '../../../../utils/AppManager';
 import { lockedGroup, useGroupAccess } from '../../../../utils/groupAccess';
+import { aiGroupId } from '../../../../browser/aiGroups';
+import { GroupIcon } from '../../../UI/GroupIcon';
+import type { IApp } from '../../../../types';
 import { AppIcon } from '../../../UI/AppIcon/AppIcon';
 
 export function Archive() {
@@ -12,10 +15,27 @@ export function Archive() {
   useGroupAccess();
   const [selected, setSelected] = useState<string[]>([]);
   const archived = appList.filter((item) => item.archived);
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const groups = new Map<string, IApp[]>();
+  archived.forEach((tab) => {
+    const key = aiGroupId(tab);
+    groups.set(key, [...(groups.get(key) || []), tab]);
+  });
+  const restoreGroup = (tabs: IApp[]) => {
+    const ids = new Set(tabs.map((tab) => tab.id));
+    AppManager.set(
+      AppManager.getAll().map((tab) =>
+        ids.has(tab.id) && tab.archived && !lockedGroup(tab)
+          ? { ...tab, archived: false, restorationId: crypto.randomUUID() }
+          : tab
+      )
+    );
+    setSelected((previous) => previous.filter((id) => !ids.has(id)));
+  };
   return (
     <section className="tab-content">
       <Text color="gray" size="2">
-        Restore an archived tab with its original group.
+        Restore a group, or expand it to restore individual tabs.
       </Text>
       <BulkActions
         ids={archived
@@ -33,37 +53,89 @@ export function Archive() {
           )
         }
       />
-      {archived.map((item) => (
-        <div className="app-row" key={item.id}>
-          <Checkbox
-            aria-label={`Select ${item.name}`}
-            disabled={lockedGroup(item)}
-            checked={selected.includes(item.id)}
-            onCheckedChange={(checked) =>
-              setSelected(
-                checked
-                  ? [...selected, item.id]
-                  : selected.filter((id) => id !== item.id)
-              )
-            }
-          />
-          <AppIcon icon={item.icon} title={item.name} />
-          <div className="app-row-copy">
-            <strong>{item.name}</strong>
-            <Text color="gray" size="2">
-              {lockedGroup(item) ? 'Locked group' : item.url}
-            </Text>
-          </div>
-          <Button
-            variant="soft"
-            disabled={lockedGroup(item)}
-            onClick={() => AppManager.restore(item)}
+      {[...groups.entries()].map(([key, tabs]) => {
+        const group = tabs[0];
+        const open = expanded.includes(key);
+        const name = group.sessionName || group.name;
+        return (
+          <section
+            className="archive-group"
+            key={key}
+            aria-label={`Archived group ${name}`}
           >
-            <RotateCcw size={15} />
-            Restore
-          </Button>
-        </div>
-      ))}
+            <div className="archive-group-header">
+              <button
+                className="archive-group-toggle"
+                type="button"
+                aria-expanded={open}
+                onClick={() =>
+                  setExpanded((previous) =>
+                    open
+                      ? previous.filter((id) => id !== key)
+                      : [...previous, key]
+                  )
+                }
+              >
+                <ChevronDown size={14} className={open ? 'expanded' : ''} />
+                <GroupIcon
+                  item={group}
+                  tabs={tabs.map((tab) => ({ ...tab, archived: false }))}
+                />
+                <span>
+                  <strong>{name}</strong>
+                  <small>
+                    {tabs.length} tab{tabs.length === 1 ? '' : 's'}
+                  </small>
+                </span>
+              </button>
+              <Button
+                size="1"
+                variant="soft"
+                disabled={tabs.some((tab) => lockedGroup(tab))}
+                onClick={() => restoreGroup(tabs)}
+                aria-label={`Restore group ${name}`}
+              >
+                <RotateCcw size={14} /> Restore group
+              </Button>
+            </div>
+            {open && (
+              <div className="archive-group-tabs">
+                {tabs.map((item) => (
+                  <div className="app-row" key={item.id}>
+                    <Checkbox
+                      aria-label={`Select ${item.name}`}
+                      disabled={lockedGroup(item)}
+                      checked={selected.includes(item.id)}
+                      onCheckedChange={(checked) =>
+                        setSelected(
+                          checked
+                            ? [...selected, item.id]
+                            : selected.filter((id) => id !== item.id)
+                        )
+                      }
+                    />
+                    <AppIcon icon={item.icon} title={item.name} />
+                    <div className="app-row-copy">
+                      <strong>{item.name}</strong>
+                      <Text color="gray" size="2">
+                        {lockedGroup(item) ? 'Locked group' : item.url}
+                      </Text>
+                    </div>
+                    <Button
+                      variant="soft"
+                      disabled={lockedGroup(item)}
+                      onClick={() => AppManager.restore(item)}
+                    >
+                      <RotateCcw size={15} />
+                      Restore
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
       {!archived.length && (
         <p className="empty-message">Nothing archived yet.</p>
       )}

@@ -53,7 +53,7 @@ export async function loadLocalIcon(
   if (bytes.toString('ascii', 0, 4) === 'icns') {
     validateICNS(bytes);
     const directory = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'touchbox-icon-')
+      path.join(os.tmpdir(), 'kudiumbrowser-icon-')
     );
     const snapshot = path.join(directory, 'icon.icns');
     try {
@@ -90,7 +90,7 @@ export async function loadDownloadImage(
   preflightImage(bytes, ['png', 'jpg', 'webp', 'gif', 'bmp', 'tiff', 'heif']);
   assertCurrent();
   const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'touchbox-thumbnail-')
+    path.join(os.tmpdir(), 'kudiumbrowser-thumbnail-')
   );
   const snapshot = path.join(
     directory,

@@ -1,44 +1,60 @@
 import { spawn, ChildProcess } from 'child_process';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
-import detectPort from 'detect-port';
+import { isCancelledAssetResponse } from './devLogging';
 import mainConfiguration from '../configs/webpack.config.main.dev';
 import preloadConfiguration from '../configs/webpack.config.preload.dev';
 import rendererConfiguration from '../configs/webpack.config.renderer.dev';
 
+const detectPort: (port: number) => Promise<number> = require('detect-port');
+
 const mainCompiler = webpack(mainConfiguration);
 const preloadCompiler = webpack(preloadConfiguration);
 const rendererCompiler = webpack(rendererConfiguration);
+rendererCompiler.hooks.infrastructureLog.tap(
+  'KudiumBrowserCancelledResponse',
+  (origin, type, args) =>
+    isCancelledAssetResponse(origin, type, args || []) ? true : undefined
+);
 const server = new WebpackDevServer(
-  { ...rendererConfiguration.devServer, setupExitSignals: false },
+  {
+    ...(
+      rendererConfiguration as webpack.Configuration & {
+        devServer?: ConstructorParameters<typeof WebpackDevServer>[0];
+      }
+    ).devServer,
+    setupExitSignals: false,
+  },
   rendererCompiler
 );
 const ready = new Set<string>();
 let electron: ChildProcess | undefined;
 let stopping = false;
+let restarting = false;
+let restartTimer: ReturnType<typeof setTimeout> | undefined;
+let restartRequested = false;
+
+function stopElectron() {
+  const child = electron;
+  return new Promise<void>((resolve) => {
+    if (!child || child.exitCode !== null || child.signalCode !== null) {
+      resolve();
+      return;
+    }
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 5000);
+    child.once('exit', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    child.kill('SIGINT');
+  });
+}
 
 async function stop(code: number) {
   if (stopping) return;
   stopping = true;
-  const electronStopped = new Promise<void>((resolve) => {
-    if (
-      !electron ||
-      electron.exitCode !== null ||
-      electron.signalCode !== null
-    ) {
-      resolve();
-      return;
-    }
-    const timeout = setTimeout(() => {
-      electron?.kill('SIGKILL');
-      resolve();
-    }, 5000);
-    electron.once('exit', () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-    electron.kill('SIGINT');
-  });
+  if (restartTimer) clearTimeout(restartTimer);
+  const electronStopped = stopElectron();
   await server.stop();
   await Promise.all([
     electronStopped,
@@ -52,6 +68,43 @@ async function stop(code: number) {
   process.exit(code);
 }
 
+function launchElectron() {
+  const mainArgs = (process.env.MAIN_ARGS?.match(/"[^"]+"|[^\s"]+/g) || []).map(
+    (arg) => arg.replace(/^"|"$/g, '')
+  );
+  electron = spawn(
+    require('electron'),
+    ['.erb/dll/main.js', ...mainArgs, ...process.argv.slice(2)],
+    { stdio: 'inherit', env: process.env }
+  );
+  electron.on('error', (spawnError) => {
+    console.error(spawnError);
+    stop(1);
+  });
+  electron.on('exit', (code, signal) => {
+    electron = undefined;
+    if (!restarting && !stopping) stop(code ?? (signal ? 1 : 0));
+  });
+}
+
+function scheduleRestart() {
+  if (stopping || ready.size !== 3) return;
+  if (restartTimer) clearTimeout(restartTimer);
+  restartTimer = setTimeout(async () => {
+    restartTimer = undefined;
+    if (stopping || ready.size !== 3 || restarting) return;
+    restartRequested = false;
+    restarting = true;
+    try {
+      await stopElectron();
+      if (!stopping && ready.size === 3) launchElectron();
+    } finally {
+      restarting = false;
+      if (restartRequested || !electron) scheduleRestart();
+    }
+  }, 150);
+}
+
 function onBuild(name: string, error: Error | null, stats?: webpack.Stats) {
   if (error) {
     console.error(error);
@@ -63,27 +116,12 @@ function onBuild(name: string, error: Error | null, stats?: webpack.Stats) {
     console.error(stats.toString({ all: false, errors: true }));
     return;
   }
+  const initialBuild = !ready.has(name);
   ready.add(name);
-  if (ready.size !== 3 || electron || stopping) return;
-
-  const mainArgs = (process.env.MAIN_ARGS?.match(/"[^"]+"|[^\s"]+/g) || []).map(
-    (arg) => arg.replace(/^"|"$/g, '')
-  );
-  electron = spawn(
-    process.execPath,
-    [
-      require.resolve('electronmon/bin/cli.js'),
-      '.erb/dll/main.js',
-      ...mainArgs,
-      ...process.argv.slice(2),
-    ],
-    { stdio: 'inherit', env: process.env }
-  );
-  electron.on('error', (spawnError) => {
-    console.error(spawnError);
-    stop(1);
-  });
-  electron.on('exit', (code, signal) => stop(code ?? (signal ? 1 : 0)));
+  if (name !== 'renderer' && !initialBuild) restartRequested = true;
+  if (ready.size !== 3 || stopping) return;
+  if (restartRequested) scheduleRestart();
+  else if (!electron && !restarting) launchElectron();
 }
 
 async function start() {
@@ -94,12 +132,24 @@ async function start() {
       `Port ${port} is already in use. Choose another port: PORT=4343 npm run dev`
     );
   }
-  rendererCompiler.hooks.done.tap('TouchBoxDev', (stats) =>
+  rendererCompiler.hooks.done.tap('KudiumBrowserDev', (stats) =>
     onBuild('renderer', null, stats)
   );
-  rendererCompiler.hooks.failed.tap('TouchBoxDev', (error) =>
+  rendererCompiler.hooks.failed.tap('KudiumBrowserDev', (error) =>
     onBuild('renderer', error)
   );
+  // A failed/in-progress build must not restart the app with stale bundles.
+  const compilers: [string, webpack.Compiler][] = [
+    ['main', mainCompiler],
+    ['preload', preloadCompiler],
+    ['renderer', rendererCompiler],
+  ];
+  compilers.forEach(([name, compiler]) => {
+    compiler.hooks.invalid.tap('KudiumBrowserDev', () => {
+      ready.delete(name);
+      if (name !== 'renderer') restartRequested = true;
+    });
+  });
   await server.start();
   mainCompiler.watch({}, (error, stats) => onBuild('main', error, stats));
   preloadCompiler.watch({}, (error, stats) => onBuild('preload', error, stats));

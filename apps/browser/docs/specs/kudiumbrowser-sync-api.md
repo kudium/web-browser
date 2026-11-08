@@ -1,9 +1,8 @@
-# TouchBox encrypted sync API
+# Kudium Browser encrypted sync API
 
 Owner: Kudium. November 4, 2026.
 Status: backend foundation implemented November 7, 2026 in `apps/web`.
-See [service setup and limitations](../../../web/README.md). The desktop
-account connection, key provisioning and sync transport remain pending.
+See [service setup and limitations](../../../web/README.md). Desktop account connection, recovery-key enrollment and per-device snapshot transport are implemented November 8, 2026. Deployment and signed distribution remain release steps.
 
 ## Contract and trust boundary
 
@@ -92,8 +91,14 @@ remote sessions through a validated logical-ID-to-local-partition mapping.
 - [ ] Integrate a main-process client transport and real account connection UI.
 - [ ] Verify two-device onboarding, recovery and account-switch behavior.
 
-The current preferences page and encryption helpers still do not connect accounts
-or upload records. The standalone backend now uses Better Auth PostgreSQL sessions and signed bearer credentials and
+The updated desktop account-sync client connects accounts and uploads encrypted per-device snapshots after explicit enrollment. The standalone backend now uses Better Auth PostgreSQL sessions and signed bearer credentials and
 provides status, encrypted-record operations, a change feed and cloud-data deletion.
-Device enrollment/revocation, recovery, desktop account connection and production operations
-remain pending; the checklist above tracks the complete production scope.
+Native iCloud, automatic key rotation, and production rollout remain pending; the checklist above tracks the complete production scope.
+
+## Implemented desktop flow (November 8, 2026)
+
+Better Auth device authorization (RFC 8628), not a paste-token field, binds desktop sign-in to a user-approved code and client `kudium-desktop`. The signed bearer credential is stored with the random sync key in OS-encrypted `account-sync.bin`. Account approval does not itself activate uploads. First-device enrollment requires confirmation that the recovery key was saved; subsequent devices authenticate and prove possession by decrypting the account key-check record. No new KDF or server-held recovery secret is introduced.
+
+The transport uses only the fixed HTTPS service origin, rejects redirects, validates incoming envelopes/snapshots, writes per-device records with optimistic concurrency, and retries transient errors with bounded backoff. Snapshot category changes and disable invalidate in-flight work before another upload. Each device retains its own workspace; remote restore creates fresh local partition IDs, and synced preferences require explicit confirmation. Device/session revocation is available from `/account`; it cannot erase downloaded copies. Key rotation and native CloudKit remain outside this implementation.
+
+The dedicated PostgreSQL integration suite verifies first-device enrollment, wrong-key rejection, second-device recovery, restore, opt-out, signed device credentials and single-use redemption. Deploy the added database migration and rebuild/sign the desktop app before calling the live product ready.

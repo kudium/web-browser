@@ -16,7 +16,7 @@ assert(['before', 'after'].includes(phase));
 assert(appPath.endsWith('.app') && fs.existsSync(appPath));
 assert.equal(process.platform, 'darwin');
 const root = path.resolve(__dirname, '../..');
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbox-debugging-'));
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-debugging-'));
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const getJSON = async (url) => { try { return await (await fetch(url, { signal: AbortSignal.timeout(200) })).json(); } catch { return undefined; } };

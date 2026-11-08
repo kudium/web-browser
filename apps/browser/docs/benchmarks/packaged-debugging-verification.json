@@ -32,21 +32,21 @@
     },
     {
       "name": "native directory package",
-      "command": "electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/touchbox-debugging-package",
+      "command": "electron-builder --mac dir --arm64 --publish never --config.mac.identity=null --config.directories.output=/tmp/kudiumbrowser-debugging-package",
       "observedExitCode": 0,
       "logSha256": "7e891b28d933d38371bb5653448878bd84c7e0220b0596a1fa4d0cb331f33ac7",
       "summary": "Passed; unsigned/ad-hoc macOS arm64"
     },
     {
       "name": "baseline CLI transports",
-      "command": "node .erb/scripts/packaged-debugging-smoke.cjs before /tmp/touchbox-fuse-package/mac-arm64/TouchBox.app",
+      "command": "node .erb/scripts/packaged-debugging-smoke.cjs before /tmp/kudiumbrowser-fuse-package/mac-arm64/KudiumBrowser.app",
       "observedExitCode": 0,
       "logSha256": "d4fa6617a3d9945b06ff74ce4049090f99e1dc7cdefaaa32196255f3bb8e2c3a",
       "summary": "Three actual-package cases pass; endpoints available and native startup executes"
     },
     {
       "name": "packaged release checks",
-      "command": "npm run test:packaged-security -- /tmp/touchbox-debugging-package/mac-arm64/TouchBox.app",
+      "command": "npm run test:packaged-security -- /tmp/kudiumbrowser-debugging-package/mac-arm64/KudiumBrowser.app",
       "observedExitCode": 0,
       "logSha256": "69b525b0a6c916c8dba52a1f7ff5be589c206b902c0e90f963cb83e874d986ca",
       "summary": "Fuses, actual-package debugging refusal and instrumented production-payload UI/isolation/history/CSP/cleanup pass"

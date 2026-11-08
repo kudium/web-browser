@@ -41,7 +41,11 @@ export function GroupIcon({
       )}
       {!mixed && !item.sessionIconEmoji && (
         <AppIcon
-          icon={item.sessionIconImage || item.icon}
+          icon={
+            item.sessionIconImage ||
+            tabs.find((tab) => tab.id === item.id)?.icon ||
+            item.icon
+          }
           title={item.sessionName || item.name}
         />
       )}
