@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Play, Pause, Trash2, Square } from 'lucide-react';
-import { PanelContextContent } from './PanelDialog';
 import { NativeContextMenu as ContextMenu } from './NativeContextMenu';
 import type {
   AITaskInput,
@@ -334,7 +333,7 @@ export function AITasksPanel({
                 </details>
               </article>
             </ContextMenu.Trigger>
-            <PanelContextContent>
+            <ContextMenu.Content>
               <ContextMenu.Item
                 disabled={busy || resumable}
                 onSelect={() => action(task.id, 'run')}
@@ -375,7 +374,7 @@ export function AITasksPanel({
               >
                 Delete task
               </ContextMenu.Item>
-            </PanelContextContent>
+            </ContextMenu.Content>
           </ContextMenu.Root>
         );
       })}

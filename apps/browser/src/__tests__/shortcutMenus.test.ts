@@ -24,6 +24,8 @@ it('rebuilds native menu accelerators from saved bindings and routes page action
   (getBrowserPreferences as jest.Mock).mockReturnValue(defaultPreferences);
   const window = Object.assign(new EventEmitter(), {
     isDestroyed: () => false,
+    show: jest.fn(),
+    focus: jest.fn(),
     webContents: { send: jest.fn(), on: jest.fn() },
   });
   const menu = new MenuBuilder({ mainWindow: window as any });
