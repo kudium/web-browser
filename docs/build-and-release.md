@@ -99,3 +99,11 @@ gh workflow run browser-release.yml --ref main -f tag=v1.0.0 -f targets=macos -f
 Windows and Linux ARM builds are not included. Keep old installers and blockmaps;
 back up the release volume and database together. Backend checks verify API and
 checksum behavior; release acceptance still needs actual OS installation/update tests.
+
+## Retry publication without rebuilding
+
+If installer upload fails after both signed Mac build jobs pass, run **Publish
+existing signed Mac build** on `main` with the tag and original Browser release
+run ID. It requires successful signing/notarization verification jobs, downloads
+those exact CI artifacts, checks their version, and retries immutable uploads.
+It does not rebuild already signed installers.

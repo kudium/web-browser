@@ -43,6 +43,11 @@ for (const entry of await fs.readdir(root, { withFileTypes: true })) {
   manifests.push(manifest);
 }
 validateManifests(manifests, targets);
+if (
+  process.env.RELEASE_VERSION &&
+  manifests[0].version !== process.env.RELEASE_VERSION.replace(/^v/, "")
+)
+  throw new Error("Artifacts do not match the requested release tag");
 for (const { directory, manifest } of artifacts) {
   const prefix = `/internal/releases/uploads/${manifest.version}/${manifest.platform}/${manifest.arch}/`;
   for (const name of await fs.readdir(directory)) {
@@ -99,15 +104,32 @@ for (const { directory, manifest } of artifacts) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ size, sha512, parts: part }),
     });
-    const publicFile = await fetch(
-      `${origin}/downloads/${manifest.version}/${manifest.platform}/${manifest.arch}/${name}`,
-      { method: "HEAD" }
-    );
-    if (
-      !publicFile.ok ||
-      Number(publicFile.headers.get("content-length")) !== size
-    )
+    const publicUrl = `${origin}/downloads/${manifest.version}/${manifest.platform}/${manifest.arch}/${name}`;
+    const publicFile = await fetch(publicUrl, { method: "HEAD" });
+    const length = publicFile.headers.get("content-length");
+    if (!publicFile.ok || (length !== null && Number(length) !== size))
       throw new Error("Uploaded download is not publicly accessible");
+    if (length === null) {
+      // Some CDNs omit Content-Length; verify the actual response bytes instead.
+      const download = await fetch(publicUrl, {
+        headers: { "Accept-Encoding": "identity" },
+      });
+      if (!download.ok || !download.body)
+        throw new Error("Public download failed");
+      const publicHash = createHash("sha512");
+      let received = 0;
+      for await (const bytes of download.body) {
+        received += bytes.length;
+        if (received > size)
+          throw new Error("Public download exceeds advertised size");
+        publicHash.update(bytes);
+      }
+      if (received !== size || publicHash.digest("base64") !== sha512)
+        throw new Error("Public download checksum mismatch");
+    }
+    console.log(
+      `Verified public download: ${manifest.platform}/${manifest.arch}/${name}`
+    );
   }
 }
 await request("/internal/releases/manifests", {

@@ -256,7 +256,7 @@ export function releasePublishing(
       throw new HTTPException(404, { message: "artifact_not_found" });
     const asset = Bun.file(file);
     const headers = {
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "public, max-age=31536000, immutable, no-transform",
       "Content-Type": "application/octet-stream",
       "Accept-Ranges": "bytes",
     };

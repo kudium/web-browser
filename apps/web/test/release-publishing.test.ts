@@ -117,6 +117,7 @@ describe("release publication", () => {
       headers: { Range: "bytes=0-3" },
     });
     expect(range.status).toBe(206);
+    expect(range.headers.get("cache-control")).toContain("no-transform");
     expect(await range.text()).toBe("AAAA");
     expect(range.headers.get("content-range")).toBe(
       `bytes 0-3/${bytes.length}`
