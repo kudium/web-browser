@@ -10,12 +10,22 @@ import { authenticateSession, syncAccountId, type Authenticate, type Auth } from
 import { envelopeSchema, opaqueId, targetSchema } from './validation';
 import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest } from './releases';
-import { homepage, documentation, unavailablePage, authPage, accountPage } from './pages';
+import { homepage, documentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage } from './pages';
+import { tutorials } from './tutorials';
 export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins }: { db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
   const app = new Hono<{ Variables: { account: string } }>();
   const store = syncStore(db);
   const authenticate = auth ? authenticateSession(auth) : testAuthenticate;
-  app.use('*', secureHeaders({ contentSecurityPolicy: { defaultSrc: ["'self'"], styleSrc: ["'self'", 'https://fonts.googleapis.com'], fontSrc: ["'self'", 'https://fonts.gstatic.com'], frameAncestors: ["'none'"], baseUri: ["'none'"], formAction: ["'self'"] } }));
+  app.use('*', (c, next) => secureHeaders({
+    xFrameOptions: c.req.path === '/' ? false : 'SAMEORIGIN',
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      frameAncestors: c.req.path === '/' ? ["'self'", 'file:', 'http://localhost:1212'] : ["'none'"],
+      baseUri: ["'none'"], formAction: ["'self'"],
+    },
+  })(c, next));
   app.onError((error, c) => {
     if (error instanceof HTTPException) return c.json({ error: error.message }, error.status);
     // Deliberately avoid logging credentials, encrypted payloads or database query parameters.
@@ -27,6 +37,27 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/ready', async c => { try { await db.execute(sql`select 1`); return c.json({ status: 'ready', sync: authenticate ? 'configured' : 'unconfigured' }); } catch { return c.json({ status: 'unavailable' }, 503); } });
   app.get('/', c => c.html(homepage()));
   app.get('/docs', c => c.html(documentation()));
+  app.get('/tutorials', c => c.html(tutorialIndex()));
+  app.get('/tutorials/:slug', c => { const tutorial = tutorials.find(t => t.slug === c.req.param('slug')); return tutorial ? c.html(tutorialPage(tutorial)) : c.notFound(); });
+  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace']);
+  app.get('/assets/product/demo/:filename', async c => {
+    const filename = c.req.param('filename');
+    if (!filename.endsWith('.webp') || !demoAssets.has(filename.slice(0, -5))) return c.notFound();
+    const file = Bun.file(new URL(`../public/product/demo/${filename}`, import.meta.url));
+    if (!(await file.exists())) return c.notFound();
+    c.header('Content-Type', 'image/webp'); c.header('Cache-Control', 'public, max-age=3600');
+    return c.body(await file.arrayBuffer());
+  });
+  const productAssets = new Set(['address-picker-detail.webp', 'favorites-detail.webp', 'highlight-workspaces.webp', 'highlight-ai.webp', 'highlight-developer.webp', 'origin-logo.png', 'browser.webp', 'assistant.webp', 'editor.webp', 'kudium-macbook.webp', 'kudium-ai-macbook.webp', 'kudium-imac.webp', 'workspace-detail.webp', 'editor-detail.webp']);
+  app.get('/assets/product/:filename', async c => {
+    const filename = c.req.param('filename');
+    if (!productAssets.has(filename)) return c.notFound();
+    const file = Bun.file(new URL(`../public/product/${filename}`, import.meta.url));
+    c.header('Cache-Control', 'public, max-age=3600');
+    c.header('Content-Type', filename.endsWith('.png') ? 'image/png' : 'image/webp');
+    return c.body(await file.arrayBuffer());
+  });
+  app.get('/assets/showcase.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/showcase.js', import.meta.url)).text()); });
   app.get('/assets/site.css', async c => { c.header('Cache-Control', 'public, max-age=300'); c.header('Content-Type', 'text/css; charset=utf-8'); return c.body(await Bun.file(new URL('../public/site.css', import.meta.url)).text()); });
   app.use('/api/auth/*', bodyLimit({ maxSize: 64 * 1024, onError: c => c.json({ error: 'body_too_large' }, 413) }));
   app.use('/api/auth/*', async (c, next) => {

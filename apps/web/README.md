@@ -41,7 +41,7 @@ PostgreSQL adapter. No Clerk, Keycloak or external OIDC account is required.
 
 Set `BETTER_AUTH_SECRET` to a cryptographically random value of at least 32
 characters (`openssl rand -base64 48`) and preserve it across deployments/replicas.
-Set `BETTER_AUTH_URL=https://webbrowser.kudium.com`; HTTP loopback origins are
+Set `BETTER_AUTH_URL=https://browser.kudium.com`; HTTP loopback origins are
 accepted for development only. Missing/invalid configuration stops server startup.
 
 - `/sign-up`, `/sign-in`, `/account`: server-rendered React account pages.
@@ -161,7 +161,7 @@ prefers a DMG if supplied. Without a release, it shows a real unavailable page.
 Generic updater feed base URL:
 
 ```text
-https://webbrowser.kudium.com/updates/stable/darwin/arm64
+https://browser.kudium.com/updates/stable/darwin/arm64
 ```
 
 The updater requests `latest-mac.yml`, `latest.yml` (Windows), or
@@ -169,7 +169,7 @@ The updater requests `latest-mac.yml`, `latest.yml` (Windows), or
 `beta-linux.yml`. Configure electron-builder's **generic** publish URL per
 platform and architecture and package app-update.yml with it. Ordinary desktop builds continue to use GitHub in package.json.
 `npm run package:web` uses `.erb/configs/electron-builder.web.cjs` to embed
-`https://webbrowser.kudium.com/updates/stable/<platform>/<arch>` in each
+`https://browser.kudium.com/updates/stable/<platform>/<arch>` in each
 packaged app-update.yml. electron-builder expands the architecture macro.
 The existing main-process updater consumes that metadata without a runtime URL
 setting. Publish assets and deploy the service before distributing these web-feed

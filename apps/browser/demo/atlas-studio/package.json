@@ -1,0 +1,1 @@
+{"name":"atlas-studio-demo","private":true,"type":"module","scripts":{"dev":"bun --hot server.ts","check":"bun test","build":"bun build src/app.ts --outdir dist"}}

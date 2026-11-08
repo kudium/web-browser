@@ -9,7 +9,7 @@ import { authUser, authSession, authAccount, accounts } from '../src/schema';
 const url = process.env.TEST_DATABASE_URL;
 describe.skipIf(!url)('Better Auth with PostgreSQL', () => {
   const { db, client } = connect(url!);
-  const baseURL = 'https://webbrowser.kudium.com';
+  const baseURL = 'https://browser.kudium.com';
   const auth = createAuth(db, { baseURL, secret: 'integration-test-secret-at-least-32-characters' });
   const app = createApp({ db, auth, assetOrigins: [] });
   const suffix = randomUUID();

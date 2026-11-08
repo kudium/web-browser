@@ -1,6 +1,6 @@
-# Deploy webbrowser.kudium.com
+# Deploy browser.kudium.com
 
-This service is prepared for **https://webbrowser.kudium.com**. It is not deployed
+This service is prepared for **https://browser.kudium.com**. It is not deployed
 by committing these files. Use the existing PostgreSQL server and a Linux host with
 Docker Compose v2, reachable from your domain. The container build context is
 `apps/web`, not the desktop repository root.
@@ -19,14 +19,14 @@ its required TLS settings. Do not expose PostgreSQL publicly. Give migrations th
 required schema privileges; use separate restricted runtime/release roles when
 operationally available.
 
-Set `BETTER_AUTH_URL=https://webbrowser.kudium.com` and generate a persistent
+Set `BETTER_AUTH_URL=https://browser.kudium.com` and generate a persistent
 `BETTER_AUTH_SECRET` with `openssl rand -base64 48`. Better Auth runs inside the
 app with your PostgreSQL database; no external identity provider is needed.
 Configure `SMTP_URL` and `SMTP_FROM` to enable email verification and password
 recovery. Without SMTP, accounts can sign in but email ownership is not verified.
 Migrations create the auth tables before the app starts.
 
-`RELEASE_ASSET_ORIGINS` should include `https://webbrowser.kudium.com` for local
+`RELEASE_ASSET_ORIGINS` should include `https://browser.kudium.com` for local
 release assets, plus only the other exact origins you actually use. Credentials
 stay in the server's untracked `.env`, or your hosting platform's secret store.
 
@@ -42,7 +42,7 @@ on port 3000 behind that proxy and reproduce the `/downloads` static-file route.
 ```sh
 docker compose up --build -d
 docker compose ps
-curl --fail https://webbrowser.kudium.com/ready
+curl --fail https://browser.kudium.com/ready
 ```
 
 Compose runs migrations to completion before starting the app, and waits for app
@@ -66,7 +66,7 @@ directory using your trusted deployment channel (SSH/CI). Caddy serves that dire
 read-only as `/downloads/`; there is no public upload endpoint. For example:
 
 ```text
-https://webbrowser.kudium.com/downloads/1.0.1/darwin/arm64/Kudium-1.0.1-arm64.zip
+https://browser.kudium.com/downloads/1.0.1/darwin/arm64/Kudium-1.0.1-arm64.zip
 ```
 
 Keep previous artifacts/blockmaps available for differential updates. Only publish
