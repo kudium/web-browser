@@ -123,11 +123,14 @@ export class GroupRemovalJournal {
     if (Buffer.byteLength(bytes) > MAX_BYTES)
       throw new Error('Group removal recovery data is full.');
     writePrivateFile(this.filename, bytes);
-    const directory = fs.openSync(path.dirname(this.filename), 'r');
-    try {
-      fs.fsyncSync(directory);
-    } finally {
-      fs.closeSync(directory);
+    // Windows does not support fsync on directory descriptors.
+    if (process.platform !== 'win32') {
+      const directory = fs.openSync(path.dirname(this.filename), 'r');
+      try {
+        fs.fsyncSync(directory);
+      } finally {
+        fs.closeSync(directory);
+      }
     }
     this.operations = operations;
     this.index();

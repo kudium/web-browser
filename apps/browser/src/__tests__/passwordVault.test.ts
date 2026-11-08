@@ -45,7 +45,7 @@ describe('Password Manager vault', () => {
     expect(vault.status().items[0]).not.toHaveProperty('password');
     vault.unlock(password);
     expect(vault.status().items).toHaveLength(1);
-    expect(fs.statSync(file).mode % 512).toBe(0o600);
+    if (process.platform !== 'win32') { expect(fs.statSync(file).mode % 512).toBe(0o600); }
   });
   it('rejects wrong passwords and tampering without resetting the vault', () => {
     vault.unlock(password, true);

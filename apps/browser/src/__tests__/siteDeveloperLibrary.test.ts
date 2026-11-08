@@ -24,7 +24,7 @@ jest.mock('node-pty', () => ({
   })),
 }));
 jest.mock('electron', () => ({
-  app: { getPath: () => '/tmp', on: jest.fn() },
+  app: { getPath: () => jest.requireActual('os').tmpdir(), on: jest.fn() },
   ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
 }));
 jest.mock('../main/siteSettings', () => ({
