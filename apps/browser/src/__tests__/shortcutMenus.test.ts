@@ -29,8 +29,8 @@ it('rebuilds native menu accelerators from saved bindings and routes page action
   const menu = new MenuBuilder({ mainWindow: window as any });
   menu.buildMenu();
   const template = (Menu.buildFromTemplate as jest.Mock).mock.calls.at(-1)[0];
-  const browser = template.find((item: any) => item.label === 'Browser');
-  const back = browser.submenu.find((item: any) => item.label === 'Go back');
+  const browser = template.find((item: any) => item.label === 'View');
+  const back = browser.submenu.find((item: any) => item.label === 'Back');
   expect(back.accelerator).toBe('CommandOrControl+[');
   back.click();
   expect(window.webContents.send).toHaveBeenCalledWith(
@@ -45,8 +45,8 @@ it('rebuilds native menu accelerators from saved bindings and routes page action
   refresh();
   const updated = (Menu.buildFromTemplate as jest.Mock).mock.calls
     .at(-1)[0]
-    .find((item: any) => item.label === 'Browser');
+    .find((item: any) => item.label === 'View');
   expect(
-    updated.submenu.find((item: any) => item.label === 'Go back').accelerator
+    updated.submenu.find((item: any) => item.label === 'Back').accelerator
   ).toBe('Alt+B');
 });
