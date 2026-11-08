@@ -4,19 +4,20 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Existing main-branch tag: v1.1.0 or v1.1.0-beta.1"
+      version:
+        description: "Version to release, for example 1.0.2"
         required: true
         type: string
+      channel:
+        description: "Who should receive this release?"
+        default: beta
+        type: choice
+        options: [beta, stable]
       targets:
         description: "Platforms to release (macOS includes Apple Silicon and Intel)"
         default: macos
         type: choice
         options: [macos, all]
-      publish:
-        description: "Approve signed publication (stable releases require this manual run)"
-        default: false
-        type: boolean
 permissions:
   contents: read
 concurrency:
@@ -25,6 +26,8 @@ concurrency:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       tag: ${{ steps.target.outputs.tag }}
       channel: ${{ steps.target.outputs.channel }}
@@ -35,27 +38,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Validate release tag and approval
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - run: node --test scripts/ci/select-browser-release.test.mjs
+      - name: Select version and channel
         id: target
         env:
-          TAG: ${{ inputs.tag || github.ref_name }}
-          APPROVED: ${{ inputs.publish }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          TAG: ${{ github.ref_name }}
           EVENT: ${{ github.event_name }}
           TARGETS: ${{ inputs.targets || 'macos' }}
-        run: |
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]
-          git rev-parse --verify "refs/tags/$TAG"
-          git merge-base --is-ancestor "refs/tags/$TAG" origin/main
-          if [[ "$EVENT" == workflow_dispatch ]]; then test "$GITHUB_REF" = refs/heads/main; fi
-          channel=stable
-          publish=false
-          if [[ "$TAG" == *-beta.* ]]; then channel=beta; publish=true; fi
-          if [[ "$EVENT" == workflow_dispatch ]]; then publish="$APPROVED"; fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "channel=$channel" >> "$GITHUB_OUTPUT"
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "targets=$TARGETS" >> "$GITHUB_OUTPUT"
-          node scripts/ci/browser-release-targets.mjs "$TARGETS" >> "$GITHUB_OUTPUT"
+        run: node scripts/ci/select-browser-release.mjs
       - name: Check publication credentials before building
         if: steps.target.outputs.publish == 'true'
         env:
@@ -82,6 +77,13 @@ jobs:
           for name in $names; do
             if test -z "${!name}"; then echo "::error::Missing GitHub Actions secret: $name"; exit 1; fi
           done
+      - name: Create release tag automatically
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
   build:
     needs: prepare
     name: Build ${{ matrix.platform }}/${{ matrix.arch }}
@@ -156,4 +158,5 @@ jobs:
       - name: Upload verified installers and publish channel feeds
         env:
           RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.tag }}
         run: node scripts/ci/publish-browser-release.mjs release-artifacts ${{ needs.prepare.outputs.targets }}

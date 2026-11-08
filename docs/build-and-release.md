@@ -18,39 +18,34 @@ changes do not redeploy the website.
 GitHub workflow names: **Web checks and deployment**, **Browser checks**, and
 **Browser release**. Workflows can also be run manually from the Actions tab.
 
-## Beta releases
+## Publish a release
 
-After merging and verifying checks, choose the next version and tag that commit:
+After pushing code to `main`, open **Actions → Browser release → Run workflow**:
 
-```sh
-git tag v1.1.0-beta.1
-git push origin v1.1.0-beta.1
-```
+1. Keep the branch set to `main`.
+2. Enter the base version, such as `1.0.2`.
+3. Choose `beta` or `stable` in the channel dropdown.
+4. Leave targets as `macos` and click **Run workflow**.
 
-The release workflow builds and signs macOS Apple Silicon and Intel. Only after
-both Mac targets succeed does it publish installers and
-advance the beta feed. Installing a beta web-feed build opts into beta updates;
-stable installations continue using stable updates. Increment the beta number for
-each new build. Tags and published artifacts must never be rewritten.
+That single action creates a tag for the main commit selected when the run starts,
+runs tests, builds both Mac architectures, signs and notarizes the apps, verifies
+them, and publishes the installers and chosen update feed.
 
-To build a beta without publishing, use **Browser release → Run workflow** on
-`main`, enter the existing tag, and leave `publish` unchecked.
+For `beta`, the pipeline automatically creates `v1.0.2-beta.1`, then
+`v1.0.2-beta.2` on your next run with the same base version. For `stable`, it
+creates `v1.0.2`. Choose a base version newer than existing stable tags. Tags and
+published artifacts are immutable. The pipeline checks credentials before creating
+a tag, and publishes only after both signed builds pass.
 
-## Stable releases
-
-Push an existing main-branch commit as `v1.1.0`. Pushing a stable tag builds unsigned
-artifacts for inspection; it does not publish to users. To publish, run **Browser
-release** manually on `main`, enter that tag, and enable `publish`. This explicit
-run rebuilds, signs, notarizes macOS, and publishes the selected targets together.
-Select `macos` for both Mac architectures, or `all` when Windows signing is configured.
-The default target is `macos`, including tag-triggered beta builds.
-Windows x64 and Linux x64 remain available through the manual `all` option once
-Windows signing credentials are configured.
-
-The manual `publish` input is the approval step. GitHub environment reviewer rules
-are not configured; this is not a second-person review gate. Anyone with workflow
-write access can request publication. CI artifacts expire after 14 days; published
+Selecting `stable` and clicking **Run workflow** requests production publication;
+there is no separate publish checkbox or tag creation step. GitHub environment
+reviewer rules are not configured. CI artifacts expire after 14 days; published
 downloads live on the server's persistent release volume.
+
+Advanced developers can still push beta tags to publish automatically. Pushing a
+stable tag runs an inspection build; use the one-action release flow above with a
+new version for signed publication. Windows x64 and Linux x64 remain available
+through the optional `all` target once Windows signing is configured.
 
 ## Secrets
 
@@ -90,10 +85,10 @@ CI extracts the update ZIP and verifies Kudium Developer ID signing, hardened
 runtime, the stapled notarization ticket, and Gatekeeper acceptance before upload.
 Both macOS architectures must succeed before either feed advances.
 
-To publish a Mac release after tagging a tested main commit:
+The same one-action flow is available from the command line:
 
 ```sh
-gh workflow run browser-release.yml --ref main -f tag=v1.0.0 -f targets=macos -f publish=true
+gh workflow run browser-release.yml --ref main -f version=1.0.2 -f channel=stable -f targets=macos
 ```
 
 Windows and Linux ARM builds are not included. Keep old installers and blockmaps;
