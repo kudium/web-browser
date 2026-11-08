@@ -7,7 +7,7 @@ import { createApp } from '../src/app';
 import { accounts, releases } from '../src/schema';
 import { envelopeSchema } from '../src/validation';
 import { cursorFor, parseCursor, quotas } from '../src/sync';
-import { updateAvailable } from '../src/releases';
+import { registerReleases, updateAvailable } from '../src/releases';
 import { parse } from 'yaml';
 const envelope = (recordId = 'record_one') => ({ version: 1 as const, recordId, keyVersion: 1, nonce: Buffer.alloc(12).toString('base64'), ciphertext: Buffer.from('opaque ciphertext').toString('base64'), tag: Buffer.alloc(16).toString('base64') });
 test('envelopes reject plaintext, unknown keys and invalid nonce/tag lengths', () => {
@@ -37,7 +37,7 @@ describe.skipIf(!url)('PostgreSQL API integration (dedicated test database only)
   beforeAll(async () => { await migrate(db, { migrationsFolder: new URL('../drizzle', import.meta.url).pathname }); });
   afterAll(async () => { await db.delete(accounts).where(eq(accounts.id, alice)); await db.delete(accounts).where(eq(accounts.id, bob)); await db.delete(releases).where(eq(releases.id, suffix)); await db.delete(releases).where(eq(releases.id, suffix + '-old')); await client.end(); });
   test('homepage, docs and database readiness serve correctly', async () => {
-    const home = await app.request('/'); expect(home.status).toBe(200); expect(await home.text()).toContain('Make room for');
+    const home = await app.request('/'); expect(home.status).toBe(200); expect(await home.text()).toContain('Space to do more.');
     const docs = await app.request('/docs'); expect(docs.status).toBe(200); expect(await docs.text()).toContain('If-None-Match');
     expect((await app.request('/assets/site.css')).headers.get('Content-Type')).toContain('text/css');
     expect((await app.request('/ready')).status).toBe(200);
@@ -96,6 +96,19 @@ describe.skipIf(!url)('PostgreSQL API integration (dedicated test database only)
     const feed = await (await request('/v1/sync/changes')).json(); expect(feed.changes.every((v: { envelope: unknown }) => v.envelope === null)).toBe(true);
     const delta = await (await request(`/v1/sync/changes?cursor=${before.cursor}`)).json(); expect(delta.changes).toHaveLength(1); expect(delta.changes[0].deleted).toBe(true);
     const status = await (await request('/v1/sync/status')).json(); expect(status.usedBytes).toBe(0); expect(status.historyBytes).toBe(0);
+  });
+  test('release batches are idempotent and conflicting publication rolls back every target', async () => {
+    const manifest = { version: '88.99.1', platform: 'linux' as const, arch: 'x64' as const, channel: 'stable' as const, notes: suffix, files: [{ url: 'https://downloads.example.com/browser.AppImage', size: 1, sha512: Buffer.alloc(64).toString('base64') }] };
+    try {
+      await registerReleases(db, [manifest]);
+      await registerReleases(db, [manifest]);
+      const before = await db.select().from(releases).where(eq(releases.version, manifest.version));
+      expect(before).toHaveLength(1);
+      await expect(registerReleases(db, [{ ...manifest, platform: 'win32' }, { ...manifest, notes: 'changed' }])).rejects.toThrow('immutable_release');
+      const after = await db.select().from(releases).where(eq(releases.version, manifest.version));
+      expect(after).toHaveLength(1);
+      expect(after[0].manifest.notes).toBe(suffix);
+    } finally { await db.delete(releases).where(eq(releases.version, manifest.version)); }
   });
   test('latest update feed selects semver, validates platform and emits updater-compatible YAML', async () => {
     const manifest = { platform: 'darwin' as const, arch: 'arm64' as const, channel: 'stable' as const, version: '1.10.0', notes: 'Release notes', files: [{ url: 'https://downloads.example.com/Kudium-1.10.0-arm64.zip', sha512: Buffer.alloc(64).toString('base64'), size: 1024 }] };

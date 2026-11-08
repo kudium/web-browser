@@ -1,0 +1,130 @@
+name: Browser release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing main-branch tag: v1.1.0 or v1.1.0-beta.1"
+        required: true
+        type: string
+      publish:
+        description: "Approve signed publication (stable releases require this manual run)"
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: browser-release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.target.outputs.tag }}
+      channel: ${{ steps.target.outputs.channel }}
+      publish: ${{ steps.target.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate release tag and approval
+        id: target
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          APPROVED: ${{ inputs.publish }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]
+          git rev-parse --verify "refs/tags/$TAG"
+          git merge-base --is-ancestor "refs/tags/$TAG" origin/main
+          if [[ "$EVENT" == workflow_dispatch ]]; then test "$GITHUB_REF" = refs/heads/main; fi
+          channel=stable
+          publish=false
+          if [[ "$TAG" == *-beta.* ]]; then channel=beta; publish=true; fi
+          if [[ "$EVENT" == workflow_dispatch ]]; then publish="$APPROVED"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+      - name: Check publication credentials before building
+        if: steps.target.outputs.publish == 'true'
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASS: ${{ secrets.APPLE_ID_PASS }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+        run: |
+          for name in MAC_CSC_LINK MAC_CSC_KEY_PASSWORD APPLE_ID APPLE_ID_PASS APPLE_TEAM_ID WIN_CSC_LINK WIN_CSC_KEY_PASSWORD RELEASE_PUBLISH_TOKEN; do
+            if test -z "${!name}"; then echo "::error::Missing GitHub Actions secret: $name"; exit 1; fi
+          done
+  build:
+    needs: prepare
+    name: Build ${{ matrix.platform }}/${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, platform: darwin, arch: arm64, flag: mac }
+          - { os: macos-15-intel, platform: darwin, arch: x64, flag: mac }
+          - { os: windows-latest, platform: win32, arch: x64, flag: win }
+          - { os: ubuntu-latest, platform: linux, arch: x64, flag: linux }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      RELEASE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+      RELEASE_SIGNING_REQUIRED: ${{ needs.prepare.outputs.publish }}
+      CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.MAC_CSC_LINK || matrix.platform == 'win32' && secrets.WIN_CSC_LINK || '' }}
+      CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.MAC_CSC_KEY_PASSWORD || matrix.platform == 'win32' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_ID_PASS: ${{ secrets.APPLE_ID_PASS }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: npm
+          cache-dependency-path: apps/browser/package-lock.json
+      - run: npm install --global npm@12.2.0
+      - run: npm ci
+        working-directory: apps/browser
+      - run: npx tsc --noEmit && npm test -- --runInBand
+        working-directory: apps/browser
+      - run: node scripts/ci/prepare-browser-release.mjs "$TAG"
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+      - run: npm run package:web -- --${{ matrix.flag }} --${{ matrix.arch }}
+        working-directory: apps/browser
+      - run: node scripts/ci/collect-browser-release.mjs ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.prepare.outputs.channel }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.platform }}-${{ matrix.arch }}
+          path: release-artifacts/${{ matrix.platform }}-${{ matrix.arch }}/
+          retention-days: 14
+          if-no-files-found: error
+  publish:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ needs.prepare.outputs.channel == 'stable' && 'browser-stable' || 'browser-beta' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: release-artifacts
+      - name: Upload verified installers and publish channel feeds
+        env:
+          RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+        run: node scripts/ci/publish-browser-release.mjs release-artifacts

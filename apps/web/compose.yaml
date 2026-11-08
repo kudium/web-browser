@@ -16,6 +16,8 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
+    volumes:
+      - release_assets:/app/release-assets
     init: true
     stop_grace_period: 30s
   proxy:
@@ -30,9 +32,9 @@ services:
       - "443:443/udp"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./release-assets:/srv/releases:ro
       - caddy_data:/data
       - caddy_config:/config
 volumes:
+  release_assets:
   caddy_data:
   caddy_config:
