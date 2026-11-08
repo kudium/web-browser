@@ -7,12 +7,13 @@ import { secureHeaders } from 'hono/secure-headers';
 import { valid } from 'semver';
 import { stringify } from 'yaml';
 import { sql } from 'drizzle-orm';
+import { z } from 'zod';
 import type { Database } from './db';
 import { authenticateSession, syncAccountId, type Authenticate, type Auth } from './auth';
 import { envelopeSchema, opaqueId, targetSchema } from './validation';
 import { expectedRevision, syncStore } from './sync';
-import { latestRelease, updateAvailable, updaterManifest } from './releases';
-import { homepage, documentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage } from './pages';
+import { latestRelease, updateAvailable, updaterManifest, releaseHistory } from './releases';
+import { homepage, downloadPage, documentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
 import { tutorials } from './tutorials';
 export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing }: { publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
   const app = new Hono<{ Variables: { account: string } }>();
@@ -39,6 +40,15 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/health', c => c.json({ status: 'ok' }));
   app.get('/ready', async c => { try { await db.execute(sql`select 1`); return c.json({ status: 'ready', sync: authenticate ? 'configured' : 'unconfigured' }); } catch { return c.json({ status: 'unavailable' }, 503); } });
   app.get('/', c => c.html(homepage()));
+  app.get('/download', c => c.html(downloadPage()));
+  const historyQuery = z.object({ channel: z.enum(['all', 'stable', 'beta']).default('all'), page: z.coerce.number().int().min(1).max(10000).default(1) });
+  for (const route of ['/releases', '/v1/releases']) app.get(route, async c => {
+    const query = historyQuery.safeParse(c.req.query());
+    if (!query.success) throw new HTTPException(400, { message: 'invalid_release_query' });
+    const history = await releaseHistory(db, assetOrigins, query.data.channel, query.data.page);
+    c.header('Cache-Control', 'no-store');
+    return route === '/v1/releases' ? c.json(history) : c.html(releaseHistoryPage(history, query.data.channel));
+  });
   app.get('/docs', c => c.html(documentation()));
   app.get('/tutorials', c => c.html(tutorialIndex()));
   app.get('/tutorials/:slug', c => { const tutorial = tutorials.find(t => t.slug === c.req.param('slug')); return tutorial ? c.html(tutorialPage(tutorial)) : c.notFound(); });
@@ -60,6 +70,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     c.header('Content-Type', filename.endsWith('.png') ? 'image/png' : 'image/webp');
     return c.body(await file.arrayBuffer());
   });
+  app.get('/assets/download.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/download.js', import.meta.url)).text()); });
   app.get('/assets/showcase.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/showcase.js', import.meta.url)).text()); });
   app.get('/assets/site.css', async c => { c.header('Cache-Control', 'public, max-age=300'); c.header('Content-Type', 'text/css; charset=utf-8'); return c.body(await Bun.file(new URL('../public/site.css', import.meta.url)).text()); });
   app.use('/api/auth/*', bodyLimit({ maxSize: 64 * 1024, onError: c => c.json({ error: 'body_too_large' }, 413) }));

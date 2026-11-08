@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { GroupLockState, GroupLockRequest } from '../browser/groupLocks';
 import type { IApp } from '../types';
+import { windowWorkspace } from './windowWorkspace';
 import { groupKey } from './groups';
 
 let state: GroupLockState & { ready: boolean } = {
@@ -47,8 +48,13 @@ export const lockedGroup = (
 ) =>
   (initialized && access.ready === false) ||
   !!access.error ||
-  (access.protected.includes(groupKey(item)) &&
-    !access.unlocked.includes(groupKey(item)));
+  [
+    groupKey(item),
+    item.protectionGroupId,
+    windowWorkspace.state()?.parentGroups[groupKey(item)],
+  ].some(
+    (id) => id && access.protected.includes(id) && !access.unlocked.includes(id)
+  );
 export async function groupAccessAction(
   action: GroupLockRequest['action'],
   item: IApp
@@ -56,7 +62,7 @@ export async function groupAccessAction(
   initialize();
   const result = await window.electron.groupLocks.request({
     action,
-    groupId: groupKey(item),
+    groupId: item.protectionGroupId || groupKey(item),
   });
   update(result);
   return result;

@@ -4,18 +4,60 @@ export interface AISettings {
   hasKey: boolean;
   remembered: boolean;
 }
+export interface AIUsage {
+  requestAttempts?: number;
+  streamingFallbacks?: number;
+  requestsWithUsage?: number;
+  firstTextMs?: number;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens?: number;
+  cacheWriteTokens?: number;
+  durationMs: number;
+  toolCalls: number;
+  usageReported: boolean;
+}
+export interface AIExecution {
+  incomplete: boolean;
+  pendingActions: number;
+  observations: number;
+  applied: number;
+  verifiedWrites: number;
+  startedCommands: number;
+  reviewedCommands: number;
+  successfulCommands?: number;
+  failedCommands?: number;
+  unfinishedCommands?: number;
+  errors: number;
+}
 export interface AIEvent {
+  feedbackId?: string;
+  suggestions?: string[];
+  execution?: AIExecution;
+  usage?: AIUsage;
   workingTabIds?: string[];
   source?: 'external';
   tabId?: string;
   active?: boolean;
   resumable?: boolean;
-  type: 'status' | 'message' | 'error' | 'handoff' | 'done' | 'activity';
+  type:
+    | 'status'
+    | 'partial'
+    | 'message'
+    | 'error'
+    | 'handoff'
+    | 'done'
+    | 'activity'
+    | 'feedback';
+  contextNotice?: string;
   text: string;
 }
+
 export interface AITaskStatus {
   workingTabIds?: string[];
   activeTabId?: string;
+  feedbackId?: string;
   busy: boolean;
   resumable: boolean;
   reason?: string;

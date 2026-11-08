@@ -41,6 +41,7 @@ it('opens group creation from the space menu in the active space', async () => {
     spaces: [{ id: 'work' }],
     appList: [],
     showUnpinnedGroups: false,
+    windowWorkspace: { state: () => undefined },
     setNewGroupSpace,
     setEditingGroup: jest.fn(),
     crypto: { randomUUID: () => 'draft-id' },

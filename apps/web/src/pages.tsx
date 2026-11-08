@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { serviceOrigin } from "./config";
 import { tutorials, type Tutorial } from "./tutorials";
+import type { groupReleaseHistory } from "./releases";
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
 function Layout({
@@ -43,9 +44,9 @@ function Layout({
           />
         )}
         <link rel="icon" href="/assets/product/origin-logo.png" />
-        <link rel="stylesheet" href="/assets/site.css?v=14" />
+        <link rel="stylesheet" href="/assets/site.css?v=22" />
       </head>
-      <body>
+      <body className={privatePage ? "account-page" : undefined}>
         <header>
           <a className="brand" href="/" aria-label="Kudium home">
             <img
@@ -66,7 +67,7 @@ function Layout({
             <a className="account-link" href="/account">
               Account
             </a>
-            <a className="nav-button" href="/#download">
+            <a className="nav-button" href="/download">
               Get Browser
             </a>
           </nav>
@@ -79,6 +80,7 @@ function Layout({
           <span>Free and open source.</span>
           <a href="/tutorials">Tutorials</a>
           <a href="/docs">Documentation</a>
+          <a href="/releases">Release history</a>
           <a href={githubUrl}>GitHub</a>
           <a href={sponsorsUrl}>Support Kudium</a>
         </footer>
@@ -100,7 +102,7 @@ export function homepage() {
               And room for everything you’re making.
             </p>
             <div className="campaign-actions">
-              <a className="button" href="#download">
+              <a className="button" href="/download">
                 Get Browser
               </a>
               <a className="text-link" href="#highlights">
@@ -523,6 +525,90 @@ export function homepage() {
     )
   );
 }
+export function downloadPage() {
+  return "<!doctype html>" + renderToStaticMarkup(
+    <Layout title="Download" canonicalPath="/download">
+      <main className="download-page">
+        <div className="download-hero">
+        <div className="download-hero-copy">
+        <h1>Download Kudium Browser.</h1>
+        <p className="download-intro">Free and open source. A little more room for your work.</p>
+        <section className="download-recommendation" aria-labelledby="recommended-platform" hidden data-download-recommendation>
+          <h2 id="recommended-platform" data-download-title />
+          <div className="download-split">
+            <a className="download-primary" data-download-primary hidden />
+            <details className="download-options" data-download-options>
+              <summary aria-label="Choose a download" data-download-trigger>
+                <span data-download-trigger-label>Choose a build</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m3 4.5 3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </summary>
+              <div className="download-options-list">
+                {(["darwin", "win32", "linux"] as const).map((platform, i) => (
+                  <div key={platform}>
+                    <h3>{["macOS", "Windows", "Linux"][i]}</h3>
+                    <a href={`/download/${platform}/arm64`}>{i === 0 ? "Apple silicon" : "ARM64"}</a>
+                    <a href={`/download/${platform}/x64`}>{i === 0 ? "Intel Mac" : "Intel / AMD"}</a>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        </section>
+        </div>
+        <figure className="download-app-preview">
+          <a href="/assets/product/demo/developer-terminal.webp" aria-label="View the full Kudium Browser screenshot">
+            <img src="/assets/product/demo/developer-terminal.webp" width="2880" height="1880" alt="Kudium Browser with organized tab groups, a website, and its integrated file explorer and terminal open side by side" />
+          </a>
+        </figure>
+        </div>
+        <section aria-labelledby="all-downloads-title" className="all-downloads">
+          <h2 id="all-downloads-title">All downloads</h2>
+          <div className="platform-grid">
+            {(["darwin", "win32", "linux"] as const).map((platform, i) => (
+              <article key={platform}>
+                <h3>{["macOS", "Windows", "Linux"][i]}</h3>
+                <a className="platform-link" href={`/download/${platform}/arm64`}>{i === 0 ? "Apple silicon" : "ARM64"}</a>
+                <a className="platform-link" href={`/download/${platform}/x64`}>{i === 0 ? "Intel Mac" : "Intel / AMD"}</a>
+              </article>
+            ))}
+          </div>
+          <p className="availability">Builds are available as releases are published. <a href="/releases">Browse all versions</a> · <a href="/docs#updates">About updates</a></p>
+        </section>
+      </main>
+      <script src="/assets/download.js" defer />
+    </Layout>
+  );
+}
+
+export function releaseHistoryPage(history: ReturnType<typeof groupReleaseHistory>, channel: 'all' | 'stable' | 'beta') {
+  const pageUrl = (page: number) => `/releases?channel=${channel}&page=${page}`;
+  const platformName = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
+  return '<!doctype html>' + renderToStaticMarkup(
+    <Layout title="Release history" canonicalPath="/releases">
+      <main className="release-history">
+        <div className="release-history-heading">
+          <p className="release-eyebrow">Kudium Browser</p>
+          <h1>Every version, in one place.</h1>
+          <p>Browse release notes and download a version for your computer.</p>
+          <a className="text-link" href="/download">Get the latest stable version →</a>
+        </div>
+        <nav className="release-filters" aria-label="Release channel">
+          {(['all', 'stable', 'beta'] as const).map(value => <a key={value} href={`/releases?channel=${value}`} aria-current={channel === value ? 'page' : undefined}>{value === 'all' ? 'All versions' : value === 'stable' ? 'Stable' : 'Beta'}</a>)}
+        </nav>
+        <p className="release-history-help">Beta versions let you try upcoming changes. Before installing an older version, back up your browser data; newer data may not work with it.</p>
+        {history.releases.length === 0 ? <section className="release-empty"><h2>{history.total ? 'No versions on this page.' : 'No published versions yet.'}</h2><p>{history.total ? 'Return to the first page to browse available releases.' : 'Downloads will appear here when a release is published.'}</p>{history.total > 0 && <a className="text-link" href={pageUrl(1)}>View releases →</a>}</section> : <div className="release-list">
+          {history.releases.map(release => <article className="release-card" key={`${release.channel}/${release.version}`}>
+            <div className="release-card-heading"><h2>{release.version}</h2><span className={`release-channel release-channel-${release.channel}`}>{release.channel === 'stable' ? 'Stable' : 'Beta'}</span><time dateTime={release.publishedAt}>{new Date(release.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</time></div>
+            <div className="release-notes">{release.notes.length ? release.notes.map((note, index) => <p key={index}>{note}</p>) : <p>No release notes were provided.</p>}</div>
+            <div className="release-downloads">{release.targets.map(target => <section key={`${target.platform}/${target.arch}`}><h3>{platformName[target.platform]} · {target.platform === 'darwin' ? (target.arch === 'arm64' ? 'Apple silicon' : 'Intel') : target.arch === 'arm64' ? 'ARM64' : 'Intel / AMD'}</h3><div>{target.files.map(file => { const name = new URL(file.url).pathname.split('/').at(-1) || 'Installer'; const format = name.toLowerCase().endsWith('.dmg') ? 'DMG' : name.toLowerCase().endsWith('.zip') ? 'ZIP' : name.toLowerCase().endsWith('.exe') ? 'Installer' : name.toLowerCase().endsWith('.appimage') ? 'AppImage' : 'Download'; return <a key={file.url} href={file.url} aria-label={`Download ${release.version} for ${platformName[target.platform]} ${target.arch}, ${format}`}>{format}<span>{(file.size / 1024 / 1024).toFixed(1)} MB</span></a>; })}</div></section>)}</div>
+          </article>)}
+        </div>}
+        {history.releases.length > 0 && history.totalPages > 1 && <nav className="release-pagination" aria-label="Release pages">{history.page > 1 && <a href={pageUrl(history.page - 1)}>← Newer versions</a>}<span>Page {history.page} of {history.totalPages}</span>{history.page < history.totalPages && <a href={pageUrl(history.page + 1)}>Older versions →</a>}</nav>}
+      </main>
+    </Layout>
+  );
+}
+
 export function documentation() {
   return (
     "<!doctype html>" +
@@ -867,7 +953,7 @@ export function unavailablePage() {
             This download isn’t available yet.
           </h1>
           <p>There’s no release for this platform and architecture yet.</p>
-          <a className="button" href="/#download">
+          <a className="button" href="/download">
             Choose another platform →
           </a>
         </main>
@@ -900,8 +986,8 @@ export function authPage(
             <h1>{title}</h1>
             <p>One account for your browser workspace.</p>
             <p className="auth-note">
-              Your account is ready for Kudium. Connecting the desktop browser
-              for sync is coming in a future update.
+              Sign in or create an account, then approve your browser’s connection
+              request. Return to Sync in Preferences to set up encrypted sync.
             </p>
           </section>
           <section className="auth-card">
@@ -1046,5 +1132,32 @@ export function accountPage(
 }
 
 export function devicePage() {
-  return renderToStaticMarkup(<Layout title="Connect Kudium Browser" privatePage><main className="auth-page"><section className="auth-card"><h1>Connect your browser</h1><p>Approve only a request you started in Kudium Browser. Compare this code with the one shown in Preferences.</p><strong data-device-code></strong><p>Connecting signs this device into your account. Sync starts only after you set up your encryption key and choose what to sync in the app.</p><button data-device-approve disabled>Approve this device</button><button data-device-deny disabled>Cancel</button><p data-device-message role="status">Checking request…</p></section></main><script src="/assets/device.js" defer /></Layout>);
+  return renderToStaticMarkup(
+    <Layout title="Connect Kudium Browser" privatePage>
+      <main className="device-layout">
+        <section className="auth-card device-card" aria-labelledby="device-title">
+          <div className="device-icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="4" y="5" width="24" height="17" rx="3" stroke="currentColor" strokeWidth="1.7" />
+              <path d="M11 27h10M16 22v5M5 10h22" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          </div>
+          <p className="eyebrow">Kudium Browser</p>
+          <h1 id="device-title">Connect your browser.</h1>
+          <p className="device-description">Compare this code with the one in your browser’s Preferences. Approve only a request you started.</p>
+          <div className="device-code-panel">
+            <span>Verification code</span>
+            <strong data-device-code aria-label="Verification code">—</strong>
+          </div>
+          <div className="device-actions">
+            <button className="button" data-device-approve disabled>Approve this device</button>
+            <button className="button button-secondary" data-device-deny disabled>Cancel</button>
+          </div>
+          <p data-device-message role="status" aria-live="polite">Checking request…</p>
+          <p className="device-footnote">This signs the browser into your account. Sync starts after you set up your encryption key and choose what to sync in the app.</p>
+        </section>
+      </main>
+      <script src="/assets/device.js" defer />
+    </Layout>
+  );
 }

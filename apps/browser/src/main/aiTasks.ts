@@ -1,3 +1,4 @@
+import { storageRecoveryMessage } from '../browser/storageRecovery';
 /* eslint-disable max-classes-per-file */
 import fs from 'fs';
 import { randomUUID } from 'crypto';
@@ -92,11 +93,9 @@ export class AITaskStore {
       this.storage.isEncryptionAvailable() &&
       this.storage.isFileAvailable?.(this.filename) === false
     )
-      throw new Error(
-        'Saved AI tasks need recovery. Their encrypted file has been preserved.'
-      );
+      throw new Error(storageRecoveryMessage('your saved AI tasks'));
     if (!this.available())
-      throw new Error('Unlock OS encryption to load AI tasks.');
+      throw new Error(storageRecoveryMessage('your saved AI tasks'));
     if (fs.statSync(this.filename).size > 16 * 1024 * 1024)
       throw new Error('AI task storage is too large.');
     const data = JSON.parse(
@@ -149,7 +148,9 @@ export class AITaskStore {
 
   save(tasks: SavedAITask[]) {
     if (!this.available())
-      throw new Error('OS encryption is required to save AI tasks.');
+      throw new Error(
+        'OS encryption is required to save AI tasks. Restart Kudium and allow access to your system’s secure storage if prompted, then try again.'
+      );
     const serialized = JSON.stringify(tasks);
     if (Buffer.byteLength(serialized) > 8 * 1024 * 1024)
       throw new Error(

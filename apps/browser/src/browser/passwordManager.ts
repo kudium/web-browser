@@ -52,6 +52,7 @@ type VaultOperation =
   | { action: 'fill'; id: string; pageId: number }
   | { action: 'pages' }
   | { action: 'import'; allowAI: boolean }
+  | { action: 'importPasswords' }
   | { action: 'hide' | 'reset'; id: string }
   | { action: 'removeScope'; disposition: 'delete' | 'move' | 'ask' };
 export type VaultRequest = VaultOperation & { scope?: string };

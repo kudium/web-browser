@@ -88,6 +88,10 @@ export function validatePreferences(
     throw new Error('Invalid preferences');
   const validated: Partial<BrowserPreferences> = {};
   Object.entries(patch).forEach(([key, value]) => {
+    if (key === 'setupCompleted' && typeof value === 'boolean') {
+      validated.setupCompleted = value;
+      return;
+    }
     if (key === 'advanced') {
       validated.advanced = validateAdvanced(value);
       return;
@@ -327,6 +331,33 @@ export function registerPreferences(
           );
           return null;
         }
+        if (action === 'enable-open-at-login') {
+          if (
+            !app.isPackaged ||
+            !['darwin', 'win32'].includes(process.platform)
+          )
+            throw new Error(
+              'Login setup is available in the installed browser.'
+            );
+          app.setLoginItemSettings({ openAtLogin: true });
+          return {
+            kind: 'diagnostic',
+            text: app.getLoginItemSettings().openAtLogin
+              ? 'Kudium Browser will open when you sign in.'
+              : 'Confirm Kudium Browser in your system Login Items settings.',
+          };
+        }
+        if (action === 'reveal-app-for-dock') {
+          if (process.platform !== 'darwin' || !app.isPackaged)
+            throw new Error(
+              'Dock setup is available in the installed Mac browser.'
+            );
+          shell.showItemInFolder(path.resolve(process.execPath, '../../..'));
+          return {
+            kind: 'diagnostic',
+            text: 'Drag Kudium Browser from Finder to your Dock to keep it there.',
+          };
+        }
         if (action === 'set-default-browser') {
           const success = ['http', 'https']
             .map((protocol) => app.setAsDefaultProtocolClient(protocol))
@@ -360,6 +391,11 @@ export function registerPreferences(
           );
         if (action === 'info')
           return {
+            platform: process.platform,
+            systemSetupAvailable: app.isPackaged,
+            openAtLogin: ['darwin', 'win32'].includes(process.platform)
+              ? app.getLoginItemSettings().openAtLogin
+              : false,
             defaultBrowser: ['http', 'https'].every((protocol) =>
               app.isDefaultProtocolClient(protocol)
             ),

@@ -15,6 +15,7 @@ export interface IApp {
   openerTabId?: string;
   restorationId?: string;
   sessionProfileId?: string;
+  protectionGroupId?: string;
   extensionInstallTarget?: string;
   sessionName?: string;
   sessionSlug?: string;
@@ -43,6 +44,7 @@ export type NewWindowParams = {
   options?: BrowserWindowConstructorOptions;
   view: View;
   isChild?: boolean;
+  additional?: boolean;
   intent?: 'edit' | 'new-session';
   preferencesSection?: string;
 };

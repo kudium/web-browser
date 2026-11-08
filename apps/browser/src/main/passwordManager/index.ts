@@ -1,3 +1,4 @@
+import { storageRecoveryMessage } from '../../browser/storageRecovery';
 import {
   app,
   ipcMain,
@@ -10,6 +11,8 @@ import { EventEmitter } from 'events';
 import fs from 'fs';
 import { isProtectedField } from '../../browser/passwordManager';
 import { importDocument } from './documents';
+import { parseBrowserPasswords } from './browserPasswords';
+import { showBrowserDialog } from '../dialogs';
 import type { VaultItem, VaultRequest } from '../../browser/passwordManager';
 import { PasswordVault } from './vault';
 import { fillDocument } from './fill';
@@ -58,9 +61,7 @@ export const passwordVault = () => {
           'vault.json'
         );
         if (!safeStorage.isFileAvailable(file))
-          throw new Error(
-            'Saved Personal Data needs recovery before it can be changed. Its encrypted file has been preserved.'
-          );
+          throw new Error(storageRecoveryMessage('your saved Personal Data'));
       }
     );
   return store;
@@ -429,6 +430,47 @@ export function registerPasswordManager(
           vault.removeScope(request.scope, disposition);
         }
         return { removed: true };
+      }
+      case 'importPasswords': {
+        const { dialog } = await import('electron');
+        const owner = BrowserWindow.fromWebContents(event.sender);
+        if (!owner) throw new Error('Open Preferences to import passwords.');
+        const selection = await dialog.showOpenDialog(owner, {
+          title: 'Import browser passwords',
+          properties: ['openFile'],
+          filters: [{ name: 'Browser password export', extensions: ['csv'] }],
+        });
+        if (selection.canceled || !selection.filePaths[0])
+          return { imported: 0, skipped: 0, canceled: true };
+        const file = selection.filePaths[0];
+        if (fs.statSync(file).size > 8 * 1024 * 1024)
+          throw new Error('Choose a password export smaller than 8 MB.');
+        const parsed = parseBrowserPasswords(
+          await fs.promises.readFile(file, 'utf8')
+        );
+        if (owner.isDestroyed())
+          throw new Error('Preferences closed during import.');
+        const review = await showBrowserDialog(owner, {
+          type: 'question',
+          message: `Import ${parsed.items.length} passwords?`,
+          detail: `Saved in your encrypted password manager. Duplicates are skipped.${
+            parsed.skipped
+              ? ` ${parsed.skipped} unsupported rows were skipped.`
+              : ''
+          }`,
+          buttons: ['Cancel', 'Import passwords'],
+          defaultId: 1,
+          cancelId: 0,
+        });
+        if (review.response !== 1)
+          return { imported: 0, skipped: 0, canceled: true };
+        await authenticate();
+        grant();
+        const imported = vault.importSyncedLogins(parsed.items);
+        return {
+          imported,
+          skipped: parsed.skipped + parsed.items.length - imported,
+        };
       }
       case 'import': {
         const { dialog } = await import('electron');

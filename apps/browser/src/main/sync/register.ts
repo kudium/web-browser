@@ -5,8 +5,10 @@ import {
   authenticatePersonalData,
   withPersonalData,
   personalDataRevision,
+  passwordVault,
 } from '../passwordManager';
 import { AccountSyncClient } from './accountClient';
+import { PasswordSyncScheduler } from './passwordScheduler';
 import { safeStorage } from '../localStorage';
 import {
   getBrowserPreferences,
@@ -120,10 +122,13 @@ export function registerAccountSync(
           );
           operationMessage = `${imported} saved logins imported. Existing passwords were kept.`;
         }
-      } else if (action === 'connect') await instance.connect();
-      else if (action === 'cancel') instance.cancel();
+      } else if (action === 'connect') {
+        passwordScheduler.reset();
+        await instance.connect(input.authMode);
+      } else if (action === 'cancel') instance.cancel();
       else if (action === 'enable') await instance.enable(input);
       else if (action === 'disconnect') {
+        passwordScheduler.reset();
         updateBrowserPreferences({
           cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false },
         });
@@ -139,6 +144,7 @@ export function registerAccountSync(
           throw new Error('Choose a workspace.');
         return instance.restore(input.recordId);
       } else if (action === 'delete-data') {
+        passwordScheduler.reset();
         updateBrowserPreferences({
           cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false },
         });
@@ -152,6 +158,8 @@ export function registerAccountSync(
       return status;
     }
   );
+  const passwordScheduler = new PasswordSyncScheduler();
+  let lastPasswords = 0;
   let lastPoll = 0;
   let lastSync = 0;
   const timer = setInterval(() => {
@@ -161,6 +169,49 @@ export function registerAccountSync(
       lastPoll = now;
       client.poll().catch(() => {});
     }
+    if (now - lastPasswords >= 5000) {
+      lastPasswords = now;
+      const instance = client;
+      const revision = personalDataRevision();
+      const current = () => {
+        const settings = getBrowserPreferences().cloudSync;
+        const status = instance.status();
+        return (
+          client === instance &&
+          status.connected &&
+          status.phase === 'ready' &&
+          settings.enabled &&
+          settings.provider === 'kudiumbrowser' &&
+          Boolean(settings.categories.passwords) &&
+          personalDataRevision() === revision &&
+          !passwordVault().status().locked
+        );
+      };
+      passwordScheduler
+        .tick({
+          current,
+          read: () => {
+            if (!current()) return undefined;
+            return passwordVault()
+              .records()
+              .filter(
+                (item) =>
+                  !item.scope &&
+                  item.kind === 'login' &&
+                  item.origin &&
+                  item.password
+              )
+              .map(({ title, origin, username, password }) => ({
+                title,
+                origin,
+                username,
+                password,
+              }));
+          },
+          upload: (items, guard) => instance.syncPasswords(items, guard),
+        })
+        .catch(() => {});
+    }
     if (now - lastSync >= 30000) {
       lastSync = now;
       client.sync().catch(() => {});
@@ -168,9 +219,11 @@ export function registerAccountSync(
   }, 1000);
   timer.unref();
   onBrowserPreferencesChanged(() => {
+    passwordScheduler.reset();
     client?.pause();
   });
   app.once('will-quit', () => {
+    passwordScheduler.reset();
     clearInterval(timer);
     client?.pause();
   });

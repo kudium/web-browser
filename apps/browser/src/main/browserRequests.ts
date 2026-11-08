@@ -34,6 +34,7 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
           'openerTabId',
           'restorationId',
           'sessionProfileId',
+          'protectionGroupId',
           'extensionInstallTarget',
           'spaceId',
           'folderId',

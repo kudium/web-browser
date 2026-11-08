@@ -40,6 +40,7 @@ export interface AccountSyncStatus {
   passwordDevices?: { recordId: string; deviceId: string }[];
 }
 export interface AccountSyncInput {
+  authMode?: 'sign-in' | 'sign-up';
   recoveryKey?: string;
   savedRecoveryKey?: boolean;
   recordId?: string;

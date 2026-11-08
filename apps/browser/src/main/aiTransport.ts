@@ -19,7 +19,8 @@ export function providerRequest(
   endpoint: string,
   model: string,
   messages: any[],
-  tools: any[]
+  tools: any[],
+  options: { cacheSystem?: boolean } = {}
 ) {
   if (!isClaude(endpoint))
     return {
@@ -32,10 +33,18 @@ export function providerRequest(
   return {
     model,
     max_tokens: 4096,
-    system: messages
-      .filter((m) => m.role === 'system')
-      .map((m) => m.content)
-      .join('\n'),
+    system: options.cacheSystem
+      ? messages
+          .filter((m) => m.role === 'system')
+          .map((m, index) => ({
+            type: 'text',
+            text: m.content,
+            ...(index === 0 ? { cache_control: { type: 'ephemeral' } } : {}),
+          }))
+      : messages
+          .filter((m) => m.role === 'system')
+          .map((m) => m.content)
+          .join('\n'),
     messages: messages
       .filter((m) => m.role !== 'system')
       .reduce((result: any[], m) => {

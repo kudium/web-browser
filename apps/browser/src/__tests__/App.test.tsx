@@ -6,6 +6,10 @@ jest.mock('../components/View/Main/Main', () => ({
   Main: () => <div>Kudium Browser</div>,
 }));
 
+jest.mock('../components/UI/BrowserWorkspace', () => ({
+  BrowserWorkspace: () => <div>Kudium Browser</div>,
+}));
+
 describe('App', () => {
   it('should render', () => {
     window.history.replaceState({}, '', '/?view=main');

@@ -133,7 +133,17 @@ export class AccountSyncClient {
     };
   }
 
-  async connect() {
+  async connect(authMode?: 'sign-in' | 'sign-up') {
+    if (
+      authMode !== undefined &&
+      authMode !== 'sign-in' &&
+      authMode !== 'sign-up'
+    )
+      throw new Error('Choose sign in or create account.');
+    if (this.pending && Date.now() < this.pending.expiresAt) {
+      await this.openAuthorization(authMode);
+      return;
+    }
     this.cancel();
     const { generation } = this;
     const { body } = await this.request('/api/auth/device/code', undefined, {
@@ -157,8 +167,18 @@ export class AccountSyncClient {
     };
     this.phase = 'connecting';
     this.message = 'Compare the code and approve this device on the website.';
+    await this.openAuthorization(authMode);
+  }
+
+  private async openAuthorization(authMode?: 'sign-in' | 'sign-up') {
+    if (!this.pending) return;
+    const destination = `/device?user_code=${encodeURIComponent(
+      this.pending.userCode
+    )}`;
     await this.options.open(
-      `${SYNC_ORIGIN}/device?user_code=${encodeURIComponent(body.user_code)}`
+      authMode
+        ? `${SYNC_ORIGIN}/${authMode}?next=${encodeURIComponent(destination)}`
+        : `${SYNC_ORIGIN}${destination}`
     );
   }
 
@@ -565,7 +585,10 @@ export class AccountSyncClient {
     }
   }
 
-  async syncPasswords(value: SyncedLogin[]) {
+  async syncPasswords(
+    value: SyncedLogin[],
+    current: () => boolean = () => true
+  ) {
     const items = validateSyncedLogins(value);
     const { key, credential, generation } = await this.passwordKey();
     try {
@@ -580,7 +603,7 @@ export class AccountSyncClient {
           throw error;
         revision = error.revision || 0;
       }
-      if (generation !== this.generation)
+      if (generation !== this.generation || !current())
         throw new Error('Password sync was paused.');
       const envelope = encryptSyncRecord(
         { version: 1, deviceId: credential.deviceId, items },

@@ -1,3 +1,4 @@
+import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import {
   PanelLeft,
@@ -52,6 +53,9 @@ import { eventBus } from '../../utils/EventBus';
 import { EVENT_KEY } from '../../utils/constant';
 import { AIReferencePicker } from './AIReferencePicker';
 import { AIMessage } from './AIMessage';
+import { AIUsageDetails } from './AIUsageDetails';
+import { AIExecutionDetails } from './AIExecutionDetails';
+import { visibleAIStreamText } from '../../browser/aiSuggestions';
 import { PanelOverlayContext } from './PanelDialog';
 import { DeveloperSidebar } from './DeveloperSidebar';
 import { AITasksPanel } from './AITasksPanel';
@@ -123,6 +127,7 @@ export function AISidebar({
   const [mentionIndex, setMentionIndex] = useState(0);
   const [cursor, setCursor] = useState(0);
   const [pane, setPane] = useAIPagePreference('pane', 'assistant');
+  const [showStats] = useAIPagePreference('showStats', true);
   useEffect(() => {
     if (menuPaneRequest) setPane(menuPaneRequest.pane);
   }, [menuPaneRequest, setPane]);
@@ -145,6 +150,7 @@ export function AISidebar({
   });
   const [external, setExternal] = useState<MCPStatus>();
   const [prompt, setPrompt] = useState('');
+  const [streamingText, setStreamingText] = useState('');
   const [attachments, setAttachments] = useState<AIComposerAttachment[]>([]);
   const [sentFiles, setSentFiles] = useState<AIComposerAttachment[]>([]);
   const [contexts, setContexts] = useState<AIContextAttachment[]>([]);
@@ -167,8 +173,10 @@ export function AISidebar({
   const attachmentRef = useRef<AIComposerAttachment[]>([]);
   attachmentRef.current = attachments;
   const [busy, setBusy] = useState(false);
+  const [feedbackId, setFeedbackId] = useState<string>();
   const [resumable, setResumable] = useState(false);
   const [events, setEvents] = useState<AIConversationEvent[]>([]);
+  const followLog = useRef(true);
   const [chatState, setChatState] = useState<AIConversationsState>();
   const [changingChat, setChangingChat] = useState(false);
   const chatDrafts = useRef<
@@ -185,6 +193,7 @@ export function AISidebar({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [unavailable, setUnavailable] = useState(false);
+  const [connecting, setConnecting] = useState(true);
   const taskInput = useRef<HTMLTextAreaElement>(null);
   const showError = useCallback((reason: Error) => {
     const missing = /No handler registered|Cannot read properties/.test(
@@ -213,7 +222,8 @@ export function AISidebar({
           setError('');
           return undefined;
         })
-        .catch(showError),
+        .catch(showError)
+        .finally(() => setConnecting(false)),
     [showError]
   );
   useEffect(() => {
@@ -385,6 +395,7 @@ export function AISidebar({
         draft: prompt,
       } as AIConversationRequest);
       setChatState(next);
+      followLog.current = true;
       setEvents(next.history);
       const cached = chatDrafts.current[next.selectedId];
       setPrompt(cached?.prompt ?? next.draft);
@@ -437,6 +448,16 @@ export function AISidebar({
     const chatsCleanup = window.electron.ai.onConversations?.(setChatState);
     const eventsCleanup = window.electron.ai.onEvent((event) => {
       if (event.type === 'activity') return;
+      if (event.type === 'feedback') {
+        setFeedbackId(event.feedbackId);
+        return;
+      }
+      if (event.type === 'partial') {
+        setStreamingText(visibleAIStreamText(event.text));
+        return;
+      }
+      if (['message', 'error', 'handoff', 'done'].includes(event.type))
+        setStreamingText('');
       receivedEvent = true;
       if (event.type === 'status') setBusy(true);
       if (
@@ -447,13 +468,20 @@ export function AISidebar({
       if (event.type === 'done') {
         setBusy(false);
         if (event.source !== 'external') setResumable(!!event.resumable);
-      } else setEvents((previous) => [...previous, event]);
+      } else
+        setEvents((previous) => [
+          ...(event.type === 'status'
+            ? previous.filter((item) => item.type !== 'status')
+            : previous),
+          event,
+        ]);
     });
     window.electron.ai
       .taskStatus()
       .then((status) => {
         if (!mounted || receivedEvent) return undefined;
         setBusy(status.busy);
+        setFeedbackId(status.feedbackId);
         setResumable(status.resumable);
         if (status.history?.length) setEvents(status.history);
         const { reason } = status;
@@ -475,8 +503,9 @@ export function AISidebar({
     };
   }, [connect, showError]);
   useEffect(() => {
-    log.current?.scrollTo({ top: log.current.scrollHeight });
-  }, [events, error, notice]);
+    if (followLog.current)
+      log.current?.scrollTo({ top: log.current.scrollHeight });
+  }, [events, streamingText, error, notice]);
   useEffect(() => {
     if (!chatState?.selectedId || changingChat) return undefined;
     const timer = setTimeout(() => {
@@ -490,6 +519,14 @@ export function AISidebar({
     }, 400);
     return () => clearTimeout(timer);
   }, [prompt, chatState?.selectedId, changingChat, showError]);
+  const latestReply = [...events]
+    .reverse()
+    .find(
+      (event) =>
+        event.type === 'message' ||
+        event.type === 'user' ||
+        event.type === 'error'
+    );
   const latestAction = [...events]
     .reverse()
     .find((event) => event.type === 'status');
@@ -728,6 +765,21 @@ export function AISidebar({
       ? contexts[0].groupId
       : 'all';
   const submit = async () => {
+    if (feedbackId) {
+      if (!prompt.trim() || changingChat) return;
+      const answer = prompt.trim();
+      try {
+        await window.electron.ai.feedback(feedbackId, answer);
+        setEvents((previous) => [...previous, { type: 'user', text: answer }]);
+        setPrompt('');
+        setFeedbackId(undefined);
+        setError('');
+      } catch (reason) {
+        showError(reason as Error);
+      }
+      return;
+    }
+
     let task = prompt.trim();
     if (!task && contexts.length) task = 'Review the attached browser context.';
     if (!task && attachments.length) task = 'Review the attached files.';
@@ -760,6 +812,7 @@ export function AISidebar({
     setResumable(false);
     setError('');
     const sentPrompt = prompt;
+    followLog.current = true;
     const sentAttachments = attachments;
     const sentContexts = contexts;
     try {
@@ -1059,8 +1112,23 @@ export function AISidebar({
               />
             </div>
           )}
-          <div className="ai-log" ref={log} role="log" aria-live="polite">
-            {!events.length && (
+          <div
+            className="ai-log"
+            ref={log}
+            role="log"
+            aria-live="polite"
+            onScroll={(event) => {
+              const node = event.currentTarget;
+              followLog.current =
+                node.scrollHeight - node.scrollTop - node.clientHeight < 80;
+            }}
+          >
+            {connecting && (
+              <div className="ai-empty" role="status">
+                Loading assistant…
+              </div>
+            )}
+            {!connecting && !events.length && (
               <div className="ai-empty">
                 <h3>
                   {external?.running ? 'External AI ready' : 'How can I help?'}
@@ -1084,17 +1152,123 @@ export function AISidebar({
                 />
               </div>
             )}
+            {chatState?.taskMemory &&
+              Object.values(chatState.taskMemory).some(
+                (entries) => entries.length
+              ) && (
+                <details className="ai-execution-details">
+                  <summary>Task notes</summary>
+                  <p>
+                    Working notes from the assistant. They may need checking.
+                  </p>
+                  {(['decisions', 'unfinished', 'sources'] as const).map(
+                    (key) =>
+                      chatState.taskMemory![key].length ? (
+                        <div key={key}>
+                          <strong>
+                            {
+                              {
+                                decisions: 'Decisions',
+                                unfinished: 'Unfinished work',
+                                sources: 'Sources',
+                              }[key]
+                            }
+                          </strong>
+                          <ul>
+                            {chatState.taskMemory![key].map((text, index) => (
+                              <li key={index}>{text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null
+                  )}
+                  <button
+                    type="button"
+                    disabled={busy || changingChat}
+                    onClick={() => {
+                      window.electron.ai
+                        .conversations({
+                          action: 'clear-memory',
+                          id: chatState.selectedId,
+                        })
+                        .then(setChatState)
+                        .catch(showError);
+                    }}
+                  >
+                    Clear task notes
+                  </button>
+                </details>
+              )}
             {events
               .filter((event) => event.type !== 'status')
               .map((event, index) => (
                 <div key={index} className={`ai-message ai-${event.type}`}>
                   <AIMessage
                     text={event.text}
+                    followUps={event.type === 'message'}
+                    onSuggestion={
+                      event === latestReply &&
+                      event.type === 'message' &&
+                      !busy &&
+                      !changingChat &&
+                      !attaching &&
+                      !resumable &&
+                      !unavailable &&
+                      !external?.running
+                        ? (text) => {
+                            setPrompt((current) =>
+                              current.trim() ? `${current}\n${text}` : text
+                            );
+                            requestAnimationFrame(() =>
+                              taskInput.current?.focus()
+                            );
+                          }
+                        : undefined
+                    }
                     groups={groups}
                     onReference={addReference}
                     onTabContextMenu={onTabContextMenu}
                     onGroupContextMenu={onGroupContextMenu}
                   />
+                  {event.type === 'message' && event.suggestions?.length ? (
+                    <div className="ai-feedback-suggestions">
+                      {event.suggestions.map((suggestion, optionIndex) => (
+                        <button
+                          type="button"
+                          key={optionIndex}
+                          disabled={
+                            feedbackId !== event.feedbackId || changingChat
+                          }
+                          onClick={() => {
+                            setPrompt(suggestion);
+                            requestAnimationFrame(() =>
+                              taskInput.current?.focus()
+                            );
+                          }}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {showStats &&
+                    event.type === 'message' &&
+                    (event.usage || event.execution) && (
+                      <details className="ai-stats-details">
+                        <summary>Stats</summary>
+                        <div className="ai-stats-content">
+                          {event.usage && (
+                            <AIUsageDetails usage={event.usage} />
+                          )}
+                          {event.execution && (
+                            <AIExecutionDetails execution={event.execution} />
+                          )}
+                        </div>
+                      </details>
+                    )}
+                  {event.type !== 'user' && event.contextNotice && (
+                    <p className="ai-context-notice">{event.contextNotice}</p>
+                  )}
                   {event.type === 'user' &&
                     !!(event.attachments?.length || event.contexts?.length) && (
                       <div className="ai-message-assets">
@@ -1123,6 +1297,15 @@ export function AISidebar({
                     )}
                 </div>
               ))}
+            {streamingText && (
+              <div
+                className="ai-message ai-message-streaming"
+                aria-label="AI reply in progress"
+                aria-live="off"
+              >
+                <AIMessage text={streamingText} groups={groups} />
+              </div>
+            )}
             {notice && (
               <p className="ai-save-notice" role="status">
                 {notice}
@@ -1131,6 +1314,7 @@ export function AISidebar({
             {error && !unavailable && (
               <p className="ai-error" role="alert">
                 {error}
+                <StorageRecoveryAction message={error} />
               </p>
             )}
           </div>
@@ -1359,7 +1543,13 @@ export function AISidebar({
               }}
               rows={3}
               aria-label="Task for AI"
-              placeholder="Ask anything, or drop a tab or group…"
+              placeholder={
+                feedbackId
+                  ? 'Reply to the question…'
+                  : busy
+                  ? 'Draft your next request while AI works…'
+                  : 'Ask anything, or drop a tab or group…'
+              }
               value={prompt}
               maxLength={12000}
               disabled={changingChat}
@@ -1543,9 +1733,11 @@ export function AISidebar({
               )}
               <span className="ai-composer-state" role="status">
                 {attaching && 'Adding…'}
-                {!attaching && busy && 'Working…'}
+                {!attaching &&
+                  busy &&
+                  (feedbackId ? 'Waiting for your reply…' : 'Working…')}
               </span>
-              {busy ? (
+              {busy && !feedbackId ? (
                 <button
                   type="button"
                   className="ai-send-button"
@@ -1563,19 +1755,19 @@ export function AISidebar({
                 <button
                   type="submit"
                   className="ai-send-button"
-                  title="Send task"
+                  title={feedbackId ? 'Send reply' : 'Send task'}
                   disabled={
                     changingChat ||
-                    !settings.hasKey ||
+                    (!feedbackId && !settings.hasKey) ||
                     (!prompt.trim() &&
                       !attachments.length &&
                       !contexts.length) ||
                     attaching ||
-                    unavailable ||
-                    !!blockedMention ||
-                    blockedContext
+                    (!feedbackId && unavailable) ||
+                    (!feedbackId && !!blockedMention) ||
+                    (!feedbackId && blockedContext)
                   }
-                  aria-label="Send AI task"
+                  aria-label={feedbackId ? 'Send reply' : 'Send AI task'}
                 >
                   <ArrowUp size={17} />
                 </button>

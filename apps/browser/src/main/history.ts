@@ -81,6 +81,29 @@ function history(): HistoryPersistence {
   return persistence;
 }
 export const getBrowsingHistory = () => history().snapshot();
+export async function importBrowsingHistory(
+  records: { url: string; title: string; visitedAt: number }[],
+  profile: string
+) {
+  const store = history();
+  const existing = new Set(
+    store
+      .snapshot()
+      .map((record) =>
+        JSON.stringify([record.url, record.visitedAt, record.profile])
+      )
+  );
+  const imported: HistoryRecord[] = [];
+  [...records].reverse().forEach((record) => {
+    const key = JSON.stringify([record.url, record.visitedAt, profile]);
+    if (!webAddress(record.url) || existing.has(key)) return;
+    existing.add(key);
+    imported.push({ ...record, id: randomUUID(), profile });
+  });
+  store.visitMany(imported);
+  await store.mutate('flush');
+  return imported.length;
+}
 export async function removeProfileHistory(profile: string) {
   await history().mutate('profile', profile);
 }

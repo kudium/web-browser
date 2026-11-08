@@ -7,5 +7,7 @@ export const browserBackend: BrowserBackend<BrowserWindow> = {
   id: 'electron',
   attach: registerElectronBrowser,
 };
-export const registerBrowser = (host: BrowserWindow) =>
-  browserBackend.attach(host);
+export const registerBrowser = (
+  host: BrowserWindow,
+  storageReady?: Promise<void>
+) => browserBackend.attach(host, storageReady);

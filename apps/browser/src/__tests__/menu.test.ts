@@ -1,3 +1,4 @@
+jest.mock('../main/browserWindows', () => ({ getBrowserWindows: () => undefined }));
 import MenuBuilder from '../main/menu';
 
 const send = jest.fn();
@@ -5,6 +6,7 @@ const create = jest.fn();
 const showPreferences = jest.fn();
 jest.mock('electron', () => ({
   app: {},
+  BrowserWindow: { getFocusedWindow: () => undefined },
   Menu: {
     buildFromTemplate: jest.fn((template) => ({ template })),
     setApplicationMenu: jest.fn(),

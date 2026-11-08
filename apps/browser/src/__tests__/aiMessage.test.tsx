@@ -132,3 +132,20 @@ it('uses real tab and group menus for inline references instead of link actions'
   fireEvent.contextMenu(screen.getByRole('link', { name: '@Work' }));
   expect(groupMenu).toHaveBeenCalledWith('work');
 });
+
+it('shows suggested follow-ups as inert buttons and hides them on older replies', () => {
+  const onSuggestion = jest.fn();
+  const text = 'Done.\n```kudium-suggestions\n["Check mobile layout"]\n```';
+  const { container, rerender } = render(
+    <AIMessage text={text} followUps onSuggestion={onSuggestion} />
+  );
+  expect(container.querySelector('pre')).toBeNull();
+  expect(onSuggestion).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Check mobile layout' }));
+  expect(onSuggestion).toHaveBeenCalledWith('Check mobile layout');
+  rerender(<AIMessage text={text} followUps />);
+  expect(
+    screen.queryByRole('button', { name: 'Check mobile layout' })
+  ).toBeNull();
+  expect(screen.getByText('Done.')).toBeVisible();
+});

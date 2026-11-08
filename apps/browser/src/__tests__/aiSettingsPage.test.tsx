@@ -79,7 +79,7 @@ it('discovers models, saves a selected model and never retains the entered key',
       endpoint: AI_DEFAULTS.endpoint,
       model: 'model-b',
       key: 'test-key',
-      remember: false,
+      remember: true,
     })
   );
   await waitFor(() => expect(screen.getByLabelText('API key')).toHaveValue(''));
@@ -217,7 +217,32 @@ it('configures Meta Muse and lets users select Wonder with their own API key', a
       endpoint: 'https://api.meta.ai/v1',
       model: 'muse-wonder-1.0',
       key: 'fixture-meta-key',
-      remember: false,
+      remember: true,
     })
   );
+});
+
+it('remembers the Show stats setting independently of provider settings', async () => {
+  localStorage.removeItem('kudiumbrowser-ai-page-showStats');
+  const view = render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  const toggle = screen.getByRole('switch', { name: 'Show stats' });
+  expect(toggle).toHaveAttribute('aria-checked', 'true');
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-checked', 'false');
+  expect(localStorage.getItem('kudiumbrowser-ai-page-showStats')).toBe('false');
+  view.unmount();
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  expect(screen.getByRole('switch', { name: 'Show stats' })).toHaveAttribute(
+    'aria-checked',
+    'false'
+  );
+  localStorage.removeItem('kudiumbrowser-ai-page-showStats');
 });

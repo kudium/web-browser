@@ -237,20 +237,20 @@ it('persists sync consent and category selections without claiming a cloud conne
     cloudSync: {
       enabled: true,
       provider: 'icloud',
-      categories: { workspace: true, openTabs: false, preferences: true },
+      categories: { workspace: true, openTabs: false, preferences: true, passwords: true },
     },
   });
   expect(getBrowserPreferences().cloudSync).toEqual({
     enabled: true,
     provider: 'icloud',
-    categories: { workspace: true, openTabs: false, preferences: true },
+    categories: { workspace: true, openTabs: false, preferences: true, passwords: true },
   });
   expect(() =>
     validatePreferences({
       cloudSync: {
         enabled: true,
         provider: 'icloud',
-        categories: { workspace: false, openTabs: false, preferences: false },
+        categories: { workspace: false, openTabs: false, preferences: false, passwords: false },
       },
     })
   ).toThrow('Select at least');

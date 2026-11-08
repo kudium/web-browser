@@ -14,6 +14,7 @@ import { registerBrowser } from '../main/browser';
 import { showBrowserDialog } from '../main/dialogs';
 import { inspectDiscardCandidate } from '../main/tabDiscard';
 import { bindDownloadSource } from '../main/downloads';
+import { registerAI } from '../main/ai';
 
 jest.mock('../main/localStorage', () => ({
   safeStorage: jest.requireMock('electron').safeStorage,
@@ -179,6 +180,38 @@ jest.mock('electron', () => {
 });
 
 Object.assign(BrowserWindow, { getAllWindows: () => [] });
+it.each([false, true])(
+  'keeps the browser attached while storage is pending (closed: %s)',
+  async (closeBeforeReady) => {
+    const window = Object.assign(new EventEmitter(), {
+      isDestroyed: () => false,
+      webContents: Object.assign(new EventEmitter(), {
+        send: jest.fn(),
+        mainFrame: {},
+      }),
+      contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
+    });
+    let ready!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const ai = registerAI as jest.Mock;
+    ai.mockClear();
+    const timer = jest
+      .spyOn(global, 'setInterval')
+      .mockReturnValue({ unref: jest.fn() } as any);
+    const dispose = registerBrowser(window as any, pending);
+    expect(ai).not.toHaveBeenCalled();
+    // Browser IPC is installed immediately, without waiting for encrypted AI.
+    expect(ipcMain.listenerCount('browser-sync')).toBeGreaterThan(0);
+    if (closeBeforeReady) dispose();
+    ready();
+    await pending;
+    expect(ai).toHaveBeenCalledTimes(closeBeforeReady ? 0 : 1);
+    dispose();
+    timer.mockRestore();
+  }
+);
 afterAll(async () => {
   await flushHistory();
   await closeHistoryPersistence();

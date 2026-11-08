@@ -52,7 +52,10 @@ it('persists visits, strips credentials, deduplicates and clears only history', 
   expect(JSON.parse(fs.readFileSync(file(), 'utf8'))).toEqual(
     getBrowsingHistory()
   );
-  if (process.platform !== 'win32') { expect(fs.statSync(file()).mode % 0o1000).toBe(0o600); }
+  if (process.platform !== 'win32') {
+    // eslint-disable-next-line jest/no-conditional-expect -- POSIX modes do not apply on Windows.
+    expect(fs.statSync(file()).mode % 0o1000).toBe(0o600);
+  }
   const copy = getBrowsingHistory();
   copy[0].title = 'Tampered';
   expect(getBrowsingHistory()[0].title).toBe('Work');
@@ -203,4 +206,37 @@ it('keeps the app open when shutdown cannot save history', async () => {
     'Could not finish quitting',
     expect.any(String)
   );
+});
+
+it('imports a large history batch with one ordered write and preserves visits after it', async () => {
+  const store = new HistoryPersistence(file(), []);
+  try {
+    const records = Array.from({ length: 10000 }, (_, index) => ({
+      id: `import-${index}`,
+      url: `https://example.com/${index}`,
+      title: `Page ${index}`,
+      profile: 'shared',
+      visitedAt: index + 1,
+    }));
+    store.visitMany(records);
+    const saving = store.mutate('flush');
+    store.visit({
+      id: 'later',
+      url: 'https://example.com/later',
+      title: 'Later',
+      profile: 'shared',
+      visitedAt: 10001,
+    });
+    await saving;
+    await store.mutate('flush');
+    const saved = JSON.parse(fs.readFileSync(file(), 'utf8'));
+    expect(saved).toHaveLength(10000);
+    expect(saved[0].id).toBe('later');
+    expect(saved[1].id).toBe('import-9999');
+    expect(saved.at(-1).id).toBe('import-1');
+    expect(store.snapshot()).toEqual(saved);
+    expect(store.diagnostics().writes).toBeLessThanOrEqual(2);
+  } finally {
+    await store.close();
+  }
 });

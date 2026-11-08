@@ -6,19 +6,29 @@ import { eventBus } from './EventBus';
 import { migrateGroupNames } from './groups';
 import { assignGroupSlugs } from '../browser/aiGroups';
 import { readSavedList, writeSavedList } from './storageRecovery';
+import { windowWorkspace } from './windowWorkspace';
 
 // Storage remains authoritative across windows and direct layout restores.
 // Cache only successful normalization; return independent mutable records.
 let savedApps: { raw: string; normalized: string } | undefined;
 
 export const AppManager = {
+  commitWindowTabs(tabs: IApp[], removed: string[]) {
+    const ids = new Set([...removed, ...tabs.map((tab) => tab.id)]);
+    writeSavedList(STORAGE_KEY.USER_APPS, [
+      ...AppManager.getStored().filter((tab) => !ids.has(tab.id)),
+      ...tabs,
+    ]);
+    eventBus.dispatch(EVENT_KEY.APP_LIST_UPDATE);
+  },
   removeDeleted(ids: string[]) {
     const removed = new Set(ids);
     const current = AppManager.getAll();
     const next = current.filter((item) => !removed.has(item.id));
     if (next.length === current.length) return;
-    writeSavedList(STORAGE_KEY.USER_APPS, next);
-    if (LocalStorage.get(STORAGE_KEY.USER_APPS) !== JSON.stringify(next))
+    const saved = windowWorkspace.save(AppManager.getStored(), next);
+    writeSavedList(STORAGE_KEY.USER_APPS, saved);
+    if (LocalStorage.get(STORAGE_KEY.USER_APPS) !== JSON.stringify(saved))
       throw new Error(
         'Group data was removed, but its saved tabs could not be updated. Restart to retry layout cleanup.'
       );
@@ -55,7 +65,8 @@ export const AppManager = {
     return apps.findIndex((app) => app[key] === value);
   },
 
-  getAll: (): IApp[] => {
+  getAll: (): IApp[] => windowWorkspace.visible(AppManager.getStored()),
+  getStored: (): IApp[] => {
     const raw = LocalStorage.get(STORAGE_KEY.USER_APPS);
     if (raw && savedApps?.raw === raw)
       return JSON.parse(savedApps.normalized) as IApp[];
@@ -92,6 +103,7 @@ export const AppManager = {
         [
           'sessionId',
           'sessionProfileId',
+          'protectionGroupId',
           'extensionInstallTarget',
           'sessionName',
           'sessionSlug',
@@ -143,7 +155,12 @@ export const AppManager = {
     app.sessionName = app.sessionName || app.name;
     assertGroupChanges(existingApps, [...existingApps, app]);
     existingApps.push(app);
-    writeSavedList(STORAGE_KEY.USER_APPS, assignGroupSlugs(existingApps));
+    writeSavedList(
+      STORAGE_KEY.USER_APPS,
+      assignGroupSlugs(
+        windowWorkspace.save(AppManager.getStored(), existingApps)
+      )
+    );
     window.electron?.telemetry?.feature('tab_created');
     // Broadcast update
     eventBus.dispatch(EVENT_KEY.APP_LIST_UPDATE);
@@ -151,7 +168,10 @@ export const AppManager = {
 
   set(dataList: IApp[]) {
     assertGroupChanges(AppManager.getAll(), dataList);
-    writeSavedList(STORAGE_KEY.USER_APPS, assignGroupSlugs(dataList));
+    writeSavedList(
+      STORAGE_KEY.USER_APPS,
+      assignGroupSlugs(windowWorkspace.save(AppManager.getStored(), dataList))
+    );
     // On App Updated
     eventBus.dispatch(EVENT_KEY.APP_LIST_UPDATE);
   },

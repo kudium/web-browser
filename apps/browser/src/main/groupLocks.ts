@@ -173,7 +173,10 @@ export const getGroupLocks = () => {
   return service;
 };
 export const isGroupLocked = (tab: IApp) =>
-  getGroupLocks().locked(groupKey(tab));
+  getGroupLocks().locked(groupKey(tab)) ||
+  Boolean(
+    tab.protectionGroupId && getGroupLocks().locked(tab.protectionGroupId)
+  );
 export function registerGroupLocks(
   isTrusted: (contents: WebContents) => boolean,
   authentication: {

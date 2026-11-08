@@ -119,7 +119,18 @@ export const SpaceManager = {
       )
         space.folders.push({ id: app.folderId, name: 'Recovered folder' });
     });
-    return spaces;
+    let selection: Record<string, string | undefined> = {};
+    try {
+      selection = JSON.parse(
+        sessionStorage.getItem('kudium-window-selected-tabs') || '{}'
+      );
+    } catch {
+      /* First window selection. */
+    }
+    return spaces.map((space) => ({
+      ...space,
+      selectedAppId: selection[space.id] ?? space.selectedAppId,
+    }));
   },
   activeId(): string {
     return LocalStorage.get(ACTIVE_SPACE_KEY) || DEFAULT_SPACE;
@@ -146,6 +157,23 @@ export const SpaceManager = {
     return space;
   },
   update(id: string, changes: Partial<Space>) {
+    if (Object.keys(changes).length === 1 && 'selectedAppId' in changes) {
+      let selection: Record<string, string | undefined> = {};
+      try {
+        selection = JSON.parse(
+          sessionStorage.getItem('kudium-window-selected-tabs') || '{}'
+        );
+      } catch {
+        /* First selection. */
+      }
+      selection[id] = changes.selectedAppId;
+      sessionStorage.setItem(
+        'kudium-window-selected-tabs',
+        JSON.stringify(selection)
+      );
+      eventBus.dispatch(EVENT_KEY.SPACE_UPDATE);
+      return;
+    }
     SpaceManager.set(
       SpaceManager.getAll().map((space) =>
         space.id === id ? { ...space, ...changes } : space

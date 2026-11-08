@@ -10,7 +10,7 @@ import {
 export function registerWindowCommands(
   mainIpc: IpcMain,
   windows: Partial<Record<string, BrowserWindow | null>>,
-  create: (params: NewWindowParams) => Promise<void>
+  create: (params: NewWindowParams) => Promise<unknown>
 ) {
   const sourceWindow = (event: IpcMainEvent) =>
     Object.values(windows).find(

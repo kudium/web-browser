@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-const build = path.resolve("apps/browser/release/build");
+const build = path.resolve(process.argv[2] || "apps/browser/release/build");
 const archives = (await fs.readdir(build)).filter((name) =>
   name.endsWith(".zip")
 );

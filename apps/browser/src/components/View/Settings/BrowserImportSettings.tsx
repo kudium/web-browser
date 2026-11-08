@@ -1,21 +1,29 @@
 import { useState } from 'react';
 import { Button, Select, TextArea } from '@radix-ui/themes';
 import { Folder, Layers, Globe } from 'lucide-react';
+import { BrowserMigrationSettings } from './BrowserMigrationSettings';
 import {
   importBrowsers,
   ImportedLink,
   parseBrowserLinks,
 } from '../../../browser/browserImport';
+import { PreferenceHint } from '../../UI/PreferenceHint';
+import { ImportOrganizationChoices } from './ImportOrganizationChoices';
 import { buildImportedWorkspace } from '../../../browser/importWorkspace';
 import { AppManager } from '../../../utils/AppManager';
 import { SpaceManager } from '../../../utils/SpaceManager';
 
 export function BrowserImportSettings() {
+  const [method, setMethod] = useState<'browser' | 'export'>('browser');
   const [source, setSource] = useState<string>(importBrowsers[0]);
   const [text, setText] = useState('');
   const [links, setLinks] = useState<ImportedLink[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [organization, setOrganization] = useState({
+    foldersAsGroups: true,
+    spacesAsFolders: true,
+  });
   const [space, setSpace] = useState(
     () => SpaceManager.getAll()[0]?.id || 'default'
   );
@@ -30,9 +38,15 @@ export function BrowserImportSettings() {
   };
   const importLinks = () => {
     try {
-      const existing = AppManager.getAll();
+      const existing = AppManager.getStored();
       const previousSpaces = SpaceManager.getAll();
-      const plan = buildImportedWorkspace(links, previousSpaces, space, source);
+      const plan = buildImportedWorkspace(
+        links,
+        previousSpaces,
+        space,
+        source,
+        organization
+      );
       const changed =
         JSON.stringify(plan.spaces) !== JSON.stringify(previousSpaces);
       if (changed) SpaceManager.set(plan.spaces);
@@ -44,11 +58,15 @@ export function BrowserImportSettings() {
             position: existing.length + index + 1,
           })),
         ]);
-        const savedIds = new Set(AppManager.getAll().map((app) => app.id));
+        const savedIds = new Set(AppManager.getStored().map((app) => app.id));
         if (plan.apps.some((app) => !savedIds.has(app.id)))
           throw new Error('The import could not be saved. Please try again.');
       } catch (error) {
-        if (changed) SpaceManager.set(previousSpaces);
+        try {
+          AppManager.set(existing);
+        } finally {
+          if (changed) SpaceManager.set(previousSpaces);
+        }
         throw error;
       }
       setMessage(`Imported ${links.length} links with their organization.`);
@@ -73,142 +91,216 @@ export function BrowserImportSettings() {
     'If your browser offers a bookmark HTML export, choose it below. You can also copy links from your tabs or saved pages and paste one per line.';
   return (
     <div className="browser-import-settings">
-      <p className="preference-note">
-        Bring saved pages from another browser into a new Kudium group. You can
-        import again at any time.
-      </p>
-      <div className="preference-card">
-        <div className="preference-row">
-          <strong>From browser</strong>
-          <Select.Root
-            value={source}
-            onValueChange={(value) => {
-              setSource(value);
+      <div
+        className="ai-settings-tabs"
+        role="tablist"
+        aria-label="Import method"
+        onKeyDown={(event) => {
+          if (
+            busy ||
+            !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
+          )
+            return;
+          event.preventDefault();
+          const next =
+            event.key === 'Home'
+              ? 'browser'
+              : event.key === 'End'
+              ? 'export'
+              : method === 'browser'
+              ? 'export'
+              : 'browser';
+          setMethod(next);
+          document.getElementById(`import-${next}-tab`)?.focus();
+        }}
+      >
+        <button
+          type="button"
+          role="tab"
+          id="import-browser-tab"
+          aria-controls="import-browser-panel"
+          aria-selected={method === 'browser'}
+          tabIndex={method === 'browser' ? 0 : -1}
+          disabled={busy}
+          onClick={() => setMethod('browser')}
+        >
+          From browser
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="import-export-tab"
+          aria-controls="import-export-panel"
+          aria-selected={method === 'export'}
+          tabIndex={method === 'export' ? 0 : -1}
+          disabled={busy}
+          onClick={() => setMethod('export')}
+        >
+          From export
+        </button>
+      </div>
+      <div
+        role="tabpanel"
+        id="import-browser-panel"
+        aria-labelledby="import-browser-tab"
+        hidden={method !== 'browser'}
+      >
+        <BrowserMigrationSettings />
+      </div>
+      <div
+        className="browser-export-panel"
+        role="tabpanel"
+        id="import-export-panel"
+        aria-labelledby="import-export-tab"
+        hidden={method !== 'export'}
+      >
+        <p className="preference-note">
+          Bring saved pages from another browser into a new Kudium group. You
+          can import again at any time. Each export can contain up to 500 links
+          and must be smaller than 8 MB.
+        </p>
+        <div className="preference-card">
+          <div className="preference-row">
+            <strong>From browser</strong>
+            <Select.Root
+              value={source}
+              onValueChange={(value) => {
+                setSource(value);
+                setLinks([]);
+                setMessage('');
+              }}
+            >
+              <Select.Trigger aria-label="Import from browser" />
+              <Select.Content>
+                {importBrowsers.map((name) => (
+                  <Select.Item key={name} value={name}>
+                    {name}
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
+          </div>
+          <div className="preference-row">
+            <strong>Destination space</strong>
+            <Select.Root value={space} onValueChange={setSpace}>
+              <Select.Trigger aria-label="Import destination space" />
+              <Select.Content>
+                {SpaceManager.getAll().map((item) => (
+                  <Select.Item key={item.id} value={item.id}>
+                    {item.name}
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
+          </div>
+          <ImportOrganizationChoices
+            source={source}
+            options={organization}
+            onChange={setOrganization}
+            disabled={busy}
+          />
+        </div>
+        <div className="preference-label">
+          <span>Choose an export or paste links.</span>
+          <PreferenceHint label="browser export">
+            {instructions} Exports support up to 500 links and 8 MB. Folder
+            organization is kept when present. Exports contain links, not
+            passwords or website logins.
+          </PreferenceHint>
+        </div>
+        <label className="bookmark-file-label" htmlFor="browser-bookmark-file">
+          Choose browser export
+          <input
+            id="browser-bookmark-file"
+            type="file"
+            accept=".html,.htm,.md,text/html,text/markdown"
+            disabled={busy}
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (!file) return;
+              setBusy(true);
               setLinks([]);
               setMessage('');
+              try {
+                if (file.size > 8 * 1024 * 1024)
+                  throw new Error('Choose a file smaller than 8 MB.');
+                review(
+                  await file.text(),
+                  /\.md$/i.test(file.name) ? 'markdown' : 'html'
+                );
+              } catch (error) {
+                setMessage((error as Error).message);
+              } finally {
+                setBusy(false);
+              }
             }}
-          >
-            <Select.Trigger aria-label="Import from browser" />
-            <Select.Content>
-              {importBrowsers.map((name) => (
-                <Select.Item key={name} value={name}>
-                  {name}
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-        </div>
-        <div className="preference-row">
-          <strong>Destination space</strong>
-          <Select.Root value={space} onValueChange={setSpace}>
-            <Select.Trigger aria-label="Import destination space" />
-            <Select.Content>
-              {SpaceManager.getAll().map((item) => (
-                <Select.Item key={item.id} value={item.id}>
-                  {item.name}
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-        </div>
-      </div>
-      <p className="preference-note">{instructions}</p>
-      <label className="bookmark-file-label" htmlFor="browser-bookmark-file">
-        Choose browser export
-        <input
-          id="browser-bookmark-file"
-          type="file"
-          accept=".html,.htm,.md,text/html,text/markdown"
-          disabled={busy}
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (!file) return;
-            setBusy(true);
+          />
+        </label>
+        <p className="preference-note">Or paste links, one per line</p>
+        <TextArea
+          aria-label="Links to import"
+          placeholder="https://example.com"
+          value={text}
+          onChange={(event) => {
+            setText(event.target.value);
             setLinks([]);
-            setMessage('');
-            try {
-              if (file.size > 8 * 1024 * 1024)
-                throw new Error('Choose a file smaller than 8 MB.');
-              review(
-                await file.text(),
-                /\.md$/i.test(file.name) ? 'markdown' : 'html'
-              );
-            } catch (error) {
-              setMessage((error as Error).message);
-            } finally {
-              setBusy(false);
-            }
           }}
+          rows={4}
         />
-      </label>
-      <p className="preference-note">Or paste links, one per line</p>
-      <TextArea
-        aria-label="Links to import"
-        placeholder="https://example.com"
-        value={text}
-        onChange={(event) => {
-          setText(event.target.value);
-          setLinks([]);
-        }}
-        rows={4}
-      />
-      <Button
-        variant="soft"
-        disabled={busy || !text.trim()}
-        onClick={() => review(text, 'links')}
-      >
-        Review links
-      </Button>
-      {links.length > 0 && (
-        <div className="import-structure-summary">
-          <span>
-            <Globe size={16} />
-            {links.length} links
-          </span>
-          <span>
-            <Layers size={16} />
-            {
-              new Set(links.map((link) => link.spaceName).filter(Boolean)).size
-            }{' '}
-            spaces
-          </span>
-          <span>
-            <Folder size={16} />
-            {
-              new Set(
-                links
-                  .filter((link) => link.folderPath?.length)
-                  .map((link) =>
-                    JSON.stringify([link.spaceName, link.folderPath])
-                  )
-              ).size
-            }{' '}
-            folders
-          </span>
-        </div>
-      )}
-      {links.length > 0 && (
-        <div className="browser-import-review">
-          <strong>{links.length} links ready to import</strong>
-          <ul>
-            {links.slice(0, 5).map((link) => (
-              <li key={link.url}>
-                {link.name}
-                <span>{new URL(link.url).hostname}</span>
-              </li>
-            ))}
-          </ul>
-          {links.length > 5 && <p>And {links.length - 5} more</p>}
-          <Button onClick={importLinks}>Import {links.length} links</Button>
-        </div>
-      )}
-      {message && <p role="status">{message}</p>}
-      <p className="preference-note">
-        Spaces and folders are preserved when present in the export. Nested
-        folders use readable folder paths. Passwords, browsing history, cookies,
-        and browser-specific features absent from the export aren’t transferred.
-      </p>
+        <Button
+          variant="soft"
+          disabled={busy || !text.trim()}
+          onClick={() => review(text, 'links')}
+        >
+          Review links
+        </Button>
+        {links.length > 0 && (
+          <div className="import-structure-summary">
+            <span>
+              <Globe size={16} />
+              {links.length} links
+            </span>
+            <span>
+              <Layers size={16} />
+              {
+                new Set(links.map((link) => link.spaceName).filter(Boolean))
+                  .size
+              }{' '}
+              spaces
+            </span>
+            <span>
+              <Folder size={16} />
+              {
+                new Set(
+                  links
+                    .filter((link) => link.folderPath?.length)
+                    .map((link) =>
+                      JSON.stringify([link.spaceName, link.folderPath])
+                    )
+                ).size
+              }{' '}
+              folders
+            </span>
+          </div>
+        )}
+        {links.length > 0 && (
+          <div className="browser-import-review">
+            <strong>{links.length} links ready to import</strong>
+            <ul>
+              {links.slice(0, 5).map((link) => (
+                <li key={link.url}>
+                  {link.name}
+                  <span>{new URL(link.url).hostname}</span>
+                </li>
+              ))}
+            </ul>
+            {links.length > 5 && <p>And {links.length - 5} more</p>}
+            <Button onClick={importLinks}>Import {links.length} links</Button>
+          </div>
+        )}
+        {message && <p role="status">{message}</p>}
+      </div>
     </div>
   );
 }

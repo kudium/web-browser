@@ -7,6 +7,7 @@ import type { AIGroup } from '../../browser/aiGroups';
 import type { AIContextReference } from '../../browser/aiContext';
 import { AIReferencePicker } from './AIReferencePicker';
 import { browser } from '../../browser/client';
+import { parseAISuggestions } from '../../browser/aiSuggestions';
 
 /** Markdown remains presentation data: no raw HTML, active embeds or scripts. */
 export function renderAIMessage(text: string, groups: AIGroup[] = []) {
@@ -128,14 +129,25 @@ export function AIMessage({
   onReference,
   onTabContextMenu,
   onGroupContextMenu,
+  followUps = false,
+  onSuggestion,
 }: {
   text: string;
   groups?: AIGroup[];
   onReference?: (reference: AIContextReference) => void;
   onTabContextMenu?: (id: string) => void;
   onGroupContextMenu?: (id: string) => void;
+  followUps?: boolean;
+  onSuggestion?: (prompt: string) => void;
 }) {
-  const html = useMemo(() => renderAIMessage(text, groups), [text, groups]);
+  const reply = useMemo(
+    () => (followUps ? parseAISuggestions(text) : { text, suggestions: [] }),
+    [text, followUps]
+  );
+  const html = useMemo(
+    () => renderAIMessage(reply.text, groups),
+    [reply.text, groups]
+  );
   const [selected, setSelected] = useState<AIGroup>();
   const [copyError, setCopyError] = useState('');
   const element = useRef<HTMLDivElement>(null);
@@ -220,7 +232,7 @@ export function AIMessage({
               else if (choice === 'code')
                 await navigator.clipboard.writeText(code);
               else if (choice === 'message')
-                await navigator.clipboard.writeText(text);
+                await navigator.clipboard.writeText(reply.text);
               return undefined;
             })
             .catch(() => setCopyError('Could not copy. Try again.'));
@@ -229,6 +241,23 @@ export function AIMessage({
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: html }}
       />
+      {onSuggestion && !!reply.suggestions.length && (
+        <div
+          className="ai-follow-up-suggestions"
+          aria-label="Suggested follow-ups"
+        >
+          <span>What’s next</span>
+          {reply.suggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              onClick={() => onSuggestion(suggestion)}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
       {copyError && <p role="alert">{copyError}</p>}
       {selected && (
         <AIReferencePicker

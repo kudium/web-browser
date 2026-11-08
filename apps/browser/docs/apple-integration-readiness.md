@@ -43,3 +43,11 @@ Then verify on two signed Macs: opt-in/off, offline/reconnect, concurrent edits,
 ## CloudKit container registration
 
 On November 8, `iCloud.com.kudium.kudiumbrowser` was registered as Kudium Browser Sync under Kudium LTD and assigned to `com.kudium.kudiumbrowser`. The app capability change was saved in the developer portal. No native CloudKit transport or cloud schema deployment is implied by this registration. Provisioning, implementation and signed two-Mac acceptance remain pending.
+
+## Native bridge implementation
+
+`native/cloud-sync/bridge.mm` implements an asynchronous in-process Node-API bridge to the fixed Kudium CloudKit container's private database. It supports account identity checks and bounded encrypted-record lookup, listing, conditional writes and deletion tombstones. It does not access Apple's password vault. `CloudKitEncryptedStore` validates envelopes and revisions, rejects plaintext writes and checks account identity before and after each operation.
+
+`node .erb/scripts/build-cloudkit.cjs` compiles a universal arm64/x86_64 module into the temporary directory. Both architectures compiled on November 8; the module loaded and rejected invalid argument types without contacting iCloud. Three adapter tests passed with synthetic ciphertext and account-switch fixtures. These are implementation checks, not a real CloudKit round trip.
+
+The bridge is deliberately not loaded by normal builds or exposed through renderer IPC. App-level recovery/key provisioning, the sync scheduler/change-feed adapter, preference/UI connection, CloudKit schema/environment deployment, provisioning and signed two-Mac testing still need completion before the iCloud destination can be enabled. The existing Kudium Account release can proceed independently.

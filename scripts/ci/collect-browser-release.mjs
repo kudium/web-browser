@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 const require = createRequire(
@@ -14,11 +15,13 @@ if (
 )
   throw new Error("Invalid release target");
 const version = require("../../apps/browser/package.json").version;
-const build = new URL("../../apps/browser/release/build/", import.meta.url);
-const out = new URL(
-  `../../release-artifacts/${platform}-${arch}/`,
-  import.meta.url
-);
+const directoryURL = (value) => pathToFileURL(path.resolve(value) + path.sep);
+const build = process.env.RELEASE_BUILD_DIR
+  ? directoryURL(process.env.RELEASE_BUILD_DIR)
+  : new URL("../../apps/browser/release/build/", import.meta.url);
+const out = process.env.RELEASE_ARTIFACTS_DIR
+  ? directoryURL(path.join(process.env.RELEASE_ARTIFACTS_DIR, `${platform}-${arch}`))
+  : new URL(`../../release-artifacts/${platform}-${arch}/`, import.meta.url);
 fs.mkdirSync(out, { recursive: true });
 const yamlName = `${channel === "stable" ? "latest" : "beta"}${
   platform === "darwin" ? "-mac" : platform === "linux" ? "-linux" : ""

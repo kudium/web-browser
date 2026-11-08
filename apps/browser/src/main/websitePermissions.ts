@@ -19,7 +19,12 @@ export function websitePermissionCheckHandler(profile: string): CheckHandler {
     const origin = siteOrigin(details?.securityOrigin ?? requestingOrigin);
     if (!origin || getBrowserPreferences().permissions === 'block')
       return false;
-    return getSiteSettings(profile, origin).permissions[permission] === 'allow';
+    const choice = getSiteSettings(profile, origin).permissions[permission];
+    // Keeping origin-scoped site data does not need an access prompt.
+    return (
+      choice === 'allow' ||
+      (permission === 'persistent-storage' && choice !== 'block')
+    );
   };
 }
 
@@ -46,6 +51,10 @@ export function websitePermissionHandler(
     const choice = getSiteSettings(profile, origin).permissions[permission];
     if (choice && choice !== 'ask') {
       callback(choice === 'allow');
+      return;
+    }
+    if (permission === 'persistent-storage') {
+      callback(true);
       return;
     }
     let settled = false;

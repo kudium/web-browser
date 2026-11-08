@@ -2,6 +2,7 @@
 /* eslint-disable no-await-in-loop */
 import { app, BrowserWindow, ipcMain, session } from 'electron';
 import path from 'path';
+import { getBrowserWindows } from './browserWindows';
 import type { IApp } from '../types';
 import { groupKey, loginProfileKey, personalDataScope } from '../utils/groups';
 import { isBrowserLayout } from './browserRequests';
@@ -68,7 +69,12 @@ export function registerGroupRemoval(
       'browser-remove-group',
       async (event, id: unknown, allowArchive: unknown) => {
         const owner = BrowserWindow.fromWebContents(event.sender);
-        const binding = owner && owners.get(owner);
+        const binding =
+          owner &&
+          (owners.get(owner) ||
+            (getBrowserWindows()?.contains(owner)
+              ? [...owners.values()][0]
+              : undefined));
         if (
           !owner ||
           !binding ||

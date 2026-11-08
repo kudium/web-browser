@@ -55,6 +55,11 @@ parentPort.on('message', message => {
     revision = message.id;
     dirty = true;
     if (!timer) timer = setTimeout(() => commit(null), 25);
+  } else if (message.action === 'visits') {
+    records = [...message.records.slice().reverse(), ...records].slice(0, 10000);
+    revision = message.id;
+    dirty = true;
+    if (!timer) timer = setTimeout(() => commit(null), 25);
   } else if (message.action === 'clear') {
     commit(message.id, []);
   } else if (message.action === 'remove') {
@@ -184,6 +189,24 @@ export class HistoryPersistence {
       this.pendingVisits.delete(this.pendingVisits.keys().next().value!);
     this.records = [record, ...this.records].slice(0, 10000);
     worker.postMessage({ id, action: 'visit', record });
+  }
+
+  /** Append an oldest-first import with one copy and one worker message. */
+  visitMany(records: HistoryRecord[]) {
+    if (this.terminal) throw this.terminal;
+    if (!records.length) return;
+    const worker = this.start();
+    records.forEach((record) => {
+      this.sequence += 1;
+      this.pendingVisits.set(this.sequence, record);
+      if (this.pendingVisits.size > 10000)
+        this.pendingVisits.delete(this.pendingVisits.keys().next().value!);
+    });
+    this.records = [...records.slice().reverse(), ...this.records].slice(
+      0,
+      10000
+    );
+    worker.postMessage({ id: this.sequence, action: 'visits', records });
   }
 
   async mutate(

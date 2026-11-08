@@ -30,6 +30,28 @@ home you can return to.
 | Help with the page or project in front of you | The **AI sidebar** keeps your page visible while you bring selected browsing context and file references into a conversation. |
 | A place to build as well as browse | **Link a local project** to a group and work with its file manager, editor, scripts, and terminal beside your web pages. |
 
+## Take a tab into its own window
+
+Drag a horizontal tab out onto the desktop to open it in a temporary, unpinned
+group. The tab leaves its original group and keeps the same live page, cookies,
+login session, form input, scroll position, and playback. Closing that temporary
+window dismisses its tabs; drag the tab or group back onto the main sidebar or
+tab strip to keep it in the main workspace. Dropping onto its parent group restores
+its original membership. Dropping onto a group with another login profile creates
+a separate group with the original session, so the tab stays signed in.
+
+Drag a sidebar group out to open the whole group in another window. Its saved
+group remains available in the main workspace. When both windows select the same
+tab, the inactive window shows a subtly dimmed preview. Focusing it moves the live
+page back into that window without reloading. Independent tabs and login profiles
+remain independent.
+
+Use **Command+N** on macOS or **Ctrl+N** on Windows and Linux for another browser
+window, or choose **File → New Window**. Customize the binding in
+**Preferences → Keyboard shortcuts**. Tab and group context menus also provide
+**Open tab in new window** and **Open group in new window**. Press Escape to cancel
+a drag. Each window keeps its own selected tab and Space.
+
 ## Watch while you work
 
 Play a video and click **Picture in picture** in the address bar to open the
