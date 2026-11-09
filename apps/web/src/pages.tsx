@@ -534,82 +534,90 @@ function ReleaseList({
 }) {
   const platformName = { darwin: "macOS", win32: "Windows", linux: "Linux" };
   return (
-    <div className="release-list">
-      {entries.map((release) => (
-        <article
-          className="release-card"
-          key={`${release.channel}/${release.version}`}
-        >
-          <div className="release-card-heading">
-            {compact ? <h3>{release.version}</h3> : <h2>{release.version}</h2>}
-            <span
-              className={`release-channel release-channel-${release.channel}`}
-            >
-              {release.channel === "stable" ? "Stable" : "Beta"}
-            </span>
-            <time dateTime={release.publishedAt}>
-              {new Date(release.publishedAt).toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-                timeZone: "UTC",
-              })}
-            </time>
-          </div>
-          <div className="release-notes">
-            {release.notes.length ? (
-              release.notes.map((note, index) => <p key={index}>{note}</p>)
-            ) : (
-              <p>No release notes were provided.</p>
-            )}
-          </div>
-          <div className="release-downloads">
-            {release.targets.map((target) => (
-              <section key={`${target.platform}/${target.arch}`}>
-                <h3>
-                  {platformName[target.platform]} ·{" "}
-                  {target.platform === "darwin"
-                    ? target.arch === "arm64"
-                      ? "Apple silicon"
-                      : "Intel"
-                    : target.arch === "arm64"
-                    ? "ARM64"
-                    : "Intel / AMD"}
-                </h3>
-                <div>
+    <ul className="release-list">
+      {entries.map((release) => {
+        const notes = release.notes.filter(
+          (note) => note.trim() !== `Kudium Browser ${release.version}`
+        );
+        return (
+          <li
+            className="release-row"
+            key={`${release.channel}/${release.version}`}
+          >
+            <div className="release-row-heading">
+              {compact ? (
+                <h3>{release.version}</h3>
+              ) : (
+                <h2>{release.version}</h2>
+              )}
+              <span className="release-channel">
+                {release.channel === "stable" ? "Stable" : "Beta"}
+              </span>
+              <time dateTime={release.publishedAt}>
+                {new Date(release.publishedAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  timeZone: "UTC",
+                })}
+              </time>
+            </div>
+            <div className="release-downloads">
+              {release.targets.map((target) => (
+                <div key={`${target.platform}/${target.arch}`}>
+                  <span className="release-target-label">
+                    {platformName[target.platform]}{" "}
+                    {target.platform === "darwin"
+                      ? target.arch === "arm64"
+                        ? "Apple silicon"
+                        : "Intel"
+                      : target.arch === "arm64"
+                      ? "ARM64"
+                      : "Intel / AMD"}
+                  </span>
                   {target.files.map((file) => {
                     const name =
-                      new URL(file.url).pathname.split("/").at(-1) ||
-                      "Installer";
-                    const format = name.toLowerCase().endsWith(".dmg")
+                      new URL(file.url).pathname
+                        .split("/")
+                        .at(-1)
+                        ?.toLowerCase() || "";
+                    const format = name.endsWith(".dmg")
                       ? "DMG"
-                      : name.toLowerCase().endsWith(".zip")
+                      : name.endsWith(".zip")
                       ? "ZIP"
-                      : name.toLowerCase().endsWith(".exe")
+                      : name.endsWith(".exe")
                       ? "Installer"
-                      : name.toLowerCase().endsWith(".appimage")
+                      : name.endsWith(".appimage")
                       ? "AppImage"
                       : "Download";
                     return (
                       <a
                         key={file.url}
                         href={file.url}
+                        title={`${(file.size / 1024 / 1024).toFixed(1)} MB`}
                         aria-label={`Download ${release.version} for ${
                           platformName[target.platform]
                         } ${target.arch}, ${format}`}
                       >
                         {format}
-                        <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
                       </a>
                     );
                   })}
                 </div>
-              </section>
-            ))}
-          </div>
-        </article>
-      ))}
-    </div>
+              ))}
+            </div>
+            {notes.length > 0 && (
+              <details className="release-notes">
+                <summary>Release notes</summary>
+                {notes.map((note, index) => (
+                  <p key={index}>{note}</p>
+                ))}
+              </details>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -680,9 +688,8 @@ export function releaseHistoryPage(history: ReturnType<typeof groupReleaseHistor
     <Layout title="Release history" canonicalPath="/releases">
       <main className="release-history">
         <div className="release-history-heading">
-          <p className="release-eyebrow">Kudium Browser</p>
-          <h1>Every version, in one place.</h1>
-          <p>Browse release notes and download a version for your computer.</p>
+          <h1>Releases</h1>
+          <p>Download current and older versions.</p>
           <a className="text-link" href="/download">Get the latest stable version →</a>
         </div>
         <nav className="release-filters" aria-label="Release channel">
