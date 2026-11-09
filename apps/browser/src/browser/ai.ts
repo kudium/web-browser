@@ -108,6 +108,7 @@ export const AI_TOOLS = [
   'screenshot',
   'handle_dialog',
   'list_tabs',
+  'create_group',
   'new_tab',
   'select_tab',
   'navigate',

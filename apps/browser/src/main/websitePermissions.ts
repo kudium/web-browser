@@ -14,16 +14,22 @@ type CheckHandler = NonNullable<
   Parameters<Session['setPermissionCheckHandler']>[0]
 >;
 
+const storagePermissions = new Set([
+  'persistent-storage',
+  'storage-access',
+  'top-level-storage-access',
+]);
+
 export function websitePermissionCheckHandler(profile: string): CheckHandler {
   return (_requester, permission, requestingOrigin, details) => {
     const origin = siteOrigin(details?.securityOrigin ?? requestingOrigin);
     if (!origin || getBrowserPreferences().permissions === 'block')
       return false;
     const choice = getSiteSettings(profile, origin).permissions[permission];
-    // Keeping origin-scoped site data does not need an access prompt.
+    // Website storage access is granted silently unless explicitly blocked.
     return (
       choice === 'allow' ||
-      (permission === 'persistent-storage' && choice !== 'block')
+      (storagePermissions.has(permission) && choice !== 'block')
     );
   };
 }
@@ -53,7 +59,7 @@ export function websitePermissionHandler(
       callback(choice === 'allow');
       return;
     }
-    if (permission === 'persistent-storage') {
+    if (storagePermissions.has(permission)) {
       callback(true);
       return;
     }

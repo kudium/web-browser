@@ -66,6 +66,8 @@ parentPort.on('message', message => {
     commit(message.id, records.filter(record => record.id !== message.value));
   } else if (message.action === 'profile') {
     commit(message.id, records.filter(record => record.profile !== message.value));
+  } else if (message.action === 'retention') {
+    commit(message.id, records.filter(record => record.visitedAt >= message.value));
   } else if (message.action === 'flush') {
     commit(message.id);
   }
@@ -210,8 +212,8 @@ export class HistoryPersistence {
   }
 
   async mutate(
-    action: 'clear' | 'remove' | 'profile' | 'flush',
-    value?: string
+    action: 'clear' | 'remove' | 'profile' | 'flush' | 'retention',
+    value?: string | number
   ) {
     if (this.terminal) throw this.terminal;
     if (

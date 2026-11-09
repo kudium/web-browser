@@ -8,7 +8,7 @@ import {
 } from '../../utils/SpaceManager';
 
 const shades = {
-  iris: '#8b7cc8',
+  iris: '#5aaca8',
   blue: '#6c9bd2',
   green: '#76ad91',
   amber: '#d2a35f',

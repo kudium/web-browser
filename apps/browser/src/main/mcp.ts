@@ -35,6 +35,8 @@ export const MCP_NAMES = AI_TOOLS.filter(
 );
 export type MCPTool = (typeof MCP_NAMES)[number];
 const descriptions: Record<MCPTool, string> = {
+  create_group:
+    'Create a named tab group with its first website URL, only at the user request. Creates a separate group in the source tab’s space. Default is a fresh login session; when the user requests session linking, set shareSession:true and explicitly supply an accessible source tabId to share that group’s cookies/login. Use list_tabs to resolve the source, and set_scope with human approval if it is outside current scope. Returns groupId and tabId and selects the new AI scope. Add remaining websites with new_tab using the returned tabId; verify with list_tabs. Destination and scope approvals apply. Failed loads may leave the group/tab available; inspect before retrying.',
   list_skills:
     'Discover user-enabled Kudium Browser skills for relevant workflows.',
   read_skill:

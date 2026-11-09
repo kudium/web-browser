@@ -20,6 +20,7 @@ export interface AIConversationSummary {
   paused: boolean;
 }
 export interface AIConversationsState {
+  undoDeletion?: { id: string; title: string; expiresAt: number };
   taskMemory?: AITaskMemory;
   selectedId: string;
   conversations: AIConversationSummary[];
@@ -33,5 +34,5 @@ export type AIConversationRequest =
   | { action: 'reorder'; id: string; beforeId: string | null }
   | { action: 'rename'; id: string; title: string }
   | { action: 'create'; draft?: string }
-  | { action: 'select' | 'delete'; id: string; draft?: string }
+  | { action: 'select' | 'delete' | 'undo-delete'; id: string; draft?: string }
   | { action: 'draft'; id: string; draft: string };

@@ -31,6 +31,7 @@ export interface IApp {
   tabDefaultURL?: string;
   favorite?: boolean;
   archived?: boolean;
+  archivedAt?: number;
   customName?: string;
   tags?: string[];
   name: string;
@@ -63,5 +64,6 @@ export type {
   BrowserLayout,
   BrowserCommand,
   BrowserShortcut,
+  SpaceWheelEvent,
   BrowserSnapshot,
 } from './browser/contracts';

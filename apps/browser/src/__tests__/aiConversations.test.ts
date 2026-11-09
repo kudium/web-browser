@@ -217,3 +217,78 @@ it('persists the chat recipient across restart and isolates it between chats', (
     'provider/model/credential-fingerprint'
   );
 });
+
+it('removes immediately and undo restores chat history, draft, notes and selection', () => {
+  jest.useFakeTimers();
+  try {
+    const store = new AIConversationStore(
+      path.join(root, 'chats.bin'),
+      storage
+    );
+    const chat = store.current();
+    chat.history.push({ type: 'user', text: 'Keep my history' });
+    chat.draft = 'Unsent draft';
+    chat.attachmentIds = ['attachment'];
+    store.save();
+    const finalize = jest.fn();
+    store.deleteWithUndo(chat.id, finalize);
+    expect(store.find(chat.id)).toBeUndefined();
+    expect(store.snapshot().undoDeletion?.id).toBe(chat.id);
+    store.undoDelete(chat.id);
+    expect(store.current()).toBe(chat);
+    expect(store.snapshot().conversations).toHaveLength(1);
+    expect(chat.draft).toBe('Unsent draft');
+    expect(chat.attachmentIds).toEqual(['attachment']);
+    jest.advanceTimersByTime(10000);
+    expect(finalize).not.toHaveBeenCalled();
+    expect(store.snapshot().undoDeletion).toBeUndefined();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('finalizes only after the undo deadline and rejects expired undo', () => {
+  jest.useFakeTimers();
+  try {
+    const store = new AIConversationStore(
+      path.join(root, 'chats.bin'),
+      storage
+    );
+    const { id } = store.current();
+    const finalize = jest.fn();
+    store.deleteWithUndo(id, finalize);
+    jest.advanceTimersByTime(9999);
+    expect(finalize).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(finalize).toHaveBeenCalledTimes(1);
+    expect(() => store.undoDelete(id)).toThrow('expired');
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('keeps work in the replacement chat and finalizes the earlier deletion on another delete', () => {
+  jest.useFakeTimers();
+  try {
+    const store = new AIConversationStore(
+      path.join(root, 'chats.bin'),
+      storage
+    );
+    const first = store.current().id;
+    const finalize = jest.fn();
+    store.deleteWithUndo(first, finalize);
+    store.current().draft = 'New work';
+    store.undoDelete(first);
+    expect(store.snapshot().conversations).toHaveLength(2);
+    store.deleteWithUndo(first, finalize);
+    const second = store.current().id;
+    const secondFinalize = jest.fn();
+    store.deleteWithUndo(second, secondFinalize);
+    expect(finalize).toHaveBeenCalledTimes(1);
+    expect(() => store.undoDelete(first)).toThrow('expired');
+    store.undoDelete(second);
+    expect(secondFinalize).not.toHaveBeenCalled();
+  } finally {
+    jest.useRealTimers();
+  }
+});

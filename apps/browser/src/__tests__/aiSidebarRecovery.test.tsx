@@ -582,3 +582,52 @@ it('clears an inline question when the waiting task stops', async () => {
     screen.getByRole('button', { name: 'Send AI task' })
   ).toBeInTheDocument();
 });
+
+it('shows undo at the bottom and restores the deleted chat', async () => {
+  const mock = mockAI();
+  const conversations = jest.fn().mockImplementation((request) =>
+    Promise.resolve(
+      request.action === 'undo-delete'
+        ? {
+            selectedId: 'deleted',
+            conversations: [
+              { id: 'deleted', title: 'My chat', updatedAt: 1, paused: false },
+            ],
+            history: [{ type: 'user', text: 'Restored history' }],
+            draft: 'Saved draft',
+          }
+        : {
+            selectedId: 'replacement',
+            conversations: [
+              {
+                id: 'replacement',
+                title: 'New chat',
+                updatedAt: 2,
+                paused: false,
+              },
+            ],
+            history: [],
+            draft: '',
+            undoDeletion: {
+              id: 'deleted',
+              title: 'My chat',
+              expiresAt: Date.now() + 10000,
+            },
+          }
+    )
+  );
+  Object.assign(mock.ai, { conversations });
+  render(<AISidebar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+  await waitFor(() =>
+    expect(conversations).toHaveBeenCalledWith({
+      action: 'undo-delete',
+      id: 'deleted',
+      draft: '',
+    })
+  );
+  await screen.findByText('Restored history');
+  expect(
+    screen.queryByRole('button', { name: 'Undo' })
+  ).not.toBeInTheDocument();
+});

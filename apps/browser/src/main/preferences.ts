@@ -75,7 +75,9 @@ function freezePreferences(value: BrowserPreferences) {
   return Object.freeze(snapshot);
 }
 let openPage:
-  | ((section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords') => void)
+  | ((
+      section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords' | 'spaces'
+    ) => void)
   | undefined;
 let aiSettingsWindow: (contents: WebContents) => boolean = () => false;
 export const isAISettingsWindow = (contents: WebContents) =>
@@ -173,6 +175,7 @@ export function getBrowserPreferences(): Readonly<BrowserPreferences> {
         ? saved.downloadDirectory
         : '';
     delete saved.downloadDirectory;
+    if (saved.systemSpaceRetentionDays === 7) saved.systemSpaceRetentionDays = 14;
     const result = {
       ...defaultPreferences,
       cloudSync: defaultSyncSettings(process.platform),
@@ -255,13 +258,13 @@ export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
 }
 export function showBrowserPreferences(
   _owner: BrowserWindow,
-  section?: 'archive' | 'sync' | 'import' | 'passwords'
+  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces'
 ) {
   openPage?.(section);
 }
 export function registerPreferences(
   opener?: (
-    section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords'
+    section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords' | 'spaces'
   ) => void,
   isTrusted: (contents: WebContents) => boolean = () => false,
   isSettings: (contents: WebContents) => boolean = () => false
@@ -289,7 +292,7 @@ export function registerPreferences(
       event,
       action: string,
       patch?: Partial<BrowserPreferences> & {
-        section?: 'archive' | 'sync' | 'import' | 'passwords';
+        section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces';
       }
     ) => {
       const owner = ownerOf(event);
@@ -299,7 +302,8 @@ export function registerPreferences(
           patch?.section === 'archive' ||
             patch?.section === 'sync' ||
             patch?.section === 'import' ||
-            patch?.section === 'passwords'
+            patch?.section === 'passwords' ||
+            patch?.section === 'spaces'
             ? patch.section
             : undefined
         );

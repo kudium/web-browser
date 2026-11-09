@@ -31,6 +31,16 @@ export class AIConversationStore {
 
   private selectedId = '';
 
+  private pendingDeletion?: {
+    chat: Conversation;
+    index: number;
+    selected: boolean;
+    placeholderId?: string;
+    expiresAt: number;
+    timer: ReturnType<typeof setTimeout>;
+    finalize: () => void;
+  };
+
   private storageNotice: string | undefined;
 
   private preserveOriginal = false;
@@ -243,9 +253,77 @@ export class AIConversationStore {
     this.save();
   }
 
+  deleteWithUndo(id: string, finalize: () => void) {
+    const chat = this.find(id);
+    if (!chat) throw new Error('Chat is no longer available.');
+    this.finishDeletion();
+    const index = this.chats.indexOf(chat);
+    const selected = this.selectedId === id;
+    const onlyChat = this.chats.length === 1;
+    this.delete(id);
+    const timer = setTimeout(() => this.finishDeletion(), 10000);
+    timer.unref?.();
+    this.pendingDeletion = {
+      chat,
+      index,
+      selected,
+      finalize,
+      timer,
+      placeholderId: onlyChat ? this.current().id : undefined,
+      expiresAt: Date.now() + 10000,
+    };
+  }
+
+  private finishDeletion() {
+    const pending = this.pendingDeletion;
+    if (!pending) return;
+    this.pendingDeletion = undefined;
+    clearTimeout(pending.timer);
+    pending.finalize();
+  }
+
+  undoDelete(id: string) {
+    const pending = this.pendingDeletion;
+    if (!pending || pending.chat.id !== id || pending.expiresAt <= Date.now())
+      throw new Error('The undo period has expired.');
+    const placeholder =
+      pending.placeholderId && this.find(pending.placeholderId);
+    const removePlaceholder =
+      placeholder &&
+      !placeholder.history.length &&
+      !placeholder.draft &&
+      !placeholder.attachmentIds.length &&
+      !placeholder.checkpoint &&
+      !placeholder.taskMemory &&
+      !placeholder.titleSource;
+    if (this.chats.length >= 30 && !removePlaceholder)
+      throw new Error(
+        'Delete another chat before restoring this one (30 chat limit).'
+      );
+    clearTimeout(pending.timer);
+    this.pendingDeletion = undefined;
+    if (removePlaceholder)
+      this.chats = this.chats.filter((chat) => chat.id !== placeholder.id);
+    this.chats.splice(
+      Math.min(pending.index, this.chats.length),
+      0,
+      pending.chat
+    );
+    if (pending.selected || !this.find(this.selectedId)) this.selectedId = id;
+    this.save();
+  }
+
   snapshot(): AIConversationsState {
     const chat = this.current();
     return {
+      undoDeletion:
+        this.pendingDeletion && this.pendingDeletion.expiresAt > Date.now()
+          ? {
+              id: this.pendingDeletion.chat.id,
+              title: this.pendingDeletion.chat.title,
+              expiresAt: this.pendingDeletion.expiresAt,
+            }
+          : undefined,
       selectedId: chat.id,
       conversations: this.chats
         .map((item) => ({

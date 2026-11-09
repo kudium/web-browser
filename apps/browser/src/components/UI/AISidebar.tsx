@@ -369,6 +369,19 @@ export function AISidebar({
       .then(setChatState)
       .catch(showError);
   };
+  useEffect(() => {
+    const deletion = chatState?.undoDeletion;
+    if (!deletion) return undefined;
+    const timer = setTimeout(() => {
+      delete chatDrafts.current[deletion.id];
+      setChatState((state) =>
+        state?.undoDeletion?.id === deletion.id
+          ? { ...state, undoDeletion: undefined }
+          : state
+      );
+    }, Math.max(0, deletion.expiresAt - Date.now()));
+    return () => clearTimeout(timer);
+  }, [chatState?.undoDeletion]);
   const changeChat = async (request: AIConversationRequest) => {
     if (changingChat || !chatState) return;
     if (request.action === 'select' && request.id === chatState.selectedId)
@@ -402,12 +415,6 @@ export function AISidebar({
       setAttachments(cached?.attachments || []);
       setContexts(cached?.contexts || []);
       setSentFiles(cached?.sentFiles || []);
-      if (
-        request.action === 'delete' &&
-        'id' in request &&
-        !next.conversations.some((chat) => chat.id === request.id)
-      )
-        delete chatDrafts.current[request.id];
       setResumable(
         next.conversations.find((chat) => chat.id === next.selectedId)
           ?.paused || false
@@ -1774,6 +1781,23 @@ export function AISidebar({
               )}
             </div>
           </form>
+        </div>
+      )}
+      {chatState?.undoDeletion && (
+        <div className="ai-chat-undo-fab" role="status">
+          <span>Chat deleted</span>
+          <button
+            type="button"
+            disabled={changingChat || busy || attaching}
+            onClick={() =>
+              changeChat({
+                action: 'undo-delete',
+                id: chatState.undoDeletion!.id,
+              })
+            }
+          >
+            Undo
+          </button>
         </div>
       )}
       <div className="ai-overlay-layer" ref={setOverlayContainer} />

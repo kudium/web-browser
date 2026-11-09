@@ -42,6 +42,13 @@ export function useGroupAccess() {
     () => state
   );
 }
+export const protectedGroup = (item: IApp, access: GroupLockState = state) =>
+  [
+    groupKey(item),
+    item.protectionGroupId,
+    windowWorkspace.state()?.parentGroups[groupKey(item)],
+  ].some((id) => id && access.protected.includes(id));
+
 export const lockedGroup = (
   item: IApp,
   access: GroupLockState & { ready?: boolean } = state

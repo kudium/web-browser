@@ -1,4 +1,8 @@
-import { assertGroupChanges } from './groupAccess';
+import {
+  expiredRecord,
+  retentionCutoff,
+} from '../browser/systemSpaceRetention';
+import { lockedGroup, protectedGroup, assertGroupChanges } from './groupAccess';
 import { EVENT_KEY, STORAGE_KEY } from './constant';
 import { LocalStorage } from './LocalStorage';
 import { IApp } from '../types';
@@ -38,6 +42,7 @@ export const AppManager = {
     const restored = {
       ...item,
       archived: false,
+      archivedAt: undefined,
       openerTabId: undefined,
       restorationId: crypto.randomUUID(),
     };
@@ -145,6 +150,7 @@ export const AppManager = {
   add: (app: IApp) => {
     if (!app) return;
     const existingApps = AppManager.getAll();
+    if (app.archived) app.archivedAt = Date.now();
     app.position = existingApps.length + 1;
     app.sessionId = app.sessionId || crypto.randomUUID();
     app.spaceId =
@@ -166,8 +172,48 @@ export const AppManager = {
     eventBus.dispatch(EVENT_KEY.APP_LIST_UPDATE);
   },
 
+  pruneArchive(days: number, now = Date.now()) {
+    if (windowWorkspace.state()?.kind === 'temporary') return;
+    const cutoff = retentionCutoff(days, now);
+    if (cutoff === undefined) return;
+    const current = AppManager.getAll();
+    const next = current
+      .filter(
+        (item) =>
+          !item.archived ||
+          lockedGroup(item) ||
+          protectedGroup(item) ||
+          !expiredRecord(item.archivedAt, cutoff)
+      )
+      .map((item) =>
+        item.archived && !lockedGroup(item) && !Number.isFinite(item.archivedAt)
+          ? { ...item, archivedAt: now }
+          : item
+      );
+    if (JSON.stringify(next) !== JSON.stringify(current)) AppManager.set(next);
+  },
   set(dataList: IApp[]) {
-    assertGroupChanges(AppManager.getAll(), dataList);
+    const previous = AppManager.getAll();
+    const byId = new Map(previous.map((item) => [item.id, item]));
+    dataList = dataList.map((item) => {
+      if (lockedGroup(item)) return item;
+      if (!item.archived)
+        return item.archivedAt === undefined
+          ? item
+          : { ...item, archivedAt: undefined };
+      const prior = byId.get(item.id);
+      return {
+        ...item,
+        archivedAt: prior?.archived
+          ? Number.isFinite(item.archivedAt)
+            ? item.archivedAt
+            : Number.isFinite(prior.archivedAt)
+            ? prior.archivedAt
+            : Date.now()
+          : Date.now(),
+      };
+    });
+    assertGroupChanges(previous, dataList);
     writeSavedList(
       STORAGE_KEY.USER_APPS,
       assignGroupSlugs(windowWorkspace.save(AppManager.getStored(), dataList))

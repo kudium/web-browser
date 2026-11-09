@@ -55,3 +55,25 @@ it('ignores hidden and unpositioned popovers', () => {
   content.hidden = true;
   expect(hasGlobalOverlay(root)).toBe(false);
 });
+
+it.each(['react-refresh-overlay', 'webpack-dev-server-client-overlay'])(
+  'suspends native website views while development error overlay %s is visible',
+  async (id) => {
+    render(<Status />);
+    const overlay = document.createElement('iframe');
+    overlay.id = id;
+    visible(overlay);
+    act(() => document.body.append(overlay));
+    await screen.findByText('suspended');
+    act(() => {
+      overlay.hidden = true;
+    });
+    await screen.findByText('visible');
+    act(() => {
+      overlay.hidden = false;
+    });
+    await screen.findByText('suspended');
+    act(() => overlay.remove());
+    await screen.findByText('visible');
+  }
+);

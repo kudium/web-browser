@@ -45,8 +45,8 @@ export default function App() {
     <Theme
       appearance={appearance}
       panelBackground="solid"
-      accentColor="iris"
-      grayColor="slate"
+      accentColor="teal"
+      grayColor="gray"
       radius="large"
       scaling="100%"
     >

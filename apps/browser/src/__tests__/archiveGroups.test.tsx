@@ -70,3 +70,35 @@ it('groups archived tabs, supports individual restore, and restores only the sel
   ).toEqual(['one', 'two']);
   expect(saved[2]).toEqual(tabs[2]);
 });
+
+it('renders an inline searchable archive and restores the full group when filtered', () => {
+  jest.clearAllMocks();
+  (AppManager.getAll as jest.Mock).mockReturnValue(tabs);
+  render(
+    <Theme>
+      <Archive embedded />
+    </Theme>
+  );
+  expect(
+    screen.queryByText(
+      'Restore a group, or expand it to restore individual tabs.'
+    )
+  ).not.toBeInTheDocument();
+  fireEvent.change(
+    screen.getByRole('searchbox', { name: 'Search archived groups' }),
+    { target: { value: 'Docs' } }
+  );
+  expect(
+    screen.queryByRole('region', { name: 'Archived group Other space' })
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Work 1 tab' }));
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Restore group Work' }));
+  const saved = (AppManager.set as jest.Mock).mock.calls[0][0];
+  expect(
+    saved
+      .filter((tab: { archived: boolean }) => !tab.archived)
+      .map((tab: { id: string }) => tab.id)
+  ).toEqual(['one', 'two']);
+  expect(saved[2]).toEqual(tabs[2]);
+});
