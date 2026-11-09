@@ -1,7 +1,8 @@
-import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { useEffect, useRef, useState } from 'react';
 import { TextField } from '@radix-ui/themes';
-import { Plus, Search, Trash2, Pin, X, Pencil, Check } from 'lucide-react';
+import { Search, Trash2, Pencil, Check, X } from 'lucide-react';
+import { StorageRecoveryAction } from './StorageRecoveryAction';
+import { HistorySidebarFrame } from './HistorySidebarFrame';
 import type {
   AIConversationsState,
   AIConversationRequest,
@@ -87,35 +88,16 @@ export function AIChatSwitcher({
     } else if (!pinned && request.action === 'create') onClose();
   };
   return (
-    <aside ref={history} className="ai-chat-history" aria-label="Chat history">
-      <div className="ai-chat-history-heading">
-        <strong>Chats</strong>
-        <button
-          type="button"
-          aria-label={pinned ? 'Unpin chat history' : 'Pin chat history'}
-          title={pinned ? 'Unpin chat history' : 'Pin chat history'}
-          aria-pressed={pinned}
-          onClick={onPin}
-        >
-          <Pin size={15} />
-        </button>
-        <button
-          type="button"
-          aria-label="Close chat history"
-          title="Close chat history"
-          onClick={onClose}
-        >
-          <X size={15} />
-        </button>
-        <button
-          type="button"
-          aria-label="Start new chat"
-          disabled={busy || changing}
-          onClick={() => choose({ action: 'create' })}
-        >
-          <Plus size={16} />
-        </button>
-      </div>
+    <HistorySidebarFrame
+      sidebarRef={history}
+      title="Chats"
+      label="Chat history"
+      pinned={pinned}
+      busy={busy || changing}
+      onPin={onPin}
+      onClose={onClose}
+      onNew={() => choose({ action: 'create' })}
+    >
       <TextField.Root
         aria-label="Search chats"
         placeholder="Search chats"
@@ -324,6 +306,6 @@ export function AIChatSwitcher({
           <StorageRecoveryAction message={state.storageNotice} />
         </p>
       )}
-    </aside>
+    </HistorySidebarFrame>
   );
 }

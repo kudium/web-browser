@@ -8,8 +8,9 @@ export interface VaultItem {
   id: string;
   title: string;
   origin: string;
-  kind: 'login' | 'profile' | 'payment' | 'knowledge';
+  kind: 'login' | 'profile' | 'payment' | 'knowledge' | 'note';
   version?: 2;
+  sensitive?: boolean;
   scope?: string;
   source?: { label: string; url?: string; capturedAt: string };
   notes?: string;
@@ -42,6 +43,8 @@ export interface VaultStatus {
   hidden?: VaultSummary[];
 }
 type VaultOperation =
+  | { action: 'notes' }
+  | { action: 'moveNote'; id: string; destination?: string }
   | { action: 'status' | 'lock' | 'authenticate' | 'createOS' }
   | { action: 'migrateOS'; password: string }
   | { action: 'unlock' | 'create'; password: string }

@@ -1,4 +1,3 @@
-import { storageRecoveryMessage } from '../../browser/storageRecovery';
 import {
   app,
   ipcMain,
@@ -9,7 +8,9 @@ import {
 import path from 'path';
 import { EventEmitter } from 'events';
 import fs from 'fs';
+import { storageRecoveryMessage } from '../../browser/storageRecovery';
 import { isProtectedField } from '../../browser/passwordManager';
+import { ordinaryNotesStorage } from './ordinaryNotes';
 import { importDocument } from './documents';
 import { parseBrowserPasswords } from './browserPasswords';
 import { showBrowserDialog } from '../dialogs';
@@ -62,7 +63,10 @@ export const passwordVault = () => {
         );
         if (!safeStorage.isFileAvailable(file))
           throw new Error(storageRecoveryMessage('your saved Personal Data'));
-      }
+      },
+      ordinaryNotesStorage(
+        path.join(app.getPath('userData'), 'password-manager', 'notes.bin')
+      )
     );
   return store;
 };
@@ -73,6 +77,7 @@ export const passwordVault = () => {
 export function withPersonalData<T>(work: (vault: PasswordVault) => T): T {
   const vault = passwordVault();
   const wasLocked = vault.status().locked;
+  if (wasLocked && !vault.status().initialized) return work(vault);
   if (wasLocked) {
     if (!authenticationAdapter.usesOSAuthentication())
       throw new Error('Unlock Personal Data with your master password first.');
@@ -191,6 +196,7 @@ export function registerPasswordManager(
     });
     BrowserWindow.fromWebContents(contents)?.once('closed', revoke);
   };
+  let ordinaryNotesMigrated = false;
   ipcMain.handle('password-manager', async (event, request: VaultRequest) => {
     if (
       !isTrusted(event.sender) ||
@@ -352,7 +358,44 @@ export function registerPasswordManager(
         vault.settings(request.enabled, request.autofill, request.ai);
         if (!request.enabled || !request.ai) revokeAuthorizations();
         break;
+      case 'notes':
+        if (
+          !ordinaryNotesMigrated &&
+          vault.status().initialized &&
+          (usesOSAuthentication() || !vault.status().locked)
+        ) {
+          withPersonalData((current) => current.migrateOrdinaryNotes());
+          ordinaryNotesMigrated = true;
+        }
+        return vault.noteSummaries();
+      case 'moveNote':
+        if (
+          request.destination !== undefined &&
+          (typeof request.destination !== 'string' ||
+            !request.destination ||
+            request.destination.length > 200)
+        )
+          throw new Error('Invalid group scope.');
+        if (!vault.isOrdinaryNote(request.id)) await authenticate();
+        vault.moveNote(request.id, request.destination);
+        return vault.noteSummaries();
       case 'save': {
+        if (request.item.kind === 'note') {
+          const ordinary =
+            !request.item.sensitive &&
+            (!request.item.id ||
+              vault.isOrdinaryNote(request.item.id) ||
+              !vault
+                .noteSummaries()
+                .some((item) => item.id === request.item.id));
+          if (ordinary) {
+            vault.save(request.item, request.scope);
+            return vault.noteSummaries();
+          }
+          await authenticate();
+          vault.save(request.item, request.scope);
+          return vault.noteSummaries();
+        }
         if (request.item.id) {
           if (!usesOSAuthentication() && vault.status().locked)
             await authenticate();
@@ -428,7 +471,7 @@ export function registerPasswordManager(
         if (vault.status().initialized) {
           await authenticate();
           vault.removeScope(request.scope, disposition);
-        }
+        } else vault.removeOrdinaryNoteScope(request.scope, disposition);
         return { removed: true };
       }
       case 'importPasswords': {
@@ -516,10 +559,22 @@ export function registerPasswordManager(
         }
         break;
       }
-      case 'delete':
+      case 'delete': {
+        const note = vault
+          .noteSummaries()
+          .some((item) => item.id === request.id);
+        if (!vault.isOrdinaryNote(request.id)) await authenticate();
         vault.delete(request.id, request.scope);
+        if (note) return vault.noteSummaries();
         break;
+      }
       case 'edit': {
+        if (vault.isOrdinaryNote(request.id))
+          return vault.edit(request.id, request.scope);
+        if (vault.noteSummaries().some((item) => item.id === request.id)) {
+          await authenticate();
+          return vault.edit(request.id, request.scope);
+        }
         const publicItem = withPersonalData((current) => {
           const item = current.edit(request.id, request.scope);
           return item.password || item.fields.some(isProtectedField)

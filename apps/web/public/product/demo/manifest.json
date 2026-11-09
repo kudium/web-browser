@@ -1,5 +1,5 @@
 {
-  "createdAt": "2026-11-08T05:46:30.968Z",
+  "createdAt": "2026-11-09T22:43:07.593Z",
   "source": "Production React components in Electron; real projectFiles service and real WebContentsView pages. Public popular websites with five groups of four tabs and fetched site favicons. Atlas Studio is a fictional linked local project. Script list and hook activity are seeded fixtures. AI shows an unsent draft with a real reference attachment; no fabricated assistant answer. Terminal output is from a real demo test run. Browser page layers are captured and placed at their actual native view bounds.",
   "checks": [
     {
@@ -89,7 +89,7 @@
     },
     {
       "image": "sidebar-expanded.png",
-      "expectedText": "Favorite groups",
+      "expectedText": "Product Studio",
       "verified": true
     },
     {
@@ -102,5 +102,13 @@
       "expectedText": "Search switch group",
       "verified": true
     }
-  ]
+  ],
+  "refresh": "Current collections, folder/stack group presentation and caret-anchored autocomplete; real public websites with no signed-in account data.",
+  "autocomplete": {
+    "image": "ai-mentions.png",
+    "expectedText": "Work",
+    "verified": true,
+    "draft": "Review the project brief with @w",
+    "sent": false
+  }
 }

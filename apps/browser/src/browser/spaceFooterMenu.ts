@@ -9,7 +9,7 @@ export function spaceFooterMenu(
     { id: 'new-tab', label: 'New Tab…' },
     { id: 'new-group', label: 'Create Group…' },
     { id: 'import-group', label: 'Import Group…' },
-    { id: 'folder', label: 'New Folder…' },
+    { id: 'folder', label: 'New Collection…' },
     { type: 'separator' },
     {
       label: 'Spaces',

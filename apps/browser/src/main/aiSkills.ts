@@ -168,6 +168,23 @@ export class AISkillsStore {
     this.save([...this.skills, skill]);
   }
 
+  update(id: unknown, replacement: AISkill) {
+    const existing = this.skills.find((skill) => skill.id === id);
+    if (!existing) throw new Error('This skill no longer exists.');
+    this.save(
+      this.skills.map((skill) =>
+        skill.id === id
+          ? {
+              ...replacement,
+              id: skill.id,
+              enabled: skill.enabled,
+              resources: skill.resources,
+            }
+          : skill
+      )
+    );
+  }
+
   change(id: unknown, enabled?: unknown) {
     if (!this.skills.some((skill) => skill.id === id))
       throw new Error('This skill no longer exists.');

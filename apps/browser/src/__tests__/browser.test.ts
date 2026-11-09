@@ -269,6 +269,37 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     'browser-shortcut',
     'ai-sidebar'
   );
+  for (const shift of [false, true]) {
+    window.webContents.emit('before-input-event', shortcutEvent, {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      control: true,
+      shift,
+    });
+    expect(window.webContents.send).toHaveBeenLastCalledWith(
+      'browser-shortcut',
+      shift ? 'tab-switcher-previous' : 'tab-switcher-next'
+    );
+  }
+  window.webContents.emit('before-input-event', shortcutEvent, {
+    type: 'keyUp',
+    key: 'Control',
+    code: 'ControlLeft',
+    control: false,
+  });
+  expect(window.webContents.send).toHaveBeenLastCalledWith(
+    'browser-shortcut',
+    'tab-switcher-commit'
+  );
+  window.webContents.emit('before-input-event', shortcutEvent, {
+    type: 'keyDown',
+    key: 'Escape',
+  });
+  expect(window.webContents.send).toHaveBeenLastCalledWith(
+    'browser-shortcut',
+    'tab-switcher-cancel'
+  );
   const apps = ['one', 'two', 'three'].map((id) => ({
     id,
     name: id,
@@ -312,6 +343,27 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
   expect(first.webContents.loadURL).toHaveBeenCalledTimes(1);
   emit();
   expect(WebContentsView).toHaveBeenCalledTimes(1);
+  first.webContents.emit('before-input-event', shortcutEvent, {
+    type: 'keyDown',
+    key: 'Tab',
+    code: 'Tab',
+    control: true,
+    shift: true,
+  });
+  expect(window.webContents.send).toHaveBeenLastCalledWith(
+    'browser-shortcut',
+    'tab-switcher-previous'
+  );
+  first.webContents.emit('before-input-event', shortcutEvent, {
+    type: 'keyUp',
+    key: 'Control',
+    code: 'ControlRight',
+    control: false,
+  });
+  expect(window.webContents.send).toHaveBeenLastCalledWith(
+    'browser-shortcut',
+    'tab-switcher-commit'
+  );
   first.webContents.emit('dom-ready');
   expect(first.setVisible).toHaveBeenLastCalledWith(true);
   expect(window.webContents.send).toHaveBeenCalledWith(

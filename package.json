@@ -31,6 +31,7 @@
     "test:migrations": "npm --prefix apps/browser run test:migrations --",
     "test:migrations:native": "npm --prefix apps/browser run test:migrations:native --",
     "release:verify-migrations": "npm --prefix apps/browser run release:verify-migrations --",
-    "storage:recovery": "npm --prefix apps/browser run storage:recovery --"
+    "storage:recovery": "npm --prefix apps/browser run storage:recovery --",
+    "dummy": "npm --prefix apps/browser run dummy --"
   }
 }

@@ -16,7 +16,8 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
     !Array.isArray(value.visible) ||
     value.visible.length > 16 ||
     !optionalText(value.focusedId) ||
-    (value.suspended !== undefined && typeof value.suspended !== 'boolean')
+    (value.suspended !== undefined && typeof value.suspended !== 'boolean') ||
+    (value.tabSwitcher !== undefined && typeof value.tabSwitcher !== 'boolean')
   )
     return false;
   const ids = new Set<string>();
@@ -29,6 +30,10 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
         ids.has(item.id) ||
         !text(item.url, 65536) ||
         !text(item.name, 65536) ||
+        (item.groupDisplay !== undefined &&
+          !['folder', 'stack'].includes(item.groupDisplay as string)) ||
+        (item.sessionMode !== undefined &&
+          !['separate', 'collection'].includes(item.sessionMode as string)) ||
         ![
           'sessionId',
           'openerTabId',
@@ -38,6 +43,7 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
           'extensionInstallTarget',
           'spaceId',
           'folderId',
+          'collectionName',
         ].every((key) => optionalText(item[key])) ||
         ![
           'sessionName',
@@ -116,6 +122,7 @@ const commands = new Set<BrowserCommand['action']>([
   'set-permission',
   'reset-permissions',
   'close-group',
+  'unload-tab',
   'open-site-developer',
   'set-site-developer',
   'clear-site-developer-logs',

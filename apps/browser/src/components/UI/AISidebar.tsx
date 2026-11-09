@@ -1,7 +1,5 @@
-import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  PanelLeft,
   Sparkles,
   Settings2,
   Square,
@@ -18,9 +16,14 @@ import {
   ListTodo,
   Code2,
 } from 'lucide-react';
+import { AIComposerSuggestions } from './AIComposerSuggestions';
+import { AISkill, skillCommands } from '../../browser/aiSkills';
+import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { AIStarterActions } from './AIStarterActions';
 import { AIWorkingTabsBadge, AIWorkingTab } from './AIWorkingTabsBadge';
 import { useAIPagePreference } from '../../utils/useAIPagePreference';
+import { NotesPage } from './NotesPage';
+import { HistoryToolbar } from './HistorySidebarFrame';
 import { AIChatSwitcher } from './AIChatSwitcher';
 import type {
   AIConversationEvent,
@@ -37,6 +40,7 @@ import {
   AIComposerAttachment,
 } from '../../browser/aiComposer';
 import { GroupPicker } from './GroupPicker';
+import { AIContextPicker } from './AIContextPicker';
 import { GroupIcon } from './GroupIcon';
 import { AppManager } from '../../utils/AppManager';
 import {
@@ -88,7 +92,11 @@ export function AISidebar({
     token: number;
   };
   onFocusTab?: (id: string) => void;
-  contextRequest?: { reference: AIContextReference; token: number };
+  contextRequest?: {
+    reference: AIContextReference;
+    token: number;
+    mode?: 'scope';
+  };
   onTabContextMenu?: (id: string) => void;
   onGroupContextMenu?: (id: string) => void;
   onManageGroup?: (id: string) => void;
@@ -114,7 +122,7 @@ export function AISidebar({
   const historyToggle = useRef<HTMLButtonElement>(null);
   const closeHistory = () => {
     setHistoryOpen(false);
-    historyToggle.current?.focus();
+    requestAnimationFrame(() => historyToggle.current?.focus());
   };
   const [permissions, setPermissions] = useState<AIAccessStatus>({
     mode: 'standard',
@@ -134,6 +142,10 @@ export function AISidebar({
   useEffect(() => {
     if (developerRequest) setPane('developer');
   }, [developerRequest, setPane]);
+  const [notesVisited, setNotesVisited] = useState(false);
+  useEffect(() => {
+    if (pane === 'notes') setNotesVisited(true);
+  }, [pane]);
   const [developerVisited, setDeveloperVisited] = useState(false);
   useEffect(() => {
     if (pane === 'developer') setDeveloperVisited(true);
@@ -149,6 +161,16 @@ export function AISidebar({
     remembered: false,
   });
   const [external, setExternal] = useState<MCPStatus>();
+  const [chatSkills, setChatSkills] = useState<AISkill[]>([]);
+  const refreshSkills = () => {
+    window.electron.ai
+      .skills?.({ action: 'list' })
+      .then(setChatSkills)
+      .catch(() => setChatSkills([]));
+  };
+  useEffect(() => {
+    refreshSkills();
+  }, []);
   const [prompt, setPrompt] = useState('');
   const [streamingText, setStreamingText] = useState('');
   const [attachments, setAttachments] = useState<AIComposerAttachment[]>([]);
@@ -272,6 +294,26 @@ export function AISidebar({
       mounted = false;
     };
   }, [settings.endpoint, settings.hasKey]);
+  const slash = /(?:^|\s)\/([\p{L}\p{N}_-]*)$/u.exec(prompt.slice(0, cursor));
+  const skillSuggestions = slash
+    ? skillCommands(chatSkills).filter(
+        (skill) =>
+          skill.enabled &&
+          skill.command.toLowerCase().includes(slash[1].toLowerCase())
+      )
+    : [];
+  const insertSkill = (command: string) => {
+    if (!slash) return;
+    const start = cursor - slash[1].length - 1;
+    setPrompt(`${prompt.slice(0, start)}${command} ${prompt.slice(cursor)}`);
+    const position = start + command.length + 1;
+    setCursor(position);
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      taskInput.current?.focus();
+      taskInput.current?.setSelectionRange(position, position);
+    });
+  };
   const mention = /(?:^|[\s(*_])@([a-z0-9-/]*)$/.exec(prompt.slice(0, cursor));
   const suggestions = mention
     ? groups
@@ -324,17 +366,20 @@ export function AISidebar({
         (reference) => reference.split('/')[0] === group.slug
       )
   );
-  const changeScope = async (next: string) => {
-    try {
-      const value = await window.electron.ai.groups(
-        next === 'all' ? null : next
-      );
-      setGroupId(value.groupId);
-      setGroups(value.groups);
-    } catch (reason) {
-      showError(reason as Error);
-    }
-  };
+  const changeScope = useCallback(
+    async (next: string) => {
+      try {
+        const value = await window.electron.ai.groups(
+          next === 'all' ? null : next
+        );
+        setGroupId(value.groupId);
+        setGroups(value.groups);
+      } catch (reason) {
+        showError(reason as Error);
+      }
+    },
+    [showError]
+  );
   const changeModel = async (model: string) => {
     try {
       setSettings(
@@ -689,8 +734,88 @@ export function AISidebar({
     )
       return;
     handledRequest.current = contextRequest.token;
-    addContext(JSON.stringify(contextRequest.reference));
-  }, [contextRequest, attaching, addContext]);
+    if (
+      contextRequest.mode === 'scope' &&
+      contextRequest.reference.kind === 'group'
+    ) {
+      setShowTasks(false);
+      changeScope(contextRequest.reference.id);
+      taskInput.current?.focus();
+    } else addContext(JSON.stringify(contextRequest.reference));
+  }, [contextRequest, attaching, addContext, changeScope, setShowTasks]);
+  const activeContextTabId = focusedTabId || activeTabId;
+  const activeContextGroup = groups.find((group) =>
+    group.tabs.some((tab) => tab.id === activeContextTabId)
+  );
+  const activeContextGroupId = activeContextGroup?.id;
+  const activeChatId = chatState?.selectedId;
+  const autoContext = useRef<{ chatId: string; tabId: string }>();
+  const freshChat =
+    !!chatState &&
+    !chatState.history.length &&
+    !events.length &&
+    !busy &&
+    !resumable &&
+    !changingChat;
+  useEffect(() => {
+    if (
+      !freshChat ||
+      !activeChatId ||
+      !activeContextGroupId ||
+      !activeContextTabId ||
+      attaching
+    )
+      return undefined;
+    const chatId = activeChatId;
+    const tabId = activeContextTabId;
+    if (
+      autoContext.current?.chatId === chatId &&
+      autoContext.current.tabId === tabId
+    )
+      return undefined;
+    let cancelled = false;
+    const previous = autoContext.current;
+    const assign = async () => {
+      try {
+        const value = await window.electron.ai.groups(activeContextGroupId);
+        if (cancelled) return;
+        setGroupId(value.groupId);
+        setGroups(value.groups);
+        const tab = await window.electron.ai.attachContext({
+          kind: 'tab',
+          id: tabId,
+        });
+        if (cancelled) return;
+        autoContext.current = { chatId, tabId };
+        setContexts((current) =>
+          [
+            ...current.filter(
+              (ref) =>
+                !(
+                  ref.kind === 'tab' &&
+                  (ref.id === tabId ||
+                    (previous?.chatId === chatId && ref.id === previous.tabId))
+                )
+            ),
+            tab,
+          ].slice(0, AI_CONTEXT_LIMIT)
+        );
+      } catch (reason) {
+        if (!cancelled) showError(reason as Error);
+      }
+    };
+    assign();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    freshChat,
+    activeChatId,
+    activeContextGroupId,
+    activeContextTabId,
+    attaching,
+    showError,
+  ]);
   const saveAttachment = async (file: AIComposerAttachment) => {
     setError('');
     setNotice(`Saving ${file.name}…`);
@@ -818,6 +943,13 @@ export function AISidebar({
     setBusy(true);
     setResumable(false);
     setError('');
+    const usedSkills = skillCommands(chatSkills).filter(
+      (skill) => skill.enabled && task.split(/\s+/).includes(skill.command)
+    );
+    if (usedSkills.length)
+      task += `\n\nUse the following enabled skills for this request. Load their instructions with read_skill (discover the skills tools first if needed): ${usedSkills
+        .map((skill) => `${skill.command}: skillId=${JSON.stringify(skill.id)}`)
+        .join(', ')}.`;
     const sentPrompt = prompt;
     followLog.current = true;
     const sentAttachments = attachments;
@@ -913,6 +1045,7 @@ export function AISidebar({
               label: 'Developer',
               enabled: pane !== 'developer',
             },
+            { id: 'notes', label: 'Notes', enabled: pane !== 'notes' },
             { type: 'separator' },
             { id: 'settings', label: 'AI settings…' },
           ])
@@ -920,7 +1053,8 @@ export function AISidebar({
             if (
               choice === 'assistant' ||
               choice === 'tasks' ||
-              choice === 'developer'
+              choice === 'developer' ||
+              choice === 'notes'
             )
               setPane(choice);
             if (choice === 'settings') openSettings();
@@ -956,88 +1090,78 @@ export function AISidebar({
       }}
     >
       <header className="ai-sidebar-header">
-        {chatState && (
-          <button
-            type="button"
-            ref={historyToggle}
-            className="ai-history-toggle"
-            aria-label="Chat history"
-            title="Chat history"
-            aria-expanded={historyOpen && pane === 'assistant'}
-            aria-controls="ai-chat-history-panel"
-            onClick={() => {
-              if (historyOpen && pane === 'assistant') closeHistory();
-              else {
-                setPane('assistant');
-                setHistoryOpen(true);
-                refreshChats();
-              }
-            }}
-          >
-            <PanelLeft size={16} />
-          </button>
-        )}
         <div
           className="ai-sidebar-tabs"
           role="tablist"
           aria-label="Assistant tools"
         >
-          {(['assistant', 'tasks', 'developer'] as const).map((tab) => (
-            <button
-              type="button"
-              key={tab}
-              id={`ai-${tab}-tab`}
-              role="tab"
-              tabIndex={pane === tab ? 0 : -1}
-              onKeyDown={(event) => {
-                const tabs = ['assistant', 'tasks', 'developer'] as const;
-                const index = tabs.indexOf(tab);
-                let next = index;
-                if (event.key === 'ArrowRight')
-                  next = (index + 1) % tabs.length;
-                else if (event.key === 'ArrowLeft')
-                  next = (index + tabs.length - 1) % tabs.length;
-                else if (event.key === 'Home') next = 0;
-                else if (event.key === 'End') next = tabs.length - 1;
-                else return;
-                event.preventDefault();
-                setPane(tabs[next]);
-                document.getElementById(`ai-${tabs[next]}-tab`)?.focus();
-              }}
-              title={
-                {
-                  assistant: 'Assistant',
-                  tasks: 'Tasks',
-                  developer: 'Developer',
-                }[tab]
-              }
-              aria-label={
-                {
-                  assistant: 'Assistant',
-                  tasks: 'Tasks',
-                  developer: 'Developer',
-                }[tab]
-              }
-              aria-selected={pane === tab}
-              aria-controls={`ai-${tab}-panel`}
-              onClick={() => setPane(tab)}
-            >
-              <span className="ai-sidebar-tab-icon" aria-hidden="true">
-                {tab === 'assistant' && <Sparkles size={15} />}
-                {tab === 'tasks' && <ListTodo size={15} />}
-                {tab === 'developer' && <Code2 size={15} />}
-              </span>
-              <span className="ai-sidebar-tab-label">
-                {
+          {(['assistant', 'tasks', 'developer', 'notes'] as const).map(
+            (tab) => (
+              <button
+                type="button"
+                key={tab}
+                id={`ai-${tab}-tab`}
+                role="tab"
+                tabIndex={pane === tab ? 0 : -1}
+                onKeyDown={(event) => {
+                  const tabs = [
+                    'assistant',
+                    'tasks',
+                    'developer',
+                    'notes',
+                  ] as const;
+                  const index = tabs.indexOf(tab);
+                  let next = index;
+                  if (event.key === 'ArrowRight')
+                    next = (index + 1) % tabs.length;
+                  else if (event.key === 'ArrowLeft')
+                    next = (index + tabs.length - 1) % tabs.length;
+                  else if (event.key === 'Home') next = 0;
+                  else if (event.key === 'End') next = tabs.length - 1;
+                  else return;
+                  event.preventDefault();
+                  setPane(tabs[next]);
+                  document.getElementById(`ai-${tabs[next]}-tab`)?.focus();
+                }}
+                title={
                   {
                     assistant: 'Assistant',
                     tasks: 'Tasks',
                     developer: 'Developer',
+                    notes: 'Notes',
                   }[tab]
                 }
-              </span>
-            </button>
-          ))}
+                aria-label={
+                  {
+                    assistant: 'Assistant',
+                    tasks: 'Tasks',
+                    developer: 'Developer',
+                    notes: 'Notes',
+                  }[tab]
+                }
+                aria-selected={pane === tab}
+                aria-controls={`ai-${tab}-panel`}
+                onClick={() => setPane(tab)}
+              >
+                <span className="ai-sidebar-tab-icon" aria-hidden="true">
+                  {tab === 'assistant' && <Sparkles size={15} />}
+                  {tab === 'tasks' && <ListTodo size={15} />}
+                  {tab === 'developer' && <Code2 size={15} />}
+                  {tab === 'notes' && <FileText size={15} />}
+                </span>
+                <span className="ai-sidebar-tab-label">
+                  {
+                    {
+                      assistant: 'Assistant',
+                      tasks: 'Tasks',
+                      developer: 'Developer',
+                      notes: 'Notes',
+                    }[tab]
+                  }
+                </span>
+              </button>
+            )
+          )}
         </div>
         <div className="ai-header-actions">
           {(busy || (external?.running && external?.paused)) && (
@@ -1077,6 +1201,17 @@ export function AISidebar({
           </button>
         </div>
       </header>
+      {(notesVisited || pane === 'notes') && (
+        <div
+          className="ai-sidebar-pane ai-notes-pane"
+          role="tabpanel"
+          id="ai-notes-panel"
+          aria-labelledby="ai-notes-tab"
+          hidden={pane !== 'notes'}
+        >
+          <NotesPage tabs={allContextTabs} />
+        </div>
+      )}
       {(developerVisited || pane === 'developer') && (
         <DeveloperSidebar
           onManageGroup={onManageGroup}
@@ -1106,6 +1241,23 @@ export function AISidebar({
           id="ai-assistant-panel"
           aria-labelledby="ai-assistant-tab"
         >
+          {chatState && (
+            <div className="ai-conversation-toolbar" hidden={historyOpen}>
+              <HistoryToolbar
+                toggleRef={historyToggle}
+                open={historyOpen}
+                label="Chat history"
+                panelId="ai-chat-history-panel"
+                busy={busy || attaching || changingChat}
+                onOpen={() => {
+                  setHistoryOpen(true);
+                  refreshChats();
+                }}
+                onNew={() => changeChat({ action: 'create' })}
+                newLabel="Start new chat"
+              />
+            </div>
+          )}
           {chatState && historyOpen && (
             <div id="ai-chat-history-panel" className="ai-chat-history-panel">
               <AIChatSwitcher
@@ -1541,6 +1693,7 @@ export function AISidebar({
             )}
             <textarea
               ref={taskInput}
+              onFocus={refreshSkills}
               onPaste={(event) => {
                 const files = Array.from(event.clipboardData.files);
                 if (files.length) {
@@ -1551,11 +1704,9 @@ export function AISidebar({
               rows={3}
               aria-label="Task for AI"
               placeholder={
-                feedbackId
-                  ? 'Reply to the question…'
-                  : busy
-                  ? 'Draft your next request while AI works…'
-                  : 'Ask anything, or drop a tab or group…'
+                (feedbackId && 'Reply to the question…') ||
+                (busy && 'Draft your next request while AI works…') ||
+                'Ask anything, / for skills, @ for tabs…'
               }
               value={prompt}
               maxLength={12000}
@@ -1568,11 +1719,41 @@ export function AISidebar({
               onSelect={(event) =>
                 setCursor(event.currentTarget.selectionStart)
               }
-              aria-controls={suggestions.length ? 'ai-mentions' : undefined}
+              aria-controls={
+                skillSuggestions.length
+                  ? 'ai-skill-commands'
+                  : (suggestions.length && 'ai-mentions') || undefined
+              }
               aria-activedescendant={
-                suggestions.length ? `ai-mention-${mentionIndex}` : undefined
+                skillSuggestions.length
+                  ? `ai-skill-command-${mentionIndex}`
+                  : (suggestions.length && `ai-mention-${mentionIndex}`) ||
+                    undefined
               }
               onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing) return;
+                if (
+                  skillSuggestions.length &&
+                  !event.shiftKey &&
+                  ['ArrowDown', 'ArrowUp', 'Enter', 'Tab'].includes(event.key)
+                ) {
+                  event.preventDefault();
+                  if (event.key === 'Enter' || event.key === 'Tab')
+                    insertSkill(
+                      (skillSuggestions[mentionIndex] || skillSuggestions[0])
+                        .command
+                    );
+                  else
+                    setMentionIndex(
+                      (previous) =>
+                        (previous +
+                          (event.key === 'ArrowDown'
+                            ? 1
+                            : skillSuggestions.length - 1)) %
+                        skillSuggestions.length
+                    );
+                  return;
+                }
                 if (
                   suggestions.length &&
                   ['ArrowDown', 'ArrowUp', 'Enter', 'Tab'].includes(
@@ -1625,58 +1806,90 @@ export function AISidebar({
                 ))}
               </div>
             )}
-            {!!suggestions.length && (
-              <div
-                className="ai-mentions"
-                id="ai-mentions"
-                role="listbox"
-                aria-label="Group and page references"
+            {!!(skillSuggestions.length || suggestions.length) && (
+              <AIComposerSuggestions
+                input={taskInput}
+                cursor={cursor}
+                value={prompt}
+                selectedIndex={mentionIndex}
               >
-                {suggestions.map((item, index) => (
-                  <button
-                    type="button"
-                    role="option"
-                    id={`ai-mention-${index}`}
-                    aria-selected={index === mentionIndex}
-                    key={item.reference}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => insertMention(item.reference)}
+                {!!skillSuggestions.length && (
+                  <div
+                    className="ai-mentions"
+                    id="ai-skill-commands"
+                    role="listbox"
+                    aria-label="Skills"
                   >
-                    {item.kind === 'group' &&
-                    contextTabs.find((tab) => aiGroupId(tab) === item.id) ? (
-                      <GroupIcon
-                        item={
-                          contextTabs.find((tab) => aiGroupId(tab) === item.id)!
-                        }
-                        tabs={contextTabs}
-                      />
-                    ) : (
-                      <AppIcon icon={item.icon || ''} title={item.name} />
-                    )}
-                    <span>
-                      <strong>{item.name}</strong>
-                      <small>{item.detail}</small>
-                    </span>
-                  </button>
-                ))}
-              </div>
+                    {skillSuggestions.map((skill, index) => (
+                      <button
+                        type="button"
+                        role="option"
+                        id={`ai-skill-command-${index}`}
+                        aria-selected={index === mentionIndex}
+                        key={skill.id}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => insertSkill(skill.command)}
+                      >
+                        <span>
+                          <strong>{skill.command}</strong>
+                          <small>{skill.description || skill.name}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!!suggestions.length && (
+                  <div
+                    className="ai-mentions"
+                    id="ai-mentions"
+                    role="listbox"
+                    aria-label="Group and page references"
+                  >
+                    {suggestions.map((item, index) => (
+                      <button
+                        type="button"
+                        role="option"
+                        id={`ai-mention-${index}`}
+                        aria-selected={index === mentionIndex}
+                        key={item.reference}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => insertMention(item.reference)}
+                      >
+                        {item.kind === 'group' &&
+                        contextTabs.find(
+                          (tab) => aiGroupId(tab) === item.id
+                        ) ? (
+                          <GroupIcon
+                            item={
+                              contextTabs.find(
+                                (tab) => aiGroupId(tab) === item.id
+                              )!
+                            }
+                            tabs={contextTabs}
+                          />
+                        ) : (
+                          <AppIcon icon={item.icon || ''} title={item.name} />
+                        )}
+                        <span>
+                          <strong>{item.name}</strong>
+                          <small>{item.detail}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </AIComposerSuggestions>
             )}
             <div className="ai-composer-controls">
-              <button
-                type="button"
-                className="ai-attach-button"
-                aria-label="Attach images or files"
-                title="Attach images or files · 20 MB each"
-                disabled={
-                  busy ||
-                  attaching ||
-                  unavailable ||
-                  attachments.length >= AI_ATTACHMENT_LIMIT
-                }
-                onClick={pickAttachments}
-              >
-                <Plus size={18} />
-              </button>
+              <AIContextPicker
+                groups={groups}
+                tabs={contextTabs}
+                activeTabId={focusedTabId || activeTabId}
+                disabled={busy || attaching || unavailable || changingChat}
+                filesDisabled={attachments.length >= AI_ATTACHMENT_LIMIT}
+                onAttach={(reference) => addContext(JSON.stringify(reference))}
+                onFiles={pickAttachments}
+              />
               <div className="ai-context-pickers">
                 <GroupPicker
                   label="AI permissions"

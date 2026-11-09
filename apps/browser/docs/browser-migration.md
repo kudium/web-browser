@@ -1,6 +1,8 @@
 # Browser migration
 
-Preferences → Browser migration offers two import paths:
+Preferences → Browser migration does not access other browsers automatically. Choose **Scan for browser data** to find profiles; the page explains that this reads other browsers’ profile folders and may trigger a macOS access prompt. Each time the page opens, a scan requires this explicit action. After scanning, review the selected data before importing.
+
+It offers two import paths:
 
 - Detect Chrome, Edge, Brave, Chromium and macOS Arc profiles in their standard locations. Import bookmarks/folders and up to 10,000 recent history URLs with their last-visit dates. These are saved as new groups with a new, shared login profile for that import.
 - Choose a browser-exported password CSV. Chrome, Edge, Brave, Firefox and Safari CSV column conventions are supported. Only HTTPS logins are accepted. Review the count, authenticate to the password vault and import. Exact duplicates are skipped; existing passwords are kept. Passwords are not sent to the renderer or enabled for AI use.

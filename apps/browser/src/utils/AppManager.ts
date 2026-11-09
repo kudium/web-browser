@@ -11,6 +11,7 @@ import { migrateGroupNames } from './groups';
 import { assignGroupSlugs } from '../browser/aiGroups';
 import { readSavedList, writeSavedList } from './storageRecovery';
 import { windowWorkspace } from './windowWorkspace';
+import { prepareCollectionGroups } from './collectionGroups';
 
 // Storage remains authoritative across windows and direct layout restores.
 // Cache only successful normalization; return independent mutable records.
@@ -124,9 +125,15 @@ export const AppManager = {
       ).forEach((key) => {
         if (typeof next[key] !== 'string') delete next[key];
       });
+      if (next.groupDisplay !== 'stack' && next.groupDisplay !== 'folder')
+        delete next.groupDisplay;
+      if (next.sessionMode !== 'separate' && next.sessionMode !== 'collection')
+        delete next.sessionMode;
       return next;
     });
-    const migrated = assignGroupSlugs(migrateGroupNames(stored));
+    const migrated = assignGroupSlugs(
+      migrateGroupNames(prepareCollectionGroups(stored, stored))
+    );
     if (
       migrated !== stored &&
       LocalStorage.get(`${STORAGE_KEY.USER_APPS}.recovery`) !==
@@ -159,8 +166,9 @@ export const AppManager = {
       'default';
     app.pinned = app.pinned ?? true;
     app.sessionName = app.sessionName || app.name;
-    assertGroupChanges(existingApps, [...existingApps, app]);
-    existingApps.push(app);
+    const [prepared] = prepareCollectionGroups([app], existingApps);
+    assertGroupChanges(existingApps, [...existingApps, prepared]);
+    existingApps.push(prepared);
     writeSavedList(
       STORAGE_KEY.USER_APPS,
       assignGroupSlugs(
@@ -213,10 +221,11 @@ export const AppManager = {
           : Date.now(),
       };
     });
-    assertGroupChanges(previous, dataList);
+    const prepared = prepareCollectionGroups(dataList, previous);
+    assertGroupChanges(previous, prepared);
     writeSavedList(
       STORAGE_KEY.USER_APPS,
-      assignGroupSlugs(windowWorkspace.save(AppManager.getStored(), dataList))
+      assignGroupSlugs(windowWorkspace.save(AppManager.getStored(), prepared))
     );
     // On App Updated
     eventBus.dispatch(EVENT_KEY.APP_LIST_UPDATE);

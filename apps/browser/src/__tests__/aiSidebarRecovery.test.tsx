@@ -1,3 +1,4 @@
+import { Theme } from '@radix-ui/themes';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -11,6 +12,13 @@ import type { MCPStatus } from '../browser/mcp';
 import type { AIEvent, AITaskStatus } from '../browser/ai';
 
 beforeEach(() => {
+  Object.assign(global, {
+    ResizeObserver: jest.fn(() => ({
+      observe: jest.fn(),
+      unobserve: jest.fn(),
+      disconnect: jest.fn(),
+    })),
+  });
   Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
     configurable: true,
     value: jest.fn(),
@@ -222,8 +230,9 @@ it('retains the draft and attachments after failed submission and retries once',
     .mockResolvedValueOnce(true);
   render(<AISidebar />);
   await screen.findByText('test');
+  fireEvent.click(screen.getByRole('button', { name: 'Attach context' }));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Attach images or files' })
+    await screen.findByRole('button', { name: 'Upload files from computer' })
   );
   await screen.findByRole('listitem', { name: 'resume.pdf' });
   const input = screen.getByRole('textbox', { name: 'Task for AI' });
@@ -630,4 +639,98 @@ it('shows undo at the bottom and restores the deleted chat', async () => {
   expect(
     screen.queryByRole('button', { name: 'Undo' })
   ).not.toBeInTheDocument();
+});
+
+it.each([false, true])(
+  'active tab context follows only fresh chats (ongoing: %s)',
+  async (ongoing) => {
+    const { ai } = mockAI();
+    const groups = ['one', 'two'].map((id) => ({
+      id,
+      name: id,
+      slug: id,
+      tabs: [
+        {
+          id: `${id}-tab`,
+          name: id,
+          slug: id,
+          url: 'https://example.com',
+          icon: '',
+        },
+      ],
+    }));
+    ai.groups.mockImplementation((id) =>
+      Promise.resolve({ groupId: id || null, groups })
+    );
+    ai.attachContext.mockImplementation(({ id }) =>
+      Promise.resolve({
+        kind: 'tab',
+        id,
+        name: id,
+        groupId: id.split('-')[0],
+        icon: '',
+        tabCount: 1,
+      })
+    );
+    Object.assign(ai, {
+      conversations: jest.fn().mockResolvedValue({
+        selectedId: 'chat',
+        conversations: [
+          { id: 'chat', title: 'Chat', updatedAt: 1, paused: false },
+        ],
+        history: ongoing
+          ? [{ type: 'user', text: 'Existing conversation' }]
+          : [],
+        draft: '',
+      }),
+    });
+    const { rerender } = render(<AISidebar activeTabId="one-tab" />);
+    await screen.findByText('test');
+    if (ongoing) await screen.findByText('Existing conversation');
+    await waitFor(() =>
+      expect(ai.attachContext).toHaveBeenCalledTimes(ongoing ? 0 : 1)
+    );
+    rerender(<AISidebar activeTabId="two-tab" />);
+    await waitFor(() =>
+      expect(ai.attachContext).toHaveBeenCalledTimes(ongoing ? 0 : 2)
+    );
+    expect(ai.attachContext.mock.calls.map(([ref]) => ref.id)).toEqual(
+      ongoing ? [] : ['one-tab', 'two-tab']
+    );
+    expect(ai.groups.mock.calls.some(([id]) => id === 'two')).toBe(!ongoing);
+  }
+);
+
+it('uses the existing tablist for Notes and preserves the page across tool switches', async () => {
+  localStorage.removeItem('kudiumbrowser-ai-page-pane');
+  mockAI();
+  Object.assign(window.electron, {
+    passwordManager: jest.fn().mockResolvedValue([]),
+    onPasswordManagerLock: () => () => {},
+  });
+  const view = render(
+    <Theme>
+      <AISidebar />
+    </Theme>
+  );
+  await screen.findByText('test');
+  expect(screen.getAllByRole('tablist')).toHaveLength(1);
+  expect(
+    screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'))
+  ).toEqual(['Assistant', 'Tasks', 'Developer', 'Notes']);
+  expect(view.container.querySelector('.personal-page-tabs')).toBeNull();
+  fireEvent.click(screen.getByRole('tab', { name: 'Notes' }));
+  const panel = screen.getByRole('tabpanel', { name: 'Notes' });
+  expect(panel).toContainElement(
+    screen.getByRole('button', { name: 'New note' })
+  );
+  fireEvent.click(screen.getByRole('tab', { name: 'Assistant' }));
+  expect(panel).not.toBeVisible();
+  fireEvent.keyDown(screen.getByRole('tab', { name: 'Assistant' }), {
+    key: 'End',
+  });
+  expect(screen.getByRole('tab', { name: 'Notes' })).toHaveFocus();
+  expect(panel).toBeVisible();
+  view.unmount();
+  localStorage.removeItem('kudiumbrowser-ai-page-pane');
 });

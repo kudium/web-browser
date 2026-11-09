@@ -1,3 +1,4 @@
+import { removeGroupFolder } from '../utils/sessionFolders';
 import { folderLinks, moveFolder } from '../utils/folderActions';
 import { IApp } from '../types';
 import type { Space } from '../utils/SpaceManager';
@@ -75,4 +76,22 @@ it('moves all folder tabs, including archived pages, without changing login iden
     apps,
     spaces,
   });
+});
+
+it('deletes only collection tabs in its space, including archived tabs', () => {
+  expect(
+    removeGroupFolder(apps, 'default', 'reading', true).map((tab) => tab.id)
+  ).toEqual(['other']);
+});
+it('keeps groups and their storage identity when removing only a collection', () => {
+  const source = { ...apps[0], sessionMode: 'collection' as const };
+  const result = removeGroupFolder([source, apps[2]], 'default', 'reading');
+  expect(result[0]).toMatchObject({
+    id: 'one',
+    sessionId: 'login',
+    sessionProfileId: 'shared',
+    sessionMode: 'separate',
+  });
+  expect(result[0].folderId).toBeUndefined();
+  expect(result[1]).toBe(apps[2]);
 });

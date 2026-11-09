@@ -1,12 +1,14 @@
 import path from 'path';
 import { explainSecureStorage } from '../main/storageWelcome';
 
-const showMessageBox = jest.fn();
+const showBrowserDialog = jest.fn();
 const readFileSync = jest.fn();
 const writeFileSync = jest.fn();
 jest.mock('electron', () => ({
   app: { getPath: () => '/profile' },
-  dialog: { showMessageBox: (...args: unknown[]) => showMessageBox(...args) },
+}));
+jest.mock('../main/dialogs', () => ({
+  showBrowserDialog: (...args: unknown[]) => showBrowserDialog(...args),
 }));
 jest.mock('fs', () => ({
   readFileSync: (...args: unknown[]) => readFileSync(...args),
@@ -28,13 +30,21 @@ afterAll(() =>
   Object.defineProperty(process, 'platform', { value: originalPlatform })
 );
 test('declining does not save consent', async () => {
-  showMessageBox.mockResolvedValue({ response: 1 });
+  showBrowserDialog.mockResolvedValue({ response: 1 });
   expect(await explainSecureStorage(window)).toBe(false);
   expect(writeFileSync).not.toHaveBeenCalled();
 });
 test('accepting remembers identity', async () => {
-  showMessageBox.mockResolvedValue({ response: 0 });
+  showBrowserDialog.mockResolvedValue({ response: 0 });
   expect(await explainSecureStorage(window)).toBe(true);
+  expect(showBrowserDialog).toHaveBeenCalledWith(
+    window,
+    expect.objectContaining({
+      message: 'Enable secure storage',
+      buttons: ['Enable secure storage', 'Not now'],
+      cancelId: 1,
+    })
+  );
   expect(writeFileSync).toHaveBeenCalledWith(
     path.join('/profile', 'secure-storage-consent.json'),
     JSON.stringify({ identity: 'trusted-signature' }),
@@ -46,9 +56,9 @@ test('same identity skips explanation but changed identity asks again', async ()
     JSON.stringify({ identity: 'trusted-signature' })
   );
   expect(await explainSecureStorage(window)).toBe(true);
-  expect(showMessageBox).not.toHaveBeenCalled();
+  expect(showBrowserDialog).not.toHaveBeenCalled();
   readFileSync.mockReturnValue(JSON.stringify({ identity: 'older' }));
-  showMessageBox.mockResolvedValue({ response: 1 });
+  showBrowserDialog.mockResolvedValue({ response: 1 });
   expect(await explainSecureStorage(window)).toBe(false);
-  expect(showMessageBox).toHaveBeenCalledTimes(1);
+  expect(showBrowserDialog).toHaveBeenCalledTimes(1);
 });

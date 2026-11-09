@@ -57,7 +57,8 @@
     "test:migrations:native": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts storage-migration --native",
     "release:verify-migrations": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-release-gate.ts",
     "storage:recovery": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-recovery.ts",
-    "test:space-gestures": "node .erb/scripts/build-space-gestures.cjs && electron .erb/scripts/space-gesture-smoke.cjs"
+    "test:space-gestures": "node .erb/scripts/build-space-gestures.cjs && electron .erb/scripts/space-gesture-smoke.cjs",
+    "dummy": "node .erb/scripts/dummy.cjs"
   },
   "browserslist": [],
   "prettier": {
@@ -104,6 +105,14 @@
       ".erb/dll"
     ],
     "transform": {
+      "node_modules/marked/.*\\.js$": [
+        "babel-jest",
+        {
+          "plugins": [
+            "@babel/plugin-transform-modules-commonjs"
+          ]
+        }
+      ],
       "node_modules/(react-arborist|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/.*\\.js$": [
         "babel-jest",
         {
@@ -123,7 +132,7 @@
       ]
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!@toon-format/toon/|react-arborist/|react-dnd/|react-dnd-html5-backend/|dnd-core/|@react-dnd/)"
+      "/node_modules/(?!@tiptap/markdown/|marked/|@toon-format/toon/|react-arborist/|react-dnd/|react-dnd-html5-backend/|dnd-core/|@react-dnd/)"
     ],
     "modulePathIgnorePatterns": [
       "<rootDir>/release/app/package.json"
@@ -136,6 +145,9 @@
     "@codemirror/search": "^6.7.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@radix-ui/themes": "^3.3.0",
+    "@tiptap/markdown": "^3.33.0",
+    "@tiptap/react": "^3.33.0",
+    "@tiptap/starter-kit": "^3.33.0",
     "@toon-format/toon": "^4.4.0",
     "@uiw/react-codemirror": "^4.25.12",
     "@xterm/addon-fit": "^0.11.0",

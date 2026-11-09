@@ -12,6 +12,8 @@ export type AccountSyncAction =
   | 'restore'
   | 'delete-data'
   | 'apply-preferences'
+  | 'sync-notes'
+  | 'restore-notes'
   | 'sync-passwords'
   | 'restore-passwords';
 export interface RemoteWorkspace {
@@ -37,6 +39,7 @@ export interface AccountSyncStatus {
   lastSyncedAt?: number;
   message: string;
   remote: RemoteWorkspace[];
+  noteDevices?: { recordId: string; deviceId: string }[];
   passwordDevices?: { recordId: string; deviceId: string }[];
 }
 export interface AccountSyncInput {

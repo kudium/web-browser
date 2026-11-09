@@ -76,6 +76,7 @@ export interface BrowserState {
 export interface BrowserLayout {
   focusedId?: string;
   suspended?: boolean;
+  tabSwitcher?: boolean;
   apps: IApp[];
   visible: {
     id: string;
@@ -111,6 +112,7 @@ export interface BrowserCommand {
     | 'set-permission'
     | 'reset-permissions'
     | 'close-group'
+    | 'unload-tab'
     | 'open-site-developer'
     | 'set-site-developer'
     | 'clear-site-developer-logs'
@@ -125,6 +127,10 @@ export interface BrowserCommand {
 
 export type BrowserShortcut =
   | ShortcutAction
+  | 'tab-switcher-next'
+  | 'tab-switcher-previous'
+  | 'tab-switcher-commit'
+  | 'tab-switcher-cancel'
   | 'sidebar-or-save'
   | 'new-session'
   | 'new-space'
@@ -148,6 +154,7 @@ export type SpaceWheelEvent =
     };
 
 export interface BrowserSnapshot {
+  previewOnly?: boolean;
   id: string;
   x: number;
   y: number;

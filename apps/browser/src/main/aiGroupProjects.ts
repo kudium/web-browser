@@ -16,7 +16,14 @@ function projectMetadata(tabs: IApp[], groupId: string) {
   if (!source) throw new Error('Group is unavailable.');
   const locked = isGroupLocked(source);
   const folder = locked ? undefined : linkedProjectFolder(groupId);
-  return { locked, project: folder ? { path: folder } : null };
+  return {
+    collectionId: source.folderId || null,
+    collectionName: source.collectionName || null,
+    groupDisplay: source.groupDisplay || 'stack',
+    sessionMode: source.sessionMode || 'separate',
+    locked,
+    project: folder ? { path: folder } : null,
+  };
 }
 
 export function aiProjectGroups(tabs: IApp[], scope: string | null) {

@@ -8,6 +8,9 @@ jest.mock('../components/UI/GroupAccessGate', () => ({
   GroupAccessGate: ({ children }: any) => children,
 }));
 jest.mock('../components/UI/IconPicker', () => ({ IconPicker: () => null }));
+jest.mock('../components/UI/DeveloperProjectSection', () => ({
+  DeveloperProjectSection: () => null,
+}));
 beforeAll(() => {
   global.ResizeObserver = class {
     observe = jest.fn();
@@ -146,4 +149,45 @@ it('uses the settings form for dropped projects, prefilling the path and saving 
   window.electron = previous;
   read.mockRestore();
   save.mockRestore();
+});
+
+it('clears committed tab drafts when creation becomes group editing', () => {
+  let saved: any[] = [];
+  const read = jest.spyOn(AppManager, 'getAll').mockImplementation(() => saved);
+  const save = jest.spyOn(AppManager, 'set').mockImplementation((tabs) => {
+    saved = tabs;
+  });
+  try {
+    const close = jest.fn();
+    const view = render(
+      <Theme>
+        <GroupEditor
+          item={item}
+          creating
+          close={close}
+          onCreated={(created) => {
+            view.rerender(
+              <Theme>
+                <GroupEditor item={created} close={close} />
+              </Theme>
+            );
+          }}
+        />
+      </Theme>
+    );
+    fireEvent.change(screen.getByLabelText('Group name'), {
+      target: { value: 'Draft cleanup' },
+    });
+    fireEvent.change(screen.getByLabelText('New tab address'), {
+      target: { value: 'https://example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add tab' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create group' }));
+    expect(screen.getAllByLabelText('Tab name: example.com')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saved).toHaveLength(1);
+  } finally {
+    read.mockRestore();
+    save.mockRestore();
+  }
 });

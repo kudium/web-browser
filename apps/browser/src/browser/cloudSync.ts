@@ -4,6 +4,7 @@ export interface SyncCategories {
   openTabs: boolean;
   preferences: boolean;
   passwords?: boolean;
+  notes?: boolean;
 }
 export interface SyncSettings {
   enabled: boolean;
@@ -11,6 +12,12 @@ export interface SyncSettings {
   categories: SyncCategories;
 }
 export const syncCategories = [
+  {
+    id: 'notes',
+    title: 'Personal notes',
+    description:
+      'Encrypted Markdown notes. Back up and restore in Sync settings.',
+  },
   {
     id: 'workspace',
     title: 'Spaces, folders & favorites',
@@ -37,6 +44,7 @@ export function defaultSyncSettings(platform = 'darwin'): SyncSettings {
       openTabs: true,
       preferences: true,
       passwords: true,
+      notes: false,
     },
   };
 }
@@ -55,12 +63,22 @@ export function validateSyncSettings(value: unknown): SyncSettings {
     Array.isArray(settings.categories) ||
     Object.keys(settings.categories).some(
       (key) =>
-        !['workspace', 'openTabs', 'preferences', 'passwords'].includes(key)
+        ![
+          'workspace',
+          'openTabs',
+          'preferences',
+          'passwords',
+          'notes',
+        ].includes(key)
     ) ||
+    (settings.categories.notes !== undefined &&
+      typeof settings.categories.notes !== 'boolean') ||
     (settings.categories.passwords !== undefined &&
       typeof settings.categories.passwords !== 'boolean') ||
     syncCategories.some(
-      (category) => typeof settings.categories[category.id] !== 'boolean'
+      (category) =>
+        category.id !== 'notes' &&
+        typeof settings.categories[category.id] !== 'boolean'
     )
   )
     throw new Error('Invalid sync settings');
@@ -69,7 +87,7 @@ export function validateSyncSettings(value: unknown): SyncSettings {
   return {
     enabled: settings.enabled,
     provider: settings.provider,
-    categories: { passwords: true, ...settings.categories },
+    categories: { notes: false, passwords: true, ...settings.categories },
   };
 }
 export interface CloudSyncStatus {

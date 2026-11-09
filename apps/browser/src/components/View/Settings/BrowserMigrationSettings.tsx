@@ -16,6 +16,8 @@ import { SpaceManager } from '../../../utils/SpaceManager';
 
 export function BrowserMigrationSettings() {
   const [recoveries, setRecoveries] = useState<MigrationRecovery[]>([]);
+  const [scanned, setScanned] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [profiles, setProfiles] = useState<MigrationProfile[]>([]);
   const [profileId, setProfileId] = useState('');
   const [bookmarks, setBookmarks] = useState(true);
@@ -44,6 +46,8 @@ export function BrowserMigrationSettings() {
   );
   const profile = profiles.find((item) => item.id === profileId);
   const savedGroups = !!preview && savedToken === preview.token;
+  let scanLabel = scanned ? 'Scan again' : 'Scan for browser data';
+  if (scanning) scanLabel = 'Scanning…';
   useEffect(() => {
     if (!busy || !preview) return undefined;
     let disposed = false;
@@ -68,6 +72,7 @@ export function BrowserMigrationSettings() {
 
   const scan = async () => {
     setBusy(true);
+    setScanning(true);
     setMessage('');
     setSavedToken('');
     setProgress(undefined);
@@ -76,6 +81,7 @@ export function BrowserMigrationSettings() {
       const result = (await window.electron.browserMigration(
         'profiles'
       )) as MigrationProfile[];
+      setScanned(true);
       setProfiles(result);
       setProfileId(result[0]?.id || '');
       setCookies(false);
@@ -93,11 +99,9 @@ export function BrowserMigrationSettings() {
       );
     } finally {
       setBusy(false);
+      setScanning(false);
     }
   };
-  useEffect(() => {
-    scan();
-  }, []);
   const review = async () => {
     setProgress({
       stage: 'Preparing tabs, history and website logins',
@@ -269,6 +273,12 @@ export function BrowserMigrationSettings() {
         </div>
       )}
       <div className="preference-card">
+        <p className="preference-note">
+          Scan for browser data to find profiles from Chrome, Edge, Brave,
+          Chromium and Arc on this Mac. This accesses other browsers’ profile
+          folders, and macOS may ask you to allow access. Choose Scan for
+          browser data when you’re ready, then review what to import.
+        </p>
         <div className="preference-row">
           <strong>Browser profile</strong>
           <div className="migration-controls">
@@ -283,7 +293,9 @@ export function BrowserMigrationSettings() {
             >
               <Select.Trigger
                 aria-label="Source browser profile"
-                placeholder="No profiles found"
+                placeholder={
+                  scanned ? 'No profiles found' : 'Scan to find profiles'
+                }
               />
               <Select.Content>
                 {profiles.map((item) => (
@@ -298,7 +310,7 @@ export function BrowserMigrationSettings() {
               disabled={busy || savedGroups}
               onClick={scan}
             >
-              Scan again
+              {scanLabel}
             </Button>
           </div>
         </div>

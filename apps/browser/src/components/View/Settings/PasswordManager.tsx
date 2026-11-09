@@ -1,5 +1,3 @@
-import { isStorageRecoveryError } from '../../../browser/storageRecovery';
-import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 /* Radix TextField and Switch render native labeled controls. */
 /* eslint-disable jsx-a11y/label-has-associated-control, react/require-default-props */
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -21,7 +19,11 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { SettingsLibrary } from '../../UI/SettingsLibrary';
+import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
+import { isStorageRecoveryError } from '../../../browser/storageRecovery';
 import { PanelDialogHeader } from '../../UI/PanelDialog';
+import { NotesPage } from '../../UI/NotesPage';
 import { GroupIcon } from '../../UI/GroupIcon';
 import type { IApp } from '../../../types';
 import { personalDataScope } from '../../../utils/groups';
@@ -48,7 +50,7 @@ const empty = (): VaultItem => ({
   fields: [{ name: '', value: '', secret: false }],
   allowAI: false,
 });
-export function PersonalData({
+function PersonalDataRecords({
   group,
   tabs = [],
 }: {
@@ -169,7 +171,25 @@ export function PersonalData({
       setBusy(false);
     }
   };
-  if (!status) return <p>Loading Personal Data…</p>;
+  if (!status)
+    return error ? (
+      <div className="vault-error" role="alert">
+        <p>{error}</p>
+        <Button
+          size="1"
+          variant="soft"
+          color="gray"
+          onClick={() => {
+            setError('');
+            refresh().catch(() => setError('Personal Data is unavailable.'));
+          }}
+        >
+          Try again
+        </Button>
+      </div>
+    ) : (
+      <p role="status">Loading Personal Data…</p>
+    );
   const requireAuthentication = () => {
     if (status.locked && status.authentication !== 'os') {
       setAuthPrompt(true);
@@ -433,21 +453,6 @@ export function PersonalData({
             <Search size={15} />
           </TextField.Slot>
         </TextField.Root>
-        <Button
-          disabled={busy}
-          onClick={(event) => openNew(event.currentTarget)}
-        >
-          <Plus size={15} />
-          Add item
-        </Button>
-        <Button
-          variant="ghost"
-          color="gray"
-          disabled={busy}
-          onClick={() => run({ action: 'import', allowAI: false })}
-        >
-          Import…
-        </Button>
       </div>
       {status.items.length > 0 && (
         <div className="vault-fill-target">
@@ -466,145 +471,149 @@ export function PersonalData({
           </select>
         </div>
       )}
-      {status.items.length > 0 && (
-        <div className="vault-item-list">
-          <table className="vault-table">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Value</th>
-                <th scope="col">Website</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {status.items
-                .filter((saved) =>
-                  `${saved.title} ${saved.origin} ${saved.username}`
-                    .toLowerCase()
-                    .includes(query.toLowerCase())
-                )
-                .map((saved) => (
-                  <tr key={saved.id}>
-                    <td data-label="Name">
-                      <strong>{saved.title}</strong>
-                      <span className="vault-table-website">
-                        {`${
-                          saved.fieldCount + (saved.kind === 'login' ? 2 : 0)
-                        } values`}
-                      </span>
-                      <span className="personal-data-source">
-                        {recordSource(saved)}
-                      </span>
-                    </td>
-                    <td data-label="Value">
-                      {saved.preview ||
-                        (saved.privateCount ? 'Private values' : '—')}
-                    </td>
-                    <td data-label="Website">
-                      {saved.origin || 'All websites'}
-                    </td>
-                    <td data-label="Actions">
-                      <div className="vault-row-actions">
-                        <Button
-                          variant="soft"
-                          size="1"
-                          disabled={
-                            busy ||
-                            !pageId ||
-                            !status.enabled ||
-                            !status.autofill
-                          }
-                          onClick={() =>
-                            requireAuthentication() &&
-                            run({
-                              action: 'fill',
-                              id: saved.id,
-                              pageId: Number(pageId),
-                            })
-                          }
-                        >
-                          Fill
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="1"
-                          disabled={busy}
-                          onClick={async (event) => {
-                            editorOpener.current = event.currentTarget;
-                            if (!requireAuthentication()) return;
-                            try {
-                              const editable = await requestData({
-                                action: 'edit',
-                                id: saved.id,
-                              });
-                              await refresh();
-                              setItem(entryForEditor(editable as VaultItem));
-                              setVisibleFields([]);
-                              setError('');
-                              setEditing(true);
-                            } catch {
-                              setError('Authentication was cancelled.');
-                            }
-                          }}
-                        >
-                          {saved.inherited
-                            ? 'Customize for this group'
-                            : 'Edit'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="1"
-                          color="red"
-                          disabled={busy}
-                          onClick={async (event) => {
-                            editorOpener.current = event.currentTarget;
-                            if (!requireAuthentication()) return;
-                            if (
-                              await window.electron.browser.confirm({
-                                message: saved.inherited
-                                  ? `Hide “${saved.title}” in this group?`
-                                  : `Delete “${saved.title}”?`,
-                                detail: saved.inherited
-                                  ? 'The browser-wide original stays available to other groups.'
-                                  : 'This permanently removes the saved item.',
-                                confirm: saved.inherited ? 'Hide' : 'Delete',
-                              })
-                            )
-                              await run({
-                                action: saved.inherited ? 'hide' : 'delete',
-                                id: saved.id,
-                              });
-                          }}
-                        >
-                          {saved.inherited ? 'Hide in this group' : 'Delete'}
-                        </Button>
-                        {saved.overridden && (
-                          <Button
-                            variant="ghost"
-                            size="1"
-                            disabled={busy}
-                            onClick={() =>
-                              run({ action: 'reset', id: saved.id })
-                            }
-                          >
-                            Reset override
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-          {status.items.length > 0 &&
-            !status.items.some((saved) =>
+      <div className="vault-item-list">
+        <SettingsLibrary
+          renderToolbar={() => (
+            <>
+              <Button
+                size="1"
+                variant="ghost"
+                color="gray"
+                disabled={busy}
+                onClick={(event) => openNew(event.currentTarget)}
+              >
+                <Plus size={15} />
+                Add item
+              </Button>
+              <Button
+                variant="ghost"
+                color="gray"
+                disabled={busy}
+                onClick={() => run({ action: 'import', allowAI: false })}
+              >
+                Import…
+              </Button>
+            </>
+          )}
+          label="Saved personal data"
+          entries={status.items
+            .filter((saved) =>
               `${saved.title} ${saved.origin} ${saved.username}`
                 .toLowerCase()
                 .includes(query.toLowerCase())
-            ) && <p className="vault-hint">No matching saved items.</p>}
-        </div>
-      )}
+            )
+            .map((saved) => ({
+              ...saved,
+              name: saved.title,
+              subtitle: recordSource(saved),
+            }))}
+        >
+          {(saved) => (
+            <div className="personal-data-detail">
+              <h3>{saved.title}</h3>
+              <dl>
+                <dt>Value</dt>
+                <dd>
+                  {saved.preview ||
+                    (saved.privateCount ? 'Private values' : '—')}
+                </dd>
+                <dt>Website</dt>
+                <dd>{saved.origin || 'All websites'}</dd>
+                <dt>Values</dt>
+                <dd>{saved.fieldCount + (saved.kind === 'login' ? 2 : 0)}</dd>
+                <dt>Source</dt>
+                <dd>{recordSource(saved)}</dd>
+              </dl>
+              <div className="vault-row-actions">
+                <Button
+                  variant="soft"
+                  size="1"
+                  disabled={
+                    busy || !pageId || !status.enabled || !status.autofill
+                  }
+                  onClick={() =>
+                    requireAuthentication() &&
+                    run({
+                      action: 'fill',
+                      id: saved.id,
+                      pageId: Number(pageId),
+                    })
+                  }
+                >
+                  Fill
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="1"
+                  disabled={busy}
+                  onClick={async (event) => {
+                    editorOpener.current = event.currentTarget;
+                    if (!requireAuthentication()) return;
+                    try {
+                      const editable = await requestData({
+                        action: 'edit',
+                        id: saved.id,
+                      });
+                      await refresh();
+                      setItem(entryForEditor(editable as VaultItem));
+                      setVisibleFields([]);
+                      setError('');
+                      setEditing(true);
+                    } catch {
+                      setError('Authentication was cancelled.');
+                    }
+                  }}
+                >
+                  {saved.inherited ? 'Customize for this group' : 'Edit'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="1"
+                  color="red"
+                  disabled={busy}
+                  onClick={async (event) => {
+                    editorOpener.current = event.currentTarget;
+                    if (!requireAuthentication()) return;
+                    if (
+                      await window.electron.browser.confirm({
+                        message: saved.inherited
+                          ? `Hide “${saved.title}” in this group?`
+                          : `Delete “${saved.title}”?`,
+                        detail: saved.inherited
+                          ? 'The browser-wide original stays available to other groups.'
+                          : 'This permanently removes the saved item.',
+                        confirm: saved.inherited ? 'Hide' : 'Delete',
+                      })
+                    )
+                      await run({
+                        action: saved.inherited ? 'hide' : 'delete',
+                        id: saved.id,
+                      });
+                  }}
+                >
+                  {saved.inherited ? 'Hide in this group' : 'Delete'}
+                </Button>
+                {saved.overridden && (
+                  <Button
+                    variant="ghost"
+                    size="1"
+                    disabled={busy}
+                    onClick={() => run({ action: 'reset', id: saved.id })}
+                  >
+                    Reset override
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </SettingsLibrary>
+        {status.items.length > 0 &&
+          !status.items.some((saved) =>
+            `${saved.title} ${saved.origin} ${saved.username}`
+              .toLowerCase()
+              .includes(query.toLowerCase())
+          ) && <p className="vault-hint">No matching saved items.</p>}
+      </div>
 
       {!!status.hidden?.length && (
         <details className="vault-options">
@@ -651,13 +660,6 @@ export function PersonalData({
           Authenticate once to update your existing vault and make its item list
           available.
         </p>
-      )}
-      {!status.items.length && status.metadataReady !== false && (
-        <div className="vault-empty">
-          <KeyRound size={28} strokeWidth={1.4} />
-          <h3>No saved items yet</h3>
-          <p>Add a detail you want to reuse on websites.</p>
-        </div>
       )}
       <Dialog.Root
         open={editing}
@@ -1029,4 +1031,43 @@ export function PersonalData({
 }
 
 /** Compatibility export; all entry points share the same manager. */
+export function PersonalData({ group, tabs }: { group?: IApp; tabs?: IApp[] }) {
+  const [page, setPage] = useState('data');
+  const [notesMounted, setNotesMounted] = useState(false);
+  return (
+    <>
+      <div className="personal-page-tabs">
+        <Button
+          size="1"
+          variant={page === 'data' ? 'soft' : 'ghost'}
+          onClick={() => setPage('data')}
+        >
+          Personal Data
+        </Button>
+        <Button
+          size="1"
+          variant={page === 'notes' ? 'soft' : 'ghost'}
+          onClick={() => {
+            setNotesMounted(true);
+            setPage('notes');
+          }}
+        >
+          Notes
+        </Button>
+      </div>
+      <div hidden={page !== 'data'}>
+        <PersonalDataRecords group={group} tabs={tabs} />
+      </div>
+      {notesMounted && (
+        <div className="personal-page-body" hidden={page !== 'notes'}>
+          <NotesPage
+            tabs={tabs}
+            initialScope={group ? personalDataScope(group) : undefined}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
 export const PasswordManager = PersonalData;

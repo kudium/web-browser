@@ -60,7 +60,7 @@ it('keeps group icon choices on demand and saves the shared identity', async () 
   expect(AppManager.getAll()[0].sessionIconEmoji).toBe('💼');
 });
 
-it('preserves the icon when image selection is cancelled or fails and restores tab icons', async () => {
+it('preserves the icon when image selection is cancelled or fails and restores the default group icon', async () => {
   window.electron.browser.chooseSpaceIcon = jest
     .fn()
     .mockResolvedValueOnce(null)
@@ -93,7 +93,7 @@ it('preserves the icon when image selection is cancelled or fails and restores t
     screen.getByRole('button', { name: 'Choose group icon' })
   ).not.toHaveTextContent('💼');
   fireEvent.click(screen.getByRole('button', { name: 'Choose group icon' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Use tab icons' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Use folder icon' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(AppManager.getAll()[0].sessionIconImage).toBeUndefined();
 });

@@ -17,6 +17,7 @@ import { aiGroups, aiGroupId, groupSlug } from '../../browser/aiGroups';
 import { PersonalData } from '../View/Settings/PasswordManager';
 import { GroupIcon } from './GroupIcon';
 import { IconPicker } from './IconPicker';
+import { collectionProfile } from '../../utils/collectionGroups';
 import type { SidebarDropResult } from '../../browser/sidebarDrop';
 import { DeveloperProjectSection } from './DeveloperProjectSection';
 
@@ -68,6 +69,10 @@ function GroupEditorContent({
   ];
   const [draft, setDraft] = useState<GroupSettings>({
     loginProfileId: loginProfileKey(item),
+    groupDisplay: item.groupDisplay || 'folder',
+    sessionMode:
+      item.sessionMode ||
+      (creating && item.folderId ? 'collection' : 'separate'),
     name: item.sessionName || item.name,
     slug:
       aiGroups(AppManager.getAll()).find(
@@ -134,8 +139,23 @@ function GroupEditorContent({
           if (!draft.name.trim()) throw new Error('Enter a group name.');
           if (!spaces.some((entry) => entry.id === draft.spaceId))
             throw new Error('Choose an existing space.');
-          if (draft.loginProfileId !== loginProfileKey(item)) {
+          if (
+            draft.folderId &&
+            draft.placement !== 'favorite' &&
+            !spaces
+              .find((entry) => entry.id === draft.spaceId)
+              ?.folders.some((collection) => collection.id === draft.folderId)
+          )
+            throw new Error('Choose an existing collection.');
+          const selectedProfile =
+            draft.sessionMode === 'collection' &&
+            draft.folderId &&
+            draft.placement !== 'favorite'
+              ? collectionProfile(draft.spaceId, draft.folderId)
+              : draft.loginProfileId;
+          if (!creating && selectedProfile !== loginProfileKey(item)) {
             if (
+              draft.sessionMode !== 'collection' &&
               !loginOptions.some((option) => option.id === draft.loginProfileId)
             )
               throw new Error('Choose an available group.');
@@ -199,7 +219,16 @@ function GroupEditorContent({
               ? [...current, source, ...additions]
               : [...current, ...additions],
             source,
-            { ...draft, name: draft.name.trim(), homeURL: '' }
+            {
+              ...draft,
+              loginProfileId: selectedProfile,
+              sessionMode:
+                draft.folderId && draft.placement !== 'favorite'
+                  ? draft.sessionMode
+                  : 'separate',
+              name: draft.name.trim(),
+              homeURL: '',
+            }
           );
           AppManager.set(updated);
           if (creating) {
@@ -222,6 +251,7 @@ function GroupEditorContent({
               }
             }
             window.electron?.telemetry?.feature('group_created');
+            setTabChanges({ added: [], edits: {}, removed: [] });
             onCreated?.(created);
           } else close();
         } catch (reason) {
@@ -239,6 +269,7 @@ function GroupEditorContent({
               <GroupIcon
                 item={{
                   ...item,
+                  groupDisplay: draft.groupDisplay,
                   sessionIconEmoji: draft.emoji,
                   sessionIconImage: draft.image,
                 }}
@@ -257,10 +288,17 @@ function GroupEditorContent({
                 }}
               >
                 <GroupIcon
-                  item={{ ...item, sessionIconEmoji: '', sessionIconImage: '' }}
+                  item={{
+                    ...item,
+                    groupDisplay: draft.groupDisplay,
+                    sessionIconEmoji: '',
+                    sessionIconImage: '',
+                  }}
                   tabs={AppManager.getAll()}
                 />
-                Use tab icons
+                {draft.groupDisplay === 'folder'
+                  ? 'Use folder icon'
+                  : 'Use tab icons'}
               </Button>
             )}
           />
@@ -347,7 +385,9 @@ function GroupEditorContent({
               Space
               <Select.Root
                 value={draft.spaceId}
-                onValueChange={(spaceId) => change({ spaceId, folderId: '' })}
+                onValueChange={(spaceId) =>
+                  change({ spaceId, folderId: '', sessionMode: 'separate' })
+                }
               >
                 <Select.Trigger aria-label="Group space" />
                 <Select.Content>
@@ -376,17 +416,28 @@ function GroupEditorContent({
               </Select.Root>
             </Text>
             <Text as="label" size="2">
-              Sidebar folder
+              Collection
               <Select.Root
                 value={draft.folderId || 'none'}
                 disabled={draft.placement === 'favorite'}
                 onValueChange={(folderId) =>
-                  change({ folderId: folderId === 'none' ? '' : folderId })
+                  change({
+                    folderId: folderId === 'none' ? '' : folderId,
+                    ...(!creating && folderId === 'none'
+                      ? { sessionMode: 'separate' as const }
+                      : {}),
+                    ...(creating
+                      ? {
+                          sessionMode:
+                            folderId === 'none' ? 'separate' : 'collection',
+                        }
+                      : {}),
+                  })
                 }
               >
-                <Select.Trigger aria-label="Group folder" />
+                <Select.Trigger aria-label="Group collection" />
                 <Select.Content>
-                  <Select.Item value="none">No folder</Select.Item>
+                  <Select.Item value="none">No collection</Select.Item>
                   {space?.folders.map((folder) => (
                     <Select.Item key={folder.id} value={folder.id}>
                       {folder.name}
@@ -397,6 +448,51 @@ function GroupEditorContent({
             </Text>
           </div>
         </details>
+        <section className="group-presentation-settings">
+          <Text as="p" size="2">
+            Display group as
+          </Text>
+          <Select.Root
+            value={draft.groupDisplay}
+            onValueChange={(value: 'stack' | 'folder') =>
+              change({ groupDisplay: value })
+            }
+          >
+            <Select.Trigger aria-label="Group display" />
+            <Select.Content>
+              <Select.Item value="folder">Folder</Select.Item>
+              <Select.Item value="stack">Stack</Select.Item>
+            </Select.Content>
+          </Select.Root>
+          <Text as="p" size="2">
+            Browser session
+          </Text>
+          <Select.Root
+            value={draft.sessionMode}
+            onValueChange={(value: 'collection' | 'separate') =>
+              change({
+                sessionMode: value,
+                loginProfileId:
+                  value === 'separate' ? ownProfile : draft.loginProfileId,
+              })
+            }
+          >
+            <Select.Trigger aria-label="Session inheritance" />
+            <Select.Content>
+              <Select.Item value="separate">Separate session</Select.Item>
+              <Select.Item
+                value="collection"
+                disabled={!draft.folderId || draft.placement === 'favorite'}
+              >
+                Use collection session
+              </Select.Item>
+            </Select.Content>
+          </Select.Root>
+          <Text as="p" size="1" color="gray">
+            Collection sessions share website logins. Group tabs, AI references
+            and personal data remain separate.
+          </Text>
+        </section>
         {creating && (
           <section className="group-project-folder">
             <div className="group-project-folder-header">
@@ -489,7 +585,9 @@ function GroupEditorContent({
               <GroupPicker
                 options={loginOptions}
                 value={draft.loginProfileId || ownProfile}
-                onChange={(loginProfileId) => change({ loginProfileId })}
+                onChange={(loginProfileId) =>
+                  change({ loginProfileId, sessionMode: 'separate' })
+                }
                 label="Group browser session"
                 disabled={false}
               />

@@ -1,7 +1,8 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { showBrowserDialog } from './dialogs';
 
 // Signed releases share a designated requirement. Ad-hoc builds have a new
 // requirement after rebuilding, just as they have a new Keychain identity.
@@ -36,7 +37,7 @@ export async function explainSecureStorage(window: BrowserWindow) {
   } catch {
     // First launch, changed signing identity, or unreadable consent record.
   }
-  const { response } = await dialog.showMessageBox(window, {
+  const { response } = await showBrowserDialog(window, {
     type: 'info',
     title: 'Keep your private data protected',
     message: 'Enable secure storage',

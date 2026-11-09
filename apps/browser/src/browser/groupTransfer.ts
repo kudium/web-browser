@@ -7,6 +7,7 @@ export interface PortableGroup {
   name: string;
   slug?: string;
   emoji?: string;
+  groupDisplay?: 'folder' | 'stack';
   homeURL?: string;
   pages: {
     name: string;
@@ -35,6 +36,8 @@ export function parsePortableGroup(value: unknown): PortableGroup {
     group.format !== 'kudiumbrowser-group' ||
     group.version !== 1 ||
     typeof group.name !== 'string' ||
+    (group.groupDisplay !== undefined &&
+      !['folder', 'stack'].includes(group.groupDisplay)) ||
     !group.name.trim() ||
     group.name.length > 200 ||
     !Array.isArray(group.pages) ||

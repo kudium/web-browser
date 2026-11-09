@@ -148,6 +148,10 @@ export function registerElectronBrowser(
   const popups = new Map<string, Set<BrowserWindow>>();
   const popupSources = new WeakMap<BrowserWindow, IApp>();
   const keyboardCleanup = new Set<() => void>();
+  window.on('blur', () => {
+    if (!window.isDestroyed())
+      window.webContents.send('browser-shortcut', 'tab-switcher-cancel');
+  });
   const pendingTabCleanup = new Set<() => void>();
   const keyboard = (
     contents: WebContents,
@@ -156,6 +160,25 @@ export function registerElectronBrowser(
     if (contents !== window.webContents)
       registerPasswordPage(contents, dataScope);
     const listener = (event: Event, input: Input) => {
+      const target = [...views].find(
+        ([, view]) => view.webContents === contents
+      )?.[0];
+      const host = target
+        ? hostFor(target)
+        : BrowserWindow.fromWebContents(contents) || window;
+      if (
+        input.type === 'keyUp' &&
+        (input.key === 'Control' ||
+          input.code === 'ControlLeft' ||
+          input.code === 'ControlRight')
+      ) {
+        host.webContents.send('browser-shortcut', 'tab-switcher-commit');
+        return;
+      }
+      if (input.type === 'keyDown' && input.key === 'Escape') {
+        host.webContents.send('browser-shortcut', 'tab-switcher-cancel');
+      }
+
       if (
         input.type !== 'keyDown' ||
         !(input.meta || input.control || input.alt)
@@ -166,6 +189,19 @@ export function registerElectronBrowser(
         getBrowserPreferences().shortcuts,
         process.platform === 'darwin'
       );
+      if (
+        (action === 'next-tab' || action === 'previous-tab') &&
+        input.control &&
+        !input.meta &&
+        !input.alt
+      ) {
+        event.preventDefault();
+        host.webContents.send(
+          'browser-shortcut',
+          action === 'next-tab' ? 'tab-switcher-next' : 'tab-switcher-previous'
+        );
+        return;
+      }
       if (action && contents !== window.webContents) {
         const history = contents.navigationHistory;
         if (action === 'back' || action === 'forward') {
@@ -195,12 +231,6 @@ export function registerElectronBrowser(
       }
       if (action) {
         event.preventDefault();
-        const target = [...views].find(
-          ([, view]) => view.webContents === contents
-        )?.[0];
-        const host = target
-          ? hostFor(target)
-          : BrowserWindow.fromWebContents(contents) || window;
         if (action === 'new-window' && windows)
           windows.open(host, 'workspace').catch(() => {});
         else
@@ -380,18 +410,42 @@ export function registerElectronBrowser(
       if (!ids.has(id)) close(id);
     });
     if (layout.suspended && !suspended) {
-      const snapshots = [...visible].map(async (id) => {
-        const browserView = views.get(id);
-        if (!browserView || browserView.webContents.isDestroyed())
-          return undefined;
-        const bounds = browserView.getBounds();
-        try {
-          const capture = await browserView.webContents.capturePage();
-          return { id, ...bounds, image: capture.toDataURL() };
-        } catch {
-          return undefined;
+      const previewIds = layout.tabSwitcher
+        ? layout.apps
+            .filter(
+              (item) =>
+                !isGroupLocked(item) &&
+                views.has(item.id) &&
+                (item.favorite ||
+                  (item.spaceId || 'default') ===
+                    (configurations.get(layout.focusedId || '')?.spaceId ||
+                      'default'))
+            )
+            .slice(0, 20)
+            .map((item) => item.id)
+        : [];
+      const snapshots = [...new Set([...visible, ...previewIds])].map(
+        async (id) => {
+          const browserView = views.get(id);
+          if (!browserView || browserView.webContents.isDestroyed())
+            return undefined;
+          const bounds = browserView.getBounds();
+          try {
+            const capture = await browserView.webContents.capturePage();
+            return {
+              id,
+              ...bounds,
+              previewOnly: !visible.has(id),
+              image: (visible.has(id)
+                ? capture
+                : capture.resize({ width: 480 })
+              ).toDataURL(),
+            };
+          } catch {
+            return undefined;
+          }
         }
-      });
+      );
       Promise.all(snapshots)
         .then((frames) => {
           if (suspended && !window.isDestroyed())
@@ -858,6 +912,8 @@ export function registerElectronBrowser(
                 app: {
                   ...newPageTab(source, url, randomUUID()),
                   sessionId: newSession ? randomUUID() : source.sessionId,
+                  groupDisplay: newSession ? 'folder' : source.groupDisplay,
+                  sessionMode: newSession ? 'separate' : source.sessionMode,
                   sessionProfileId: newSession
                     ? undefined
                     : source.sessionProfileId,
@@ -1275,6 +1331,14 @@ export function registerElectronBrowser(
     )
       return;
     if (targetGroup && isGroupLocked(targetGroup)) return;
+    if (request.action === 'unload-tab') {
+      const item = configurations.get(request.id);
+      const view = views.get(request.id);
+      if (!item || windows?.visibleElsewhere(window, request.id)) return;
+      if (view) unloadTab(request.id, view, { x: 0, y: 0 }, true);
+      else resetUnloadedHistory(request.id, item, lastStates.get(request.id));
+      return;
+    }
     if (request.action === 'close-group') {
       const source = configurations.get(request.id);
       if (!source) return;

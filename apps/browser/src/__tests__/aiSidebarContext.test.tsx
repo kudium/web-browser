@@ -45,6 +45,24 @@ it('selects scope and model in the composer and expands scope explicitly for men
     remembered: true,
   };
   const ai = {
+    skills: jest.fn().mockResolvedValue([
+      {
+        id: 'reply',
+        name: 'Reply',
+        description: 'Write a reply',
+        instructions: 'Reply clearly',
+        enabled: true,
+        resources: {},
+      },
+      {
+        id: 'disabled',
+        name: 'Hidden',
+        description: '',
+        instructions: 'Hidden',
+        enabled: false,
+        resources: {},
+      },
+    ]),
     settings: jest
       .fn()
       .mockImplementation((patch) =>
@@ -78,8 +96,26 @@ it('selects scope and model in the composer and expands scope explicitly for men
     }),
   };
   Object.assign(window, { electron: { ai } });
-  render(<AISidebar />);
+  const { rerender } = render(<AISidebar />);
   await screen.findByRole('button', { name: 'AI model' });
+  rerender(
+    <AISidebar
+      contextRequest={{
+        reference: { kind: 'group', id: 'home' },
+        token: 1,
+        mode: 'scope',
+      }}
+    />
+  );
+  await waitFor(() => expect(ai.groups).toHaveBeenCalledWith('home'));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'AI scope' })).toHaveTextContent(
+      'Home'
+    )
+  );
+  expect(ai.attachContext).not.toHaveBeenCalled();
+  expect(screen.getByRole('textbox', { name: 'Task for AI' })).toHaveValue('');
+
   fireEvent.click(screen.getByRole('button', { name: 'AI permissions' }));
   fireEvent.click(await screen.findByRole('option', { name: /Full access/ }));
   await waitFor(() => expect(ai.permissions).toHaveBeenCalledWith('full'));
@@ -96,6 +132,19 @@ it('selects scope and model in the composer and expands scope explicitly for men
     })
   );
   const input = screen.getByRole('textbox', { name: 'Task for AI' });
+  fireEvent.change(input, { target: { value: '/', selectionStart: 1 } });
+  expect(await screen.findByRole('option', { name: /Reply/ })).toBeVisible();
+  expect(
+    screen.queryByRole('option', { name: /Hidden/ })
+  ).not.toBeInTheDocument();
+  fireEvent.keyDown(input, { key: 'Enter' });
+  expect(input).toHaveValue('/Reply ');
+  expect(ai.run).not.toHaveBeenCalled();
+  fireEvent.change(input, { target: { value: '/', selectionStart: 1 } });
+  fireEvent.keyDown(input, { key: 'Escape' });
+  expect(
+    screen.queryByRole('listbox', { name: 'Skills' })
+  ).not.toBeInTheDocument();
   fireEvent.change(input, {
     target: { value: 'Read @home/m', selectionStart: 12 },
   });

@@ -52,7 +52,7 @@ app.whenReady().then(async()=>{
   assert(bounds,'Main overflow');
   await win.webContents.executeJavaScript(`[...document.querySelectorAll('.workspace-settings button')].find(b=>b.textContent.includes('${tab==='apps'?'Archive':'Groups'}')).click()`);await pause(80);
   await win.webContents.executeJavaScript(`[...document.querySelectorAll('.workspace-settings button')].find(b=>b.textContent.includes('${{apps:'Groups',spaces:'Spaces',archive:'Archive'}[tab]}')).click()`);await capture('list');
-  await win.webContents.executeJavaScript(`document.querySelector('[aria-label="Select all"]').click()`);await capture('selected');
+  await win.webContents.executeJavaScript(`document.querySelector('.settings-library-bulk')?.setAttribute('open','');document.querySelector('[aria-label="Select all"]').click()`);await capture('selected');
   await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('selected…')).click()`);await capture('confirm');
   assert(await win.webContents.executeJavaScript(`!!document.querySelector('[role="alertdialog"]')`));
   await win.webContents.executeJavaScript(`[...document.querySelectorAll('[role="alertdialog"] button')].find(b=>/^(Remove|Delete) [0-9]/.test(b.textContent)).click()`);await capture('removed');

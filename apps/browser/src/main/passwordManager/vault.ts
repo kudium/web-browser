@@ -18,6 +18,8 @@ import {
   safeRecord,
   searchRecords,
 } from './records';
+import type { OrdinaryNotesStorage } from './ordinaryNotes';
+import { normalizeNote, validateSyncedNotes } from '../../browser/notes';
 import type {
   VaultItem,
   VaultStatus,
@@ -98,7 +100,8 @@ export class PasswordVault {
     now?: () => number,
     private summaryProtection?: SummaryProtection,
     private assertScopeWritable: (scope?: string) => void = () => {},
-    private assertStoreWritable: () => void = () => {}
+    private assertStoreWritable: () => void = () => {},
+    private ordinaryNotes?: OrdinaryNotesStorage
   ) {
     this.file = file;
     this.now = now || Date.now;
@@ -124,7 +127,7 @@ export class PasswordVault {
     this.expires = Infinity;
   }
 
-  status(scope?: string): VaultStatus {
+  status(scope?: string, allScopes = false): VaultStatus {
     if (this.now() >= this.expires) this.lock();
     let summary: Summary | undefined;
     if (!this.data && fs.existsSync(this.file)) {
@@ -139,19 +142,24 @@ export class PasswordVault {
       }
     }
     const items = this.data
-      ? effectiveRecords(this.data.items, this.data.overrides || [], scope).map(
-          summaryOf
-        )
+      ? (allScopes
+          ? this.data.items
+          : effectiveRecords(this.data.items, this.data.overrides || [], scope)
+        ).map(summaryOf)
       : (Array.isArray(summary?.items) ? summary.items : [])
-          .filter((item) => !item.scope || item.scope === scope)
+          .filter((item) => allScopes || !item.scope || item.scope === scope)
           .map((item) => ({
             id: String(item.id).slice(0, 100),
             title: String(item.title).slice(0, 120),
             origin: String(item.origin).slice(0, 4096),
             username: String(item.username).slice(0, 1000),
-            kind: (['login', 'profile', 'payment', 'knowledge'].includes(
-              item.kind
-            )
+            kind: ([
+              'login',
+              'profile',
+              'payment',
+              'knowledge',
+              'note',
+            ].includes(item.kind)
               ? item.kind
               : 'profile') as VaultItem['kind'],
             allowAI: item.allowAI === true,
@@ -166,7 +174,10 @@ export class PasswordVault {
       enabled: this.data?.enabled ?? summary?.enabled === true,
       autofill: this.data?.autofill ?? summary?.autofill === true,
       ai: this.data?.ai ?? summary?.ai === true,
-      items,
+      items: [
+        ...items,
+        ...this.publicNoteSummaries(allScopes ? undefined : scope, allScopes),
+      ],
       hidden:
         this.data && scope
           ? (this.data.overrides || [])
@@ -357,6 +368,35 @@ export class PasswordVault {
 
   save(input: VaultItem, scope?: string) {
     this.assertScopeWritable(scope);
+    if (input?.kind === 'note' && this.ordinaryNotes) {
+      const note = normalizeNote(
+        { ...input, id: input.id || randomUUID() },
+        scope
+      );
+      const existing = this.status(undefined, true).items.find(
+        (item) => item.id === note.id
+      );
+      if (existing?.scope && existing.scope !== scope)
+        throw new Error('Record outside this group.');
+      if (!note.sensitive) {
+        const privateCopy = existing && !this.isOrdinaryNote(note.id);
+        if (privateCopy) this.requireData();
+        if (this.ordinaryNotes.upsert) this.ordinaryNotes.upsert(note);
+        else
+          this.ordinaryNotes.save([
+            ...this.ordinaryNotes.load().filter((item) => item.id !== note.id),
+            note,
+          ]);
+        if (privateCopy)
+          this.mutate(() => {
+            this.requireData().items = this.requireData().items.filter(
+              (item) => item.id !== note.id
+            );
+          });
+        this.changed();
+        return note.id;
+      }
+    }
     const data = this.requireData();
     const bounded = (value: unknown, limit: number) => {
       if (typeof value !== 'string' || value.length > limit)
@@ -365,7 +405,9 @@ export class PasswordVault {
     };
     if (
       !input ||
-      !['login', 'profile', 'payment', 'knowledge'].includes(input.kind) ||
+      !['login', 'profile', 'payment', 'knowledge', 'note'].includes(
+        input.kind
+      ) ||
       !Array.isArray(input.fields) ||
       input.fields.length > 30 ||
       (data.items.length >= 1000 &&
@@ -377,6 +419,7 @@ export class PasswordVault {
       title: bounded(input.title, 120),
       origin: input.origin ? secureOrigin(input.origin) : '',
       version: 2,
+      sensitive: input.sensitive === true,
       scope,
       notes: bounded(input.notes || '', 100000),
       source: input.source
@@ -438,6 +481,13 @@ export class PasswordVault {
           item,
         ];
       });
+    }
+    if (item.kind === 'note' && item.sensitive && this.ordinaryNotes) {
+      if (this.ordinaryNotes.remove) this.ordinaryNotes.remove(item.id);
+      else
+        this.ordinaryNotes.save(
+          this.ordinaryNotes.load().filter((note) => note.id !== item.id)
+        );
     }
     return item.id;
   }
@@ -516,11 +566,19 @@ export class PasswordVault {
   }
 
   records(scope?: string) {
-    return effectiveRecords(
-      this.requireData().items,
-      this.requireData().overrides || [],
-      scope
-    );
+    return [
+      ...this.publicNoteSummaries(scope).map((note) => ({
+        ...note,
+        password: '',
+        fields: [],
+        notes: '',
+      })),
+      ...effectiveRecords(
+        this.requireData().items,
+        this.requireData().overrides || [],
+        scope
+      ),
+    ];
   }
 
   importSyncedLogins(value: unknown) {
@@ -625,6 +683,8 @@ export class PasswordVault {
   }
 
   removeScope(scope: string, disposition: 'delete' | 'move') {
+    this.removeOrdinaryNoteScope(scope, disposition);
+    if (!this.status().initialized) return;
     const data = this.requireData();
     this.mutate(() => {
       data.hookNotifications = (data.hookNotifications || []).filter(
@@ -655,13 +715,219 @@ export class PasswordVault {
     });
   }
 
+  importNotes(value: unknown) {
+    const notes = validateSyncedNotes(value);
+    if (this.ordinaryNotes) {
+      const summaries = this.noteSummaries();
+      const signatures = new Set(
+        summaries.map((note) => {
+          if (!this.isOrdinaryNote(note.id) && this.status().locked)
+            return note.id;
+          const item = this.edit(note.id, note.scope);
+          return JSON.stringify([
+            item.title,
+            item.notes || '',
+            item.scope || '',
+          ]);
+        })
+      );
+      const incoming = notes
+        .filter((note) => {
+          const signature = JSON.stringify([
+            note.title,
+            note.notes,
+            note.scope || '',
+          ]);
+          if (signatures.has(signature)) return false;
+          signatures.add(signature);
+          return true;
+        })
+        .map((note) =>
+          normalizeNote(
+            {
+              ...note,
+              id: randomUUID(),
+              kind: 'note',
+              origin: '',
+              username: '',
+              password: '',
+              fields: [],
+              allowAI: false,
+            },
+            note.scope
+          )
+        );
+      incoming.forEach((note) => this.assertScopeWritable(note.scope));
+      const privateNotes = incoming.filter((note) => note.sensitive);
+      if (privateNotes.length) {
+        const data = this.requireData();
+        if (data.items.length + privateNotes.length > 1000)
+          throw new Error('Personal Data is full.');
+        this.mutate(() => {
+          data.items.push(...privateNotes);
+        });
+      }
+      const ordinary = incoming.filter((note) => !note.sensitive);
+      if (ordinary.length)
+        this.ordinaryNotes.save([...this.ordinaryNotes.load(), ...ordinary]);
+      this.changed();
+      return incoming.length;
+    }
+    const data = this.requireData();
+    const existing = new Set(
+      data.items
+        .filter((item) => item.kind === 'note')
+        .map((item) =>
+          JSON.stringify([item.title, item.notes || '', item.scope || ''])
+        )
+    );
+    const incoming: VaultItem[] = [];
+    notes.forEach((note) => {
+      const signature = JSON.stringify([
+        note.title,
+        note.notes,
+        note.scope || '',
+      ]);
+      if (existing.has(signature)) return;
+      this.assertScopeWritable(note.scope);
+      incoming.push({
+        ...note,
+        id: randomUUID(),
+        version: 2,
+        kind: 'note',
+        origin: '',
+        username: '',
+        password: '',
+        fields: [],
+        allowAI: false,
+      });
+      existing.add(signature);
+    });
+    if (data.items.length + incoming.length > 1000)
+      throw new Error(
+        'Personal Data is full. Remove unused records before restoring notes.'
+      );
+    if (incoming.length)
+      this.mutate(() => {
+        data.items.push(...incoming);
+      });
+    return incoming.length;
+  }
+
+  removeOrdinaryNoteScope(scope: string, disposition: 'delete' | 'move') {
+    if (!this.ordinaryNotes) return;
+    const notes = this.ordinaryNotes.load();
+    if (!notes.some((note) => note.scope === scope)) return;
+    this.ordinaryNotes.save(
+      notes.flatMap((note) => {
+        if (note.scope !== scope) return [note];
+        return disposition === 'move' ? [{ ...note, scope: undefined }] : [];
+      })
+    );
+    this.changed();
+  }
+
+  migrateOrdinaryNotes() {
+    if (!this.ordinaryNotes || !this.data) return;
+    const notes = this.data.items.filter(
+      (item) => item.kind === 'note' && !item.sensitive
+    );
+    if (!notes.length) return;
+    const ids = new Set(notes.map((note) => note.id));
+    this.ordinaryNotes.save([
+      ...this.ordinaryNotes.load().filter((note) => !ids.has(note.id)),
+      ...notes,
+    ]);
+    this.mutate(() => {
+      this.requireData().items = this.requireData().items.filter(
+        (item) => !ids.has(item.id)
+      );
+    });
+  }
+
+  private publicNoteSummaries(scope?: string, allScopes = false) {
+    const notes =
+      this.ordinaryNotes?.summaries?.() ||
+      this.ordinaryNotes?.load().map(summaryOf) ||
+      [];
+    return notes.filter(
+      (note) => allScopes || !note.scope || note.scope === scope
+    );
+  }
+
+  private publicNotes(scope?: string) {
+    return this.publicNoteSummaries(scope).map((note) => ({
+      ...note,
+      password: '',
+      fields: [],
+      notes: '',
+    }));
+  }
+
+  private publicNote(id: string, scope?: string) {
+    const summary = this.publicNoteSummaries(undefined, true).find(
+      (note) => note.id === id
+    );
+    if (!summary || (summary.scope && summary.scope !== scope))
+      return undefined;
+    return this.ordinaryNotes?.get
+      ? this.ordinaryNotes.get(id)
+      : this.ordinaryNotes?.load().find((entry) => entry.id === id);
+  }
+
+  isOrdinaryNote(id: string) {
+    return this.publicNoteSummaries(undefined, true).some(
+      (note) => note.id === id
+    );
+  }
+
+  noteSummaries() {
+    const status = this.status(undefined, true);
+    return status.items
+      .filter((item) => item.kind === 'note')
+      .map((item) => ({ ...item, sensitive: !this.isOrdinaryNote(item.id) }));
+  }
+
+  moveNote(id: string, destination?: string) {
+    this.assertScopeWritable(destination);
+    if (this.isOrdinaryNote(id) && this.ordinaryNotes) {
+      const note = this.publicNote(
+        id,
+        this.publicNoteSummaries(undefined, true).find(
+          (entry) => entry.id === id
+        )?.scope
+      )!;
+      this.assertScopeWritable(note.scope);
+      const next = { ...note, scope: destination };
+      if (this.ordinaryNotes.upsert) this.ordinaryNotes.upsert(next);
+      else
+        this.ordinaryNotes.save(
+          this.ordinaryNotes
+            .load()
+            .map((item) => (item.id === id ? next : item))
+        );
+      this.changed();
+      return;
+    }
+    const data = this.requireData();
+    const item = data.items.find(
+      (entry) => entry.id === id && entry.kind === 'note'
+    );
+    if (!item) throw new Error('Note unavailable.');
+    this.assertScopeWritable(item.scope);
+    this.mutate(() => {
+      item.scope = destination;
+    });
+  }
+
   search(query: string, scope?: string, origin?: string) {
-    this.checkAccess(true);
+    this.checkNoteAccess();
     const site = origin ? new URL(origin).origin : undefined;
     return searchRecords(
-      this.records(scope).filter(
-        (item) => !site || !item.origin || item.origin === site
-      ),
+      (this.status().locked
+        ? this.publicNotes(scope)
+        : this.records(scope)
+      ).filter((item) => !site || !item.origin || item.origin === site),
       query
     );
   }
@@ -672,8 +938,12 @@ export class PasswordVault {
     offset = 0,
     origin: string | undefined = undefined
   ) {
-    this.checkAccess(true);
-    const item = this.records(scope).find(
+    this.checkNoteAccess();
+    const ordinary = this.publicNote(id, scope);
+    let available: VaultItem[] = [];
+    if (ordinary) available = [ordinary];
+    else if (!this.status().locked) available = this.records(scope);
+    const item = available.find(
       (entry) =>
         entry.id === id &&
         entry.allowAI &&
@@ -700,6 +970,12 @@ export class PasswordVault {
     return result;
   }
 
+  private checkNoteAccess() {
+    const status = this.status();
+    if (status.initialized && (!status.enabled || !status.ai))
+      throw new Error('Personal Data AI access is disabled.');
+  }
+
   private checkAccess(ai: boolean) {
     const data = this.requireData();
     if (!data.enabled || (ai && !data.ai) || (!ai && !data.autofill))
@@ -711,7 +987,9 @@ export class PasswordVault {
   }
 
   edit(id: string, scope?: string) {
-    const item = this.records(scope).find((saved) => saved.id === id);
+    const item =
+      this.publicNote(id, scope) ||
+      this.records(scope).find((saved) => saved.id === id);
     if (!item) throw new Error('Saved item unavailable.');
     return JSON.parse(JSON.stringify(item)) as VaultItem;
   }
@@ -745,6 +1023,21 @@ export class PasswordVault {
   }
 
   delete(id: string, scope?: string) {
+    if (this.isOrdinaryNote(id) && this.ordinaryNotes) {
+      const note = this.publicNoteSummaries(undefined, true).find(
+        (item) => item.id === id
+      )!;
+      if (note.scope && note.scope !== scope)
+        throw new Error('Record outside this group.');
+      this.assertScopeWritable(note.scope);
+      if (this.ordinaryNotes.remove) this.ordinaryNotes.remove(id);
+      else
+        this.ordinaryNotes.save(
+          this.ordinaryNotes.load().filter((item) => item.id !== id)
+        );
+      this.changed();
+      return;
+    }
     const data = this.requireData();
     const item = data.items.find((entry) => entry.id === id);
     if (item?.scope !== scope)

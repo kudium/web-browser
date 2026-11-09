@@ -61,7 +61,7 @@ fs.writeFileSync(
   path.join(runtimeDir, 'browser-entry.ts'),
   `export * from ${JSON.stringify(
     path.resolve('src/main/electronBrowser')
-  )};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};`
+  )};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};`
 );
 require('esbuild').buildSync({
   entryPoints: [path.join(runtimeDir, 'browser-entry.ts')],
@@ -171,6 +171,9 @@ require(path.join(runtimeDir, 'electronBrowser.js')).registerGroupLocks(
     },
   }
 );
+// Photography owns a disposable profile; storage is ready before rendering.
+ipcMain.handle('browser-storage-ready', () => ({available:true,needsRecovery:false}));
+const demoWindows = require(path.join(runtimeDir, 'electronBrowser.js')).registerBrowserWindows(async () => { throw new Error('Additional windows are outside demo photography.'); });
 eventBus.registerOnMain(ipcMain, windows);
 const evaluate = async (win, code) => {
   try {
@@ -314,6 +317,7 @@ app
       },
     });
     windows.main = main;
+    demoWindows.register(main);
     registerBrowser(main);
     await main.loadURL('http://localhost:1212/?view=main');
     await wait(900);
@@ -407,6 +411,8 @@ app
           sessionSlug: group.toLowerCase(),
           sessionId: group.toLowerCase(),
           spaceId: 'default',
+          folderId: ['Work','Design'].includes(group) ? 'product-studio' : group === 'Development' ? 'engineering' : undefined,
+          groupDisplay: ['Work','Development'].includes(group) ? 'stack' : 'folder',
           pinned: true,
           favorite,
         };
@@ -420,12 +426,13 @@ app
         JSON.stringify([
           {
             id: 'default',
-            name: 'Everyday',
-            color: 'teal',
-            folders: [],
+            name: 'Studio',
+            color: 'iris',
+            icon: 'work',
+            folders: [{id:'product-studio',name:'Product Studio'},{id:'engineering',name:'Engineering'}],
             selectedAppId: 'demo-13',
           },
-          { id: 'personal', name: 'Personal', color: 'sand', folders: [] },
+          { id: 'personal', name: 'Personal', color: 'amber', icon: 'home', folders: [] },
         ])
       )});undefined`
     );
@@ -520,6 +527,12 @@ app
       "(()=>{const el=document.querySelector('.ai-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'Help me plan this build. Use the project brief and React documentation to suggest an accessible component structure.');el.dispatchEvent(new Event('input',{bubbles:true}));})();undefined"
     );
     await capture(main, 'ai-context', 'project-brief.md');
+    await evaluate(main, `(()=>{const el=document.querySelector('.ai-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'Review the project brief with @w');el.focus();el.setSelectionRange(el.value.length,el.value.length);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('select',{bubbles:true}));})();undefined`);
+    await wait(300);
+    await capture(main, 'ai-mentions', 'Work');
+    if (process.env.KUDIUM_PHOTO_AI_ONLY === '1') { demoTerminals?.dispose(); server.close(); app.quit(); return; }
+    await evaluate(main, `(()=>{const el=document.querySelector('.ai-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'Help me plan this build using the attached project brief.');el.dispatchEvent(new Event('input',{bubbles:true}));})();undefined`);
+
     await evaluate(
       main,
       "window.electron.siteDeveloper.project('demo-13','link')"
@@ -661,7 +674,7 @@ app
     );
     await main.reload();
     await wait(6500);
-    await capture(main, 'sidebar-expanded', 'Favorite groups');
+    await capture(main, 'sidebar-expanded', 'Product Studio');
     await evaluate(
       main,
       "localStorage.setItem('kudiumbrowser-sidebar-hidden','true');undefined"

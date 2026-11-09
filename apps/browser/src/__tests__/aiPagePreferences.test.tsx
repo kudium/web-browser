@@ -39,3 +39,9 @@ it('uses safe defaults for malformed or outdated layout settings', () => {
   expect(view.result.current.open[0]).toBe(false);
   expect(view.result.current.pane[0]).toBe('assistant');
 });
+
+it('restores Notes as a page in the existing tool tabs', () => {
+  localStorage.setItem('kudiumbrowser-ai-page-pane', '"notes"');
+  const view = renderHook(() => useAIPagePreference('pane', 'assistant'));
+  expect(view.result.current[0]).toBe('notes');
+});

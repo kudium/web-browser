@@ -17,6 +17,7 @@ import { aiWheel } from '../browser/aiWheel';
 import { aiWaitCondition } from '../browser/aiWait';
 import { aiHandoffReason } from '../browser/aiHandoff';
 import { aiSelectValues, aiOptionRange } from '../browser/aiSelect';
+import { validDeveloperConfig } from '../browser/siteDeveloper';
 import { aiKey } from '../browser/aiKeys';
 import { AI_TOOLS, AI_PROJECT_TOOLS, AIProjectTool } from '../browser/ai';
 import {
@@ -36,7 +37,7 @@ export const MCP_NAMES = AI_TOOLS.filter(
 export type MCPTool = (typeof MCP_NAMES)[number];
 const descriptions: Record<MCPTool, string> = {
   create_group:
-    'Create a named tab group with its first website URL, only at the user request. Creates a separate group in the source tab’s space. Default is a fresh login session; when the user requests session linking, set shareSession:true and explicitly supply an accessible source tabId to share that group’s cookies/login. Use list_tabs to resolve the source, and set_scope with human approval if it is outside current scope. Returns groupId and tabId and selects the new AI scope. Add remaining websites with new_tab using the returned tabId; verify with list_tabs. Destination and scope approvals apply. Failed loads may leave the group/tab available; inspect before retrying.',
+    'Create a named tab group with its first website URL, only at the user request. Creates a separate group in the source tab’s space. Default is folder presentation and a fresh login session. Supply collectionId and a source tabId in that collection to inherit its session (sessionMode:separate keeps isolated storage); when the user requests session linking, set shareSession:true and explicitly supply an accessible source tabId to share that group’s cookies/login. Use list_tabs to resolve the source, and set_scope with human approval if it is outside current scope. Returns groupId and tabId and selects the new AI scope. Add remaining websites with new_tab using the returned tabId; verify with list_tabs. Destination and scope approvals apply. Failed loads may leave the group/tab available; inspect before retrying.',
   list_skills:
     'Discover user-enabled Kudium Browser skills for relevant workflows.',
   read_skill:
@@ -152,10 +153,64 @@ export function mcpArguments(
     throw new Error('Tool arguments must be an object.');
   const tool = name as MCPTool;
   const args = value as Record<string, unknown>;
+  const schema = aiToolParameters(tool).properties;
   Object.entries(args).forEach(([field, data]) => {
     if (!fields[tool].includes(field))
       throw new Error(`Unsupported argument: ${field}`);
-    if (field === 'record') {
+    if (field === 'shareSession') {
+      if (typeof data !== 'boolean')
+        throw new Error('shareSession must be boolean.');
+    } else if (field === 'intervalMinutes') {
+      if (!Number.isInteger(data) || Number(data) < 1 || Number(data) > 525600)
+        throw new Error('intervalMinutes must be an integer from 1 to 525600.');
+    } else if (field === 'developer') {
+      if (
+        !validDeveloperConfig(data) ||
+        Object.keys(data).some(
+          (key) => !['enabled', 'before', 'after', 'css', 'hooks'].includes(key)
+        ) ||
+        [data.before, data.after, data.css].some(
+          (code) => code.length > 20000
+        ) ||
+        data.hooks?.some((hook) =>
+          Object.keys(hook).some(
+            (key) =>
+              ![
+                'id',
+                'name',
+                'enabled',
+                'path',
+                'before',
+                'after',
+                'css',
+              ].includes(key)
+          )
+        )
+      )
+        throw new Error(
+          'Invalid developer configuration: provide enabled, before, after and css, with scripts up to 20000 characters.'
+        );
+    } else if (field === 'notification') {
+      if (!data || typeof data !== 'object' || Array.isArray(data))
+        throw new Error('Invalid hook notification binding.');
+      const binding = data as Record<string, unknown>;
+      if (
+        Object.keys(binding).some(
+          (key) =>
+            !['key', 'recordId', 'fieldName', 'recipientField'].includes(key)
+        ) ||
+        typeof binding.key !== 'string' ||
+        !/^[a-z][a-z0-9-]{0,59}$/.test(binding.key) ||
+        typeof binding.recordId !== 'string' ||
+        binding.recordId.length > 100 ||
+        typeof binding.fieldName !== 'string' ||
+        binding.fieldName.length > 120 ||
+        (binding.recipientField !== undefined &&
+          (typeof binding.recipientField !== 'string' ||
+            binding.recipientField.length > 120))
+      )
+        throw new Error('Invalid hook notification binding.');
+    } else if (field === 'record') {
       if (
         !data ||
         typeof data !== 'object' ||
@@ -242,11 +297,23 @@ export function mcpArguments(
     } else if (field === 'amount' || field === 'deltaX' || field === 'deltaY') {
       if (typeof data !== 'number' || !Number.isFinite(data))
         throw new Error('Scroll amount must be finite.');
-    } else if (
-      typeof data !== 'string' ||
-      data.length > (field === 'text' ? 10000 : 4096)
-    )
-      throw new Error(`Invalid ${field}.`);
+    } else {
+      const property = schema[field];
+      const defaultMaxLength = field === 'text' ? 10000 : 4096;
+      if (
+        typeof data !== 'string' ||
+        data.length >
+          (typeof property.maxLength === 'number'
+            ? property.maxLength
+            : defaultMaxLength) ||
+        (typeof property.minLength === 'number' &&
+          data.length < property.minLength) ||
+        (Array.isArray(property.enum) && !property.enum.includes(data)) ||
+        (typeof property.pattern === 'string' &&
+          !new RegExp(property.pattern).test(data))
+      )
+        throw new Error(`Invalid ${field}.`);
+    }
   });
   required[tool]?.forEach((field) => {
     if (args[field] === undefined) throw new Error(`${field} is required.`);

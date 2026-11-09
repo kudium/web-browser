@@ -41,6 +41,7 @@ export async function transferGroup(
       name: source.sessionName || source.name,
       slug: source.sessionSlug,
       emoji: source.sessionIconEmoji,
+      groupDisplay: source.groupDisplay || 'folder',
       homeURL: source.sessionHomeURL,
       pages: pages.map((page) => ({
         name: page.customName || page.name,
@@ -58,7 +59,10 @@ export async function transferGroup(
     };
     parsePortableGroup(data);
     const result = await dialog.showSaveDialog(host, {
-      defaultPath: `${data.name.replace(/[^\w .-]/g, '_')}.kudiumbrowser-group.json`,
+      defaultPath: `${data.name.replace(
+        /[^\w .-]/g,
+        '_'
+      )}.kudiumbrowser-group.json`,
       filters: [{ name: 'Kudium Browser Group', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {
@@ -159,6 +163,8 @@ export async function transferGroup(
       url: page.url,
       icon: '',
       sessionName: data.name,
+      groupDisplay: data.groupDisplay || 'folder',
+      sessionMode: 'separate',
       sessionNameCustom: true,
       sessionSlug: data.slug,
       sessionIconEmoji: data.emoji,
