@@ -40,7 +40,11 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/health', c => c.json({ status: 'ok' }));
   app.get('/ready', async c => { try { await db.execute(sql`select 1`); return c.json({ status: 'ready', sync: authenticate ? 'configured' : 'unconfigured' }); } catch { return c.json({ status: 'unavailable' }, 503); } });
   app.get('/', c => c.html(homepage()));
-  app.get('/download', c => c.html(downloadPage()));
+  app.get('/download', async c => {
+    const history = await releaseHistory(db, assetOrigins, 'all', 1, 5);
+    c.header('Cache-Control', 'no-store');
+    return c.html(downloadPage(history.releases));
+  });
   const historyQuery = z.object({ channel: z.enum(['all', 'stable', 'beta']).default('all'), page: z.coerce.number().int().min(1).max(10000).default(1) });
   for (const route of ['/releases', '/v1/releases']) app.get(route, async c => {
     const query = historyQuery.safeParse(c.req.query());

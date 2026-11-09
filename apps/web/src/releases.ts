@@ -9,7 +9,7 @@ export type ReleaseHistoryEntry = {
   version: string; channel: 'stable' | 'beta'; publishedAt: string;
   notes: string[]; targets: Pick<ReleaseManifest, 'platform' | 'arch' | 'files'>[];
 };
-export function groupReleaseHistory(rows: { manifest: ReleaseManifest; publishedAt: Date }[], origins: string[], channel: 'all' | 'stable' | 'beta', page: number) {
+export function groupReleaseHistory(rows: { manifest: ReleaseManifest; publishedAt: Date }[], origins: string[], channel: 'all' | 'stable' | 'beta', page: number, pageSize = 12) {
   const groups = new Map<string, ReleaseHistoryEntry>();
   for (const row of rows) {
     const parsed = releaseSchema.safeParse(row.manifest);
@@ -26,12 +26,11 @@ export function groupReleaseHistory(rows: { manifest: ReleaseManifest; published
   }
   const ordered = [...groups.values()].sort((a, b) => rcompare(a.version, b.version) || a.channel.localeCompare(b.channel));
   for (const group of ordered) group.targets.sort((a, b) => `${a.platform}/${a.arch}`.localeCompare(`${b.platform}/${b.arch}`));
-  const pageSize = 12;
   return { releases: ordered.slice((page - 1) * pageSize, page * pageSize), page, totalPages: Math.ceil(ordered.length / pageSize), total: ordered.length };
 }
-export async function releaseHistory(db: Database, origins: string[], channel: 'all' | 'stable' | 'beta', page: number) {
+export async function releaseHistory(db: Database, origins: string[], channel: 'all' | 'stable' | 'beta', page: number, pageSize = 12) {
   const rows = await db.select({ manifest: releases.manifest, publishedAt: releases.publishedAt }).from(releases).where(channel === 'all' ? undefined : eq(releases.channel, channel));
-  return groupReleaseHistory(rows, origins, channel, page);
+  return groupReleaseHistory(rows, origins, channel, page, pageSize);
 }
 export async function latestRelease(db: Database, target: Pick<ReleaseManifest, 'platform' | 'arch' | 'channel'>, origins: string[]) {
   const rows = await db.select().from(releases).where(and(eq(releases.platform, target.platform), eq(releases.arch, target.arch), eq(releases.channel, target.channel)));
