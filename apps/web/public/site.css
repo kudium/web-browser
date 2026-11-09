@@ -1602,7 +1602,7 @@ footer { border-top: 1px solid rgb(0 0 0 / 6%); padding-top: 32px; padding-botto
 .release-list { display: grid; gap: 24px; }
 .release-card { border: 1px solid var(--line); border-radius: 20px; padding: 28px; }
 .release-card-heading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.release-card h2 { font-size: 28px; letter-spacing: -.025em; }
+.release-card-heading h2, .release-card-heading h3 { font-size: 28px; letter-spacing: -.025em; }
 .release-card time { margin-left: auto; color: var(--muted); font-size: 14px; }
 .release-channel { font-size: 12px; font-weight: 600; border-radius: 12px; padding: 5px 10px; background: var(--surface); }
 .release-channel-stable { color: var(--teal-ink); background: #e9f5f3; }
@@ -1688,3 +1688,9 @@ footer { border-top: 1px solid rgb(0 0 0 / 6%); padding-top: 32px; padding-botto
   .account-session-actions { width: 100%; justify-content: flex-end; padding-left: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .account-button { transition: none; } }
+
+.download-release-history { margin-top: 64px; }
+.download-release-history > h2 { font-size: 28px; letter-spacing: -.025em; margin-bottom: 12px; }
+.download-history-intro { color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+.download-release-history > .text-link { display: inline-block; margin-top: 24px; }
+.download-release-history a:focus-visible { outline: 3px solid var(--teal); outline-offset: 4px; }
