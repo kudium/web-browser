@@ -26,7 +26,7 @@ import {
   defaultSyncSettings,
   validateSyncSettings,
 } from '../browser/cloudSync';
-import { validateShortcuts } from '../browser/shortcuts';
+import { restoreShortcuts, validateShortcuts } from '../browser/shortcuts';
 import { normalizeSleepSites } from '../browser/sleepingTabs';
 import { validateSearchEngines } from '../browser/searchEngines';
 import { clearSessionSiteData } from './siteData';
@@ -170,12 +170,18 @@ export function getBrowserPreferences(): Readonly<BrowserPreferences> {
   let preferences: BrowserPreferences;
   try {
     const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (saved.shortcuts)
+      saved.shortcuts = restoreShortcuts(
+        saved.shortcuts,
+        process.platform === 'darwin'
+      );
     const directory =
       typeof saved.downloadDirectory === 'string'
         ? saved.downloadDirectory
         : '';
     delete saved.downloadDirectory;
-    if (saved.systemSpaceRetentionDays === 7) saved.systemSpaceRetentionDays = 14;
+    if (saved.systemSpaceRetentionDays === 7)
+      saved.systemSpaceRetentionDays = 14;
     const result = {
       ...defaultPreferences,
       cloudSync: defaultSyncSettings(process.platform),

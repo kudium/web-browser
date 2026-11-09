@@ -51,6 +51,7 @@ export default class MenuBuilder {
         accelerator && action in bindings
           ? menuAccelerator(bindings[action as keyof typeof bindings][0])
           : undefined,
+      ...(action === 'sidebar' ? { registerAccelerator: false } : {}),
       click: () => {
         const focused = BrowserWindow.getFocusedWindow();
         const host =
@@ -176,7 +177,8 @@ export default class MenuBuilder {
         this.action('Zoom Out', 'zoom-out'),
         this.action('Actual Size', 'zoom-reset'),
         separator,
-        this.action('Show / Hide Sidebar', 'sidebar'),
+        this.action('Show / Hide Space Sidebar', 'sidebar'),
+        this.action('Show / Hide AI Assistant', 'ai-sidebar'),
         { label: 'Enter / Exit Full Screen', role: 'togglefullscreen' },
       ],
     };

@@ -1,7 +1,3 @@
-import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
-import { Archive } from '../Settings/tabs/Archive';
-import { spaceFooterMenu } from '../../../browser/spaceFooterMenu';
-import { StorageRecoveryBanner } from '../../UI/StorageRecoveryBanner';
 import {
   CSSProperties,
   useCallback,
@@ -45,6 +41,10 @@ import {
   Square,
   X,
 } from 'lucide-react';
+import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
+import { Archive } from '../Settings/tabs/Archive';
+import { spaceFooterMenu } from '../../../browser/spaceFooterMenu';
+import { StorageRecoveryBanner } from '../../UI/StorageRecoveryBanner';
 import { AppUpdateBanner } from '../../UI/AppUpdateBanner';
 import { SpaceSettingsForm } from '../../UI/SpaceSettingsForm';
 import { EmptySpaceWelcome } from '../../UI/EmptySpaceWelcome';
@@ -973,6 +973,13 @@ export function Main() {
   useEffect(
     () =>
       browser.onShortcut((action) => {
+        if (
+          action === 'sidebar-or-save' &&
+          document.activeElement?.closest('.developer-files')
+        ) {
+          window.dispatchEvent(new Event('developer-save-file'));
+          return;
+        }
         if (action === 'new-window')
           window.electron.browser
             .windowRequest({ action: 'new-window' })
@@ -1080,9 +1087,13 @@ export function Main() {
             select(AppManager.restore(closed));
           }
         }
-        if (action === 'sidebar') {
+        if (action === 'sidebar' || action === 'sidebar-or-save') {
           setDownloadsOpen(false);
           setSidebarHidden((previous) => !previous);
+        }
+        if (action === 'ai-sidebar') {
+          setAIMounted(true);
+          setAIOpen((previous) => !previous);
         }
         if ((action === 'next-tab' || action === 'previous-tab') && selected) {
           const index = activeGroupTabs.findIndex(

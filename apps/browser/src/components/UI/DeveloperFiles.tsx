@@ -231,6 +231,15 @@ export function DeveloperFiles({
       if (mounted.current) setBusy(false);
     }
   };
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    const receive = () => {
+      if (root.current?.contains(document.activeElement)) saveRef.current();
+    };
+    window.addEventListener('developer-save-file', receive);
+    return () => window.removeEventListener('developer-save-file', receive);
+  }, []);
   const discard = () => {
     if (preview) drafts.delete(draftKey(preview.path));
     setText(preview?.text || '');
