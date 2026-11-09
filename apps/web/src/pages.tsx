@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { serviceOrigin } from "./config";
 import { tutorials, type Tutorial } from "./tutorials";
 import type { groupReleaseHistory, ReleaseHistoryEntry } from "./releases";
+const stylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/site.css", import.meta.url))).digest("hex").slice(0, 12);
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
 function Layout({
@@ -44,7 +47,7 @@ function Layout({
           />
         )}
         <link rel="icon" href="/assets/product/origin-logo.png" />
-        <link rel="stylesheet" href="/assets/site.css?v=23" />
+        <link rel="stylesheet" href={`/assets/site.css?v=${stylesheetVersion}`} />
       </head>
       <body className={privatePage ? "account-page" : undefined}>
         <header>
