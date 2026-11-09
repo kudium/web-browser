@@ -4,6 +4,7 @@ const effects = new Set([
   'create_task',
   'configure_site_hooks',
   'set_page_appearance',
+  'create_group',
   'new_tab',
   'select_tab',
   'navigate',

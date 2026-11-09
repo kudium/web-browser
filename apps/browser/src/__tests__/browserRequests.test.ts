@@ -33,6 +33,7 @@ it('validates complete layouts before existing view state can change', () => {
 });
 it('rejects malformed command fields instead of passing them to native APIs', () => {
   expect(isBrowserCommand({ id: '', action: 'extensions' })).toBe(true);
+  expect(isBrowserCommand({ id: '', action: 'focus-chrome' })).toBe(true);
   expect(isBrowserCommand({ id: 'one', action: 'close-group' })).toBe(true);
   expect(
     isBrowserCommand({

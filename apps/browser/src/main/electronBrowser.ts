@@ -56,6 +56,7 @@ import { AINewTabs } from './aiTabs';
 import { getBrowserWindows } from './browserWindows';
 import { WebsiteTabRecovery } from './websiteTabRecovery';
 import { PictureInPictureController } from './pictureInPicture';
+import { registerSpaceGestures } from './spaceGestures';
 import { isBrowserCommand, isBrowserLayout } from './browserRequests';
 import { clearSessionSiteData } from './siteData';
 import { recordVisit } from './history';
@@ -213,6 +214,8 @@ export function registerElectronBrowser(
     keyboardCleanup.add(cleanup);
     contents.once('destroyed', cleanup);
   };
+  const gestureCleanup = new Set<() => void>();
+  gestureCleanup.add(registerSpaceGestures(window));
   keyboard(window.webContents);
   const hiddenSince = new Map<string, number>();
   const edited = new Set<string>();
@@ -1251,6 +1254,10 @@ export function registerElectronBrowser(
     )
       return;
     const window = requestWindow;
+    if (request.action === 'focus-chrome') {
+      window.webContents.focus();
+      return;
+    }
     const targetGroup = configurations.get(request.id);
     if (
       targetGroup &&
@@ -2067,8 +2074,13 @@ export function registerElectronBrowser(
         ? window
         : undefined);
     if (!source || !isBrowserLayout(layout)) return;
+    const chromeFocused = source.webContents.isFocused();
     if (windows) windows.setLayout(source, layout);
     else applyLayout(layout);
+    // Reparenting/showing a WebContentsView must not take the first responder
+    // away from the sidebar or an address field the user is interacting with.
+    if (chromeFocused && !source.webContents.isDestroyed())
+      source.webContents.focus();
   };
   const stopWindows = windows?.subscribe(() =>
     applyLayout(windows.mergedLayout())
@@ -2077,6 +2089,9 @@ export function registerElectronBrowser(
     view: (id) => views.get(id),
     state: (id) => lastStates.get(id),
     chrome: (host) => {
+      const stopGestures = registerSpaceGestures(host);
+      gestureCleanup.add(stopGestures);
+      host.once('closed', () => { stopGestures(); gestureCleanup.delete(stopGestures); });
       keyboard(host.webContents);
       const capture = registerPageCapture(host, (id) =>
         windows.allows(host, id) ? views.get(id)?.webContents : undefined
@@ -2166,6 +2181,7 @@ export function registerElectronBrowser(
     clearInterval(discardTimer);
     pictureInPicture.forEach((controller) => controller.dispose());
     pictureInPicture.clear();
+    gestureCleanup.forEach((cleanup) => cleanup());
     keyboardCleanup.forEach((cleanup) => cleanup());
     pendingTabCleanup.forEach((cleanup) => cleanup());
     window.removeListener('closed', dispose);

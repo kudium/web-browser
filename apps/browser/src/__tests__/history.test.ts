@@ -5,6 +5,7 @@ import path from 'path';
 import { app, dialog, ipcMain } from 'electron';
 import {
   recordVisit,
+  pruneBrowsingHistory,
   historyAction,
   getBrowsingHistory,
   flushHistory,
@@ -239,4 +240,29 @@ it('imports a large history batch with one ordered write and preserves visits af
   } finally {
     await store.close();
   }
+});
+
+it('expires history strictly older than the selected age and commits it durably', async () => {
+  const now = Date.now();
+  const cutoff = now - 7 * 86400000;
+  const fixture = [cutoff - 1, cutoff, now].map((visitedAt, index) => ({
+    id: `age-${index}`, url: `https://example.com/${index}`, title: `Age ${index}`,
+    profile: 'personal', visitedAt,
+  }));
+  fs.writeFileSync(file(), JSON.stringify(fixture));
+  await pruneBrowsingHistory(0, now);
+  expect(getBrowsingHistory()).toEqual(fixture);
+  fs.renameSync(file(), `${file()}.original`);
+  fs.mkdirSync(file());
+  try {
+    await expect(pruneBrowsingHistory(7, now)).rejects.toThrow('Could not save browsing history');
+    expect(getBrowsingHistory()).toEqual(fixture);
+    expect(JSON.parse(fs.readFileSync(`${file()}.original`, 'utf8'))).toEqual(fixture);
+  } finally {
+    fs.rmdirSync(file());
+    fs.renameSync(`${file()}.original`, file());
+  }
+  await pruneBrowsingHistory(7, now);
+  expect(getBrowsingHistory()).toEqual(fixture.slice(1));
+  expect(JSON.parse(fs.readFileSync(file(), 'utf8'))).toEqual(fixture.slice(1));
 });

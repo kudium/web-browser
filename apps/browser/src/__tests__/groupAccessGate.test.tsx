@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { GroupAccessGate } from '../components/UI/GroupAccessGate';
-import { assertGroupChanges } from '../utils/groupAccess';
+import { assertGroupChanges, protectedGroup, lockedGroup } from '../utils/groupAccess';
 import type { GroupLockState } from '../browser/groupLocks';
 import type { IApp } from '../types';
 
@@ -71,4 +71,11 @@ it('hides editor contents until authentication succeeds, and removes them immedi
   expect(() =>
     assertGroupChanges([item], [{ ...item, name: 'Updated' }])
   ).toThrow('Unlock');
+});
+
+it('keeps unlocked protected groups protected for automatic retention', () => {
+  expect(protectedGroup(item, unlocked)).toBe(true);
+  expect(lockedGroup(item, { ...unlocked, ready: true })).toBe(false);
+  expect(protectedGroup({ ...item, sessionId: 'other' }, unlocked)).toBe(false);
+  expect(protectedGroup({ ...item, sessionId: 'other', protectionGroupId: 'work' }, unlocked)).toBe(true);
 });

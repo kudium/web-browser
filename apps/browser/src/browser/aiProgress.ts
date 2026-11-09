@@ -13,6 +13,7 @@ const progress: Record<string, string> = {
   list_skills: 'Checking available workflows…',
   read_skill: 'Reading workflow instructions…',
   navigate: 'Opening the page…',
+  create_group: 'Creating a tab group…',
   new_tab: 'Opening a tab…',
   select_tab: 'Switching tabs…',
   click: 'Selecting a page control…',

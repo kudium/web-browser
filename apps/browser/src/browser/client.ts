@@ -27,6 +27,7 @@ export const browser: BrowserClient = {
     window.electron.browser.preferenceAction(action, profileId),
   onPreferences: (callback) => window.electron.browser.onPreferences(callback),
   onSnapshots: (callback) => window.electron.browser.onSnapshots(callback),
+  onSpaceWheel: (callback) => window.electron.browser.onSpaceWheel(callback),
   onShortcut: (callback) => window.electron.browser.onShortcut(callback),
   onState: (callback) => window.electron.browser.onState(callback),
 };

@@ -51,12 +51,13 @@
     "test:packaged-security": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts packaged-security",
     "lint": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts lint",
     "postinstall": "node .erb/scripts/patch-native-messaging.cjs",
-    "predev": "node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs && node .erb/scripts/brand-development-app.cjs",
-    "prebuild": "node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs",
+    "predev": "node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs && node .erb/scripts/build-space-gestures.cjs && node .erb/scripts/brand-development-app.cjs",
+    "prebuild": "node .erb/scripts/patch-native-messaging.cjs && node .erb/scripts/build-password-auth.cjs && node .erb/scripts/build-space-gestures.cjs",
     "test:migrations": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts storage-migration",
     "test:migrations:native": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts storage-migration --native",
     "release:verify-migrations": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-release-gate.ts",
-    "storage:recovery": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-recovery.ts"
+    "storage:recovery": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-recovery.ts",
+    "test:space-gestures": "node .erb/scripts/build-space-gestures.cjs && electron .erb/scripts/space-gesture-smoke.cjs"
   },
   "browserslist": [],
   "prettier": {
@@ -315,7 +316,7 @@
       "owner": "samtax01",
       "repo": "KudiumBrowser"
     },
-    "copyright": "Copyright © 2026 Kudium",
+    "copyright": "Copyright \u00a9 2026 Kudium",
     "protocols": [
       {
         "name": "Web pages",

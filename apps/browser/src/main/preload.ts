@@ -91,6 +91,7 @@ import type {
   BrowserLayout,
   BrowserState,
   BrowserShortcut,
+  SpaceWheelEvent,
   BrowserSnapshot,
 } from '../types';
 
@@ -657,7 +658,7 @@ const electronHandler = {
     preferences(
       action: 'get' | 'open' | 'update',
       patch?: Partial<BrowserPreferences> & {
-        section?: 'archive' | 'sync' | 'import' | 'passwords';
+        section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces';
       }
     ): Promise<BrowserPreferences> {
       return ipcRenderer.invoke('browser-preferences', action, patch);
@@ -702,6 +703,12 @@ const electronHandler = {
       return () => {
         ipcRenderer.removeListener('browser-snapshots', listener);
       };
+    },
+    onSpaceWheel(callback: (event: SpaceWheelEvent) => void) {
+      const listener = (_event: IpcRendererEvent, event: SpaceWheelEvent) => callback(event);
+      ipcRenderer.on('browser-space-wheel', listener);
+      ipcRenderer.send('browser-observe-space-wheel');
+      return () => ipcRenderer.removeListener('browser-space-wheel', listener);
     },
     onShortcut(callback: (action: BrowserShortcut) => void) {
       const listener = (_event: IpcRendererEvent, action: BrowserShortcut) =>

@@ -3,6 +3,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { app, BrowserWindow, ipcMain, WebContents } from 'electron';
 import { HistoryAction, HistoryRecord } from '../browser/history';
+import { expiredRecord, retentionCutoff } from '../browser/systemSpaceRetention';
 import { HistoryPersistence } from './historyPersistence';
 
 let persistence: HistoryPersistence | undefined;
@@ -79,6 +80,13 @@ function history(): HistoryPersistence {
     });
   }
   return persistence;
+}
+export async function pruneBrowsingHistory(days: number, now = Date.now()) {
+  const cutoff = retentionCutoff(days, now);
+  if (cutoff === undefined) return;
+  const store = history();
+  if (store.snapshot().some(record => expiredRecord(record.visitedAt, cutoff)))
+    await store.mutate('retention', cutoff);
 }
 export const getBrowsingHistory = () => history().snapshot();
 export async function importBrowsingHistory(

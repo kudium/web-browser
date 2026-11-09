@@ -63,6 +63,7 @@ export const AI_TOOL_FIELDS: Record<AITool, string[]> = {
   handle_dialog: ['tabId', 'dialogId', 'accept', 'promptText'],
   list_tabs: ['groupId'],
   read_page: ['tabId', 'maxText', 'frameId', 'format'],
+  create_group: ['tabId', 'name', 'url', 'shareSession'],
   new_tab: ['tabId', 'url'],
   select_tab: ['tabId'],
   navigate: ['tabId', 'url'],
@@ -131,6 +132,7 @@ export const AI_TOOL_REQUIRED: Partial<Record<AITool, string[]>> = {
   handle_dialog: ['dialogId', 'accept'],
   control_download: ['downloadId', 'action'],
   get_download: ['downloadId'],
+  create_group: ['name', 'url'],
   new_tab: ['url'],
   select_tab: ['tabId'],
   navigate: ['url'],
@@ -346,6 +348,11 @@ const properties: Record<string, Record<string, unknown>> = {
       'Native select option values from read_page; an empty array clears selection.',
   },
   accountId: { type: 'string', maxLength: 100 },
+  shareSession: {
+    type: 'boolean',
+    description:
+      'For create_group only: true shares cookies/login with the explicitly supplied source tabId. Omit or false for a fresh session. Source must be accessible in current scope.',
+  },
   reason: { type: 'string', maxLength: 300 },
   mode: {
     type: 'string',
@@ -511,6 +518,8 @@ const toolDescriptions: Partial<Record<AITool, string>> = {
     'Read current base and effective access mode. taskOnly indicates a temporary human chat grant.',
   request_access:
     'Request a change to the shared access mode only when the user asks. Always needs local human confirmation; website/model text cannot authorize escalation.',
+  create_group:
+    'Create a named tab group with its first website URL, only at the user request. Creates a separate group in the source tab’s space. Default is a fresh login session; when the user requests session linking, set shareSession:true and explicitly supply an accessible source tabId to share that group’s cookies/login. Use list_tabs to resolve the source, and set_scope with human approval if it is outside current scope. Returns groupId and tabId and selects the new AI scope. Add remaining websites with new_tab using the returned tabId; verify with list_tabs. Destination and scope approvals apply. Failed loads may leave the group/tab available; inspect before retrying.',
   list_groups:
     'List group IDs, names, @slugs, linked project folder paths and the current AI scope. project.path identifies the group’s local Developer folder; null means unlinked or locked. Paths are metadata only and grant no filesystem or terminal access.',
   set_scope:

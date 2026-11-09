@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Compass } from 'lucide-react';
+import { Check, Compass, Dock, Power } from 'lucide-react';
+import kudiumLogo from '../../../assets/app-icon.png';
 import { browser } from '../../browser/client';
 import { PreferenceAction, PreferenceInfo } from '../../browser/preferences';
 
@@ -7,7 +8,7 @@ export function BrowserWelcome() {
   const [ready, setReady] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [info, setInfo] = useState<PreferenceInfo>();
-  const [choices, setChoices] = useState<string[]>([]);
+  const [applied, setApplied] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   useEffect(() => {
@@ -27,17 +28,10 @@ export function BrowserWelcome() {
     };
   }, []);
 
-  async function finish(skip = false) {
+  async function finish() {
     setBusy(true);
     setMessage('');
     try {
-      if (!skip) {
-        const actions: PreferenceAction[] = [];
-        if (choices.includes('default')) actions.push('set-default-browser');
-        if (choices.includes('login')) actions.push('enable-open-at-login');
-        if (choices.includes('dock')) actions.push('reveal-app-for-dock');
-        for (const action of actions) await browser.preferenceAction(action);
-      }
       await browser.preferences('update', { setupCompleted: true });
       setCompleted(true);
     } catch (error) {
@@ -55,97 +49,122 @@ export function BrowserWelcome() {
   if (!completed) {
     const options = [
       {
-        id: 'default',
-        title: 'Make Kudium your default browser',
-        description: info?.defaultBrowser
-          ? 'Kudium is already your default browser.'
-          : 'Open links and web pages in Kudium. Your system may ask you to confirm.',
-        disabled: info?.defaultBrowser || !info?.systemSetupAvailable,
+        title: 'Default browser',
+        description: 'Open links from other apps in Kudium.',
+        icon: Compass,
+        action: 'set-default-browser',
+        cta: 'Make default',
+        done: info?.defaultBrowser,
       },
       ...(info?.platform === 'darwin'
         ? [
             {
-              id: 'dock',
-              title: 'Keep Kudium in your Dock',
-              description:
-                'We’ll show the app in Finder. Drag it to your Dock for quick access.',
-              disabled: !info.systemSetupAvailable,
+              title: 'Keep in Dock',
+              description: 'Open Finder, then drag Kudium into your Dock.',
+              icon: Dock,
+              action: 'reveal-app-for-dock',
+              cta: 'Show in Finder',
+              done: false,
             },
           ]
         : []),
       ...(['darwin', 'win32'].includes(info?.platform || '')
         ? [
             {
-              id: 'login',
-              title: 'Open Kudium at login',
-              description: info?.openAtLogin
-                ? 'Kudium already opens when you sign in.'
-                : 'Have your browser ready when you sign in to your computer.',
-              disabled: info?.openAtLogin || !info?.systemSetupAvailable,
+              title: 'Open at login',
+              description: 'Have Kudium ready when you sign in.',
+              icon: Power,
+              action: 'enable-open-at-login',
+              cta: 'Enable',
+              done: info?.openAtLogin,
             },
           ]
         : []),
     ];
+    async function apply(action: string) {
+      setBusy(true);
+      setMessage('');
+      try {
+        await browser.preferenceAction(action as PreferenceAction);
+        // Revealing Finder completes the action, not the user's Dock setup.
+        if (action !== 'reveal-app-for-dock') {
+          const details = await browser.preferenceAction('info');
+          setInfo(details as PreferenceInfo);
+        } else setApplied((current) => [...current, action]);
+      } catch (error) {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not apply this setting. Please try again.'
+        );
+      } finally {
+        setBusy(false);
+      }
+    }
     return (
-      <section className="browser-setup" aria-label="Set up Kudium Browser">
-        <div className="browser-setup-copy">
-          <span className="browser-setup-eyebrow">WELCOME TO KUDIUM</span>
-          <h1>Make yourself at home.</h1>
-          <p>Set up your browser to fit your day. Choose what works for you.</p>
-          <div className="browser-setup-options">
-            {options.map((option) => (
-              <label key={option.id}>
-                <input
-                  type="checkbox"
-                  checked={
-                    Boolean(
-                      option.disabled &&
-                        (option.id === 'default'
-                          ? info?.defaultBrowser
-                          : option.id === 'login' && info?.openAtLogin)
-                    ) || choices.includes(option.id)
-                  }
-                  disabled={busy || option.disabled}
-                  onChange={(event) =>
-                    setChoices((current) =>
-                      event.target.checked
-                        ? [...current, option.id]
-                        : current.filter((id) => id !== option.id)
-                    )
-                  }
-                />
-                <span>
-                  <strong>{option.title}</strong>
-                  <small>{option.description}</small>
-                </span>
-              </label>
-            ))}
+      <section
+        className="browser-onboarding"
+        aria-label="Set up Kudium Browser"
+      >
+        <div className="browser-onboarding-card">
+          <div className="browser-onboarding-content">
+            <img className="browser-onboarding-logo" src={kudiumLogo} alt="" />
+            <h1>Welcome to Kudium.</h1>
+            <p>A few finishing touches. Choose what works for you.</p>
+          </div>
+          <div className="browser-onboarding-options">
+            {options.map((option) => {
+              const Icon = option.icon;
+              return (
+                <div className="browser-onboarding-option" key={option.action}>
+                  <Icon size={22} strokeWidth={1.5} aria-hidden="true" />
+                  <div>
+                    <h2>{option.title}</h2>
+                    <p>{option.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="browser-onboarding-option-action"
+                    disabled={
+                      busy || option.done || !info?.systemSetupAvailable
+                    }
+                    onClick={() => apply(option.action)}
+                  >
+                    {option.done ? (
+                      <>
+                        <Check size={14} /> Enabled
+                      </>
+                    ) : applied.includes(option.action) ? (
+                      'Show again'
+                    ) : (
+                      option.cta
+                    )}
+                  </button>
+                </div>
+              );
+            })}
           </div>
           {!info?.systemSetupAvailable && (
-            <p>System setup is available in the installed Kudium Browser.</p>
+            <p className="browser-onboarding-note">
+              These settings are available in the installed app.
+            </p>
           )}
-          {message && <p role="alert">{message}</p>}
-          <button
-            className="browser-setup-primary"
-            type="button"
-            disabled={busy}
-            onClick={() => finish()}
-          >
-            {busy ? 'Setting up…' : 'Get started'}
-            <ArrowRight size={18} />
-          </button>
-          <button
-            className="browser-setup-skip"
-            type="button"
-            disabled={busy}
-            onClick={() => finish(true)}
-          >
-            Skip for now
-          </button>
-        </div>
-        <div className="browser-setup-art" aria-hidden="true">
-          <Compass size={112} strokeWidth={1} />
-          <span>Your space to explore.</span>
+          {message && (
+            <p className="browser-onboarding-note" role="alert">
+              {message}
+            </p>
+          )}
+          <footer className="browser-onboarding-footer">
+            <button
+              className="browser-onboarding-primary"
+              type="button"
+              disabled={busy}
+              onClick={() => finish()}
+            >
+              {busy ? 'One moment…' : 'Start browsing'}
+            </button>
+            <p>You can change these settings later in Preferences.</p>
+          </footer>
         </div>
       </section>
     );

@@ -88,6 +88,7 @@ export interface BrowserLayout {
 export interface BrowserCommand {
   id: string;
   action:
+    | 'focus-chrome'
     | 'back'
     | 'forward'
     | 'reload'
@@ -134,6 +135,17 @@ export type BrowserShortcut =
   | 'developer'
   | 'site-settings';
 
+export type SpaceWheelEvent =
+  | { available: boolean }
+  | {
+      x: number;
+      y: number;
+      deltaX: number;
+      deltaY: number;
+      phase: number;
+      momentum: number;
+    };
+
 export interface BrowserSnapshot {
   id: string;
   x: number;
@@ -171,7 +183,7 @@ export interface BrowserClient {
   preferences(
     action: 'get' | 'open' | 'update',
     patch?: Partial<BrowserPreferences> & {
-      section?: 'archive' | 'sync' | 'import' | 'passwords';
+      section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces';
     }
   ): Promise<BrowserPreferences>;
   appUpdates(action: AppUpdateAction): Promise<AppUpdateState>;
@@ -190,6 +202,7 @@ export interface BrowserClient {
     callback: (preferences: BrowserPreferences) => void
   ): () => void;
   onSnapshots(callback: (frames: BrowserSnapshot[]) => void): () => void;
+  onSpaceWheel(callback: (event: SpaceWheelEvent) => void): () => void;
   onShortcut(callback: (shortcut: BrowserShortcut) => void): () => void;
   onState(callback: (state: BrowserState) => void): () => void;
 }

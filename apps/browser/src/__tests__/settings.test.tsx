@@ -273,3 +273,13 @@ it('shows default update preferences and lets users turn both off', async () => 
   await waitFor(() => expect(browser.preferences).toHaveBeenCalledWith('update', { automaticallyInstallUpdates: false }));
   window.location.hash = '';
 });
+
+it('shows fourteen-day system-space retention in searchable privacy settings', async () => {
+  (browser.preferences as jest.Mock).mockResolvedValue(defaultPreferences);
+  (browser.preferenceAction as jest.Mock).mockResolvedValue({ profiles: [], languages: ['en-US'], versions: {} });
+  render(<Theme><Settings /></Theme>);
+  fireEvent.change(screen.getByLabelText('Search settings'), { target: { value: 'Keep system space records' } });
+  const control = await screen.findByRole('combobox', { name: 'Keep system space records' });
+  await waitFor(() => expect(control).toBeEnabled());
+  expect(control).toHaveTextContent('14 days');
+});

@@ -6,6 +6,7 @@ import { SearchEngine, defaultSearchEngines } from './searchEngines';
 /** Shared, engine-neutral preferences. Add controls to the registry below. */
 export interface BrowserPreferences {
   setupCompleted: boolean;
+  systemSpaceRetentionDays: number;
   advanced: AdvancedPreferences;
   automaticallyDownloadUpdates: boolean;
   automaticallyInstallUpdates: boolean;
@@ -19,6 +20,7 @@ export interface BrowserPreferences {
   showExtensionIcons: boolean;
   extensionToolbarOrder: string[] | null;
   translucentChrome: boolean;
+  translucentAI: boolean;
   smartTabLabels: boolean;
   cloudSync: SyncSettings;
   shortcuts: ShortcutBindings;
@@ -40,6 +42,7 @@ export interface BrowserPreferences {
 }
 export const defaultPreferences: BrowserPreferences = {
   setupCompleted: false,
+  systemSpaceRetentionDays: 14,
   advanced: defaultAdvanced,
   automaticallyDownloadUpdates: true,
   automaticallyInstallUpdates: true,
@@ -53,6 +56,7 @@ export const defaultPreferences: BrowserPreferences = {
   showExtensionIcons: true,
   extensionToolbarOrder: null,
   translucentChrome: true,
+  translucentAI: false,
   smartTabLabels: true,
   cloudSync: defaultSyncSettings(),
   shortcuts: defaultShortcuts,
@@ -83,6 +87,21 @@ export interface PreferenceControl {
   options?: { label: string; value: string | number }[];
 }
 export const preferenceControls: PreferenceControl[] = [
+  {
+    key: 'systemSpaceRetentionDays',
+    section: 'privacy',
+    title: 'Keep system space records',
+    description:
+      'Automatically remove older Downloads, History, and Archive entries. Downloaded files, active downloads, protected groups, and website logins are kept.',
+    kind: 'select',
+    options: [
+      { label: '14 days', value: 14 },
+      { label: '30 days', value: 30 },
+      { label: '90 days', value: 90 },
+      { label: 'Keep forever', value: 0 },
+    ],
+  },
+
   {
     key: 'writeBrowserInstructions',
     section: 'ai',
@@ -178,6 +197,14 @@ export const preferenceControls: PreferenceControl[] = [
     title: 'Glassy sidebar and frame',
     description:
       'Blend the sidebar and frame with the desktop on macOS. Reduce Transparency and Increase Contrast use solid backgrounds automatically.',
+    kind: 'toggle',
+  },
+  {
+    key: 'translucentAI',
+    section: 'appearance',
+    title: 'Glassy AI panel',
+    description:
+      'Give the AI panel softer, translucent surfaces. Desktop blending on macOS requires Glassy sidebar and frame. Accessibility settings use solid backgrounds.',
     kind: 'toggle',
   },
   {

@@ -10,7 +10,7 @@ export const SPACE_KEY = 'kudiumbrowser-spaces';
 export const ACTIVE_SPACE_KEY = 'kudiumbrowser-active-space';
 export const spaceColors = ['iris', 'blue', 'green', 'amber', 'pink'] as const;
 export const spaceColorNames = {
-  iris: 'Purple',
+  iris: 'Kudium teal',
   blue: 'Blue',
   green: 'Green',
   amber: 'Gold',

@@ -41,6 +41,7 @@ import { browserUserAgent } from './browserIdentity';
 import { registerPasswordManager } from './passwordManager';
 import { registerBrowserMigration } from './browserMigration';
 import { registerAppUpdates, startAppUpdates } from './appUpdates';
+import { registerSystemSpaceRetention } from './systemSpaceRetention';
 import { registerHistory } from './history';
 import MenuBuilder from './menu';
 import { consolidateExtensionWarnings } from './extensionWarnings';
@@ -436,6 +437,8 @@ registerPreferences(
     ),
   (contents) => activeWindows.settings?.webContents === contents
 );
+
+registerSystemSpaceRetention();
 
 registerAppUpdates(
   (contents) =>

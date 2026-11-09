@@ -165,6 +165,7 @@ import {
   aiProviderURL,
 } from '../browser/ai';
 import type { IApp } from '../types';
+import { aiNewGroupName, aiNewGroupFields } from './aiNewGroup';
 import type { DownloadRecord } from '../browser/downloads';
 
 // Embedders and isolated desktop fixtures prepare storage before registering AI.
@@ -1184,7 +1185,8 @@ export function registerAI(
     options: MessageBoxOptions,
     safeInteraction = false,
     forceReview = false,
-    forcePrivateReview = false
+    forcePrivateReview = false,
+    forceScopeReview = false
   ) => {
     options.signal?.throwIfAborted();
     const mode = taskAccessMode ?? accessMode;
@@ -1194,6 +1196,7 @@ export function registerAI(
         requiresAIPrivateReview(name));
     if (
       !privateReview &&
+      !forceScopeReview &&
       (mode === 'full' ||
         (!forceReview && !requiresAIApproval(mode, name, safeInteraction)))
     )
@@ -1929,9 +1932,24 @@ export function registerAI(
         })
       );
     }
-    const newDestination = name === 'new_tab' ? aiURL(args.url) : undefined;
+    const creatingGroup = name === 'create_group';
+    const groupName = creatingGroup ? aiNewGroupName(args.name) : undefined;
+    if (
+      creatingGroup &&
+      args.shareSession === true &&
+      typeof args.tabId !== 'string'
+    )
+      throw new Error('Supply the source tabId to share its login session.');
+    const newGroupFields = creatingGroup
+      ? aiNewGroupFields(groupName!, tab, args.shareSession)
+      : undefined;
+    if (creatingGroup && !access.createTab)
+      throw new Error('Group creation requires native tab creation.');
+    const newDestination =
+      name === 'new_tab' || creatingGroup ? aiURL(args.url) : undefined;
     const needsEarlyReview = newDestination
-      ? privateBrowserContext() ||
+      ? (creatingGroup && groupId !== null) ||
+        privateBrowserContext() ||
         requiresAINavigationApproval(
           taskAccessMode ?? accessMode,
           (tab && access.contents(tab.id)?.getURL()) || tab?.url || '',
@@ -1952,13 +1970,23 @@ export function registerAI(
             type: 'question',
             signal,
             message: `Allow AI to ${name.replace(/_/g, ' ')}?`,
-            detail: String(newDestination || tab?.name || 'Browser action'),
+            detail: creatingGroup
+              ? `Create “${groupName}” ${
+                  args.shareSession === true
+                    ? `sharing cookies and login with “${
+                        tab?.sessionName || tab?.name
+                      }”`
+                    : 'in a new login session'
+                } and switch AI scope to it. First website: ${newDestination}`
+              : String(newDestination || tab?.name || 'Browser action'),
             buttons: ['Cancel', 'Allow action'],
             defaultId: 0,
             cancelId: 0,
           },
           false,
-          true
+          true,
+          false,
+          creatingGroup && groupId !== null
         );
         check();
         return reviewed;
@@ -1967,8 +1995,8 @@ export function registerAI(
       if (answer.response !== 1)
         throw new Error('User declined this browser action.');
     };
-    if (name !== 'new_tab') await reviewEarly();
-    if (name === 'new_tab') {
+    if (name !== 'new_tab' && !creatingGroup) await reviewEarly();
+    if (name === 'new_tab' || creatingGroup) {
       const url = aiURL(args.url);
       const newId = randomUUID();
       if (groupId !== null && !tab)
@@ -1989,9 +2017,11 @@ export function registerAI(
         openerTabId: undefined,
         restorationId: undefined,
       };
+      if (creatingGroup) Object.assign(item, newGroupFields);
       if (access.createTab) {
         let created: WebContents | undefined;
-        const review = navigationReview(item, () => created);
+        let review: AINavigationReview | undefined;
+        if (!creatingGroup) review = navigationReview(item, () => created);
         try {
           await reviewEarly();
           workingTabId = newId;
@@ -2002,6 +2032,21 @@ export function registerAI(
             return contents;
           });
           signal.throwIfAborted();
+          if (creatingGroup) {
+            const current = access
+              .tabs()
+              .find((entry) => entry.id === newId && !entry.archived);
+            if (
+              !current ||
+              groupKey(current) !== item.sessionId ||
+              isGroupLocked(current)
+            )
+              throw new Error('New group creation was not confirmed.');
+            setScope(aiGroupId(current));
+            referencedGroupId = undefined;
+            workingTabId = newId;
+            review = navigationReview(item, () => created);
+          }
           review?.check?.();
           if (
             (created.getURL() && created.getURL() !== 'about:blank') ||
@@ -2027,7 +2072,21 @@ export function registerAI(
                 lifecycle,
                 review
               );
-              return { tabId: newId, ...destination, loaded: true };
+              return {
+                tabId: newId,
+                ...(creatingGroup
+                  ? {
+                      groupId: aiGroupId(item),
+                      name: groupName,
+                      sharedSession: args.shareSession === true,
+                      ...(args.shareSession === true
+                        ? { sourceGroupId: aiGroupId(tab!) }
+                        : {}),
+                    }
+                  : {}),
+                ...destination,
+                loaded: true,
+              };
             },
             { actionTimeoutMs: 30000, tabId: newId }
           );
@@ -5053,6 +5112,7 @@ export function registerAI(
           'create',
           'select',
           'delete',
+          'undo-delete',
           'draft',
           'rename',
           'reorder',
@@ -5110,7 +5170,7 @@ export function registerAI(
       store.current().checkpoint = activeCheckpoint;
       store.save();
       const target = 'id' in request ? store.find(request.id) : undefined;
-      if ('id' in request && !target)
+      if ('id' in request && !target && request.action !== 'undo-delete')
         throw new Error('Chat is no longer available.');
       if (request.action === 'select') {
         clearPrivateInputs();
@@ -5123,34 +5183,17 @@ export function registerAI(
         composerRevision += 1;
       }
       if (request.action === 'delete') {
-        const selection = store.current().id;
-        const approval = await showBrowserDialog(host, {
-          message: `Delete “${target!.title}”?`,
-          detail:
-            'This deletes this chat and its paused recovery state. Saved tasks and browser groups are kept.',
-          buttons: ['Cancel', 'Delete chat'],
-          defaultId: 0,
-          cancelId: 0,
-          destructive: true,
-        });
-        if (approval.response !== 1) return store.snapshot();
-        trusted(event);
-        if (
-          host.isDestroyed() ||
-          run ||
-          externalRun ||
-          taskDraftRun ||
-          dialogs.busy() ||
-          store.current().id !== selection
-        )
-          throw new Error(
-            'The current task changed. Try deleting the chat again.'
-          );
-        if (target?.checkpoint?.taskId)
-          tasks?.finishPaused(target.checkpoint.taskId, 'Chat deleted.');
-        target?.attachmentIds.forEach((id) => composerAttachments.remove(id));
         clearPrivateInputs();
-        store.delete(request.id);
+        store.deleteWithUndo(request.id, () => {
+          if (target?.checkpoint?.taskId)
+            tasks?.finishPaused(target.checkpoint.taskId, 'Chat deleted.');
+          target?.attachmentIds.forEach((id) => composerAttachments.remove(id));
+        });
+        composerRevision += 1;
+      }
+      if (request.action === 'undo-delete') {
+        clearPrivateInputs();
+        store.undoDelete(request.id);
         composerRevision += 1;
       }
       // History remains accessible after a group disappears. Keep its scope

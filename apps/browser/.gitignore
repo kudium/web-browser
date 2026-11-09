@@ -29,3 +29,6 @@ npm-debug.log.*
 *.scss.d.ts
 
 assets/native/kudiumbrowser-password-auth
+
+assets/native/kudium-space-gestures.node
+.erb/space-gesture-smoke-*/

@@ -1,3 +1,6 @@
+import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
+import { Archive } from '../Settings/tabs/Archive';
+import { spaceFooterMenu } from '../../../browser/spaceFooterMenu';
 import { StorageRecoveryBanner } from '../../UI/StorageRecoveryBanner';
 import {
   CSSProperties,
@@ -93,6 +96,7 @@ import { useAnchoredPreview } from '../../../utils/useAnchoredPreview';
 import {
   DOWNLOADS_PAGE,
   HISTORY_PAGE,
+  ARCHIVE_PAGE,
   adjacentSidebarPage,
 } from '../../../utils/sidebarNavigation';
 import { SidebarPager } from '../../UI/SidebarPager';
@@ -160,6 +164,7 @@ import { useAIPagePreference } from '../../../utils/useAIPagePreference';
 
 export function Main() {
   const groupAccess = useGroupAccess();
+  useArchiveRetention();
   const [aiActivityTab, setAIActivityTab] = useState<string>();
   const [aiWorkingTabIds, setAIWorkingTabIds] = useState<string[]>([]);
   useEffect(() => {
@@ -231,6 +236,7 @@ export function Main() {
   );
   const { spaces, active } = useSpaces();
   const [translucentChrome, setTranslucentChrome] = useState(true);
+  const [translucentAI, setTranslucentAI] = useState(false);
   const [showExtensionIcons, setShowExtensionIcons] = useState(true);
   const [tabDisplayMode, setTabDisplayMode] = useState<
     'horizontal' | 'hover' | 'click'
@@ -383,9 +389,9 @@ export function Main() {
   }>();
   const [findOpen, setFindOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
-  const [libraryTab, setLibraryTab] = useState<'downloads' | 'history'>(
-    'downloads'
-  );
+  const [libraryTab, setLibraryTab] = useState<
+    'downloads' | 'history' | 'archive'
+  >('downloads');
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const [activeDownloadCount, setActiveDownloadCount] = useState(0);
   useEffect(() => {
@@ -457,10 +463,19 @@ export function Main() {
   }, [compact, sidebarHidden]);
   const [sidebarDirection, setSidebarDirection] = useState(1);
   const libraryPage =
-    libraryTab === 'downloads' ? DOWNLOADS_PAGE : HISTORY_PAGE;
+    libraryTab === 'downloads'
+      ? DOWNLOADS_PAGE
+      : libraryTab === 'history'
+      ? HISTORY_PAGE
+      : ARCHIVE_PAGE;
   const sidebarPage = downloadsOpen ? libraryPage : active.id;
   const sidebarPages = useMemo(
-    () => [DOWNLOADS_PAGE, HISTORY_PAGE, ...spaces.map((space) => space.id)],
+    () => [
+      DOWNLOADS_PAGE,
+      HISTORY_PAGE,
+      ARCHIVE_PAGE,
+      ...spaces.map((space) => space.id),
+    ],
     [spaces]
   );
   const activateSidebarPage = useCallback(
@@ -469,8 +484,18 @@ export function Main() {
         sidebarPages.indexOf(page) >= sidebarPages.indexOf(sidebarPage) ? 1 : -1
       );
       setCompact(false);
-      if (page === DOWNLOADS_PAGE || page === HISTORY_PAGE) {
-        setLibraryTab(page === DOWNLOADS_PAGE ? 'downloads' : 'history');
+      if (
+        page === DOWNLOADS_PAGE ||
+        page === HISTORY_PAGE ||
+        page === ARCHIVE_PAGE
+      ) {
+        setLibraryTab(
+          page === DOWNLOADS_PAGE
+            ? 'downloads'
+            : page === HISTORY_PAGE
+            ? 'history'
+            : 'archive'
+        );
         setDownloadsOpen(true);
       } else {
         setDownloadsOpen(false);
@@ -492,8 +517,7 @@ export function Main() {
     ]);
     if (choice === 'downloads') activateSidebarPage(DOWNLOADS_PAGE);
     if (choice === 'history') activateSidebarPage(HISTORY_PAGE);
-    if (choice === 'archive')
-      browser.preferences('open', { section: 'archive' });
+    if (choice === 'archive') activateSidebarPage(ARCHIVE_PAGE);
     if (choice === 'browse') activateSidebarPage(active.id);
     if (choice === 'new-tab') setPaletteOpen(true);
     if (choice === 'new-space') openCreateSpace();
@@ -684,21 +708,21 @@ export function Main() {
       select(selected);
     }
   }, [appList, selected, selectedId, select]);
-  const applySpaceMenuChoice = async (choice: string) => {
+  const applySpaceMenuChoice = async (choice: string, target = active) => {
     if (choice && ['icon', 'rename', 'color'].includes(choice)) {
-      setEditingSpace(active.id);
-      setSpaceName(active.name);
-      setSpaceIcon(active.icon || 'layers');
-      setSpaceIconImage(active.iconImage || '');
-      setSpaceEmoji(active.iconEmoji || '');
-      setSpaceColor(active.color);
-      setSpaceCustomColor(active.customColor || '');
+      setEditingSpace(target.id);
+      setSpaceName(target.name);
+      setSpaceIcon(target.icon || 'layers');
+      setSpaceIconImage(target.iconImage || '');
+      setSpaceEmoji(target.iconEmoji || '');
+      setSpaceColor(target.color);
+      setSpaceCustomColor(target.customColor || '');
       setSpaceDialog(true);
     }
     if (choice === 'import-group') {
       const imported = await window.electron.siteDeveloper.transfer(
         'import',
-        active.id
+        target.id
       );
       if (imported) {
         AppManager.set([...AppManager.getAll(), ...imported.tabs]);
@@ -714,7 +738,7 @@ export function Main() {
       }
     }
     if (choice === 'new-group') {
-      setNewGroupSpace(active.id);
+      setNewGroupSpace(target.id);
       setEditingGroup({
         id: crypto.randomUUID(),
         sessionId: crypto.randomUUID(),
@@ -722,7 +746,7 @@ export function Main() {
         sessionName: '',
         url: 'about:blank',
         icon: '',
-        spaceId: active.id,
+        spaceId: target.id,
         pinned: true,
       });
     }
@@ -738,7 +762,7 @@ export function Main() {
         appList.map((item) =>
           !item.favorite &&
           item.pinned === false &&
-          (item.spaceId || 'default') === active.id
+          (item.spaceId || 'default') === target.id
             ? { ...item, archived: true }
             : item
         )
@@ -749,17 +773,17 @@ export function Main() {
       setFolderDialog(true);
     }
     if (choice === 'create') openCreateSpace();
-    if (choice === 'manage') browser.preferences('open');
+    if (choice === 'manage') browser.preferences('open', { section: 'spaces' });
     if (choice === 'delete' && spaces.length > 1) {
       if (
         await browser.confirm({
-          message: `Delete “${active.name}”?`,
+          message: `Delete “${target.name}”?`,
           detail:
             'Apps and tabs will move to another space. Their groups stay intact.',
           confirm: 'Delete space',
         })
       )
-        SpaceManager.remove(active.id);
+        SpaceManager.remove(target.id);
     }
   };
   const showSpaceMenu = async () => {
@@ -793,6 +817,28 @@ export function Main() {
       { id: 'delete', label: 'Delete Space…', enabled: spaces.length > 1 },
     ]);
     if (choice) await applySpaceMenuChoice(choice);
+  };
+  const showFooterMenu = async (spaceId?: string) => {
+    const target = spaces.find((space) => space.id === spaceId) || active;
+    const choice = await browser.nativeMenu(
+      spaceFooterMenu(spaces, sidebarPage, compact)
+    );
+    if (!choice) return;
+    if (choice.startsWith('space:')) {
+      const id = choice.slice('space:'.length);
+      if (spaces.some((space) => space.id === id)) activateSidebarPage(id);
+    } else if (choice === 'system:downloads')
+      activateSidebarPage(DOWNLOADS_PAGE);
+    else if (choice === 'system:history') activateSidebarPage(HISTORY_PAGE);
+    else if (choice === 'system:archive') activateSidebarPage(ARCHIVE_PAGE);
+    else if (choice === 'sidebar-mode') setCompact(!compact);
+    else if (choice === 'sidebar-hide') setSidebarHidden(true);
+    else if (choice === 'settings') await browser.preferences('open');
+    else {
+      if (['new-tab', 'new-group', 'folder', 'import-group'].includes(choice))
+        activateSidebarPage(target.id);
+      await applySpaceMenuChoice(choice, target);
+    }
   };
   const closePageTab = useCallback((item: IApp) => {
     const current = AppManager.getBy('id', item.id);
@@ -855,6 +901,7 @@ export function Main() {
       searchEngines: unknown;
       smartTabLabels: boolean;
       translucentChrome?: boolean;
+      translucentAI?: boolean;
       showExtensionIcons?: boolean;
       tabDisplayMode?: 'horizontal' | 'hover' | 'click';
       folderHoverPreviews?: boolean;
@@ -876,6 +923,7 @@ export function Main() {
       );
       setExtensionToolbarOrder(preferences.extensionToolbarOrder ?? null);
       setTranslucentChrome(preferences.translucentChrome !== false);
+      setTranslucentAI(preferences.translucentAI === true);
       setSmartLabelsEnabled(preferences.smartTabLabels !== false);
       localStorage.setItem(
         'kudiumbrowser-search-engine',
@@ -2494,9 +2542,28 @@ export function Main() {
           if ((event.target as HTMLElement).closest('.horizontal-tab')) return;
           event.preventDefault();
           event.stopPropagation();
+          const archivedTabs = AppManager.getAll().filter(
+            (item) =>
+              item.archived &&
+              groupKey(item) === groupKey(paneSelected) &&
+              (item.spaceId || 'default') ===
+                (paneSelected.spaceId || 'default') &&
+              !lockedGroup(item)
+          );
+          const closedTab =
+            (closedGroupUndo?.kind === 'tab' &&
+              archivedTabs.find(
+                (item) => item.id === closedGroupUndo.selectedId
+              )) ||
+            archivedTabs[archivedTabs.length - 1];
           browser
             .nativeMenu([
               { id: 'new', label: 'New Tab in This Group…' },
+              {
+                id: 'undo-close',
+                label: 'Undo Closed Tab',
+                enabled: !!closedTab,
+              },
               { id: 'reload', label: 'Reload Tab' },
               { id: 'duplicate', label: 'Duplicate Tab' },
               { type: 'separator' },
@@ -2512,14 +2579,18 @@ export function Main() {
                 select(paneSelected, side);
                 setPaletteOpen(true);
               }
+              if (choice === 'undo-close' && closedTab) {
+                const current = AppManager.getBy('id', closedTab.id);
+                if (current?.archived && !lockedGroup(current)) {
+                  select(AppManager.restore(current), side);
+                  if (closedGroupUndo?.selectedId === current.id)
+                    setClosedGroupUndo(undefined);
+                }
+              }
               if (choice === 'reload')
                 browser.command({ id: paneSelected.id, action: 'reload' });
               if (choice === 'duplicate') duplicate(paneSelected, true);
-              if (choice === 'close')
-                AppManager.update('id', paneSelected.id, {
-                  ...paneSelected,
-                  archived: true,
-                });
+              if (choice === 'close') closePageTab(paneSelected);
               if (choice === 'close-others') {
                 const ids = new Set(
                   paneTabs
@@ -2751,6 +2822,7 @@ export function Main() {
         sidebarResizing ? 'sidebar-resizing' : ''
       } ${aiResizing ? 'ai-resizing' : ''}`}
       data-glass={translucentChrome}
+      data-ai-glass={translucentAI}
       style={
         {
           '--sidebar-width': `${sidebarWidth}px`,
@@ -2910,28 +2982,84 @@ export function Main() {
         >
           {downloadsOpen ? (
             <div className="browser-sidebar-library">
-              <button
-                type="button"
-                className="sidebar-library-title system-page-title"
-                aria-label="Choose system space"
-                onClick={() => {
-                  showSystemMenu().catch((error) =>
-                    setMoveMessage(String(error))
-                  );
-                }}
+              <div
+                className="system-space-tabs"
+                role="tablist"
+                aria-label="System spaces"
               >
-                {libraryTab === 'downloads' ? 'Downloads' : 'History'}
-                <ChevronDown size={14} />
-              </button>
-              {libraryTab === 'downloads' ? (
-                <Downloads embedded />
-              ) : (
-                <History
-                  navigate={(url) => {
-                    command('navigate', url);
-                  }}
-                />
-              )}
+                {(['downloads', 'history', 'archive'] as const).map((tab) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    key={tab}
+                    id={`system-${tab}-tab`}
+                    aria-controls="system-space-panel"
+                    aria-selected={libraryTab === tab}
+                    tabIndex={libraryTab === tab ? 0 : -1}
+                    onClick={() =>
+                      activateSidebarPage(
+                        tab === 'downloads'
+                          ? DOWNLOADS_PAGE
+                          : tab === 'history'
+                          ? HISTORY_PAGE
+                          : ARCHIVE_PAGE
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (
+                        !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(
+                          event.key
+                        )
+                      )
+                        return;
+                      event.preventDefault();
+                      const tabs = ['downloads', 'history', 'archive'] as const;
+                      const index =
+                        event.key === 'Home'
+                          ? 0
+                          : event.key === 'End'
+                          ? 2
+                          : (tabs.indexOf(tab) +
+                              (event.key === 'ArrowLeft' ? 2 : 1)) %
+                            3;
+                      const next = tabs[index];
+                      activateSidebarPage(
+                        next === 'downloads'
+                          ? DOWNLOADS_PAGE
+                          : next === 'history'
+                          ? HISTORY_PAGE
+                          : ARCHIVE_PAGE
+                      );
+                      requestAnimationFrame(() =>
+                        document.getElementById(`system-${next}-tab`)?.focus()
+                      );
+                    }}
+                  >
+                    {tab === 'downloads'
+                      ? 'Downloads'
+                      : tab === 'history'
+                      ? 'History'
+                      : 'Archive'}
+                  </button>
+                ))}
+              </div>
+              <div
+                id="system-space-panel"
+                role="tabpanel"
+                aria-labelledby={`system-${libraryTab}-tab`}
+              >
+                {libraryTab === 'downloads' ? (
+                  <Downloads embedded />
+                ) : libraryTab === 'archive' ? (
+                  <Archive embedded />
+                ) : (
+                  <History
+                    navigate={(url) => {
+                      command('navigate', url);
+                    }}
+                  />
+                )}
+              </div>
             </div>
           ) : (
             <>
@@ -3413,7 +3541,19 @@ export function Main() {
         <BrowserImportSuggestion />
         <FirstGroupSyncSuggestion tabs={appList} />
         <AppUpdateBanner compact={compact} />
-        <div className="sidebar-bottom">
+        <div
+          className="sidebar-bottom"
+          onContextMenu={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const spaceId = (event.target as HTMLElement).closest<HTMLElement>(
+              '[data-footer-space]'
+            )?.dataset.footerSpace;
+            showFooterMenu(spaceId).catch((error) =>
+              setMoveMessage(String(error))
+            );
+          }}
+        >
           <div
             className="system-space-switcher"
             role="group"
@@ -3433,12 +3573,6 @@ export function Main() {
                 onClick={() => {
                   if (downloadsOpen) activateSidebarPage(active.id);
                   else activateSidebarPage(libraryPage);
-                }}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  showSystemMenu().catch((error) =>
-                    setMoveMessage(String(error))
-                  );
                 }}
               >
                 <Library size={18} />
@@ -3476,11 +3610,15 @@ export function Main() {
                       ? { color: space.customColor }
                       : undefined
                   }
+                  data-footer-space={space.id}
                   aria-label={`Switch to ${space.name}`}
                   aria-pressed={sidebarPage === space.id}
                   onClick={() => activateSidebarPage(space.id)}
                 >
-                  <SpaceIcon space={space} />
+                  <span className="space-switch-icon" aria-hidden="true">
+                    <SpaceIcon space={space} />
+                  </span>
+                  <span className="space-switch-dot" aria-hidden="true" />
                 </button>
               </Tooltip>
             ))}
@@ -3605,7 +3743,7 @@ export function Main() {
             </button>
           </div>
         )}
-        {closedGroupUndo && (
+        {closedGroupUndo?.kind === 'group' && (
           <div className="tab-move-message" role="status">
             Closed “{closedGroupUndo.name}”.
             <button type="button" onClick={undoCloseGroup}>

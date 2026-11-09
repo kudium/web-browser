@@ -49,52 +49,58 @@ function pendingRequest() {
   return { requester, callback, pending, answer };
 }
 
-it.each([
-  [undefined, 'ask', true],
-  ['ask', 'ask', true],
-  ['allow', 'ask', true],
-  ['block', 'ask', false],
-  ['allow', 'block', false],
-  [undefined, 'block', false],
-])(
-  'handles persistent storage silently with site %s and global %s',
-  async (choice, globalChoice, allowed) => {
-    (getBrowserPreferences as jest.Mock).mockReturnValue({
-      permissions: globalChoice,
-    });
-    (getSiteSettings as jest.Mock).mockReturnValue({
-      permissions: { 'persistent-storage': choice },
-    });
+describe.each([
+  'persistent-storage',
+  'storage-access',
+  'top-level-storage-access',
+])('%s', (permission) => {
+  it.each([
+    [undefined, 'ask', true],
+    ['ask', 'ask', true],
+    ['allow', 'ask', true],
+    ['block', 'ask', false],
+    ['allow', 'block', false],
+    [undefined, 'block', false],
+  ])(
+    'handles storage access silently with site %s and global %s',
+    async (choice, globalChoice, allowed) => {
+      (getBrowserPreferences as jest.Mock).mockReturnValue({
+        permissions: globalChoice,
+      });
+      (getSiteSettings as jest.Mock).mockReturnValue({
+        permissions: { [permission]: choice },
+      });
+      const check = websitePermissionCheckHandler('profile');
+      expect(
+        check(null, permission as any, 'https://chatgpt.com', {} as any)
+      ).toBe(allowed);
+      const callback = jest.fn();
+      await websitePermissionHandler({} as any, 'profile')(
+        { isDestroyed: () => false } as any,
+        permission as any,
+        callback,
+        { requestingUrl: 'https://chatgpt.com/' } as any
+      );
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(allowed);
+      expect(showBrowserDialog).not.toHaveBeenCalled();
+      expect(updateSiteSettings).not.toHaveBeenCalled();
+    }
+  );
+
+  it('denies storage access without a valid requesting origin', async () => {
     const check = websitePermissionCheckHandler('profile');
-    expect(
-      check(null, 'persistent-storage', 'https://chatgpt.com', {} as any)
-    ).toBe(allowed);
+    expect(check(null, permission as any, 'null', {} as any)).toBe(false);
     const callback = jest.fn();
     await websitePermissionHandler({} as any, 'profile')(
       { isDestroyed: () => false } as any,
-      'persistent-storage',
+      permission as any,
       callback,
-      { requestingUrl: 'https://chatgpt.com/' } as any
+      { requestingUrl: '', isMainFrame: false } as any
     );
-    expect(callback).toHaveBeenCalledTimes(1);
-    expect(callback).toHaveBeenCalledWith(allowed);
+    expect(callback).toHaveBeenCalledWith(false);
     expect(showBrowserDialog).not.toHaveBeenCalled();
-    expect(updateSiteSettings).not.toHaveBeenCalled();
-  }
-);
-
-it('denies persistent storage without a valid requesting origin', async () => {
-  const check = websitePermissionCheckHandler('profile');
-  expect(check(null, 'persistent-storage', 'null', {} as any)).toBe(false);
-  const callback = jest.fn();
-  await websitePermissionHandler({} as any, 'profile')(
-    { isDestroyed: () => false } as any,
-    'persistent-storage',
-    callback,
-    { requestingUrl: '', isMainFrame: false } as any
-  );
-  expect(callback).toHaveBeenCalledWith(false);
-  expect(showBrowserDialog).not.toHaveBeenCalled();
+  });
 });
 
 it('global blocking overrides an open permission prompt without saving approval', async () => {

@@ -13,6 +13,7 @@ import {
   shell,
   WebContents,
 } from 'electron';
+import { expiredRecord, retentionCutoff } from '../browser/systemSpaceRetention';
 import { nativeMenuLabels } from '../browser/menuLabels';
 import {
   DownloadAction,
@@ -169,6 +170,16 @@ function commitRecords(next: DownloadRecord[]) {
   if (timer) clearTimeout(timer);
   timer = undefined;
   publish();
+}
+export function pruneDownloadHistory(days: number, now = Date.now()) {
+  const cutoff = retentionCutoff(days, now);
+  if (cutoff === undefined) return 0;
+  const current = history();
+  if (recoveryBlocked) return 0;
+  const next = current.filter(record => items.has(record.id) || !expiredRecord(record.endedAt ?? record.startedAt, cutoff));
+  if (next.length === current.length) return 0;
+  commitRecords(next);
+  return current.length - next.length;
 }
 function persist() {
   try {

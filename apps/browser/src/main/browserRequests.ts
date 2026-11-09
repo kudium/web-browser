@@ -93,6 +93,7 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
   );
 }
 const commands = new Set<BrowserCommand['action']>([
+  'focus-chrome',
   'back',
   'forward',
   'reload',

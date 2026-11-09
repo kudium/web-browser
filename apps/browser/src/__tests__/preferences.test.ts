@@ -476,3 +476,37 @@ it('defaults updates to automatic and persists explicit opt-outs', () => {
   expect(getBrowserPreferences()).toEqual(expect.objectContaining({ automaticallyDownloadUpdates: false, automaticallyInstallUpdates: false }));
   updateBrowserPreferences({ automaticallyDownloadUpdates: true, automaticallyInstallUpdates: true });
 });
+
+it('keeps AI glass opt-in and persists it independently of sidebar glass', () => {
+  expect(defaultPreferences.translucentAI).toBe(false);
+  expect(() => validatePreferences({ translucentAI: 'yes' } as any)).toThrow(
+    'Invalid preference'
+  );
+  const sidebarGlass = getBrowserPreferences().translucentChrome;
+  updateBrowserPreferences({ translucentAI: true });
+  expect(getBrowserPreferences().translucentAI).toBe(true);
+  expect(getBrowserPreferences().translucentChrome).toBe(sidebarGlass);
+  updateBrowserPreferences({ translucentAI: false });
+  expect(getBrowserPreferences().translucentAI).toBe(false);
+});
+
+it('defaults system records to fourteen days and persists every retention option', () => {
+  expect(defaultPreferences.systemSpaceRetentionDays).toBe(14);
+  for (const days of [14, 30, 90, 0]) {
+    updateBrowserPreferences({ systemSpaceRetentionDays: days });
+    expect(getBrowserPreferences().systemSpaceRetentionDays).toBe(days);
+    expect(JSON.parse(fs.readFileSync('/preferences-test/browser-preferences.json', 'utf8') as string).systemSpaceRetentionDays).toBe(days);
+  }
+  for (const days of [-1, 1, 7, 7.5, NaN, '7', null]) {
+    expect(() => validatePreferences({ systemSpaceRetentionDays: days } as any)).toThrow();
+  }
+  updateBrowserPreferences({ systemSpaceRetentionDays: 14 });
+});
+
+it('upgrades saved seven-day retention without resetting other preferences', () => {
+  const location = jest.spyOn(app, 'getPath').mockReturnValue('/retention-upgrade');
+  const read = jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify({ systemSpaceRetentionDays: 7, permissions: 'block' }));
+  try {
+    expect(getBrowserPreferences()).toMatchObject({ systemSpaceRetentionDays: 14, permissions: 'block' });
+  } finally { read.mockRestore(); location.mockRestore(); }
+});
