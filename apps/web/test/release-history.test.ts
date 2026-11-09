@@ -63,3 +63,38 @@ test('invalid queries are rejected and empty pages provide useful navigation', a
   const populated = createApp({ db: fakeDatabase([row('1.0.0')]), assetOrigins: [origin] });
   expect(await (await populated.request('/releases?page=2')).text()).toContain('Return to the first page');
 });
+
+
+test('Get Browser links open the download page', async () => {
+  const app = createApp({ db: fakeDatabase([]), assetOrigins: [origin] });
+  const html = await (await app.request('/')).text();
+  const links = [...html.matchAll(/<a[^>]*href="([^"]+)"[^>]*>\s*Get Browser/g)].map(match => match[1]);
+  expect(links.length).toBeGreaterThan(0);
+  expect(links.every(href => href === '/download')).toBe(true);
+});
+
+test('download page shows five most recent versions with all architecture downloads', async () => {
+  const rows = Array.from({ length: 8 }, (_, index) => [row(`1.0.${index}`), row(`1.0.${index}`, 'x64')]).flat();
+  rows[14].manifest.notes = '<script>unsafe()</script>';
+  const app = createApp({ db: fakeDatabase(rows), assetOrigins: [origin] });
+  const response = await app.request('/download');
+  expect(response.status).toBe(200);
+  expect(response.headers.get('Cache-Control')).toBe('no-store');
+  const html = await response.text();
+  expect(html).toContain('Recent releases');
+  expect((html.match(/class="release-card"/g) || []).length).toBe(5);
+  expect([...html.matchAll(/<h3>(1\.0\.\d)<\/h3>/g)].map(match => match[1])).toEqual(['1.0.7', '1.0.6', '1.0.5', '1.0.4', '1.0.3']);
+  for (const arch of ['arm64', 'x64']) expect(html).toContain(`href="${origin}/1.0.7/${arch}/browser.dmg"`);
+  expect(html).toContain('&lt;script&gt;unsafe()');
+  expect(html).not.toContain('<script>unsafe()');
+  expect(html).not.toContain(`${origin}/1.0.2/`);
+});
+
+test('download history displays available versions and an empty state without placeholders', async () => {
+  const empty = createApp({ db: fakeDatabase([]), assetOrigins: [origin] });
+  expect(await (await empty.request('/download')).text()).toContain('No published versions yet.');
+  const one = createApp({ db: fakeDatabase([row('1.0.3')]), assetOrigins: [origin] });
+  const html = await (await one.request('/download')).text();
+  expect((html.match(/class="release-card"/g) || []).length).toBe(1);
+  expect(html).not.toContain('No published versions yet.');
+});

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { serviceOrigin } from "./config";
 import { tutorials, type Tutorial } from "./tutorials";
-import type { groupReleaseHistory } from "./releases";
+import type { groupReleaseHistory, ReleaseHistoryEntry } from "./releases";
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
 function Layout({
@@ -525,7 +525,95 @@ export function homepage() {
     )
   );
 }
-export function downloadPage() {
+function ReleaseList({
+  entries,
+  compact = false,
+}: {
+  entries: ReleaseHistoryEntry[];
+  compact?: boolean;
+}) {
+  const platformName = { darwin: "macOS", win32: "Windows", linux: "Linux" };
+  return (
+    <div className="release-list">
+      {entries.map((release) => (
+        <article
+          className="release-card"
+          key={`${release.channel}/${release.version}`}
+        >
+          <div className="release-card-heading">
+            {compact ? <h3>{release.version}</h3> : <h2>{release.version}</h2>}
+            <span
+              className={`release-channel release-channel-${release.channel}`}
+            >
+              {release.channel === "stable" ? "Stable" : "Beta"}
+            </span>
+            <time dateTime={release.publishedAt}>
+              {new Date(release.publishedAt).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+                timeZone: "UTC",
+              })}
+            </time>
+          </div>
+          <div className="release-notes">
+            {release.notes.length ? (
+              release.notes.map((note, index) => <p key={index}>{note}</p>)
+            ) : (
+              <p>No release notes were provided.</p>
+            )}
+          </div>
+          <div className="release-downloads">
+            {release.targets.map((target) => (
+              <section key={`${target.platform}/${target.arch}`}>
+                <h3>
+                  {platformName[target.platform]} ·{" "}
+                  {target.platform === "darwin"
+                    ? target.arch === "arm64"
+                      ? "Apple silicon"
+                      : "Intel"
+                    : target.arch === "arm64"
+                    ? "ARM64"
+                    : "Intel / AMD"}
+                </h3>
+                <div>
+                  {target.files.map((file) => {
+                    const name =
+                      new URL(file.url).pathname.split("/").at(-1) ||
+                      "Installer";
+                    const format = name.toLowerCase().endsWith(".dmg")
+                      ? "DMG"
+                      : name.toLowerCase().endsWith(".zip")
+                      ? "ZIP"
+                      : name.toLowerCase().endsWith(".exe")
+                      ? "Installer"
+                      : name.toLowerCase().endsWith(".appimage")
+                      ? "AppImage"
+                      : "Download";
+                    return (
+                      <a
+                        key={file.url}
+                        href={file.url}
+                        aria-label={`Download ${release.version} for ${
+                          platformName[target.platform]
+                        } ${target.arch}, ${format}`}
+                      >
+                        {format}
+                        <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function downloadPage(recentReleases: ReleaseHistoryEntry[] = []) {
   return "<!doctype html>" + renderToStaticMarkup(
     <Layout title="Download" canonicalPath="/download">
       <main className="download-page">
@@ -572,7 +660,13 @@ export function downloadPage() {
               </article>
             ))}
           </div>
-          <p className="availability">Builds are available as releases are published. <a href="/releases">Browse all versions</a> · <a href="/docs#updates">About updates</a></p>
+          <p className="availability">Builds are available as releases are published. <a href="/docs#updates">About updates</a></p>
+        </section>
+        <section className="download-release-history" aria-labelledby="download-history-title">
+          <h2 id="download-history-title">Recent releases</h2>
+          <p className="download-history-intro">The five most recent published versions, with downloads for each computer.</p>
+          {recentReleases.length ? <ReleaseList entries={recentReleases} compact /> : <p className="release-empty">No published versions yet.</p>}
+          <a className="text-link" href="/releases">Browse all versions →</a>
         </section>
       </main>
       <script src="/assets/download.js" defer />
@@ -582,7 +676,6 @@ export function downloadPage() {
 
 export function releaseHistoryPage(history: ReturnType<typeof groupReleaseHistory>, channel: 'all' | 'stable' | 'beta') {
   const pageUrl = (page: number) => `/releases?channel=${channel}&page=${page}`;
-  const platformName = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
   return '<!doctype html>' + renderToStaticMarkup(
     <Layout title="Release history" canonicalPath="/releases">
       <main className="release-history">
@@ -596,13 +689,7 @@ export function releaseHistoryPage(history: ReturnType<typeof groupReleaseHistor
           {(['all', 'stable', 'beta'] as const).map(value => <a key={value} href={`/releases?channel=${value}`} aria-current={channel === value ? 'page' : undefined}>{value === 'all' ? 'All versions' : value === 'stable' ? 'Stable' : 'Beta'}</a>)}
         </nav>
         <p className="release-history-help">Beta versions let you try upcoming changes. Before installing an older version, back up your browser data; newer data may not work with it.</p>
-        {history.releases.length === 0 ? <section className="release-empty"><h2>{history.total ? 'No versions on this page.' : 'No published versions yet.'}</h2><p>{history.total ? 'Return to the first page to browse available releases.' : 'Downloads will appear here when a release is published.'}</p>{history.total > 0 && <a className="text-link" href={pageUrl(1)}>View releases →</a>}</section> : <div className="release-list">
-          {history.releases.map(release => <article className="release-card" key={`${release.channel}/${release.version}`}>
-            <div className="release-card-heading"><h2>{release.version}</h2><span className={`release-channel release-channel-${release.channel}`}>{release.channel === 'stable' ? 'Stable' : 'Beta'}</span><time dateTime={release.publishedAt}>{new Date(release.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</time></div>
-            <div className="release-notes">{release.notes.length ? release.notes.map((note, index) => <p key={index}>{note}</p>) : <p>No release notes were provided.</p>}</div>
-            <div className="release-downloads">{release.targets.map(target => <section key={`${target.platform}/${target.arch}`}><h3>{platformName[target.platform]} · {target.platform === 'darwin' ? (target.arch === 'arm64' ? 'Apple silicon' : 'Intel') : target.arch === 'arm64' ? 'ARM64' : 'Intel / AMD'}</h3><div>{target.files.map(file => { const name = new URL(file.url).pathname.split('/').at(-1) || 'Installer'; const format = name.toLowerCase().endsWith('.dmg') ? 'DMG' : name.toLowerCase().endsWith('.zip') ? 'ZIP' : name.toLowerCase().endsWith('.exe') ? 'Installer' : name.toLowerCase().endsWith('.appimage') ? 'AppImage' : 'Download'; return <a key={file.url} href={file.url} aria-label={`Download ${release.version} for ${platformName[target.platform]} ${target.arch}, ${format}`}>{format}<span>{(file.size / 1024 / 1024).toFixed(1)} MB</span></a>; })}</div></section>)}</div>
-          </article>)}
-        </div>}
+        {history.releases.length === 0 ? <section className="release-empty"><h2>{history.total ? 'No versions on this page.' : 'No published versions yet.'}</h2><p>{history.total ? 'Return to the first page to browse available releases.' : 'Downloads will appear here when a release is published.'}</p>{history.total > 0 && <a className="text-link" href={pageUrl(1)}>View releases →</a>}</section> : <ReleaseList entries={history.releases} />}
         {history.releases.length > 0 && history.totalPages > 1 && <nav className="release-pagination" aria-label="Release pages">{history.page > 1 && <a href={pageUrl(history.page - 1)}>← Newer versions</a>}<span>Page {history.page} of {history.totalPages}</span>{history.page < history.totalPages && <a href={pageUrl(history.page + 1)}>Older versions →</a>}</nav>}
       </main>
     </Layout>
