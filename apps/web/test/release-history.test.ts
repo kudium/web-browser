@@ -46,7 +46,7 @@ test('public HTML and API show version downloads, escaped notes and channel filt
   expect(html).toContain(`href="${stable.manifest.files[0].url}"`);
   expect(html).toContain('&lt;script&gt;'); expect(html).not.toContain('<script>alert');
   expect(html).toContain('aria-label="Release channel"');
-  expect(html).toContain('November 8, 2026');
+  expect(html).toContain('Nov 8, 2026');
   const api = await app.request('/v1/releases?channel=beta');
   const data = await api.json();
   expect(data.releases.map((r: { version: string }) => r.version)).toEqual(['1.11.0-beta.1']);
@@ -82,7 +82,7 @@ test('download page shows five most recent versions with all architecture downlo
   expect(response.headers.get('Cache-Control')).toBe('no-store');
   const html = await response.text();
   expect(html).toContain('Recent releases');
-  expect((html.match(/class="release-card"/g) || []).length).toBe(5);
+  expect((html.match(/class="release-row"/g) || []).length).toBe(5);
   expect([...html.matchAll(/<h3>(1\.0\.\d)<\/h3>/g)].map(match => match[1])).toEqual(['1.0.7', '1.0.6', '1.0.5', '1.0.4', '1.0.3']);
   for (const arch of ['arm64', 'x64']) expect(html).toContain(`href="${origin}/1.0.7/${arch}/browser.dmg"`);
   expect(html).toContain('&lt;script&gt;unsafe()');
@@ -95,6 +95,6 @@ test('download history displays available versions and an empty state without pl
   expect(await (await empty.request('/download')).text()).toContain('No published versions yet.');
   const one = createApp({ db: fakeDatabase([row('1.0.3')]), assetOrigins: [origin] });
   const html = await (await one.request('/download')).text();
-  expect((html.match(/class="release-card"/g) || []).length).toBe(1);
+  expect((html.match(/class="release-row"/g) || []).length).toBe(1);
   expect(html).not.toContain('No published versions yet.');
 });
