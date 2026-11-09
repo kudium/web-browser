@@ -44,7 +44,7 @@ function Layout({
           />
         )}
         <link rel="icon" href="/assets/product/origin-logo.png" />
-        <link rel="stylesheet" href="/assets/site.css?v=22" />
+        <link rel="stylesheet" href="/assets/site.css?v=23" />
       </head>
       <body className={privatePage ? "account-page" : undefined}>
         <header>
@@ -1092,40 +1092,59 @@ export function accountPage(
   email: string,
   usage: { usedBytes: number; recordCount: number; quotas: { bytes: number } }
 ) {
+  const capacity = Math.max(0, usage.quotas.bytes);
+  const used = Math.max(0, usage.usedBytes);
+  const percent = capacity > 0 ? Math.min(100, (used / capacity) * 100) : 0;
+  const usedLabel = used === 0 ? "0 MB" : used < 1024 * 1024
+    ? `${(used / 1024).toFixed(1)} KB` : `${(used / 1024 / 1024).toFixed(1)} MB`;
+  const capacityLabel = `${(capacity / 1024 / 1024).toLocaleString()} MB`;
   return (
     "<!doctype html>" +
     renderToStaticMarkup(
-      <Layout privatePage>
-        <main className="auth-layout">
-          <section className="auth-intro">
-            <h1>Your account dashboard.</h1>
-            <p>{name} · {email}</p>
-            <p className="auth-note">
-              Connect your desktop app in Preferences → Sync. Your recovery key unlocks encrypted browsing data across devices.
-            </p>
-          </section>
-          <section className="auth-card">
-            <h2>Your sync storage</h2>
-            <p>
-              {(usage.usedBytes / 1024 / 1024).toFixed(2)} MiB of{" "}
-              {usage.quotas.bytes / 1024 / 1024} MiB used
-            </p>
-            <p>{usage.recordCount} record IDs, including deleted records.</p>
-            <a className="text-link" href="/docs#sync">
-              Read about encrypted sync →
-            </a>
-            <hr />
-            <h2>Signed-in devices and sessions</h2>
-            <div data-account-sessions />
-            <p>Revoke a lost device to stop future sync access. Data already downloaded cannot be erased remotely.</p>
-            <button className="button" data-sign-out>
-              Sign out →
-            </button>
-            <p data-auth-message role="status" aria-live="polite" />
-          </section>
+      <Layout privatePage title="Account">
+        <main className="account-dashboard">
+          <div className="account-heading">
+            <div>
+              <p className="account-eyebrow">Account</p>
+              <h1>{name ? `Hello, ${name}.` : "Your account."}</h1>
+              <p className="account-email">{email}</p>
+            </div>
+            <button className="account-button" type="button" data-sign-out>Sign out</button>
+          </div>
+          <p className="account-status" data-auth-message role="status" aria-live="polite" />
+          <div className="account-grid">
+            <div className="account-summary">
+              <section className="account-panel" aria-labelledby="storage-heading">
+                <div className="account-section-heading">
+                  <h2 id="storage-heading">Sync storage</h2>
+                  <span className="account-badge">Encrypted</span>
+                </div>
+                <div className="account-storage-value"><strong>{usedLabel}</strong><span>of {capacityLabel} used</span></div>
+                <div className="account-storage-track" role="meter" aria-label="Sync storage used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${usedLabel} of ${capacityLabel} used`}>
+                  <span style={{ width: `${percent}%` }} />
+                </div>
+                <div className="account-storage-details">
+                  <span>{percent === 0 ? "0" : percent < 1 ? "<1" : Math.round(percent)}% used</span>
+                  <span title="Includes records marked as deleted.">{usage.recordCount.toLocaleString()} stored {usage.recordCount === 1 ? "record" : "records"}</span>
+                </div>
+                <p className="account-caption">Your browsing data is encrypted before it leaves your device.</p>
+                <a className="account-text-link" href="/docs#sync">About encrypted sync <span aria-hidden="true">↗</span></a>
+              </section>
+              <aside className="account-sync-note">
+                <span className="account-note-icon" aria-hidden="true">↔</span>
+                <div><h2>Bring your devices together.</h2><p>Open Preferences → Sync in Kudium Browser to connect a device. Keep your recovery key somewhere safe.</p></div>
+              </aside>
+            </div>
+            <section className="account-panel account-devices" aria-labelledby="devices-heading">
+              <div className="account-section-heading"><h2 id="devices-heading">Devices &amp; sessions</h2><span className="account-device-count" data-account-session-count /></div>
+              <p className="account-section-description">Manage where you're signed in.</p>
+              <div className="account-session-list" data-account-sessions aria-busy="true"><p className="account-session-status" role="status">Loading your devices…</p></div>
+              <p className="account-device-footnote">Signing out a device stops future sync access. Data already on that device stays there.</p>
+            </section>
+          </div>
         </main>
         <script src="/assets/auth.js" defer />
-        <script src="/assets/sessions.js" defer />
+        <script src="/assets/sessions.js?v=2" defer />
       </Layout>
     )
   );
