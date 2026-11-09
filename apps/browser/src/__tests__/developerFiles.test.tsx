@@ -244,7 +244,10 @@ it('keeps unsaved edits on save failure, confirms closing and saves the expected
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   const updated = { ...original, text: 'my edits', version: 'b'.repeat(64) };
   files.mockResolvedValueOnce({ path: 'edit.ts', file: updated });
-  fireEvent.keyDown(editor, { key: 's', ctrlKey: true });
+  editor.focus();
+  act(() => {
+    window.dispatchEvent(new Event('developer-save-file'));
+  });
   await screen.findByText('edit.ts · Saved');
   expect(files).toHaveBeenLastCalledWith('editable', {
     action: 'save',

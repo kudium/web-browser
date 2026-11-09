@@ -203,7 +203,16 @@ export function registerElectronBrowser(
           : BrowserWindow.fromWebContents(contents) || window;
         if (action === 'new-window' && windows)
           windows.open(host, 'workspace').catch(() => {});
-        else host.webContents.send('browser-shortcut', action);
+        else
+          host.webContents.send(
+            'browser-shortcut',
+            action === 'sidebar' &&
+              input.key.toLowerCase() === 's' &&
+              !input.shift &&
+              !input.alt
+              ? 'sidebar-or-save'
+              : action
+          );
       }
     };
     contents.on('before-input-event', listener);
@@ -2091,7 +2100,10 @@ export function registerElectronBrowser(
     chrome: (host) => {
       const stopGestures = registerSpaceGestures(host);
       gestureCleanup.add(stopGestures);
-      host.once('closed', () => { stopGestures(); gestureCleanup.delete(stopGestures); });
+      host.once('closed', () => {
+        stopGestures();
+        gestureCleanup.delete(stopGestures);
+      });
       keyboard(host.webContents);
       const capture = registerPageCapture(host, (id) =>
         windows.allows(host, id) ? views.get(id)?.webContents : undefined

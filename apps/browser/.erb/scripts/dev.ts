@@ -7,6 +7,11 @@ import preloadConfiguration from '../configs/webpack.config.preload.dev';
 import rendererConfiguration from '../configs/webpack.config.renderer.dev';
 
 const detectPort: (port: number) => Promise<number> = require('detect-port');
+const {
+  developmentElectronPath,
+}: {
+  developmentElectronPath: () => string;
+} = require('./brand-development-app.cjs');
 
 const mainCompiler = webpack(mainConfiguration);
 const preloadCompiler = webpack(preloadConfiguration);
@@ -73,7 +78,7 @@ function launchElectron() {
     (arg) => arg.replace(/^"|"$/g, '')
   );
   electron = spawn(
-    require('electron'),
+    developmentElectronPath(),
     ['.erb/dll/main.js', ...mainArgs, ...process.argv.slice(2)],
     { stdio: 'inherit', env: process.env }
   );

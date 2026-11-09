@@ -5,9 +5,47 @@ import {
   bindingFromInput,
   exportShortcuts,
   importShortcuts,
+  restoreShortcuts,
 } from '../browser/shortcuts';
 import { moveGroupToFolder, removeGroupFolder } from '../utils/sessionFolders';
 import { IApp } from '../types';
+
+it('toggles both sidebars with portable defaults and preserves saved custom bindings', () => {
+  expect(matchShortcut({ key: 's', meta: true }, defaultShortcuts, true)).toBe(
+    'sidebar'
+  );
+  expect(matchShortcut({ key: 'i', meta: true }, defaultShortcuts, true)).toBe(
+    'ai-sidebar'
+  );
+  expect(
+    matchShortcut({ key: 's', control: true }, defaultShortcuts, false)
+  ).toBe('sidebar');
+  expect(
+    matchShortcut({ key: 'i', control: true }, defaultShortcuts, false)
+  ).toBe('ai-sidebar');
+  const legacy: Partial<typeof defaultShortcuts> = {
+    ...defaultShortcuts,
+    sidebar: ['Mod+Shift+KeyS'],
+  };
+  delete legacy['ai-sidebar'];
+  expect(restoreShortcuts(legacy)).toEqual(defaultShortcuts);
+  const custom = restoreShortcuts({
+    ...legacy,
+    sidebar: [],
+    history: ['Mod+KeyI'],
+    downloads: ['Mod+KeyS'],
+  });
+  expect(custom.sidebar).toEqual([]);
+  expect(custom.history).toEqual(['Mod+KeyI']);
+  expect(custom['ai-sidebar']).toEqual([]);
+  expect(
+    restoreShortcuts({ ...legacy, downloads: ['Mod+KeyS'] }).sidebar
+  ).toEqual(['Mod+Shift+KeyS']);
+  const file = JSON.parse(exportShortcuts(defaultShortcuts));
+  delete file.bindings['ai-sidebar'];
+  file.bindings.sidebar = ['Mod+Shift+KeyS'];
+  expect(importShortcuts(JSON.stringify(file))).toEqual(defaultShortcuts);
+});
 
 it('matches shifted brackets, respects exact modifiers and platform-specific Mod', () => {
   expect(

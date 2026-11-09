@@ -35,7 +35,12 @@ export const shortcutActions = [
   { id: 'reopen-tab', title: 'Reopen closed tab', keys: ['Mod+Shift+KeyT'] },
   { id: 'next-tab', title: 'Next tab', keys: ['Control+Tab'] },
   { id: 'previous-tab', title: 'Previous tab', keys: ['Control+Shift+Tab'] },
-  { id: 'sidebar', title: 'Toggle sidebar', keys: ['Mod+Shift+KeyS'] },
+  {
+    id: 'sidebar',
+    title: 'Toggle Space sidebar',
+    keys: ['Mod+KeyS', 'Mod+Shift+KeyS'],
+  },
+  { id: 'ai-sidebar', title: 'Toggle AI assistant', keys: ['Mod+KeyI'] },
   { id: 'next-space', title: 'Next space', keys: ['Mod+Alt+Shift+ArrowRight'] },
   {
     id: 'previous-space',
@@ -117,6 +122,42 @@ export function validateShortcuts(
     });
   });
   return result;
+}
+
+/** Upgrade saved defaults without taking keys assigned to another action. */
+export function restoreShortcuts(value: unknown, mac = true): ShortcutBindings {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return validateShortcuts(value, mac);
+  const saved = { ...value } as Partial<ShortcutBindings>;
+  const assigned = (binding: string) =>
+    Object.entries(saved).some(
+      ([id, keys]) =>
+        id !== 'sidebar' &&
+        Array.isArray(keys) &&
+        keys.some(
+          (key) =>
+            typeof key === 'string' &&
+            canonical(key, mac) === canonical(binding, mac)
+        )
+    );
+  if (
+    JSON.stringify(saved.sidebar) === JSON.stringify(['Mod+Shift+KeyS']) &&
+    !assigned('Mod+KeyS')
+  )
+    saved.sidebar = [...defaultShortcuts.sidebar];
+  if (!Object.prototype.hasOwnProperty.call(saved, 'ai-sidebar')) {
+    const conflict = Object.values(saved).some(
+      (keys) =>
+        Array.isArray(keys) &&
+        keys.some(
+          (key) =>
+            typeof key === 'string' &&
+            canonical(key, mac) === canonical('Mod+KeyI', mac)
+        )
+    );
+    saved['ai-sidebar'] = conflict ? [] : [...defaultShortcuts['ai-sidebar']];
+  }
+  return validateShortcuts(saved, mac);
 }
 export interface ShortcutInput {
   code?: string;
@@ -255,10 +296,12 @@ export function importShortcuts(source: string, mac = true): ShortcutBindings {
     throw new Error('Unsupported Kudium Browser shortcut file');
   // Require a full snapshot so a truncated file cannot silently restore defaults.
   if (
-    !shortcutActions.every((action) =>
-      Object.prototype.hasOwnProperty.call(document.bindings, action.id)
-    )
+    !shortcutActions
+      .filter((action) => action.id !== 'ai-sidebar')
+      .every((action) =>
+        Object.prototype.hasOwnProperty.call(document.bindings, action.id)
+      )
   )
     throw new Error('Shortcut file is missing actions');
-  return validateShortcuts(document.bindings, mac);
+  return restoreShortcuts(document.bindings, mac);
 }

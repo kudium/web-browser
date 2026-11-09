@@ -15,6 +15,25 @@ Object.assign(global, {
     disconnect() {},
   })),
 });
+it('lists both sidebar toggles in preferences', () => {
+  render(
+    <Theme>
+      <KeyboardShortcuts
+        bindings={defaultShortcuts}
+        busy={false}
+        save={jest.fn()}
+      />
+    </Theme>
+  );
+  expect(
+    screen.getByLabelText('Change Toggle Space sidebar shortcut')
+  ).toBeInTheDocument();
+  expect(
+    screen.getByLabelText('Change Toggle AI assistant shortcut')
+  ).toBeInTheDocument();
+  expect(screen.getByText('Ctrl + S')).toBeInTheDocument();
+  expect(screen.getByText('Ctrl + I')).toBeInTheDocument();
+});
 it('captures without firing menu accelerators, rejects conflicts, saves and restores menus', async () => {
   const save = jest.fn().mockResolvedValue(true);
   render(

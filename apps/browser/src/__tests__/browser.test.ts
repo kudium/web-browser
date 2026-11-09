@@ -24,6 +24,9 @@ jest.mock('../main/ai', () => ({ registerAI: jest.fn(() => jest.fn()) }));
 jest.mock('../main/pageCapture', () => ({
   registerPageCapture: jest.fn(() => jest.fn()),
 }));
+jest.mock('../main/spaceGestures', () => ({
+  registerSpaceGestures: jest.fn(() => jest.fn()),
+}));
 
 jest.mock('../main/dialogs', () => ({
   ...jest.requireActual('../main/dialogs'),
@@ -59,6 +62,7 @@ jest.mock('../main/preferences', () => ({
   enablePagePinchZoom: jest.fn(),
   applyBrowserPreferences: jest.fn(),
   getBrowserPreferences: () => ({
+    shortcuts: jest.requireActual('../browser/shortcuts').defaultShortcuts,
     advanced: jest.requireActual('../browser/advancedPreferences')
       .defaultAdvanced,
     discardInactiveTabs: true,
@@ -179,7 +183,10 @@ jest.mock('electron', () => {
   };
 });
 
-Object.assign(BrowserWindow, { getAllWindows: () => [] });
+Object.assign(BrowserWindow, {
+  getAllWindows: () => [],
+  fromWebContents: () => undefined,
+});
 it.each([false, true])(
   'keeps the browser attached while storage is pending (closed: %s)',
   async (closeBeforeReady) => {
@@ -187,6 +194,9 @@ it.each([false, true])(
       isDestroyed: () => false,
       webContents: Object.assign(new EventEmitter(), {
         send: jest.fn(),
+        isFocused: jest.fn(() => false),
+        isDestroyed: jest.fn(() => false),
+        focus: jest.fn(),
         mainFrame: {},
       }),
       contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
@@ -223,6 +233,9 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     isDestroyed: () => false,
     webContents: Object.assign(new EventEmitter(), {
       send: jest.fn(),
+      isFocused: jest.fn(() => false),
+      isDestroyed: jest.fn(() => false),
+      focus: jest.fn(),
       mainFrame: {},
     }),
     contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
@@ -232,6 +245,30 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     .spyOn(global, 'setInterval')
     .mockReturnValue({ unref: jest.fn() } as any);
   registerBrowser(window as any);
+  const shortcutEvent = { preventDefault: jest.fn() };
+  window.webContents.emit('before-input-event', shortcutEvent, {
+    type: 'keyDown',
+    key: 's',
+    code: 'KeyS',
+    meta: process.platform === 'darwin',
+    control: process.platform !== 'darwin',
+  });
+  expect(shortcutEvent.preventDefault).toHaveBeenCalled();
+  expect(window.webContents.send).toHaveBeenLastCalledWith(
+    'browser-shortcut',
+    'sidebar-or-save'
+  );
+  window.webContents.emit('before-input-event', shortcutEvent, {
+    type: 'keyDown',
+    key: 'i',
+    code: 'KeyI',
+    meta: process.platform === 'darwin',
+    control: process.platform !== 'darwin',
+  });
+  expect(window.webContents.send).toHaveBeenLastCalledWith(
+    'browser-shortcut',
+    'ai-sidebar'
+  );
   const apps = ['one', 'two', 'three'].map((id) => ({
     id,
     name: id,
@@ -651,6 +688,9 @@ it.each(['same', 'cancel', 'closed', 'moved', 'frame', 'moved-during-clear'])(
       isDestroyed: () => closed,
       webContents: Object.assign(new EventEmitter(), {
         send: jest.fn(),
+        isFocused: jest.fn(() => false),
+        isDestroyed: jest.fn(() => false),
+        focus: jest.fn(),
         mainFrame: {},
       }),
       contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
@@ -749,6 +789,9 @@ it.each(['navigation', 'removal', 'window', 'empty-list'])(
       isDestroyed: () => false,
       webContents: Object.assign(new EventEmitter(), {
         send: jest.fn(),
+        isFocused: jest.fn(() => false),
+        isDestroyed: jest.fn(() => false),
+        focus: jest.fn(),
         mainFrame: {},
       }),
       contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },

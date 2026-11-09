@@ -125,6 +125,7 @@ export interface BrowserCommand {
 
 export type BrowserShortcut =
   | ShortcutAction
+  | 'sidebar-or-save'
   | 'new-session'
   | 'new-space'
   | 'import-group'
