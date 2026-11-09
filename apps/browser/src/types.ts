@@ -26,6 +26,10 @@ export interface IApp {
   sessionNameGenerated?: boolean;
   spaceId?: string;
   folderId?: string;
+  /** Derived collection label supplied to browser/AI layouts. */
+  collectionName?: string;
+  groupDisplay?: 'stack' | 'folder';
+  sessionMode?: 'separate' | 'collection';
   pinned?: boolean;
   tabPinned?: boolean;
   tabDefaultURL?: string;

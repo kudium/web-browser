@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from '@radix-ui/themes';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { SettingsLibrary } from '../../../UI/SettingsLibrary';
 import { BulkActions } from './BulkActions';
 import { ADD_APP_WINDOW } from '../../../../utils/constant';
 import { useAppList } from '../../../../utils/hooks/useAppList';
@@ -39,35 +40,45 @@ export function ManageApp() {
             Separate groups, without the extra windows.
           </Text>
         </div>
-        <Button
-          onClick={() =>
-            window.electron.ipcRenderer.sendMessage('ipc-create-window', [
-              { ...ADD_APP_WINDOW, intent: 'new-session' },
-            ])
-          }
-        >
-          <Plus size={16} />
-          New group
-        </Button>
       </div>
-      <BulkActions
-        ids={removable}
-        selected={selected}
-        onSelect={setSelected}
-        action="Remove"
-        description="The selected entries will close. Saved groups and login data remain on this device."
-        onRemove={(ids) =>
-          AppManager.set(
-            AppManager.getAll().filter(
-              (item) => !ids.includes(item.id) || lockedGroup(item)
+      <details className="settings-library-bulk">
+        <summary>Manage multiple items</summary>
+        <BulkActions
+          ids={removable}
+          selected={selected}
+          onSelect={setSelected}
+          action="Remove"
+          description="The selected entries will close. Saved groups and login data remain on this device."
+          onRemove={(ids) =>
+            AppManager.set(
+              AppManager.getAll().filter(
+                (item) => !ids.includes(item.id) || lockedGroup(item)
+              )
             )
-          )
-        }
-      />
+          }
+        />
+      </details>
       <div className="app-list">
-        {appList
-          .filter((item) => !item.archived)
-          .map((item) => {
+        <SettingsLibrary
+          renderToolbar={() => (
+            <Button
+              size="1"
+              variant="ghost"
+              color="gray"
+              onClick={() =>
+                window.electron.ipcRenderer.sendMessage('ipc-create-window', [
+                  { ...ADD_APP_WINDOW, intent: 'new-session' },
+                ])
+              }
+            >
+              <Plus size={16} />
+              New group
+            </Button>
+          )}
+          label="Groups"
+          entries={appList.filter((item) => !item.archived)}
+        >
+          {(item) => {
             const index = appList.findIndex((entry) => entry.id === item.id);
             return (
               <article className="app-row" key={item.id}>
@@ -157,7 +168,8 @@ export function ManageApp() {
                 </AlertDialog.Root>
               </article>
             );
-          })}
+          }}
+        </SettingsLibrary>
         {!appList.some((item) => !item.archived) && (
           <p className="empty-message">
             Your workspace is ready for its first group.

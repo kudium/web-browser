@@ -36,9 +36,8 @@ it('adds disabled skills, previews text, enables explicitly and confirms removal
     key: 'Enter',
   });
   fireEvent.click(screen.getByRole('menuitem', { name: 'Import folder…' }));
-  await screen.findByText('PDF workflow');
+  await screen.findByRole('heading', { name: 'PDF workflow' });
   expect(screen.getByRole('switch')).not.toBeChecked();
-  fireEvent.click(screen.getByText('View instructions and resources'));
   expect(
     screen.getByRole('textbox', { name: 'PDF workflow instructions' })
   ).toHaveTextContent('Preview before uploading');
@@ -146,6 +145,40 @@ it('imports dropped local files through the preload file bridge', async () => {
   fireEvent.drop(screen.getByRole('region', { name: 'Skills library' }), {
     dataTransfer: { files: [file] },
   });
-  await screen.findByText('PDF workflow');
+  await screen.findByRole('heading', { name: 'PDF workflow' });
   expect(drop).toHaveBeenCalledWith(file);
+});
+it('edits the selected skill and keeps the draft after a failed save', async () => {
+  const api = jest
+    .fn()
+    .mockResolvedValueOnce([skill])
+    .mockRejectedValueOnce(new Error('Save failed'))
+    .mockResolvedValueOnce([
+      { ...skill, name: 'Reply', instructions: 'Reply clearly.' },
+    ]);
+  Object.assign(window, { electron: { ai: { skills: api } } });
+  render(
+    <Theme>
+      <AISkillsSettings />
+    </Theme>
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit Skill' }));
+  fireEvent.change(screen.getByLabelText('Name'), {
+    target: { value: 'Reply' },
+  });
+  fireEvent.change(screen.getByLabelText('Instructions'), {
+    target: { value: 'Reply clearly.' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Save failed');
+  expect(screen.getByLabelText('Name')).toHaveValue('Reply');
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await screen.findByRole('heading', { name: 'Reply' });
+  expect(api).toHaveBeenLastCalledWith({
+    action: 'update',
+    id: 'pdf',
+    name: 'Reply',
+    description: skill.description,
+    instructions: 'Reply clearly.',
+  });
 });

@@ -1,3 +1,5 @@
+/* Function parameters supply optional prop defaults. */
+/* eslint-disable react/require-default-props */
 import { useEffect, useState } from 'react';
 import { Button, Checkbox, TextField } from '@radix-ui/themes';
 import {
@@ -23,10 +25,12 @@ export function AccountSyncSettings({
   enabled,
   onEnabled,
   passwordsEnabled = false,
+  notesEnabled = false,
 }: {
   enabled: boolean;
   onEnabled: () => void;
   passwordsEnabled: boolean;
+  notesEnabled?: boolean;
 }) {
   const [status, setStatus] = useState<AccountSyncStatus>();
   const [busy, setBusy] = useState(false);
@@ -240,6 +244,41 @@ export function AccountSyncSettings({
           </Button>
         </div>
       )}
+      <div className="preference-card">
+        <div className="preference-row">
+          <div>
+            <strong>Personal notes</strong>
+            <p>
+              Enable Personal notes under What to sync to back up encrypted
+              Markdown notes. Restoring keeps existing notes and turns AI access
+              off for restored copies.
+            </p>
+          </div>
+          <Button
+            size="1"
+            variant="soft"
+            disabled={
+              busy || !enabled || !notesEnabled || status?.phase !== 'ready'
+            }
+            onClick={() => action('sync-notes')}
+          >
+            Unlock & back up notes
+          </Button>
+        </div>
+        {status?.noteDevices?.map((device) => (
+          <Button
+            key={device.recordId}
+            size="1"
+            variant="ghost"
+            disabled={busy}
+            onClick={() =>
+              action('restore-notes', { recordId: device.recordId })
+            }
+          >
+            Restore notes from {device.deviceId.slice(0, 8)}
+          </Button>
+        ))}
+      </div>
       {passwordsEnabled && (
         <div className="preference-card">
           <div className="preference-row">

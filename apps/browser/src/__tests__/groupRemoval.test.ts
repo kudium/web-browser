@@ -27,7 +27,10 @@ jest.mock('../main/groupLocks', () => ({
 jest.mock('../main/history', () => ({ removeProfileHistory: jest.fn() }));
 jest.mock('../main/siteSettings', () => ({ removeSiteProfile: jest.fn() }));
 jest.mock('../main/passwordManager', () => ({
-  passwordVault: jest.fn(() => ({ status: () => ({ initialized: false }) })),
+  passwordVault: jest.fn(() => ({
+    status: () => ({ initialized: false }),
+    removeOrdinaryNoteScope: jest.fn(),
+  })),
   authenticatePersonalData: jest.fn(),
   withPersonalData: jest.fn(),
   personalDataRevision: () => 0,
@@ -85,12 +88,15 @@ function fixture(apps: IApp[] = [source]) {
 }
 let temporary: string;
 beforeEach(() => {
-  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-removal-test-'));
+  temporary = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kudiumbrowser-removal-test-')
+  );
   (app.getPath as jest.Mock).mockReturnValue(temporary);
   jest.clearAllMocks();
   (isGroupLocked as jest.Mock).mockReturnValue(false);
   (passwordVault as jest.Mock).mockReturnValue({
     status: () => ({ initialized: false }),
+    removeOrdinaryNoteScope: jest.fn(),
   });
 });
 afterEach(() => fs.rmSync(temporary, { recursive: true, force: true }));
@@ -114,7 +120,9 @@ it('deletes the unique profile only after explicit confirmation', async () => {
   const f = fixture();
   try {
     expect(await f.run()).toEqual({ removed: true, ids: ['one'] });
-    expect(session.fromPartition).toHaveBeenCalledWith('persist:kudiumbrowser-work');
+    expect(session.fromPartition).toHaveBeenCalledWith(
+      'persist:kudiumbrowser-work'
+    );
     expect(f.clear.clearStorageData).toHaveBeenCalledTimes(1);
     expect(f.clear.clearCache).toHaveBeenCalledTimes(1);
     expect(removeSiteProfile).toHaveBeenCalledWith('work');
@@ -185,6 +193,7 @@ it('removes group-local Personal Data after confirmation without authentication'
   (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 1 });
   (passwordVault as jest.Mock).mockReturnValue({
     status: () => ({ initialized: true }),
+    removeOrdinaryNoteScope: jest.fn(),
   });
   const remove = jest.fn();
   (withPersonalData as jest.Mock).mockImplementation((work) =>
@@ -203,6 +212,7 @@ it('confirmation cancellation preserves the session and local Personal Data', as
   (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 0 });
   (passwordVault as jest.Mock).mockReturnValue({
     status: () => ({ initialized: true }),
+    removeOrdinaryNoteScope: jest.fn(),
   });
   const f = fixture();
   try {

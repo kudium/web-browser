@@ -34,7 +34,10 @@ it('copies skill instructions/resources, defaults disabled, and persists only ex
   expect(() => store.read(skill.id)).toThrow('enabled');
   store.change(skill.id, true);
   expect(store.catalog()[0].name).toBe('PDF workflow');
-  fs.writeFileSync(path.join(folder, 'SKILL.md'), 'changed outside Kudium Browser');
+  fs.writeFileSync(
+    path.join(folder, 'SKILL.md'),
+    'changed outside Kudium Browser'
+  );
   expect(store.read(skill.id).instructions).toContain(
     'preview before uploading'
   );
@@ -62,4 +65,27 @@ it('does not overwrite malformed saved libraries', () => {
   fs.writeFileSync(file, '{bad');
   expect(() => new AISkillsStore(file)).toThrow();
   expect(fs.readFileSync(file, 'utf8')).toBe('{bad');
+});
+it('edits the saved copy without losing enablement or resources', () => {
+  const skill = loadSkillFolder(fixture());
+  const file = path.join(root, 'skills.json');
+  const store = new AISkillsStore(file);
+  store.add(skill);
+  store.change(skill.id, true);
+  store.update(skill.id, {
+    ...skill,
+    name: 'Reply',
+    instructions: 'Reply clearly.',
+    resources: {},
+    enabled: false,
+  });
+  const saved = new AISkillsStore(file).list()[0];
+  expect(saved).toMatchObject({
+    id: skill.id,
+    name: 'Reply',
+    instructions: 'Reply clearly.',
+    enabled: true,
+    resources: skill.resources,
+  });
+  expect(() => store.update('missing', skill)).toThrow('no longer exists');
 });

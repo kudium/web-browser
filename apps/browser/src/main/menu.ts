@@ -131,11 +131,11 @@ export default class MenuBuilder {
         this.action('Export Current Group…', 'export-group', false),
         separator,
         this.action('Open Location…', 'command'),
-        this.action('Close Tab', 'close-tab'),
+        this.action('Unload Tab', 'close-tab'),
+        this.action('Remove Tab', 'remove-tab'),
         {
           label: 'Close Window',
           role: 'close',
-          accelerator: 'CommandOrControl+Shift+W',
         },
         separator,
         this.action('Print…', 'print'),

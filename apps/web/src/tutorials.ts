@@ -51,11 +51,11 @@ export const tutorials: Tutorial[] = [
       ],
       [
         "Organize the space",
-        "Use its context menu to create a group or a folder. Place related groups together.",
+        "Use the space menu to create a collection, then gather related groups inside it. Choose Folder or Stack from a group’s context menu to change how it appears.",
       ],
       [
         "Choose the login deliberately",
-        "Groups can use isolated sessions or share a login. Check the group’s settings before using a work or personal account.",
+        "Groups in a collection can share its login session. Choose a separate session for a group when you need another account; moving or changing the group’s display does not change its existing login.",
       ],
       [
         "Manage later",

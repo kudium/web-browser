@@ -112,12 +112,17 @@ export function searchRecords(
     .filter((item) => item.allowAI)
     .map((item) => {
       const safe = safeRecord(item);
-      const text = `${item.title} ${safe.origin} ${safe.username}\n${safe.fields
-        .map(
-          (field) =>
-            `${field.name} ${(field.aliases || []).join(' ')}: ${field.value}`
-        )
-        .join('\n')}\n${safe.notes}\n${safe.document?.text || ''}`;
+      const text =
+        item.kind === 'note'
+          ? item.title
+          : `${item.title} ${safe.origin} ${safe.username}\n${safe.fields
+              .map(
+                (field) =>
+                  `${field.name} ${(field.aliases || []).join(' ')}: ${
+                    field.value
+                  }`
+              )
+              .join('\n')}\n${safe.notes}\n${safe.document?.text || ''}`;
       const lower = text.toLowerCase();
       const score = terms.reduce(
         (sum, term) =>
@@ -137,7 +142,10 @@ export function searchRecords(
           title: item.title,
           kind: item.kind,
           source: item.source?.label || safe.document?.name || safe.source,
-          excerpt: text.slice(Math.max(0, at - 100), at + 550),
+          excerpt:
+            item.kind === 'note'
+              ? ''
+              : text.slice(Math.max(0, at - 100), at + 550),
         },
       };
     })

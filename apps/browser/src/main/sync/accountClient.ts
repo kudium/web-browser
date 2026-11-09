@@ -14,6 +14,7 @@ import {
   decryptSyncRecord,
   SyncEnvelope,
 } from './encryption';
+import { SyncedNote, validateSyncedNotes } from '../../browser/notes';
 import { SyncedLogin, validateSyncedLogins } from './passwords';
 import { syncRequest, SyncHTTPError, SYNC_ORIGIN } from './transport';
 
@@ -64,6 +65,8 @@ export class AccountSyncClient {
   };
 
   private lastDigest?: string;
+
+  private noteRecords = new Set<string>();
 
   private passwordRecords = new Set<string>();
 
@@ -122,6 +125,12 @@ export class AccountSyncClient {
       lastSyncedAt: this.saved.lastSyncedAt,
       message: this.message,
       remote,
+      noteDevices: this.options.preferences().cloudSync.categories.notes
+        ? [...this.noteRecords].map((recordId) => ({
+            recordId,
+            deviceId: recordId.slice(6),
+          }))
+        : [],
       passwordDevices: this.options.preferences().cloudSync.categories.passwords
         ? [...this.passwordRecords]
             .filter(
@@ -237,6 +246,7 @@ export class AccountSyncClient {
         },
       };
       this.remote.clear();
+      this.noteRecords.clear();
       this.passwordRecords.clear();
       this.lastDigest = undefined;
       this.pending = undefined;
@@ -450,6 +460,14 @@ export class AccountSyncClient {
           if (item.recordId === keyRecord) continue;
           if (
             typeof item.recordId === 'string' &&
+            /^notes_[a-zA-Z0-9_-]{1,128}$/.test(item.recordId)
+          ) {
+            if (item.deleted) this.noteRecords.delete(item.recordId);
+            else this.noteRecords.add(item.recordId);
+            continue;
+          }
+          if (
+            typeof item.recordId === 'string' &&
             /^passwords_[a-zA-Z0-9_-]{1,128}$/.test(item.recordId)
           ) {
             if (item.deleted) this.passwordRecords.delete(item.recordId);
@@ -553,7 +571,7 @@ export class AccountSyncClient {
       throw new Error('Enable password sync and unlock your account first.');
   }
 
-  private async passwordKey() {
+  private async privateDataKey(category: 'passwords' | 'notes' = 'passwords') {
     const { credential } = this.saved;
     const settings = this.options.preferences().cloudSync;
     if (
@@ -561,9 +579,11 @@ export class AccountSyncClient {
       !credential.key ||
       !settings.enabled ||
       settings.provider !== 'kudiumbrowser' ||
-      !settings.categories.passwords
+      !settings.categories[category]
     )
-      throw new Error('Enable password sync and connect your account first.');
+      throw new Error(
+        `Enable ${category} sync and connect your account first.`
+      );
     const { generation } = this;
     const key = Buffer.from(credential.key, 'base64url');
     try {
@@ -573,11 +593,11 @@ export class AccountSyncClient {
       const check = decryptSyncRecord(root.envelope, key) as any;
       if (
         generation !== this.generation ||
-        !this.options.preferences().cloudSync.categories.passwords ||
+        !this.options.preferences().cloudSync.categories[category] ||
         check.kind !== 'kudium-sync-key' ||
         check.accountId !== credential.accountId
       )
-        throw new Error('Password sync access changed.');
+        throw new Error('Private data sync access changed.');
       return { key, credential, generation };
     } catch (error) {
       key.fill(0);
@@ -589,10 +609,41 @@ export class AccountSyncClient {
     value: SyncedLogin[],
     current: () => boolean = () => true
   ) {
-    const items = validateSyncedLogins(value);
-    const { key, credential, generation } = await this.passwordKey();
+    return this.uploadPrivateSnapshot(
+      'passwords',
+      validateSyncedLogins(value),
+      current
+    );
+  }
+
+  async restorePasswords(recordId: string) {
+    return this.restorePrivateSnapshot(
+      'passwords',
+      recordId,
+      validateSyncedLogins
+    );
+  }
+
+  async syncNotes(value: SyncedNote[], current: () => boolean) {
+    return this.uploadPrivateSnapshot(
+      'notes',
+      validateSyncedNotes(value),
+      current
+    );
+  }
+
+  async restoreNotes(recordId: string) {
+    return this.restorePrivateSnapshot('notes', recordId, validateSyncedNotes);
+  }
+
+  private async uploadPrivateSnapshot<T>(
+    category: 'passwords' | 'notes',
+    items: T[],
+    current: () => boolean = () => true
+  ) {
+    const { key, credential, generation } = await this.privateDataKey(category);
     try {
-      const recordId = `passwords_${credential.deviceId}`;
+      const recordId = `${category}_${credential.deviceId}`;
       let revision = 0;
       try {
         revision = (
@@ -603,8 +654,14 @@ export class AccountSyncClient {
           throw error;
         revision = error.revision || 0;
       }
-      if (generation !== this.generation || !current())
-        throw new Error('Password sync was paused.');
+      if (
+        generation !== this.generation ||
+        !current() ||
+        !this.options.preferences().cloudSync.enabled ||
+        this.options.preferences().cloudSync.provider !== 'kudiumbrowser' ||
+        !this.options.preferences().cloudSync.categories[category]
+      )
+        throw new Error('Private data sync was paused.');
       const envelope = encryptSyncRecord(
         { version: 1, deviceId: credential.deviceId, items },
         key,
@@ -617,33 +674,44 @@ export class AccountSyncClient {
         revision ? { 'If-Match': `"${revision}"` } : { 'If-None-Match': '*' },
         'PUT'
       );
-      this.message = `${items.length} saved logins synced securely.`;
+      if (category === 'notes') this.noteRecords.add(recordId);
+      this.message =
+        category === 'passwords'
+          ? `${items.length} saved logins synced securely.`
+          : `${items.length} notes backed up securely.`;
     } finally {
       key.fill(0);
     }
   }
 
-  async restorePasswords(recordId: string) {
-    if (!/^passwords_[a-zA-Z0-9_-]{1,128}$/.test(recordId))
-      throw new Error('Choose a password snapshot.');
-    const { key, credential, generation } = await this.passwordKey();
+  private async restorePrivateSnapshot<T>(
+    category: 'passwords' | 'notes',
+    recordId: string,
+    validate: (value: unknown) => T[]
+  ) {
+    if (!new RegExp(`^${category}_[a-zA-Z0-9_-]{1,128}$`).test(recordId))
+      throw new Error('Choose a private data backup.');
+    const { key, credential, generation } = await this.privateDataKey(category);
     try {
       const result = (
         await this.request(`/v1/sync/records/${recordId}`, credential.token)
       ).body;
       if (result.envelope?.recordId !== recordId)
-        throw new Error('Password snapshot mismatch.');
+        throw new Error('Private data backup mismatch.');
       const data = decryptSyncRecord(result.envelope, key) as any;
       if (
         generation !== this.generation ||
+        !this.options.preferences().cloudSync.enabled ||
+        this.options.preferences().cloudSync.provider !== 'kudiumbrowser' ||
+        !this.options.preferences().cloudSync.categories[category] ||
         data.version !== 1 ||
-        `passwords_${data.deviceId}` !== recordId ||
+        `${category}_${data.deviceId}` !== recordId ||
         Object.keys(data).some(
           (field) => !['version', 'deviceId', 'items'].includes(field)
         )
       )
-        throw new Error('Invalid password snapshot.');
-      return validateSyncedLogins(data.items);
+        throw new Error('Invalid private data backup.');
+      return validate(data.items);
     } finally {
       key.fill(0);
     }
@@ -743,6 +811,7 @@ export class AccountSyncClient {
     const { credential } = this.saved;
     this.saved = {};
     this.remote.clear();
+    this.noteRecords.clear();
     this.passwordRecords.clear();
     this.input = undefined;
     this.lastDigest = undefined;
@@ -773,6 +842,7 @@ export class AccountSyncClient {
     this.saved.cursor = undefined;
     this.saved.revision = undefined;
     this.remote.clear();
+    this.noteRecords.clear();
     this.passwordRecords.clear();
     this.persist();
     this.phase = 'recovery-required';

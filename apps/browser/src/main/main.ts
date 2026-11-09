@@ -58,6 +58,13 @@ import { registerWindowCommands } from './windowCommands';
 import { registerTelemetry } from './telemetry';
 
 app.setName(STORAGE_OS_IDENTITY);
+if (!app.isPackaged && process.env.KUDIUM_DUMMY) {
+  app.setPath(
+    'userData',
+    path.join(app.getPath('appData'), 'Kudium Browser Demo')
+  );
+}
+
 app.setAboutPanelOptions({
   applicationName: 'Kudium Browser',
   applicationVersion: app.isPackaged ? app.getVersion() : projectVersion,
@@ -512,7 +519,7 @@ app
         ...advanced.startupPages.map((url) => ({ url, activeGroup: false }))
       );
     const mainWindowConfig = MAIN_WINDOW;
-    createNewWindow(mainWindowConfig);
+    await createNewWindow(mainWindowConfig);
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.

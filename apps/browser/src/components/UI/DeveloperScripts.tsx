@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   ChevronRight,
 } from 'lucide-react';
+import { SettingsLibrary } from './SettingsLibrary';
 import {
   PanelDropdownContent,
   PanelDialogContent,
@@ -297,20 +298,6 @@ export function DeveloperScripts({
                 </IconButton>
               ) : null
             }
-            actions={
-              !editing ? (
-                <Button
-                  size="1"
-                  variant="soft"
-                  color="gray"
-                  disabled={loading || busy}
-                  onClick={() => edit()}
-                >
-                  <Plus size={13} />
-                  Add script
-                </Button>
-              ) : null
-            }
           />
           {editing ? (
             <form
@@ -515,97 +502,100 @@ export function DeveloperScripts({
                 {loading && (
                   <p className="developer-script-hint">Loading scripts…</p>
                 )}
-                {!loading && !scripts.length && (
-                  <div className="developer-script-empty">
-                    <Play size={18} aria-hidden="true" />
-                    <div>
-                      <strong>No scripts yet</strong>
-                      <p>Save commands you run often.</p>
-                    </div>
-                  </div>
-                )}
-                {(['project', 'global'] as const).map((target) =>
-                  entries(target).length ? (
-                    <div key={target}>
-                      <h4>
-                        {target === 'project' ? 'This project' : 'All projects'}
-                      </h4>
-                      {entries(target).map((script) => (
-                        <div className="developer-script-row" key={script.id}>
-                          <div className="developer-script-row-main">
-                            <div className="developer-script-copy">
-                              <strong>{script.name}</strong>
-                              <code title={script.command}>
-                                {script.command}
-                              </code>
-                            </div>
-                            <IconButton
-                              size="1"
-                              variant="ghost"
-                              color="gray"
-                              aria-label={`Run ${script.name}`}
-                              disabled={busy}
-                              onClick={async () => {
-                                await run(script.id);
-                              }}
-                            >
-                              <Play size={13} />
-                            </IconButton>
-                            <IconButton
-                              size="1"
-                              variant="ghost"
-                              color="gray"
-                              aria-label={`Edit ${script.name}`}
-                              disabled={busy}
-                              onClick={() => edit(script)}
-                            >
-                              <Pencil size={13} />
-                            </IconButton>
-                            <IconButton
-                              size="1"
-                              variant="ghost"
-                              color="gray"
-                              aria-label={`Delete ${script.name}`}
-                              disabled={busy}
-                              onClick={() => setDeleting(script.id)}
-                            >
-                              <Trash2 size={13} />
-                            </IconButton>
-                          </div>
-                          {deleting === script.id && (
-                            <div className="developer-script-delete">
-                              <p>
-                                {script.scope === 'global'
-                                  ? 'Remove this script from all projects?'
-                                  : 'Remove this saved script?'}
-                              </p>
-                              <div>
-                                <Button
-                                  size="1"
-                                  color="gray"
-                                  variant="soft"
-                                  disabled={busy}
-                                  onClick={() => setDeleting(undefined)}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="1"
-                                  color="red"
-                                  variant="soft"
-                                  disabled={busy}
-                                  onClick={() => remove(script.id)}
-                                >
-                                  Delete
-                                </Button>
-                              </div>
-                            </div>
-                          )}
+                <SettingsLibrary
+                  label="Saved scripts"
+                  entries={scripts.map((script) => ({
+                    ...script,
+                    subtitle:
+                      script.scope === 'global'
+                        ? 'All projects'
+                        : 'This project',
+                  }))}
+                  renderToolbar={() => (
+                    <IconButton
+                      size="1"
+                      variant="ghost"
+                      color="gray"
+                      aria-label="Add script"
+                      disabled={loading || busy}
+                      onClick={() => edit()}
+                    >
+                      <Plus size={13} />
+                    </IconButton>
+                  )}
+                >
+                  {(script) => (
+                    <div className="developer-script-row" key={script.id}>
+                      <div className="developer-script-row-main">
+                        <div className="developer-script-copy">
+                          <strong>{script.name}</strong>
+                          <code title={script.command}>{script.command}</code>
                         </div>
-                      ))}
+                        <IconButton
+                          size="1"
+                          variant="ghost"
+                          color="gray"
+                          aria-label={`Run ${script.name}`}
+                          disabled={busy}
+                          onClick={async () => {
+                            await run(script.id);
+                          }}
+                        >
+                          <Play size={13} />
+                        </IconButton>
+                        <IconButton
+                          size="1"
+                          variant="ghost"
+                          color="gray"
+                          aria-label={`Edit ${script.name}`}
+                          disabled={busy}
+                          onClick={() => edit(script)}
+                        >
+                          <Pencil size={13} />
+                        </IconButton>
+                        <IconButton
+                          size="1"
+                          variant="ghost"
+                          color="gray"
+                          aria-label={`Delete ${script.name}`}
+                          disabled={busy}
+                          onClick={() => setDeleting(script.id)}
+                        >
+                          <Trash2 size={13} />
+                        </IconButton>
+                      </div>
+                      {deleting === script.id && (
+                        <div className="developer-script-delete">
+                          <p>
+                            {script.scope === 'global'
+                              ? 'Remove this script from all projects?'
+                              : 'Remove this saved script?'}
+                          </p>
+                          <div>
+                            <Button
+                              size="1"
+                              color="gray"
+                              variant="soft"
+                              disabled={busy}
+                              onClick={() => setDeleting(undefined)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="1"
+                              color="red"
+                              variant="soft"
+                              disabled={busy}
+                              onClick={() => remove(script.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ) : null
-                )}
+                  )}
+                </SettingsLibrary>
               </div>
               {error && (
                 <p role="alert" className="developer-project-notice">

@@ -25,6 +25,7 @@ export function registerAccountSync(
   main: (window: BrowserWindow) => boolean
 ) {
   let client: AccountSyncClient | undefined;
+  const passwordScheduler = new PasswordSyncScheduler();
   const filename = () => path.join(app.getPath('userData'), 'account-sync.bin');
   const get = () => {
     if (!safeStorage.isEncryptionAvailable())
@@ -81,7 +82,50 @@ export function registerAccountSync(
         throw new Error('Invalid sync request');
       const instance = get();
       let operationMessage: string | undefined;
-      if (action === 'sync-passwords' || action === 'restore-passwords') {
+      if (action === 'sync-notes' || action === 'restore-notes') {
+        if (
+          action === 'sync-notes' &&
+          passwordVault()
+            .noteSummaries()
+            .some((note) => note.sensitive)
+        )
+          await authenticatePersonalData();
+        const revision = personalDataRevision();
+        const current = () =>
+          !owner.isDestroyed() &&
+          trusted(owner) &&
+          personalDataRevision() === revision;
+        if (!current())
+          throw new Error('Window changed during authentication.');
+        if (action === 'sync-notes') {
+          const notes = passwordVault()
+            .noteSummaries()
+            .map((summary) => {
+              const item = passwordVault().edit(summary.id, summary.scope);
+              return {
+                id: item.id,
+                title: item.title,
+                notes: item.notes || '',
+                scope: item.scope,
+                sensitive: item.sensitive === true,
+              };
+            });
+          await instance.syncNotes(notes, current);
+        } else {
+          if (typeof input.recordId !== 'string')
+            throw new Error('Choose a notes backup.');
+          const notes = await instance.restoreNotes(input.recordId);
+          if (!current()) throw new Error('Window changed during restore.');
+          if (notes.some((note) => note.sensitive))
+            await authenticatePersonalData();
+          if (!current()) throw new Error('Window changed during restore.');
+          const imported = passwordVault().importNotes(notes);
+          operationMessage = `${imported} notes restored. Existing notes were kept. AI access is off for restored notes.`;
+        }
+      } else if (
+        action === 'sync-passwords' ||
+        action === 'restore-passwords'
+      ) {
         if (main(owner)) throw new Error('Manage passwords in Preferences.');
         instance.assertPasswordAccess();
         await authenticatePersonalData();
@@ -158,7 +202,7 @@ export function registerAccountSync(
       return status;
     }
   );
-  const passwordScheduler = new PasswordSyncScheduler();
+
   let lastPasswords = 0;
   let lastPoll = 0;
   let lastSync = 0;

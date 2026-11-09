@@ -1,3 +1,4 @@
+import { Folder, FolderOpen } from 'lucide-react';
 import { IApp } from '../../types';
 import { groupTabs } from '../../utils/groups';
 import { AppIcon } from './AppIcon/AppIcon';
@@ -7,11 +8,26 @@ export function GroupIcon({
   item,
   tabs,
   compact = false,
+  expanded = false,
 }: {
   item: IApp;
   tabs: IApp[];
   compact?: boolean;
+  expanded?: boolean;
 }) {
+  if (
+    item.groupDisplay === 'folder' &&
+    !item.favorite &&
+    !item.sessionIconEmoji &&
+    !item.sessionIconImage
+  ) {
+    const Icon = expanded ? FolderOpen : Folder;
+    return (
+      <span className="group-icon-slot" aria-hidden="true">
+        <Icon size={18} />
+      </span>
+    );
+  }
   const seen = new Set<string>();
   const icons = groupTabs(tabs, item)
     .filter((tab) => {
@@ -22,7 +38,7 @@ export function GroupIcon({
     })
     .slice(0, 3);
   const mixed =
-    !compact &&
+    (!compact || item.favorite) &&
     !item.sessionIconEmoji &&
     !item.sessionIconImage &&
     icons.length > 1;
@@ -52,4 +68,4 @@ export function GroupIcon({
     </span>
   );
 }
-GroupIcon.defaultProps = { compact: false };
+GroupIcon.defaultProps = { compact: false, expanded: false };

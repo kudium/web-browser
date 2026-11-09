@@ -7,11 +7,12 @@ import {
   Settings2,
   Blocks,
   ArrowUpRight,
+  ArrowLeft,
   X,
-  Folder,
   Tag,
 } from 'lucide-react';
 import { useEffect, useState, useRef, ReactNode } from 'react';
+import { CollectionIcon } from './CollectionIcon';
 import {
   SearchEngine,
   matchSearchEngines,
@@ -50,6 +51,7 @@ export function CommandPalette({
   apps,
   select,
   groupSource,
+  initialGroup = undefined,
   newSpace,
 }: {
   open: boolean;
@@ -57,6 +59,8 @@ export function CommandPalette({
   apps: IApp[];
   select: (app: IApp) => void;
   groupSource: IApp | undefined;
+  // eslint-disable-next-line react/require-default-props -- Defaults to undefined for ordinary command-bar entry.
+  initialGroup?: IApp;
   newSpace: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -78,6 +82,20 @@ export function CommandPalette({
       }),
     []
   );
+  useEffect(() => {
+    if (open && initialGroup) {
+      setGroupScope(initialGroup);
+      setFresh(false);
+      setQuery('');
+      setActiveResult(0);
+    }
+  }, [open, initialGroup]);
+  const leaveGroup = () => {
+    setGroupScope(null);
+    setFresh(true);
+    setActiveResult(0);
+    setError('');
+  };
   useEffect(() => {
     if (!open) {
       setQuery('');
@@ -378,8 +396,8 @@ export function CommandPalette({
       .map((folder) => ({
         id: `folder-${space.id}-${folder.id}`,
         title: folder.name,
-        detail: `Folder · ${space.name}`,
-        icon: <Folder size={18} />,
+        detail: `Collection · ${space.name}`,
+        icon: <CollectionIcon size={18} />,
         run: () => {
           SpaceManager.select(space.id);
           const tab = apps.find(
@@ -449,7 +467,7 @@ export function CommandPalette({
     placeholder = 'Search tabs or enter a URL…';
     scopeLabel = groupScope.sessionName || groupScope.name;
     scopeKind = 'group';
-    clearScope = () => setGroupScope(null);
+    clearScope = leaveGroup;
   }
   if (tagScope) {
     placeholder = `Search tabs tagged #${tagScope}…`;
@@ -465,7 +483,7 @@ export function CommandPalette({
         onEscapeKeyDown={(event) => {
           if (groupScope || searchScope || tagScope) {
             event.preventDefault();
-            setGroupScope(null);
+            if (groupScope) leaveGroup();
             setTagScope(null);
             setSearchScope(null);
             setActiveResult(0);
@@ -533,8 +551,7 @@ export function CommandPalette({
               }
               if (event.key === 'Backspace' && groupScope && !query) {
                 event.preventDefault();
-                setGroupScope(null);
-                setActiveResult(0);
+                leaveGroup();
               }
               if (event.key === 'Backspace' && searchScope && !query) {
                 event.preventDefault();
@@ -560,13 +577,20 @@ export function CommandPalette({
                   <button
                     type="button"
                     aria-label={`Clear ${scopeKind} scope`}
+                    title={
+                      scopeKind === 'group' ? 'Back · clear group' : undefined
+                    }
                     onClick={() => {
                       clearScope();
                       setActiveResult(0);
                       searchInput.current?.focus();
                     }}
                   >
-                    <X size={12} />
+                    {scopeKind === 'group' ? (
+                      <ArrowLeft size={14} />
+                    ) : (
+                      <X size={12} />
+                    )}
                   </button>
                 </span>
               ) : (

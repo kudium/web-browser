@@ -35,7 +35,7 @@ it('shows compact errors, collapsible diagnostics and working recovery controls'
   fireEvent.click(screen.getByText('Go back'));
   expect(back).toHaveBeenCalled();
 });
-it('announces first-load feedback and distinguishes offline, timeout, certificate and crash states', () => {
+it('keeps first loads blank and distinguishes offline, timeout, certificate and crash states', () => {
   render(
     <Theme>
       <PageStatus
@@ -46,7 +46,8 @@ it('announces first-load feedback and distinguishes offline, timeout, certificat
       />
     </Theme>
   );
-  expect(screen.getByRole('status')).toHaveTextContent('Loading website');
+  expect(screen.queryByRole('status')).toBeNull();
+  expect(screen.queryByText('Opening website')).toBeNull();
   expect(pageFailure(-106).title).toBe('You’re offline');
   expect(pageFailure(-118).title).toMatch(/too long/);
   expect(pageFailure(-202).title).toMatch(/isn’t secure/);

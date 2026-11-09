@@ -23,7 +23,15 @@ const configuration: webpack.Configuration = {
 
   target: ['web', 'electron-renderer'],
 
-  entry: path.join(webpackPaths.srcRendererPath, 'index.tsx'),
+  entry: process.env.KUDIUM_DUMMY
+    ? [
+        path.join(
+          webpackPaths.srcRendererPath,
+          '../development/dummyBootstrap.ts'
+        ),
+        path.join(webpackPaths.srcRendererPath, 'index.tsx'),
+      ]
+    : path.join(webpackPaths.srcRendererPath, 'index.tsx'),
 
   output: {
     path: webpackPaths.distRendererPath,
@@ -118,6 +126,7 @@ const configuration: webpack.Configuration = {
      */
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'development',
+      KUDIUM_DUMMY: '',
     }),
 
     new webpack.LoaderOptionsPlugin({

@@ -43,7 +43,7 @@ beforeEach(() => {
   AppManager.set([source]);
   jest.clearAllMocks();
 });
-const mount = () => {
+const mount = (initialGroup?: IApp) => {
   const select = jest.fn();
   render(
     <Theme>
@@ -53,6 +53,7 @@ const mount = () => {
         apps={[source]}
         select={select}
         groupSource={source}
+        initialGroup={initialGroup}
         newSpace={jest.fn()}
       />
     </Theme>
@@ -282,4 +283,50 @@ it('opens the configured home in its own group and reuses an existing home tab',
   expect(select).toHaveBeenLastCalledWith(
     expect.objectContaining({ id: home.id })
   );
+});
+
+it('prefills a group for explicit new-tab entry and keeps a different website in that group', () => {
+  const { input, select } = mount(source);
+  expect(
+    screen.getByRole('button', { name: 'Clear group scope' })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText('Work account', { selector: '.command-search-scope span' })
+  ).toBeInTheDocument();
+  expect(input).toHaveValue('');
+  fireEvent.change(input, { target: { value: 'different-site.example/path' } });
+  expect(
+    screen.queryByRole('option', { name: /New group · Separate cookies/ })
+  ).not.toBeInTheDocument();
+  fireEvent.submit(input.closest('form')!);
+  expect(select).toHaveBeenCalledWith(
+    expect.objectContaining({
+      url: 'https://different-site.example/path',
+      sessionId: 'work',
+      sessionName: 'Work account',
+    })
+  );
+});
+
+it('leaves the prefilled group through the back button before opening a website', () => {
+  const { input, select } = mount(source);
+  fireEvent.change(input, { target: { value: 'different-site.example/path' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Clear group scope' }));
+  expect(
+    screen.queryByRole('button', { name: 'Clear group scope' })
+  ).not.toBeInTheDocument();
+  expect(input).toHaveValue('different-site.example/path');
+  fireEvent.submit(input.closest('form')!);
+  expect(select.mock.calls[0][0].sessionId).not.toBe('work');
+});
+
+it('Backspace on an empty group-scoped input clears the destination', () => {
+  const { input, select } = mount(source);
+  fireEvent.keyDown(input, { key: 'Backspace' });
+  expect(
+    screen.queryByRole('button', { name: 'Clear group scope' })
+  ).not.toBeInTheDocument();
+  fireEvent.change(input, { target: { value: 'different-site.example' } });
+  fireEvent.submit(input.closest('form')!);
+  expect(select.mock.calls[0][0].sessionId).not.toBe('work');
 });

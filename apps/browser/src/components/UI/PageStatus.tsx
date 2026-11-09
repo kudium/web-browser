@@ -2,7 +2,6 @@ import { Button } from '@radix-ui/themes';
 import { RotateCw, ArrowLeft } from 'lucide-react';
 import { BrowserState } from '../../browser/contracts';
 import { TerminalStatus, TerminalDestination } from './TerminalStatus';
-import { ConnectionSequence } from './ConnectionSequence';
 import { pageFailure } from '../../browser/pageStatus';
 
 export function PageStatus({
@@ -16,8 +15,7 @@ export function PageStatus({
   retry: () => void;
   back: () => void;
 }) {
-  if (!state?.error && !state?.initialLoading) return null;
-  const loading = !state.error;
+  if (!state?.error) return null;
   const message = pageFailure(state.errorCode);
   let host = '';
   try {
@@ -25,19 +23,8 @@ export function PageStatus({
   } catch {
     host = '';
   }
-  if (loading)
-    return (
-      <ConnectionSequence
-        key={url}
-        host={host}
-        secure={url.startsWith('https:')}
-      />
-    );
   return (
-    <TerminalStatus
-      tone="error"
-      label={message.title}
-    >
+    <TerminalStatus tone="error" label={message.title}>
       <TerminalDestination>
         <h1>{message.title}</h1>
       </TerminalDestination>

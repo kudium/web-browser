@@ -25,6 +25,7 @@ import {
   Info,
   ArrowDownToLine,
 } from 'lucide-react';
+import { AppManager } from '../../../utils/AppManager';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import { PasswordManager } from './PasswordManager';
 import { AISettingsPage } from './AISettingsPage';
@@ -478,7 +479,9 @@ export function Settings() {
                 </div>
               </AISettingsPage>
             )}
-            {item.id === 'passwords' && <PasswordManager />}
+            {item.id === 'passwords' && (
+              <PasswordManager tabs={AppManager.getAll()} />
+            )}
             <div
               className={
                 [

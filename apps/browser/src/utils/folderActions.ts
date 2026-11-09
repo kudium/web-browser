@@ -48,7 +48,14 @@ export function moveFolder(
   return {
     apps: apps.map((tab) =>
       (tab.spaceId || 'default') === sourceId && tab.folderId === folderId
-        ? { ...tab, spaceId: destinationId, folderId: destinationFolderId }
+        ? {
+            ...tab,
+            spaceId: destinationId,
+            folderId: destinationFolderId,
+            ...(tab.sessionMode === 'collection'
+              ? { sessionMode: 'separate' as const }
+              : {}),
+          }
         : tab
     ),
     spaces: spaces.map((space) => {

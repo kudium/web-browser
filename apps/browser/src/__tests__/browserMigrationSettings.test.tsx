@@ -37,6 +37,9 @@ test('shows readable migration failures next to the import controls and brings t
       <BrowserMigrationSettings />
     </Theme>
   );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Scan for browser data' })
+  );
   await waitFor(() =>
     expect(screen.getByText('Review import').closest('button')?.disabled).toBe(
       false
@@ -52,4 +55,57 @@ test('shows readable migration failures next to the import controls and brings t
       Node.DOCUMENT_POSITION_FOLLOWING
   ).toBeTruthy();
   expect(scroll).toHaveBeenCalled();
+});
+
+test('requires an explicit scan on each visit before accessing browser data', async () => {
+  const migration = jest.fn(async (action: string) => {
+    if (action === 'profiles')
+      return [
+        {
+          id: 'chrome',
+          browser: 'Chrome',
+          name: 'Default',
+          bookmarks: true,
+          history: true,
+          cookies: false,
+        },
+      ];
+    return [];
+  });
+  window.electron = { browserMigration: migration } as any;
+  const page = () => (
+    <Theme>
+      <BrowserMigrationSettings />
+    </Theme>
+  );
+  const first = render(page());
+  expect(migration).not.toHaveBeenCalled();
+  expect(screen.getByText(/macOS may ask you to allow access/)).toBeTruthy();
+  expect(
+    (screen.getByRole('button', { name: 'Review import' }) as HTMLButtonElement)
+      .disabled
+  ).toBe(true);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Scan for browser data' })
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Scan again' })).toBeTruthy()
+  );
+  expect(migration.mock.calls.map(([action]) => action)).toEqual([
+    'profiles',
+    'recover',
+  ]);
+  expect(
+    (screen.getByRole('button', { name: 'Review import' }) as HTMLButtonElement)
+      .disabled
+  ).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Scan again' }));
+  await waitFor(() => expect(migration).toHaveBeenCalledTimes(4));
+  first.unmount();
+  migration.mockClear();
+  render(page());
+  expect(
+    screen.getByRole('button', { name: 'Scan for browser data' })
+  ).toBeTruthy();
+  expect(migration).not.toHaveBeenCalled();
 });

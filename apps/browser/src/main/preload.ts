@@ -203,6 +203,7 @@ const electronHandler = {
     request: VaultRequest
   ): Promise<
     | VaultItem
+    | import('../browser/passwordManager').VaultSummary[]
     | VaultStatus
     | { filled: number }
     | { imported: number; skipped: number; canceled?: boolean }
@@ -705,7 +706,8 @@ const electronHandler = {
       };
     },
     onSpaceWheel(callback: (event: SpaceWheelEvent) => void) {
-      const listener = (_event: IpcRendererEvent, event: SpaceWheelEvent) => callback(event);
+      const listener = (_event: IpcRendererEvent, event: SpaceWheelEvent) =>
+        callback(event);
       ipcRenderer.on('browser-space-wheel', listener);
       ipcRenderer.send('browser-observe-space-wheel');
       return () => ipcRenderer.removeListener('browser-space-wheel', listener);

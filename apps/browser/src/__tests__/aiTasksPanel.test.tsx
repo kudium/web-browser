@@ -109,7 +109,8 @@ it('offers the task actions on right click with the same paused-state restrictio
       <AITasksPanel busy={false} resumable />
     </Theme>
   );
-  const row = await screen.findByText('Watch prices');
+  await screen.findByRole('button', { name: 'Watch prices paused' });
+  const row = document.querySelector('.ai-task-row')!;
   fireEvent.contextMenu(row);
   await waitFor(() => expect(browser.nativeMenu).toHaveBeenCalled());
   const menu = (browser.nativeMenu as jest.Mock).mock.calls.at(-1)[0];
@@ -127,4 +128,26 @@ it('offers the task actions on right click with the same paused-state restrictio
   ].forEach((label) =>
     expect(menu.some((item: any) => item.label === label)).toBe(true)
   );
+});
+
+it('shows a failed task load and recovers through Try again', async () => {
+  const tasks = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('Tasks unavailable'))
+    .mockResolvedValue([]);
+  Object.assign(window, {
+    electron: { ai: { tasks, onTasks: () => () => {} } },
+  });
+  render(
+    <Theme>
+      <AITasksPanel busy={false} resumable={false} />
+    </Theme>
+  );
+  expect(screen.getByRole('status')).toHaveTextContent('Loading tasks');
+  await screen.findByText('Tasks unavailable');
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  await waitFor(() =>
+    expect(screen.queryByText('Tasks unavailable')).not.toBeInTheDocument()
+  );
+  expect(tasks).toHaveBeenCalledTimes(2);
 });

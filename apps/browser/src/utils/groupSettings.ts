@@ -1,9 +1,12 @@
 import { IApp } from '../types';
 import { groupKey, isGroupHomeTab } from './groups';
 import { commandDestination } from './commandNavigation';
+import { collectionProfile } from './collectionGroups';
 
 export interface GroupSettings {
   loginProfileId?: string;
+  groupDisplay?: 'stack' | 'folder';
+  sessionMode?: 'separate' | 'collection';
   name: string;
   slug?: string;
   emoji: string;
@@ -18,15 +21,27 @@ export function updateGroupSettings(
   source: IApp,
   settings: GroupSettings
 ): IApp[] {
+  const collectionLogin =
+    settings.sessionMode === 'collection' &&
+    settings.folderId &&
+    settings.placement !== 'favorite'
+      ? collectionProfile(settings.spaceId, settings.folderId)
+      : undefined;
   const updated = tabs.map((tab) =>
     groupKey(tab) === groupKey(source) &&
     (tab.spaceId || 'default') === (source.spaceId || 'default')
       ? {
           ...tab,
+          groupDisplay: settings.groupDisplay || tab.groupDisplay,
+          sessionMode:
+            settings.folderId && settings.placement !== 'favorite'
+              ? settings.sessionMode || tab.sessionMode
+              : 'separate',
           sessionProfileId:
-            settings.loginProfileId === undefined
+            collectionLogin ||
+            (settings.loginProfileId === undefined
               ? tab.sessionProfileId
-              : settings.loginProfileId || undefined,
+              : settings.loginProfileId || undefined),
           sessionName: settings.name,
           sessionSlug: settings.slug ?? tab.sessionSlug,
           sessionNameCustom: true,

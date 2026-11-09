@@ -30,6 +30,8 @@ export function commandDestination(
       id: crypto.randomUUID(),
       sessionId: shared ? source?.sessionId : crypto.randomUUID(),
       sessionProfileId: shared ? source?.sessionProfileId : undefined,
+      groupDisplay: shared ? source?.groupDisplay : 'folder',
+      sessionMode: shared ? source?.sessionMode : 'separate',
       sessionIconEmoji: shared ? source?.sessionIconEmoji : undefined,
       sessionIconImage: shared ? source?.sessionIconImage : undefined,
       sessionHomeURL: shared ? source?.sessionHomeURL : undefined,

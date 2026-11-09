@@ -63,7 +63,12 @@ it('observes replacement, removal and unavailable storage after a cached read', 
 });
 
 it('keeps cached results independent, including preserved unknown nested fields', () => {
-  const futureTab = { ...tab, metadata: { tags: ['original'] } };
+  const futureTab = {
+    ...tab,
+    groupDisplay: 'folder',
+    sessionMode: 'separate',
+    metadata: { tags: ['original'] },
+  };
   localStorage.setItem('user_apps', JSON.stringify([futureTab]));
   const first = AppManager.getAll() as (typeof futureTab)[];
   first[0].name = 'Unsaved';

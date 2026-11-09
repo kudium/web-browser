@@ -11,9 +11,10 @@ import {
   TextField,
   TextArea,
 } from '@radix-ui/themes';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Minus } from 'lucide-react';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import { PanelDialogHeader } from '../../UI/PanelDialog';
+import { skillCommands } from '../../../browser/aiSkills';
 import type { AISkill, AISkillsRequest } from '../../../browser/aiSkills';
 
 const errorMessage = (reason: unknown) =>
@@ -29,7 +30,11 @@ export function AISkillsSettings() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [editor, setEditor] = useState<'link' | 'create' | null>(null);
+  const [editor, setEditor] = useState<'link' | 'create' | 'edit' | null>(null);
+  const [selectedId, setSelectedId] = useState('');
+  const selected =
+    skillCommands(skills).find((skill) => skill.id === selectedId) ||
+    skillCommands(skills)[0];
   const [source, setSource] = useState('');
   const [skillName, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -67,11 +72,14 @@ export function AISkillsSettings() {
     setError('');
     setDialogError('');
     try {
-      setSkills(
-        await (file
-          ? window.electron.ai.skillsFromDrop(file)
-          : window.electron.ai.skills(request))
-      );
+      const next = await (file
+        ? window.electron.ai.skillsFromDrop(file)
+        : window.electron.ai.skills(request));
+      setSkills(next);
+      if (
+        ['add', 'create', 'import-link', 'import-path'].includes(request.action)
+      )
+        setSelectedId(next[next.length - 1]?.id || '');
       return true;
     } catch (reason) {
       if (inDialog) setDialogError(errorMessage(reason));
@@ -81,7 +89,16 @@ export function AISkillsSettings() {
       setBusy(false);
     }
   };
-  const submitLabel = editor === 'link' ? 'Install skill' : 'Create skill';
+  const submitLabel = (
+    { link: 'Install skill', edit: 'Save', create: 'Create skill' } as const
+  )[editor || 'create'];
+  const editorTitle = (
+    {
+      link: 'Install from link',
+      edit: 'Edit skill',
+      create: 'New skill',
+    } as const
+  )[editor || 'create'];
   return (
     <div
       className={`ai-skills-settings${dragging ? ' is-dragging' : ''}`}
@@ -124,46 +141,6 @@ export function AISkillsSettings() {
             </Text>
           </PreferenceHint>
         </div>
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger>
-            <Button disabled={!ready || busy}>
-              <Plus size={16} />
-              Add skill
-            </Button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content>
-            <DropdownMenu.Item
-              onSelect={() => {
-                setSource('');
-                setDialogError('');
-                setEditor('link');
-              }}
-            >
-              From link…
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              onSelect={() => change({ action: 'add', source: 'file' })}
-            >
-              Import file…
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              onSelect={() => change({ action: 'add', source: 'folder' })}
-            >
-              Import folder…
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              onSelect={() => {
-                setName('');
-                setDescription('');
-                setInstructions('');
-                setDialogError('');
-                setEditor('create');
-              }}
-            >
-              Create skill…
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
       </div>
       {dragging && (
         <Text size="2" className="ai-skills-drop-notice">
@@ -181,9 +158,7 @@ export function AISkillsSettings() {
           maxWidth="540px"
           onPointerDownOutside={(event) => event.preventDefault()}
         >
-          <PanelDialogHeader
-            title={editor === 'link' ? 'Install from link' : 'Create skill'}
-          />
+          <PanelDialogHeader title={editorTitle} />
           <Dialog.Description
             className="ai-skill-editor-description"
             size="2"
@@ -191,7 +166,7 @@ export function AISkillsSettings() {
           >
             {editor === 'link'
               ? 'Use a SKILL.md link or a GitHub skill folder. Links import instructions only.'
-              : 'Write reusable instructions for your AI. New skills start disabled.'}
+              : 'Give your skill a name and instructions. Use it with / in AI chat.'}
           </Dialog.Description>
           <form
             onSubmit={async (event) => {
@@ -200,7 +175,8 @@ export function AISkillsSettings() {
                 editor === 'link'
                   ? { action: 'import-link', source }
                   : {
-                      action: 'create',
+                      action: editor === 'edit' ? 'update' : 'create',
+                      ...(editor === 'edit' ? { id: selected?.id } : {}),
                       name: skillName,
                       description,
                       instructions,
@@ -313,110 +289,173 @@ export function AISkillsSettings() {
         </Callout.Root>
       )}
       {!ready && !error && <Text color="gray">Loading skills…</Text>}
-      {ready && !skills.length && (
-        <div className="ai-skills-empty">
-          <strong>Drop a skill here</strong>
-          <Text as="p" size="2" color="gray">
-            A SKILL.md file or a skill folder
-          </Text>
+      <div className="ai-skills-workspace">
+        <div className="ai-skills-master">
+          <nav className="ai-skills-command-list" aria-label="Skills">
+            {skillCommands(skills).map((skill) => (
+              <button
+                type="button"
+                key={skill.id}
+                aria-current={selected?.id === skill.id ? 'true' : undefined}
+                onClick={() => setSelectedId(skill.id)}
+              >
+                {skill.command}
+              </button>
+            ))}
+          </nav>
+          <div className="ai-skills-toolbar">
+            {' '}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger>
+                <Button
+                  variant="ghost"
+                  color="gray"
+                  aria-label="Add skill"
+                  title="Add skill"
+                  disabled={!ready || busy}
+                >
+                  <Plus size={16} />
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content>
+                <DropdownMenu.Item
+                  onSelect={() => {
+                    setSource('');
+                    setDialogError('');
+                    setEditor('link');
+                  }}
+                >
+                  From link…
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  onSelect={() => change({ action: 'add', source: 'file' })}
+                >
+                  Import file…
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  onSelect={() => change({ action: 'add', source: 'folder' })}
+                >
+                  Import folder…
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  onSelect={() => {
+                    setName('');
+                    setDescription('');
+                    setInstructions('');
+                    setDialogError('');
+                    setEditor('create');
+                  }}
+                >
+                  Create skill…
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+            <AlertDialog.Root>
+              <AlertDialog.Trigger>
+                <Button
+                  variant="ghost"
+                  color="gray"
+                  aria-label={`Remove ${selected?.name || 'skill'}`}
+                  disabled={!selected || busy}
+                >
+                  <Minus size={16} />
+                </Button>
+              </AlertDialog.Trigger>
+              <AlertDialog.Content maxWidth="400px">
+                <AlertDialog.Title>Remove {selected?.name}?</AlertDialog.Title>
+                <AlertDialog.Description>
+                  This removes the installed copy. Your original skill folder is
+                  kept.
+                </AlertDialog.Description>
+                <div className="dialog-actions">
+                  <AlertDialog.Cancel>
+                    <Button variant="soft" color="gray">
+                      Cancel
+                    </Button>
+                  </AlertDialog.Cancel>
+                  <AlertDialog.Action>
+                    <Button
+                      color="red"
+                      onClick={() =>
+                        selected &&
+                        change({ action: 'remove', id: selected.id })
+                      }
+                    >
+                      Remove skill
+                    </Button>
+                  </AlertDialog.Action>
+                </div>
+              </AlertDialog.Content>
+            </AlertDialog.Root>
+          </div>
         </div>
-      )}
-      <div className="ai-skills-list">
-        {skills.map((skill) => (
-          <article key={skill.id} className="ai-skill-row">
-            <div className="ai-skill-heading">
-              <div>
-                <strong>{skill.name}</strong>
-                <Text as="p" size="2" color="gray">
-                  {skill.description || 'Local skill'}
+        <div className="ai-skills-detail">
+          {selected ? (
+            <>
+              <div className="ai-skills-detail-heading">
+                <h2>{selected.name}</h2>
+                <Switch
+                  aria-label={`Enable ${selected.name}`}
+                  checked={selected.enabled}
+                  disabled={busy}
+                  onCheckedChange={(enabled) =>
+                    change({ action: 'toggle', id: selected.id, enabled })
+                  }
+                />
+              </div>
+              <Text size="1" color="gray">
+                {selected.enabled
+                  ? `Type ${selected.command} in AI chat`
+                  : 'Enable to use in AI chat'}
+              </Text>
+              <div
+                className="ai-skills-instructions"
+                role="textbox"
+                aria-readonly="true"
+                aria-label={`${selected.name} instructions`}
+                tabIndex={0}
+              >
+                {selected.instructions}
+              </div>
+              {!!Object.keys(selected.resources).length && (
+                <details>
+                  <summary>Resources</summary>
+                  {Object.entries(selected.resources).map(([name, content]) => (
+                    <details key={name}>
+                      <summary>{name}</summary>
+                      <pre className="ai-skill-code">{content}</pre>
+                    </details>
+                  ))}
+                </details>
+              )}
+              <div className="ai-skills-detail-actions">
+                <Button
+                  variant="soft"
+                  color="gray"
+                  disabled={busy}
+                  onClick={() => {
+                    setName(selected.name);
+                    setDescription(selected.description);
+                    setInstructions(selected.instructions);
+                    setDialogError('');
+                    setEditor('edit');
+                  }}
+                >
+                  Edit Skill
+                </Button>
+              </div>
+            </>
+          ) : (
+            ready && (
+              <div className="ai-skills-empty">
+                <strong>Drop a skill here</strong>
+                <Text size="2" color="gray">
+                  Or use + to add your own.
                 </Text>
               </div>
-              <Switch
-                aria-label={`Enable ${skill.name}`}
-                checked={skill.enabled}
-                disabled={busy}
-                onCheckedChange={(enabled) =>
-                  change({ action: 'toggle', id: skill.id, enabled })
-                }
-              />
-            </div>
-            <details>
-              <summary>View instructions and resources</summary>
-              <div className="ai-skill-source">
-                <div
-                  className="ai-skill-code"
-                  role="textbox"
-                  aria-readonly="true"
-                  aria-label={`${skill.name} instructions`}
-                  tabIndex={0}
-                >
-                  {skill.instructions}
-                </div>
-                {Object.entries(skill.resources).map(([name, content]) => (
-                  <details key={name}>
-                    <summary>{name}</summary>
-                    <div
-                      className="ai-skill-code"
-                      role="textbox"
-                      aria-readonly="true"
-                      aria-label={name}
-                      tabIndex={0}
-                    >
-                      {content}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </details>
-            <div className="ai-skill-footer">
-              <Text size="1" color="gray">
-                {skill.enabled ? 'Enabled' : 'Disabled'} ·{' '}
-                {Object.keys(skill.resources).length} text{' '}
-                {Object.keys(skill.resources).length === 1
-                  ? 'resource'
-                  : 'resources'}
-              </Text>
-              <AlertDialog.Root>
-                <AlertDialog.Trigger>
-                  <Button
-                    variant="ghost"
-                    color="gray"
-                    size="1"
-                    disabled={busy}
-                    aria-label={`Remove ${skill.name}`}
-                  >
-                    <Trash2 size={14} />
-                    Remove
-                  </Button>
-                </AlertDialog.Trigger>
-                <AlertDialog.Content maxWidth="400px">
-                  <AlertDialog.Title>Remove {skill.name}?</AlertDialog.Title>
-                  <AlertDialog.Description>
-                    This removes the installed copy. Your original skill folder
-                    is kept.
-                  </AlertDialog.Description>
-                  <div className="dialog-actions">
-                    <AlertDialog.Cancel>
-                      <Button variant="soft" color="gray">
-                        Cancel
-                      </Button>
-                    </AlertDialog.Cancel>
-                    <AlertDialog.Action>
-                      <Button
-                        color="red"
-                        onClick={() =>
-                          change({ action: 'remove', id: skill.id })
-                        }
-                      >
-                        Remove skill
-                      </Button>
-                    </AlertDialog.Action>
-                  </div>
-                </AlertDialog.Content>
-              </AlertDialog.Root>
-            </div>
-          </article>
-        ))}
+            )
+          )}
+        </div>
       </div>
     </div>
   );

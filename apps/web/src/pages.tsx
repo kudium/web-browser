@@ -121,8 +121,8 @@ export function homepage() {
                 {[
                   [
                     "design-workspace",
-                    "Organise your day with tab groups.",
-                    "Social, work, design, development, and reading. Five groups, twenty everyday tabs, and your favorite tools within reach.",
+                    "A space for every part of your day.",
+                    "Keep everyday sites in groups, gather related groups into collections, and choose a folder or stack view. Your favorites stay within reach.",
                   ],
                   [
                     "sidebar-collapsed",
@@ -168,7 +168,7 @@ export function homepage() {
                   >
                     <div className="hero-screen">
                       <img
-                        src={`/assets/product/demo/${image}.webp?v=8`}
+                        src={`/assets/product/demo/${image}.webp?v=9`}
                         alt={description}
                         width="1440"
                         height="940"
@@ -252,9 +252,9 @@ export function homepage() {
                 Separate logins.
               </h2>
               <p>
-                Each tab group can keep its own website logins. Stay signed in to
-                work and personal accounts side by side, then switch groups
-                without signing out or opening another browser window.
+                Organise related groups in collections. Use folders to browse tabs
+                or stacks for a compact view. Groups can share a collection’s
+                login session, or keep separate logins for work and personal accounts.
               </p>
               <a
                 className="text-link"
@@ -286,20 +286,20 @@ export function homepage() {
               </div>
               <figure data-sidebar-sample="expanded" hidden>
                 <img
-                  src="/assets/product/demo/sidebar-expanded.webp?v=8"
+                  src="/assets/product/demo/sidebar-expanded.webp?v=9"
                   width="2880"
                   height="1880"
-                  alt="Apple’s website in Kudium, with four favorite tiles and five pinned tab groups in the open sidebar"
+                  alt="Apple’s website in Kudium, with favorite tiles, Product Studio and Engineering collections, and folder and stack groups"
                   loading="lazy"
                 />
                 <figcaption>
-                  Favorites at the top. Your pinned groups below. A home for
-                  every part of your day.
+                  Favorites at the top. Collections, folders and stacks below.
+                  A clear home for your work and everyday browsing.
                 </figcaption>
               </figure>
               <figure data-sidebar-sample="collapsed">
                 <img
-                  src="/assets/product/demo/sidebar-collapsed.webp?v=8"
+                  src="/assets/product/demo/sidebar-collapsed.webp?v=9"
                   width="2880"
                   height="1880"
                   alt="The same Apple page with the sidebar hidden and the Design group switcher in the address bar"
@@ -393,7 +393,7 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/developer-terminal.webp?v=8"
+                src="/assets/product/demo/developer-terminal.webp?v=9"
                 width="2880"
                 height="1880"
                 alt="The linked Atlas Studio demo project beside Bun’s website, with real project files and an integrated terminal running a passing Bun test"
@@ -455,6 +455,8 @@ export function homepage() {
               <p>
                 Bring a page or project brief into the conversation. Your
                 assistant sits beside the web, with your context close at hand.
+                Type @ to reference a group or page, or / to choose a skill.
+                Suggestions appear beside the line you’re typing.
               </p>
               <a className="text-link" href="/tutorials/ai-assistant">
                 Meet the assistant <span aria-hidden="true">›</span>
@@ -469,15 +471,15 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/ai-context.webp?v=8"
+                src="/assets/product/demo/ai-mentions.webp?v=9"
                 width="2880"
                 height="1880"
-                alt="Bun’s website beside Kudium’s AI sidebar, with a real project brief attached to a draft planning prompt"
+                alt="Bun’s website beside Kudium’s AI sidebar, with an attached project brief and group suggestions directly beneath the draft’s typing line"
                 loading="lazy"
               />
               <figcaption>
-                A project brief, a planning prompt, and Bun’s website. Ready for
-                your next conversation.
+                An attached brief and group suggestions beside your draft.
+                Keep the page and the right context close at hand.
               </figcaption>
             </figure>
           </section>
@@ -1005,7 +1007,7 @@ export function tutorialPage(tutorial: Tutorial) {
                 aria-label="Open full size screenshot"
               >
                 <img
-                  src={`/assets/product/demo/${tutorial.image}.webp?v=3`}
+                  src={`/assets/product/demo/${tutorial.image}.webp?v=9`}
                   alt={tutorial.imageAlt || `${tutorial.title} in the real Kudium Browser interface with fictional Atlas Studio demo data`}
                   width="1280"
                   height="800"

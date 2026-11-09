@@ -31,10 +31,19 @@ export const shortcutActions = [
   },
   { id: 'print', title: 'Print page', keys: ['Mod+KeyP'] },
   { id: 'find', title: 'Find in page', keys: ['Mod+KeyF'] },
-  { id: 'close-tab', title: 'Close tab', keys: ['Mod+KeyW'] },
+  {
+    id: 'close-tab',
+    title: 'Unload tab and return to previous tab',
+    keys: ['Mod+KeyW'],
+  },
+  { id: 'remove-tab', title: 'Remove tab', keys: ['Mod+Shift+KeyW'] },
   { id: 'reopen-tab', title: 'Reopen closed tab', keys: ['Mod+Shift+KeyT'] },
-  { id: 'next-tab', title: 'Next tab', keys: ['Control+Tab'] },
-  { id: 'previous-tab', title: 'Previous tab', keys: ['Control+Shift+Tab'] },
+  { id: 'next-tab', title: 'Nav history: next tab', keys: ['Control+Tab'] },
+  {
+    id: 'previous-tab',
+    title: 'Nav history: previous tab',
+    keys: ['Control+Shift+Tab'],
+  },
   {
     id: 'sidebar',
     title: 'Toggle Space sidebar',
@@ -85,7 +94,6 @@ export function validateShortcuts(
     'KeyA',
     'KeyZ',
   ].flatMap((code) => [`Mod+${code}`, `Mod+Shift+${code}`]);
-  reserved.push('Mod+Shift+KeyW');
   if (mac) reserved.push('Mod+Control+KeyF');
   else reserved.push('Alt+F4');
   Object.entries(result).forEach(([id, bindings]) => {

@@ -53,7 +53,7 @@ it('adds, edits, selects defaults and deletes engines while retaining one defaul
     );
   }
   render(<Harness />);
-  fireEvent.click(screen.getByText('Add search engine'));
+  fireEvent.click(screen.getByRole('button', { name: 'Add search engine' }));
   expect(screen.getByRole('dialog')).toHaveAccessibleName('New search engine');
   expect(screen.getByLabelText('Search URL').tagName).toBe('TEXTAREA');
   fireEvent.change(screen.getByLabelText('Search engine name'), {
@@ -69,6 +69,7 @@ it('adds, edits, selects defaults and deletes engines while retaining one defaul
   await waitFor(() =>
     expect(screen.queryByLabelText('Search URL')).not.toBeInTheDocument()
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Brave' }));
   fireEvent.click(screen.getByLabelText('Edit Brave'));
   expect(screen.getByLabelText('Search shortcut')).toHaveValue('brave');
   fireEvent.change(screen.getByLabelText('Search engine name'), {
@@ -86,7 +87,9 @@ it('adds, edits, selects defaults and deletes engines while retaining one defaul
   expect(
     screen.getByLabelText('Edit DuckDuckGo').closest('.preference-row')
   ).toHaveTextContent('Default');
+  fireEvent.click(screen.getByRole('button', { name: 'Google' }));
   fireEvent.click(screen.getByLabelText('Delete Google'));
+  fireEvent.click(screen.getByRole('button', { name: 'Bing' }));
   fireEvent.click(screen.getByLabelText('Delete Bing'));
   expect(screen.getByLabelText('Delete DuckDuckGo')).toBeDisabled();
   fireEvent.click(screen.getByLabelText('Edit DuckDuckGo'));

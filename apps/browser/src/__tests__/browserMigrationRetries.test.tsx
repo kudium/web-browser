@@ -94,6 +94,9 @@ test.each(['error', 'cookies'])(
         <BrowserMigrationSettings />
       </Theme>
     );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Scan for browser data' })
+    );
     await waitFor(() =>
       expect(
         (screen.getByText('Review import') as HTMLButtonElement).disabled
@@ -172,18 +175,17 @@ test('reopens a saved import after restart and reuses its existing groups', asyn
       <BrowserMigrationSettings />
     </Theme>
   );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Scan for browser data' })
+  );
   const resume = await screen.findByText('Resume Arc import');
   await waitFor(() =>
     expect((resume as HTMLButtonElement).disabled).toBe(false)
   );
   fireEvent.click(resume);
   expect(
-    (
-      screen.getByLabelText(
-        'Folders as tab groups'
-      ) as HTMLInputElement
-    ).checked
-  ).toBe(false);
+    screen.getByLabelText('Folders as tab groups').getAttribute('aria-checked')
+  ).toBe('false');
   fireEvent.click(screen.getByText('Retry remaining data'));
   await screen.findByText(
     'Imported 1 saved tabs, 1 history entries and 0 cookies.'

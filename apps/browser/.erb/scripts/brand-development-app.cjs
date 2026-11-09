@@ -8,7 +8,7 @@ const bundle = path.resolve(__dirname, '../dll', `${productName}.app`);
 
 function developmentElectronPath() {
   return process.platform === 'darwin'
-    ? path.join(bundle, 'Contents', 'MacOS', productName)
+    ? path.join(bundle, 'Contents', 'MacOS', path.basename(require('electron')))
     : require('electron');
 }
 
@@ -26,11 +26,12 @@ function prepareDevelopmentApp() {
   const executable = execFileSync(buddy, ['-c', 'Print :CFBundleExecutable', plist], {
     encoding: 'utf8',
   }).trim();
-  fs.renameSync(path.join(contents, 'MacOS', executable), developmentElectronPath());
+  // Electron detects development mode from its executable name. Renaming it
+  // makes app.isPackaged true and selects packaged assets and update behavior.
   for (const [key, value] of [
     ['CFBundleName', productName],
     ['CFBundleDisplayName', productName],
-    ['CFBundleExecutable', productName],
+    ['CFBundleExecutable', executable],
     ['CFBundleIdentifier', 'com.kudium.kudiumbrowser.development'],
   ]) {
     try {

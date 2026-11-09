@@ -147,7 +147,7 @@ export const preferenceControls: PreferenceControl[] = [
     section: 'appearance',
     title: 'Group tab display',
     description:
-      'Show horizontal tabs, or keep the browser compact with a popup anchored to the group. Single-page groups do not need a popup. Use the right arrow key to open a popup from the keyboard.',
+      'Show horizontal tabs with group previews on hover, or keep the browser compact with a popup on hover or click. Previews show the group name, AI reference and tabs. Use the right arrow key to open a popup from the keyboard.',
     kind: 'select',
     options: [
       { label: 'Horizontal tab strip', value: 'horizontal' },
@@ -158,9 +158,9 @@ export const preferenceControls: PreferenceControl[] = [
   {
     key: 'folderHoverPreviews',
     section: 'appearance',
-    title: 'Preview closed folders on hover',
+    title: 'Preview closed collections on hover',
     description:
-      'Browse groups in a closed folder without expanding it. Click the folder to expand it normally.',
+      'Browse groups in a closed collection without expanding it. Click the collection to expand it normally.',
     kind: 'toggle',
   },
   {

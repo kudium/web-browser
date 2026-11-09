@@ -31,8 +31,6 @@ import {
   ArrowDownToLine,
   ChevronDown,
   MoreHorizontal,
-  Folder,
-  FolderOpen,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -52,6 +50,8 @@ import { BrowserWelcome } from '../../UI/BrowserWelcome';
 import { AccountSyncPublisher } from '../../UI/AccountSyncPublisher';
 import { BrowserImportSuggestion } from '../../UI/BrowserImportSuggestion';
 import { FirstGroupSyncSuggestion } from '../../UI/FirstGroupSyncSuggestion';
+import { TabSwitcher } from '../../UI/TabSwitcher';
+import { useTabSwitcher } from '../../../utils/hooks/useTabSwitcher';
 import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
 import {
   groupAccessAction,
@@ -85,6 +85,7 @@ import { AISidebar } from '../../UI/AISidebar';
 import { ChromeIconButton } from '../../UI/ChromeIconButton';
 import { PictureInPictureButton } from '../../UI/PictureInPictureButton';
 import { useCollapsedItems } from '../../../utils/useCollapsedItems';
+import { CollectionIcon } from '../../UI/CollectionIcon';
 import { folderLinks, moveFolder } from '../../../utils/folderActions';
 import {
   hasStorageRecovery,
@@ -189,20 +190,23 @@ export function Main() {
   }, []);
   const [aiContextRequest, setAIContextRequest] = useState<{
     reference: AIContextReference;
+    mode?: 'scope';
     token: number;
   }>();
   const [aiOpen, setAIOpen] = useAIPagePreference('open', false);
+
   const [aiMounted, setAIMounted] = useState(aiOpen);
   const [developerRequest, setDeveloperRequest] = useState(0);
   const [menuPaneRequest, setMenuPaneRequest] = useState<{
     pane: 'assistant' | 'tasks' | 'developer';
     token: number;
   }>();
-  const addToAI = (reference: AIContextReference) => {
+  const addToAI = (reference: AIContextReference, mode?: 'scope') => {
     setAIMounted(true);
     setAIOpen(true);
     setAIContextRequest((previous) => ({
       reference,
+      mode,
       token: (previous?.token || 0) + 1,
     }));
   };
@@ -257,6 +261,7 @@ export function Main() {
   const [recoveryCopyStatus, setRecoveryCopyStatus] =
     useState('Copy recovery data');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteGroup, setPaletteGroup] = useState<IApp>();
   useEffect(() => {
     if (paletteOpen) window.electron?.telemetry?.feature('command_opened');
   }, [paletteOpen]);
@@ -284,8 +289,14 @@ export function Main() {
   const [favoriteRename, setFavoriteRename] = useState<IApp>();
   const [favoriteName, setFavoriteName] = useState('');
   const [folderDialog, setFolderDialog] = useState(false);
+  const [deletingCollection, setDeletingCollection] = useState<{
+    id: string;
+    name: string;
+    spaceId: string;
+  }>();
   const [folderName, setFolderName] = useState('');
   const [editingFolder, setEditingFolder] = useState<string>();
+
   const [folderFeedback, setFolderFeedback] = useState<{
     id: string;
     text: string;
@@ -462,12 +473,12 @@ export function Main() {
     }
   }, [compact, sidebarHidden]);
   const [sidebarDirection, setSidebarDirection] = useState(1);
-  const libraryPage =
-    libraryTab === 'downloads'
-      ? DOWNLOADS_PAGE
-      : libraryTab === 'history'
-      ? HISTORY_PAGE
-      : ARCHIVE_PAGE;
+  const libraryPages = {
+    downloads: DOWNLOADS_PAGE,
+    history: HISTORY_PAGE,
+    archive: ARCHIVE_PAGE,
+  };
+  const libraryPage = libraryPages[libraryTab];
   const sidebarPage = downloadsOpen ? libraryPage : active.id;
   const sidebarPages = useMemo(
     () => [
@@ -489,13 +500,10 @@ export function Main() {
         page === HISTORY_PAGE ||
         page === ARCHIVE_PAGE
       ) {
-        setLibraryTab(
-          page === DOWNLOADS_PAGE
-            ? 'downloads'
-            : page === HISTORY_PAGE
-            ? 'history'
-            : 'archive'
-        );
+        let nextLibraryTab: typeof libraryTab = 'archive';
+        if (page === DOWNLOADS_PAGE) nextLibraryTab = 'downloads';
+        else if (page === HISTORY_PAGE) nextLibraryTab = 'history';
+        setLibraryTab(nextLibraryTab);
         setDownloadsOpen(true);
       } else {
         setDownloadsOpen(false);
@@ -542,8 +550,9 @@ export function Main() {
   const [closedGroups, setClosedGroups] = useState<Set<string>>(
     () => new Set()
   );
+  const [closedTabs, setClosedTabs] = useState<Set<string>>(() => new Set());
   const availableTabs = appList.filter(
-    (item) => !closedGroups.has(aiGroupId(item))
+    (item) => !closedGroups.has(aiGroupId(item)) && !closedTabs.has(item.id)
   );
   const selected =
     availableTabs.find(
@@ -553,8 +562,12 @@ export function Main() {
         ((item.spaceId || 'default') === active.id || item.favorite)
     ) ||
     nextGroupTab(availableTabs, selectedId) ||
-    spaceApps.find((item) => !closedGroups.has(aiGroupId(item))) ||
-    favorites.find((item) => !closedGroups.has(aiGroupId(item)));
+    spaceApps.find(
+      (item) => !closedGroups.has(aiGroupId(item)) && !closedTabs.has(item.id)
+    ) ||
+    favorites.find(
+      (item) => !closedGroups.has(aiGroupId(item)) && !closedTabs.has(item.id)
+    );
   const externalSource = useRef(selected);
   externalSource.current = selected;
   const tabGroups = useMemo(
@@ -619,7 +632,11 @@ export function Main() {
                   ).length
                 } tabs`
               : item.url,
-          icon: item.sessionIconImage || item.icon,
+          group: preview.target?.kind === 'folder' ? item : undefined,
+          icon:
+            preview.target?.kind === 'folder'
+              ? item.sessionIconImage || item.icon
+              : item.icon,
         })),
     [previewItems, preview.target?.kind, previewIndex, groupAccess]
   );
@@ -628,7 +645,7 @@ export function Main() {
       previewTarget &&
       (!previewTarget.anchor.isConnected ||
         !previewItems.length ||
-        (previewTarget.kind === 'session' && previewItems.length < 2))
+        (previewTarget.kind === 'session' && previewItems.length < 1))
     )
       closePreview();
   }, [previewTarget, previewItems, closePreview]);
@@ -676,6 +693,12 @@ export function Main() {
           .catch((error) => setMoveMessage(String(error)));
         return;
       }
+      setClosedTabs((previous) => {
+        if (!previous.has(item.id)) return previous;
+        const next = new Set(previous);
+        next.delete(item.id);
+        return next;
+      });
       setClosedGroups((previous) => {
         if (!previous.has(aiGroupId(item))) return previous;
         const next = new Set(previous);
@@ -795,7 +818,7 @@ export function Main() {
       { id: 'new-tab', label: 'New Tab…' },
       { id: 'new-group', label: 'Create Group…' },
       { id: 'import-group', label: 'Import Group…' },
-      { id: 'folder', label: 'New Folder' },
+      { id: 'folder', label: 'New Collection' },
       { id: 'sort', label: 'Sort Groups by Name' },
       {
         id: 'archive',
@@ -866,9 +889,46 @@ export function Main() {
   useEffect(() => {
     if (selected) rememberGroupTab(selected);
   }, [selected]);
+  const openGroupTab = (item: IApp, side?: SplitSide) => {
+    if (lockedGroup(item)) return;
+    setPaletteGroup(item);
+    if (side) select(item, side);
+    else selectGroup(item);
+    preview.close();
+    setPaletteOpen(true);
+  };
   const [addressGroupPickerOpen, setAddressGroupPickerOpen] = useState(false);
+  const switchableTabs = availableTabs.filter(
+    (tab) =>
+      !tab.archived &&
+      !lockedGroup(tab) &&
+      ((tab.spaceId || 'default') === active.id || tab.favorite)
+  );
+  const tabSwitcher = useTabSwitcher(
+    switchableTabs,
+    selected?.id,
+    select,
+    active.id
+  );
+  const tabSwitcherRef = useRef(tabSwitcher);
+  tabSwitcherRef.current = tabSwitcher;
+  const unloadPageTab = (item: IApp) => {
+    tabSwitcherRef.current.remove([item.id]);
+    setClosedTabs((previous) => new Set([...previous, item.id]));
+    setSplit((previous) =>
+      previous && [previous.left, previous.right].includes(item.id)
+        ? null
+        : previous
+    );
+    browser.command({ id: item.id, action: 'unload-tab' });
+  };
+  const tabSwitcherOpen = !!tabSwitcher.shown;
+  useEffect(() => {
+    if (tabSwitcherOpen) browser.command({ id: '', action: 'focus-chrome' });
+  }, [tabSwitcherOpen]);
   const nativeOverlayOpen = useNativeOverlay();
   const overlayOpen =
+    !!tabSwitcher.shown ||
     nativeOverlayOpen ||
     addressGroupPickerOpen ||
     !!preview.target ||
@@ -973,6 +1033,7 @@ export function Main() {
   useEffect(
     () =>
       browser.onShortcut((action) => {
+        if (tabSwitcherRef.current.handle(action)) return;
         if (
           action === 'sidebar-or-save' &&
           document.activeElement?.closest('.developer-files')
@@ -1095,21 +1156,25 @@ export function Main() {
           setAIMounted(true);
           setAIOpen((previous) => !previous);
         }
-        if ((action === 'next-tab' || action === 'previous-tab') && selected) {
-          const index = activeGroupTabs.findIndex(
-            (tab) => tab.id === selected.id
+        if (action === 'next-tab' || action === 'previous-tab') {
+          tabSwitcherRef.current.handle(
+            action === 'next-tab'
+              ? 'tab-switcher-next'
+              : 'tab-switcher-previous'
           );
-          const next =
-            activeGroupTabs[
-              (index +
-                (action === 'next-tab' ? 1 : activeGroupTabs.length - 1)) %
-                activeGroupTabs.length
-            ];
-          if (next) {
-            select(next);
+          tabSwitcherRef.current.handle('tab-switcher-commit');
+        }
+        if (action === 'close-tab' && selected) unloadPageTab(selected);
+        if (action === 'remove-tab' && selected) {
+          try {
+            AppManager.set(
+              AppManager.getAll().filter((tab) => tab.id !== selected.id)
+            );
+            tabSwitcherRef.current.remove([selected.id]);
+          } catch (error) {
+            setMoveMessage(String(error));
           }
         }
-        if (action === 'close-tab' && selected) closePageTab(selected);
         if (action === 'next-space' || action === 'previous-space') {
           swipeSidebar(action === 'next-space' ? 1 : -1);
         }
@@ -1119,7 +1184,7 @@ export function Main() {
       active.id,
       selected,
       addressBarPlacement,
-      activeGroupTabs,
+      switchableTabs,
       select,
       downloadsOpen,
       activateSidebarPage,
@@ -1127,12 +1192,12 @@ export function Main() {
       swipeSidebar,
       setCompact,
       setAIOpen,
-      closePageTab,
     ]
   );
   useEffect(
     () =>
       browser.onState((next) => {
+        if (next.discarded) tabSwitcherRef.current.remove([next.id]);
         setStates((previous) => ({ ...previous, [next.id]: next }));
         const item = AppManager.getBy('id', next.id);
         if (
@@ -1173,8 +1238,16 @@ export function Main() {
       ) as string[];
       browser.sync({
         suspended: overlayOpen,
+        tabSwitcher: !!tabSwitcher.shown,
         focusedId: selected?.id,
-        apps: appList.filter((item) => !item.archived),
+        apps: appList
+          .filter((item) => !item.archived)
+          .map((item) => ({
+            ...item,
+            collectionName: spaces
+              .find((space) => space.id === (item.spaceId || 'default'))
+              ?.folders.find((folder) => folder.id === item.folderId)?.name,
+          })),
         visible: overlayOpen
           ? []
           : ids.map((id, index) => ({
@@ -1202,6 +1275,8 @@ export function Main() {
     selected?.id,
     split,
     overlayOpen,
+    tabSwitcher.shown,
+    spaces,
     compact,
     sidebarHidden,
     active.id,
@@ -1213,13 +1288,17 @@ export function Main() {
   const closeGroup = useCallback(
     (item: IApp) => {
       closeGroupPreview();
+      tabSwitcherRef.current.remove(
+        appList
+          .filter((tab) => aiGroupId(tab) === aiGroupId(item))
+          .map((tab) => tab.id)
+      );
       setClosedGroups((previous) =>
         previous.has(aiGroupId(item))
           ? previous
           : new Set([...previous, aiGroupId(item)])
       );
-      if (selected && aiGroupId(selected) === aiGroupId(item))
-        setSelectedId(undefined);
+
       if (
         split &&
         [split.left, split.right].some((id) =>
@@ -1231,7 +1310,7 @@ export function Main() {
         setSplit(null);
       browser.command({ id: item.id, action: 'close-group' });
     },
-    [closeGroupPreview, selected, split, appList]
+    [closeGroupPreview, split, appList]
   );
   useEffect(
     () =>
@@ -1473,6 +1552,34 @@ export function Main() {
       })
     );
     setRenameTarget(undefined);
+  };
+  const deleteCollection = (deleteGroups: boolean) => {
+    if (!deletingCollection) return;
+    const { id, spaceId } = deletingCollection;
+    if (
+      deleteGroups &&
+      AppManager.getAll().some(
+        (tab) =>
+          (tab.spaceId || 'default') === spaceId &&
+          tab.folderId === id &&
+          lockedGroup(tab)
+      )
+    ) {
+      setMoveMessage(
+        'Unlock the groups in this collection before deleting them.'
+      );
+      return;
+    }
+    AppManager.set(
+      removeGroupFolder(AppManager.getAll(), spaceId, id, deleteGroups)
+    );
+    const space = SpaceManager.getAll().find((entry) => entry.id === spaceId);
+    if (space)
+      SpaceManager.update(spaceId, {
+        folders: space.folders.filter((folder) => folder.id !== id),
+      });
+    setDeletingCollection(undefined);
+    setFolderDialog(false);
   };
   const edit = (item: IApp) => setEditingGroup(item);
   useEffect(() => {
@@ -1802,20 +1909,15 @@ export function Main() {
         ((dragged.axis === 'vertical' && axis === 'vertical') ||
           groupKey(source) === groupKey(target))
       ) {
+        const movingGroup = dragged.axis === 'vertical' && axis === 'vertical';
+        let destination = apps;
+        if (movingGroup) {
+          destination = target.folderId
+            ? moveGroupToFolder(apps, source, active.id, target.folderId)
+            : moveGroupToSection(apps, source.id, sectionOf(target), active.id);
+        }
         AppManager.set(
-          reorderTabs(
-            dragged.axis === 'vertical' && axis === 'vertical'
-              ? moveGroupToSection(
-                  apps,
-                  source.id,
-                  sectionOf(target),
-                  active.id
-                )
-              : apps,
-            source.id,
-            target.id,
-            dragged.axis === 'vertical' && axis === 'vertical'
-          )
+          reorderTabs(destination, source.id, target.id, movingGroup)
         );
       } else if (dragged.axis === 'horizontal' || target) {
         finishDrag();
@@ -1864,9 +1966,7 @@ export function Main() {
             </ContextMenu.Item>
             <ContextMenu.Item
               onSelect={() => {
-                selectGroup(item);
-                setPaletteOpen(true);
-                preview.close();
+                openGroupTab(item);
               }}
             >
               New Tab…
@@ -1886,6 +1986,25 @@ export function Main() {
                 </ContextMenu.Item>
               </ContextMenu.SubContent>
             </ContextMenu.Sub>
+            <ContextMenu.Item
+              onSelect={() =>
+                AppManager.set(
+                  appList.map((tab) =>
+                    groupKey(tab) === groupKey(item)
+                      ? {
+                          ...tab,
+                          groupDisplay:
+                            item.groupDisplay === 'folder' ? 'stack' : 'folder',
+                        }
+                      : tab
+                  )
+                )
+              }
+            >
+              {item.groupDisplay === 'folder'
+                ? 'Display as stack'
+                : 'Display as folder'}
+            </ContextMenu.Item>
             <ContextMenu.Item onSelect={() => edit(item)}>
               {nativeMenuLabels.groupSettings}
             </ContextMenu.Item>
@@ -1960,7 +2079,14 @@ export function Main() {
       </ContextMenu.Content>
     );
   };
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const renderApp = (item: IApp) => {
+    const folderView = item.groupDisplay === 'folder' && !item.favorite;
+    const expansionKey = JSON.stringify([
+      item.spaceId || 'default',
+      groupKey(item),
+    ]);
+    const expanded = expandedGroups.includes(expansionKey);
     const renaming =
       renameTarget?.id === item.id && renameTarget.axis === 'vertical';
     const Row = renaming ? 'div' : 'button';
@@ -1970,172 +2096,230 @@ export function Main() {
     const tooltip = `${item.sessionName || item.name}${
       slug ? `\n@${slug.length > 36 ? `${slug.slice(0, 35)}…` : slug}` : ''
     }${locked ? '\nLocked group' : ''}`;
-    const hasPreview =
-      !locked &&
-      tabDisplayMode !== 'horizontal' &&
-      tabsForPreview(item).length > 1;
+    const hasPreview = !locked && tabsForPreview(item).length > 0;
+    let ariaExpanded: boolean | undefined;
+    if (folderView) ariaExpanded = expanded && !locked;
+    else if (hasPreview)
+      ariaExpanded =
+        preview.target?.kind === 'session' && preview.target.id === item.id;
     return (
       <ContextMenu.Root key={item.id} onOpenChange={setMenuOpen}>
-        <ContextMenu.Trigger>
-          <div
-            className={item.favorite ? undefined : 'sidebar-app-row'}
-            data-tab-motion={`sidebar-${item.id}`}
-            data-dragging={dragged?.id === item.id || undefined}
-          >
-            <Row
-              type="button"
-              className={`sidebar-app ${
-                selected && groupKey(selected) === groupKey(item)
-                  ? 'active'
-                  : ''
-              }`}
-              title={
-                hasPreview && tabDisplayMode === 'hover' ? undefined : tooltip
-              }
-              aria-haspopup={hasPreview ? 'dialog' : undefined}
-              aria-expanded={
-                hasPreview
-                  ? preview.target?.kind === 'session' &&
-                    preview.target.id === item.id
-                  : undefined
-              }
-              onMouseEnter={(event) => {
-                if (
-                  hasPreview &&
-                  tabDisplayMode === 'hover' &&
-                  !renaming &&
-                  !dragged &&
-                  !menuOpen
-                )
-                  preview.open({
-                    kind: 'session',
-                    id: item.id,
-                    anchor: event.currentTarget,
-                    interaction: 'hover',
-                  });
-              }}
-              onMouseLeave={preview.leave}
-              onKeyDown={(event) => {
-                if (hasPreview && event.key === 'ArrowRight') {
-                  event.preventDefault();
-                  preview.open({
-                    kind: 'session',
-                    id: item.id,
-                    anchor: event.currentTarget,
-                    interaction: 'keyboard',
-                  });
+        <div
+          className="sidebar-group"
+          data-expanded={
+            (folderView && expanded && !locked && !item.favorite) || undefined
+          }
+        >
+          <ContextMenu.Trigger>
+            <div
+              className={item.favorite ? undefined : 'sidebar-app-row'}
+              data-tab-motion={`sidebar-${item.id}`}
+              data-dragging={dragged?.id === item.id || undefined}
+            >
+              <Row
+                type="button"
+                className={`sidebar-app ${
+                  selected && groupKey(selected) === groupKey(item)
+                    ? 'active'
+                    : ''
+                }`}
+                title={
+                  hasPreview && tabDisplayMode !== 'click' ? undefined : tooltip
                 }
-              }}
-              aria-label={item.sessionName || item.name}
-              aria-current={
-                selected && groupKey(selected) === groupKey(item)
-                  ? 'page'
-                  : undefined
-              }
-              onClick={(event) => {
-                if (renaming) return;
-                selectGroup(item);
-                if (hasPreview && tabDisplayMode === 'click') {
-                  if (
-                    preview.target?.anchor === event.currentTarget &&
-                    preview.target.kind === 'session' &&
-                    preview.target.id === item.id
-                  )
-                    preview.close();
-                  else
+                aria-haspopup={hasPreview ? 'dialog' : undefined}
+                aria-expanded={ariaExpanded}
+                aria-controls={folderView ? `group-tabs-${item.id}` : undefined}
+                onMouseEnter={(event) => {
+                  if (hasPreview && !renaming && !dragged && !menuOpen)
                     preview.open({
                       kind: 'session',
                       id: item.id,
                       anchor: event.currentTarget,
-                      interaction: 'click',
+                      interaction: 'hover',
                     });
-                }
-              }}
-              draggable={!renaming && !locked}
-              onDragStart={(event) => {
-                preview.close();
-                startDrag(event, item, 'vertical');
-              }}
-              onDragEnd={endWindowDrag}
-              onDragOver={(event) => {
-                if (
-                  dragged ||
-                  event.dataTransfer.types.includes(WINDOW_DRAG_MIME)
-                ) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setDropTarget(item.id);
-                }
-              }}
-              onDrop={(event) => dropTab(event, item)}
-              data-drop-target={dropTarget === item.id || undefined}
-              onDoubleClick={() => {
-                if (!locked) rename(item);
-              }}
-            >
-              <GroupIcon item={item} tabs={appList} compact={!!item.favorite} />
-              {protectedGroup && (
-                <LockKeyhole
-                  size={12}
-                  className="sidebar-group-lock"
-                  aria-label={
-                    locked ? 'Group locked' : 'Group unlocked for this session'
+                }}
+                onMouseLeave={preview.leave}
+                onKeyDown={(event) => {
+                  if (hasPreview && event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    preview.open({
+                      kind: 'session',
+                      id: item.id,
+                      anchor: event.currentTarget,
+                      interaction: 'keyboard',
+                    });
                   }
-                />
-              )}
-              <span className="sidebar-app-copy">
-                {renaming ? (
-                  <InlineTabName
-                    name={item.sessionName || item.name}
-                    save={(name) => saveName(item, 'vertical', name)}
-                    cancel={() => setRenameTarget(undefined)}
-                  />
-                ) : (
-                  <strong>
-                    {item.sessionName ||
-                      (item.sessionId ? item.name : 'Saved group')}
-                  </strong>
-                )}
-              </span>
-            </Row>
-            {!item.favorite && !renaming && !locked && (
-              <button
-                type="button"
-                className="sidebar-app-add"
-                aria-label={`New tab in ${item.sessionName || item.name}`}
-                title="New tab in this group"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  preview.close();
-                  selectGroup(item);
-                  setPaletteOpen(true);
                 }}
-              >
-                <Plus size={13} />
-              </button>
-            )}
-            {!item.favorite && !renaming && !locked && (
-              <button
-                type="button"
-                className="sidebar-app-close"
-                aria-label={`Close ${item.sessionName || item.name}`}
-                title={
-                  closedGroups.has(aiGroupId(item))
-                    ? 'Archive or delete group…'
-                    : 'Unload group'
+                aria-label={item.sessionName || item.name}
+                aria-current={
+                  selected && groupKey(selected) === groupKey(item)
+                    ? 'page'
+                    : undefined
                 }
                 onClick={(event) => {
-                  event.stopPropagation();
-                  closeGroupButton(item).catch((error) =>
-                    setMoveMessage(String(error))
-                  );
+                  if (renaming) return;
+                  if (folderView && !locked) {
+                    closePreview();
+                    setExpandedGroups((previous) =>
+                      expanded
+                        ? previous.filter((id) => id !== expansionKey)
+                        : [...previous, expansionKey]
+                    );
+                    return;
+                  }
+                  selectGroup(item);
+                  if (hasPreview && tabDisplayMode === 'click') {
+                    if (
+                      preview.target?.anchor === event.currentTarget &&
+                      preview.target.kind === 'session' &&
+                      preview.target.id === item.id
+                    )
+                      preview.close();
+                    else
+                      preview.open({
+                        kind: 'session',
+                        id: item.id,
+                        anchor: event.currentTarget,
+                        interaction: 'click',
+                      });
+                  }
+                }}
+                draggable={!renaming && !locked}
+                onDragStart={(event) => {
+                  preview.close();
+                  startDrag(event, item, 'vertical');
+                }}
+                onDragEnd={endWindowDrag}
+                onDragOver={(event) => {
+                  if (
+                    dragged ||
+                    event.dataTransfer.types.includes(WINDOW_DRAG_MIME)
+                  ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDropTarget(item.id);
+                  }
+                }}
+                onDrop={(event) => dropTab(event, item)}
+                data-drop-target={dropTarget === item.id || undefined}
+                onDoubleClick={() => {
+                  if (!locked) rename(item);
                 }}
               >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-        </ContextMenu.Trigger>
+                <GroupIcon
+                  item={item}
+                  tabs={appList}
+                  compact={!!item.favorite}
+                  expanded={expanded}
+                />
+                {protectedGroup && (
+                  <LockKeyhole
+                    size={12}
+                    className="sidebar-group-lock"
+                    aria-label={
+                      locked
+                        ? 'Group locked'
+                        : 'Group unlocked for this session'
+                    }
+                  />
+                )}
+                <span className="sidebar-app-copy">
+                  {renaming ? (
+                    <InlineTabName
+                      name={item.sessionName || item.name}
+                      save={(name) => saveName(item, 'vertical', name)}
+                      cancel={() => setRenameTarget(undefined)}
+                    />
+                  ) : (
+                    <strong>
+                      {item.sessionName ||
+                        (item.sessionId ? item.name : 'Saved group')}
+                    </strong>
+                  )}
+                </span>
+                {folderView && !item.favorite && !locked && (
+                  <ChevronDown
+                    size={14}
+                    className="sidebar-group-chevron"
+                    data-expanded={expanded || undefined}
+                    aria-hidden="true"
+                  />
+                )}
+              </Row>
+              {!item.favorite && !renaming && !locked && (
+                <button
+                  type="button"
+                  className="sidebar-app-add"
+                  aria-label={`New tab in ${item.sessionName || item.name}`}
+                  title="New tab in this group"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openGroupTab(item);
+                  }}
+                >
+                  <Plus size={13} />
+                </button>
+              )}
+              {!item.favorite && !renaming && !locked && (
+                <button
+                  type="button"
+                  className="sidebar-app-close"
+                  aria-label={`Close ${item.sessionName || item.name}`}
+                  title={
+                    closedGroups.has(aiGroupId(item))
+                      ? 'Archive or delete group…'
+                      : 'Unload group'
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    closeGroupButton(item).catch((error) =>
+                      setMoveMessage(String(error))
+                    );
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </ContextMenu.Trigger>
+          {folderView && !locked && !item.favorite && (
+            <div
+              id={`group-tabs-${item.id}`}
+              className="sidebar-group-content"
+              data-expanded={expanded || undefined}
+              aria-hidden={!expanded}
+              aria-label={`Tabs in ${item.sessionName || item.name}`}
+            >
+              <div className="sidebar-group-content-inner">
+                <div className="sidebar-group-tabs">
+                  {tabsForPreview(item).map((tab) => (
+                    <button
+                      type="button"
+                      key={tab.id}
+                      tabIndex={expanded ? 0 : -1}
+                      aria-current={
+                        selected?.id === tab.id ? 'page' : undefined
+                      }
+                      className={`sidebar-group-tab ${
+                        selected?.id === tab.id ? 'active' : ''
+                      }`}
+                      onClick={() => {
+                        closePreview();
+                        select(tab);
+                      }}
+                    >
+                      <AppIcon
+                        icon={tab.icon}
+                        title={tab.customName || tab.name}
+                      />
+                      <span>{tab.customName || tab.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         {renderGroupMenu(item)}
       </ContextMenu.Root>
     );
@@ -2504,12 +2688,12 @@ export function Main() {
       </ContextMenu.Item>
     </ContextMenu.Content>
   );
-  const showTabContextMenu = (id: string) => {
+  const showTabContextMenu = (id: string, fromDeveloper = true) => {
     const item = AppManager.getAll().find(
       (tab) => tab.id === id && !tab.archived
     );
     if (!item || lockedGroup(item)) return;
-    showNativeContextMenu(renderTabMenu(item, undefined, true), () => {
+    showNativeContextMenu(renderTabMenu(item, undefined, fromDeveloper), () => {
       const current = AppManager.getAll().find(
         (tab) => tab.id === id && !tab.archived
       );
@@ -2587,8 +2771,7 @@ export function Main() {
             ])
             .then((choice) => {
               if (choice === 'new') {
-                select(paneSelected, side);
-                setPaletteOpen(true);
+                openGroupTab(paneSelected, side);
               }
               if (choice === 'undo-close' && closedTab) {
                 const current = AppManager.getBy('id', closedTab.id);
@@ -2802,8 +2985,7 @@ export function Main() {
           className="horizontal-tab-add"
           label="New tab in current group"
           onClick={() => {
-            select(paneSelected, side);
-            setPaletteOpen(true);
+            openGroupTab(paneSelected, side);
           }}
         />
       </div>
@@ -3007,15 +3189,7 @@ export function Main() {
                     aria-controls="system-space-panel"
                     aria-selected={libraryTab === tab}
                     tabIndex={libraryTab === tab ? 0 : -1}
-                    onClick={() =>
-                      activateSidebarPage(
-                        tab === 'downloads'
-                          ? DOWNLOADS_PAGE
-                          : tab === 'history'
-                          ? HISTORY_PAGE
-                          : ARCHIVE_PAGE
-                      )
-                    }
+                    onClick={() => activateSidebarPage(libraryPages[tab])}
                     onKeyDown={(event) => {
                       if (
                         !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(
@@ -3025,32 +3199,20 @@ export function Main() {
                         return;
                       event.preventDefault();
                       const tabs = ['downloads', 'history', 'archive'] as const;
-                      const index =
-                        event.key === 'Home'
-                          ? 0
-                          : event.key === 'End'
-                          ? 2
-                          : (tabs.indexOf(tab) +
-                              (event.key === 'ArrowLeft' ? 2 : 1)) %
-                            3;
+                      let index =
+                        (tabs.indexOf(tab) +
+                          (event.key === 'ArrowLeft' ? 2 : 1)) %
+                        tabs.length;
+                      if (event.key === 'Home') index = 0;
+                      else if (event.key === 'End') index = tabs.length - 1;
                       const next = tabs[index];
-                      activateSidebarPage(
-                        next === 'downloads'
-                          ? DOWNLOADS_PAGE
-                          : next === 'history'
-                          ? HISTORY_PAGE
-                          : ARCHIVE_PAGE
-                      );
+                      activateSidebarPage(libraryPages[next]);
                       requestAnimationFrame(() =>
                         document.getElementById(`system-${next}-tab`)?.focus()
                       );
                     }}
                   >
-                    {tab === 'downloads'
-                      ? 'Downloads'
-                      : tab === 'history'
-                      ? 'History'
-                      : 'Archive'}
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
                 ))}
               </div>
@@ -3059,11 +3221,9 @@ export function Main() {
                 role="tabpanel"
                 aria-labelledby={`system-${libraryTab}-tab`}
               >
-                {libraryTab === 'downloads' ? (
-                  <Downloads embedded />
-                ) : libraryTab === 'archive' ? (
-                  <Archive embedded />
-                ) : (
+                {libraryTab === 'downloads' && <Downloads embedded />}
+                {libraryTab === 'archive' && <Archive embedded />}
+                {libraryTab === 'history' && (
                   <History
                     navigate={(url) => {
                       command('navigate', url);
@@ -3187,7 +3347,37 @@ export function Main() {
                     )}
                 </div>
                 {active.folders.map((folder) => (
-                  <div key={folder.id} className="tab-folder">
+                  <div
+                    key={folder.id}
+                    className="tab-folder"
+                    onDragOver={(event) => {
+                      if (dragged?.axis === 'vertical') {
+                        event.preventDefault();
+                        setDropTarget(folder.id);
+                      }
+                    }}
+                    data-drop-target={dropTarget === folder.id || undefined}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const apps = AppManager.getAll();
+                      const source = apps.find(
+                        (item) => item.id === dragged?.id
+                      );
+                      if (
+                        source &&
+                        dragged?.axis === 'vertical' &&
+                        event.dataTransfer.getData(
+                          'application/x-kudiumbrowser-tab'
+                        ) === source.id
+                      ) {
+                        AppManager.set(
+                          moveGroupToFolder(apps, source, active.id, folder.id)
+                        );
+                      }
+                      finishDrag();
+                    }}
+                  >
                     <ContextMenu.Root onOpenChange={setMenuOpen}>
                       <ContextMenu.Trigger>
                         <div className="folder-header">
@@ -3253,39 +3443,6 @@ export function Main() {
                                 }
                               }
                             }}
-                            onDragOver={(event) => {
-                              if (dragged?.axis === 'vertical') {
-                                event.preventDefault();
-                                setDropTarget(folder.id);
-                              }
-                            }}
-                            data-drop-target={
-                              dropTarget === folder.id || undefined
-                            }
-                            onDrop={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              const source = appList.find(
-                                (item) => item.id === dragged?.id
-                              );
-                              if (
-                                source &&
-                                dragged?.axis === 'vertical' &&
-                                event.dataTransfer.getData(
-                                  'application/x-kudiumbrowser-tab'
-                                ) === source.id
-                              ) {
-                                AppManager.set(
-                                  moveGroupToFolder(
-                                    appList,
-                                    source,
-                                    active.id,
-                                    folder.id
-                                  )
-                                );
-                              }
-                              finishDrag();
-                            }}
                             onClick={() => {
                               preview.close();
                               setCollapsedFolders((previous) =>
@@ -3295,16 +3452,34 @@ export function Main() {
                               );
                             }}
                           >
-                            {collapsedFolders.includes(folder.id) ? (
-                              <Folder size={20} />
-                            ) : (
-                              <FolderOpen size={20} />
-                            )}
+                            <CollectionIcon size={16} strokeWidth={1.5} />
                             <strong>{folder.name}</strong>
                           </button>
+                          <ChromeIconButton
+                            icon={Plus}
+                            className="collection-add"
+                            label={`New group in ${folder.name}`}
+                            onClick={() => {
+                              closePreview();
+                              setNewGroupSpace(active.id);
+                              setEditingGroup({
+                                id: crypto.randomUUID(),
+                                sessionId: crypto.randomUUID(),
+                                name: '',
+                                sessionName: '',
+                                url: 'about:blank',
+                                icon: '',
+                                spaceId: active.id,
+                                folderId: folder.id,
+                                groupDisplay: 'folder',
+                                sessionMode: 'collection',
+                                pinned: true,
+                              });
+                            }}
+                          />
                           <ContextMenu.OptionsTrigger>
                             <span className="visually-hidden">
-                              Folder options for {folder.name}
+                              Collection options for {folder.name}
                             </span>
                             <MoreHorizontal size={15} />
                           </ContextMenu.OptionsTrigger>
@@ -3392,22 +3567,19 @@ export function Main() {
                             setFolderDialog(true);
                           }}
                         >
-                          {nativeMenuLabels.renameFolder}
+                          Manage collection…
                         </ContextMenu.Item>
                         <ContextMenu.Item
                           color="red"
-                          onSelect={() => {
-                            AppManager.set(
-                              removeGroupFolder(appList, active.id, folder.id)
-                            );
-                            SpaceManager.update(active.id, {
-                              folders: active.folders.filter(
-                                (entry) => entry.id !== folder.id
-                              ),
-                            });
-                          }}
+                          onSelect={() =>
+                            setDeletingCollection({
+                              id: folder.id,
+                              name: folder.name,
+                              spaceId: active.id,
+                            })
+                          }
                         >
-                          {nativeMenuLabels.removeFolder}
+                          Delete collection…
                         </ContextMenu.Item>
                       </ContextMenu.Content>
                     </ContextMenu.Root>
@@ -3923,7 +4095,7 @@ export function Main() {
               snapshots
                 .filter((frame) => {
                   const item = appList.find((tab) => tab.id === frame.id);
-                  return item && !lockedGroup(item);
+                  return item && !lockedGroup(item) && !frame.previewOnly;
                 })
                 .map((frame) => (
                   <img
@@ -4018,7 +4190,11 @@ export function Main() {
       )}
       <CommandPalette
         open={paletteOpen}
-        onOpenChange={setPaletteOpen}
+        onOpenChange={(open) => {
+          setPaletteOpen(open);
+          if (!open) setPaletteGroup(undefined);
+        }}
+        initialGroup={paletteGroup}
         apps={appList.filter((item) => !lockedGroup(item))}
         select={select}
         groupSource={
@@ -4175,15 +4351,30 @@ export function Main() {
           />
         </Dialog.Content>
       </Dialog.Root>
+      {tabSwitcher.shown && (
+        <TabSwitcher
+          tabs={tabSwitcher.shown.tabs.filter((tab) =>
+            switchableTabs.some((item) => item.id === tab.id)
+          )}
+          selectedId={tabSwitcher.shown.tabs[tabSwitcher.shown.index]?.id}
+          snapshots={snapshots}
+          onSelect={(tab) => {
+            tabSwitcher.finish(false);
+            select(tab);
+          }}
+          onCancel={() => tabSwitcher.finish(false)}
+        />
+      )}
       {preview.target && previewItems.length > 0 && (
         <AnchoredTabPreview
+          glass={translucentChrome}
           key={`${preview.target.kind}:${preview.target.id}`}
           target={preview.target}
           title={
             preview.target.kind === 'folder'
               ? active.folders.find(
                   (folder) => folder.id === preview.target?.id
-                )?.name || 'Folder'
+                )?.name || 'Collection'
               : previewIndex.byId.get(preview.target.id)?.sessionName ||
                 'Group tabs'
           }
@@ -4192,6 +4383,68 @@ export function Main() {
               ? previewIndex.byId.get(preview.target.id)?.sessionSlug
               : undefined
           }
+          icon={
+            preview.target.kind === 'session'
+              ? previewIndex.byId.get(preview.target.id)?.sessionIconImage ||
+                previewIndex.byId.get(preview.target.id)?.icon
+              : undefined
+          }
+          group={
+            preview.target.kind === 'session'
+              ? previewIndex.byId.get(preview.target.id)
+              : undefined
+          }
+          onSelectGroup={
+            preview.target.kind === 'session'
+              ? () => {
+                  if (!preview.target) return;
+                  const item = previewIndex.byId.get(preview.target.id);
+                  if (!item) return;
+                  addToAI({ kind: 'group', id: aiGroupId(item) }, 'scope');
+                  closePreview();
+                }
+              : undefined
+          }
+          onToggleFavorite={
+            preview.target.kind === 'session'
+              ? () => {
+                  if (!preview.target) return;
+                  const item = AppManager.getAll().find(
+                    (tab) => tab.id === preview.target?.id && !tab.archived
+                  );
+                  if (!item || lockedGroup(item)) return;
+                  AppManager.set(
+                    moveGroupToSection(
+                      AppManager.getAll(),
+                      item.id,
+                      item.favorite ? 'pinned' : 'favorites',
+                      item.spaceId || 'default'
+                    )
+                  );
+                  closePreview();
+                }
+              : undefined
+          }
+          onEntryContextMenu={(id) => {
+            const item = previewIndex.byId.get(id);
+            if (!item) return;
+            const isCollection = preview.target?.kind === 'folder';
+            closePreview();
+            if (isCollection) showGroupContextMenu(aiGroupId(item));
+            else showTabContextMenu(id, false);
+          }}
+          onGroupContextMenu={
+            preview.target.kind === 'session'
+              ? () => {
+                  if (!preview.target) return;
+                  const item = previewIndex.byId.get(preview.target.id);
+                  if (!item) return;
+                  closePreview();
+                  showGroupContextMenu(aiGroupId(item));
+                }
+              : undefined
+          }
+          tabs={appList}
           entries={previewEntries}
           selectedId={
             preview.target.kind === 'folder'
@@ -4216,9 +4469,7 @@ export function Main() {
           onNewTab={() => {
             const item =
               preview.target && previewIndex.byId.get(preview.target.id);
-            if (item) selectGroup(item);
-            preview.close();
-            setPaletteOpen(true);
+            if (item) openGroupTab(item);
           }}
           onRemove={(id) => {
             const item = previewIndex.byId.get(id);
@@ -4247,10 +4498,38 @@ export function Main() {
           }}
         />
       )}
+      <Dialog.Root
+        open={!!deletingCollection}
+        onOpenChange={(open) => {
+          if (!open) setDeletingCollection(undefined);
+        }}
+      >
+        <Dialog.Content maxWidth="480px">
+          <Dialog.Title>Delete {deletingCollection?.name}?</Dialog.Title>
+          <Dialog.Description>
+            Keep the groups in the sidebar, or delete the collection and all its
+            saved groups and tabs, including archived tabs. Deleting them cannot
+            be undone.
+          </Dialog.Description>
+          <div className="collection-delete-actions">
+            <Dialog.Close>
+              <Button variant="soft" color="gray">
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button variant="soft" onClick={() => deleteCollection(false)}>
+              Keep groups
+            </Button>
+            <Button color="red" onClick={() => deleteCollection(true)}>
+              Delete everything
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Root>
       <Dialog.Root open={folderDialog} onOpenChange={setFolderDialog}>
-        <Dialog.Content maxWidth="420px">
+        <Dialog.Content maxWidth={editingFolder ? '560px' : '420px'}>
           <Dialog.Title>
-            {editingFolder ? 'Rename folder' : 'New folder'}
+            {editingFolder ? 'Manage collection' : 'New collection'}
           </Dialog.Title>
           <Dialog.Description>
             Group related tabs in {active.name}.
@@ -4280,14 +4559,91 @@ export function Main() {
             <TextField.Root
               required
               autoFocus
-              aria-label="Folder name"
+              aria-label="Collection name"
               placeholder="Project name…"
               value={folderName}
               onChange={(event) => setFolderName(event.target.value)}
             />
             <Button type="submit">
-              {editingFolder ? 'Save folder' : 'Create folder'}
+              {editingFolder ? 'Save collection' : 'Create collection'}
             </Button>
+            {editingFolder && (
+              <section
+                className="collection-management-groups"
+                aria-label="Collection groups"
+              >
+                <Heading size="3">Groups</Heading>
+                <Text size="2" color="gray">
+                  Choose each group’s presentation or open its settings to
+                  customise its tabs and sessions.
+                </Text>
+                {(previewIndex.folders.get(editingFolder) || []).map((item) => (
+                  <div className="collection-management-group" key={item.id}>
+                    <GroupIcon item={item} tabs={appList} />
+                    <strong>{item.sessionName || item.name}</strong>
+                    <Button
+                      type="button"
+                      size="1"
+                      variant="soft"
+                      onClick={() => {
+                        AppManager.set(
+                          AppManager.getAll().map((tab) =>
+                            (tab.spaceId || 'default') ===
+                              (item.spaceId || 'default') &&
+                            groupKey(tab) === groupKey(item)
+                              ? {
+                                  ...tab,
+                                  groupDisplay:
+                                    item.groupDisplay === 'folder'
+                                      ? 'stack'
+                                      : 'folder',
+                                }
+                              : tab
+                          )
+                        );
+                      }}
+                    >
+                      {item.groupDisplay === 'folder'
+                        ? 'Show as stack'
+                        : 'Show as folder'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="1"
+                      variant="ghost"
+                      onClick={() => {
+                        setFolderDialog(false);
+                        setEditingGroup(item);
+                      }}
+                    >
+                      Manage group
+                    </Button>
+                  </div>
+                ))}
+                {!(previewIndex.folders.get(editingFolder) || []).length && (
+                  <Text size="2" color="gray">
+                    No groups yet. Use the collection’s plus button to add one.
+                  </Text>
+                )}
+                <Button
+                  type="button"
+                  color="red"
+                  variant="soft"
+                  onClick={() => {
+                    const collection = active.folders.find(
+                      (folder) => folder.id === editingFolder
+                    );
+                    if (collection)
+                      setDeletingCollection({
+                        ...collection,
+                        spaceId: active.id,
+                      });
+                  }}
+                >
+                  Delete collection…
+                </Button>
+              </section>
+            )}
           </form>
         </Dialog.Content>
       </Dialog.Root>

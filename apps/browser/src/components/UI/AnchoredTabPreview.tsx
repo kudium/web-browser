@@ -1,5 +1,14 @@
-import { Popover } from '@radix-ui/themes';
-import { ArrowLeft, Plus, Search, X } from 'lucide-react';
+import { Button, Popover } from '@radix-ui/themes';
+import {
+  ArrowLeft,
+  Layers,
+  MessageCircle,
+  Pin,
+  PinOff,
+  Plus,
+  Search,
+  X,
+} from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -8,6 +17,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { CollectionIcon } from './CollectionIcon';
+import type { IApp } from '../../types';
+import { GroupIcon as GroupIdentityIcon } from './GroupIcon';
 import { AppIcon } from './AppIcon/AppIcon';
 import { ChromeIconButton } from './ChromeIconButton';
 import { FormInput } from './FormControls';
@@ -18,8 +30,8 @@ export interface PreviewEntry {
   title: string;
   detail: string;
   icon: string;
+  group?: IApp;
 }
-const rowHeight = 44;
 const visibleRows = 7;
 const overscan = 3;
 
@@ -29,9 +41,17 @@ export function AnchoredTabPreview({
   target,
   title,
   subtitle = '',
+  glass = false,
+  icon = '',
+  group,
+  tabs = [],
   entries,
   selectedId,
   onSelect,
+  onSelectGroup,
+  onToggleFavorite,
+  onEntryContextMenu,
+  onGroupContextMenu,
   onRemove,
   onNewTab,
   onBack,
@@ -42,9 +62,17 @@ export function AnchoredTabPreview({
   target: AnchoredPreviewTarget;
   title: string;
   subtitle?: string;
+  glass?: boolean;
+  icon?: string;
+  group?: IApp;
+  tabs?: IApp[];
   entries: PreviewEntry[];
   selectedId: string;
   onSelect: (id: string) => void;
+  onSelectGroup?: () => void;
+  onToggleFavorite?: () => void;
+  onEntryContextMenu?: (id: string) => void;
+  onGroupContextMenu?: () => void;
   onRemove: (id: string) => void;
   onNewTab: () => void;
   onBack: () => void;
@@ -52,6 +80,8 @@ export function AnchoredTabPreview({
   onEnter: () => void;
   onLeave: () => void;
 }) {
+  const rowHeight = target.kind === 'session' ? 32 : 40;
+  const GroupIcon = target.kind === 'folder' ? CollectionIcon : Layers;
   const [query, setQuery] = useState('');
   const [scrollTop, setScrollTop] = useState(0);
   const [highlighted, setHighlighted] = useState(() =>
@@ -60,13 +90,15 @@ export function AnchoredTabPreview({
       entries.findIndex((entry) => entry.id === selectedId)
     )
   );
+  const showSearch =
+    entries.length > visibleRows || target.interaction !== 'hover';
   const viewport = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const measureSide = useCallback(
     () =>
       target.anchor.getBoundingClientRect().right +
         8 +
-        Math.min(320, window.innerWidth - 16) <=
+        Math.min(280, window.innerWidth - 16) <=
       window.innerWidth - 8
         ? ('right' as const)
         : ('bottom' as const),
@@ -107,7 +139,7 @@ export function AnchoredTabPreview({
     else if (top + rowHeight > list.scrollTop + list.clientHeight)
       list.scrollTop = top + rowHeight - list.clientHeight;
     setScrollTop(list.scrollTop);
-  }, [activeIndex]);
+  }, [activeIndex, rowHeight]);
   return (
     <Popover.Root
       open
@@ -118,9 +150,13 @@ export function AnchoredTabPreview({
       <Popover.Anchor virtualRef={anchorRef} />
       <Popover.Content
         className="anchored-tab-preview"
+        data-kind={target.kind}
+        data-glass={glass}
+        data-search={showSearch}
         side={side}
         align="start"
-        sideOffset={8}
+        size="1"
+        sideOffset={6}
         collisionPadding={8}
         aria-label={title}
         onMouseEnter={onEnter}
@@ -143,19 +179,43 @@ export function AnchoredTabPreview({
             target.anchor.focus();
         }}
       >
-        <div className="tab-preview-heading">
+        <div
+          className="tab-preview-heading"
+          onContextMenu={(event) => {
+            if (!onGroupContextMenu) return;
+            event.preventDefault();
+            event.stopPropagation();
+            onGroupContextMenu();
+          }}
+        >
           {target.parentFolder && (
             <ChromeIconButton
               icon={ArrowLeft}
-              label="Back to folder"
+              label="Back to collection"
               onClick={onBack}
             />
           )}
+          <div className="tab-preview-group-icon" aria-hidden="true">
+            {group && <GroupIdentityIcon item={group} tabs={tabs} />}
+            {!group && icon && <AppIcon icon={icon} title={title} />}
+            {!group && !icon && <GroupIcon size={22} />}
+          </div>
           <div className="tab-preview-title">
             <strong>{title}</strong>
-            {subtitle && <small title={`@${subtitle}`}>@{subtitle}</small>}
+            {subtitle && (
+              <Button
+                size="1"
+                variant="ghost"
+                className="tab-preview-slug"
+                title={`Select @${subtitle} in the AI sidebar`}
+                aria-label={`Select @${subtitle} in the AI sidebar`}
+                onClick={onSelectGroup}
+                disabled={!onSelectGroup}
+              >
+                @{subtitle}
+              </Button>
+            )}
           </div>
-          <span>{entries.length}</span>
           {target.kind === 'session' && (
             <ChromeIconButton
               icon={Plus}
@@ -164,38 +224,42 @@ export function AnchoredTabPreview({
             />
           )}
         </div>
-        <div className="tab-preview-search">
-          <Search size={14} aria-hidden="true" />
-          <FormInput
-            ref={searchInput}
-            aria-label="Search preview"
-            placeholder={
-              target.kind === 'folder' ? 'Search groups…' : 'Search tabs…'
-            }
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setHighlighted(0);
-              setScrollTop(0);
-              if (viewport.current) viewport.current.scrollTop = 0;
-            }}
-            onKeyDown={(event) => {
-              if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-                event.preventDefault();
-                let nextIndex =
-                  activeIndex + (event.key === 'ArrowDown' ? 1 : -1);
-                if (event.key === 'Home') nextIndex = 0;
-                if (event.key === 'End') nextIndex = matches.length - 1;
-                setHighlighted(
-                  Math.max(0, Math.min(matches.length - 1, nextIndex))
-                );
-              } else if (event.key === 'Enter' && matches[activeIndex]) {
-                event.preventDefault();
-                onSelect(matches[activeIndex].id);
+        {showSearch && (
+          <div className="tab-preview-search">
+            <Search size={14} aria-hidden="true" />
+            <FormInput
+              ref={searchInput}
+              aria-label="Search preview"
+              placeholder={
+                target.kind === 'folder' ? 'Search groups…' : 'Search tabs…'
               }
-            }}
-          />
-        </div>
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setHighlighted(0);
+                setScrollTop(0);
+                if (viewport.current) viewport.current.scrollTop = 0;
+              }}
+              onKeyDown={(event) => {
+                if (
+                  ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)
+                ) {
+                  event.preventDefault();
+                  let nextIndex =
+                    activeIndex + (event.key === 'ArrowDown' ? 1 : -1);
+                  if (event.key === 'Home') nextIndex = 0;
+                  if (event.key === 'End') nextIndex = matches.length - 1;
+                  setHighlighted(
+                    Math.max(0, Math.min(matches.length - 1, nextIndex))
+                  );
+                } else if (event.key === 'Enter' && matches[activeIndex]) {
+                  event.preventDefault();
+                  onSelect(matches[activeIndex].id);
+                }
+              }}
+            />
+          </div>
+        )}
         <div
           className="tab-preview-list"
           ref={viewport}
@@ -209,7 +273,17 @@ export function AnchoredTabPreview({
               <div
                 className="tab-preview-row"
                 key={entry.id}
-                data-highlighted={start + index === activeIndex}
+                data-highlighted={
+                  target.interaction !== 'hover' &&
+                  start + index === activeIndex
+                }
+                onMouseEnter={() => setHighlighted(start + index)}
+                onContextMenu={(event) => {
+                  if (!onEntryContextMenu) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onEntryContextMenu(entry.id);
+                }}
                 style={{
                   position: 'absolute',
                   top: (start + index) * rowHeight,
@@ -223,7 +297,11 @@ export function AnchoredTabPreview({
                   onClick={() => onSelect(entry.id)}
                   title={`${entry.title}\n${entry.detail}`}
                 >
-                  <AppIcon icon={entry.icon} title={entry.title} />
+                  {entry.group ? (
+                    <GroupIdentityIcon item={entry.group} tabs={tabs} />
+                  ) : (
+                    <AppIcon icon={entry.icon} title={entry.title} />
+                  )}
                   <span>
                     <strong>{entry.title}</strong>
                     <small>{entry.detail}</small>
@@ -241,6 +319,29 @@ export function AnchoredTabPreview({
           </div>
         </div>
         {!matches.length && <p className="tab-preview-empty">No matches</p>}
+        {target.kind === 'session' && (
+          <div className="tab-preview-actions" aria-label="Group actions">
+            <Button
+              size="1"
+              variant="ghost"
+              onClick={onToggleFavorite}
+              disabled={!onToggleFavorite}
+              aria-pressed={!!group?.favorite}
+            >
+              {group?.favorite ? <PinOff size={15} /> : <Pin size={15} />}
+              {group?.favorite ? 'Unpin from favorites' : 'Pin to favorites'}
+            </Button>
+            <Button
+              size="1"
+              variant="ghost"
+              onClick={onSelectGroup}
+              disabled={!onSelectGroup}
+            >
+              <MessageCircle size={15} />
+              AI Chat
+            </Button>
+          </div>
+        )}
       </Popover.Content>
     </Popover.Root>
   );

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button, Select, TextArea } from '@radix-ui/themes';
+import { useRef, useState } from 'react';
+import { Button, Select, Tabs, TextArea } from '@radix-ui/themes';
 import { Folder, Layers, Globe } from 'lucide-react';
 import { BrowserMigrationSettings } from './BrowserMigrationSettings';
 import {
@@ -15,6 +15,8 @@ import { SpaceManager } from '../../../utils/SpaceManager';
 
 export function BrowserImportSettings() {
   const [method, setMethod] = useState<'browser' | 'export'>('browser');
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState('');
   const [source, setSource] = useState<string>(importBrowsers[0]);
   const [text, setText] = useState('');
   const [links, setLinks] = useState<ImportedLink[]>([]);
@@ -90,68 +92,26 @@ export function BrowserImportSettings() {
     instructionsByBrowser[source] ||
     'If your browser offers a bookmark HTML export, choose it below. You can also copy links from your tabs or saved pages and paste one per line.';
   return (
-    <div className="browser-import-settings">
-      <div
-        className="ai-settings-tabs"
-        role="tablist"
-        aria-label="Import method"
-        onKeyDown={(event) => {
-          if (
-            busy ||
-            !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
-          )
-            return;
-          event.preventDefault();
-          const next =
-            event.key === 'Home'
-              ? 'browser'
-              : event.key === 'End'
-              ? 'export'
-              : method === 'browser'
-              ? 'export'
-              : 'browser';
-          setMethod(next);
-          document.getElementById(`import-${next}-tab`)?.focus();
-        }}
-      >
-        <button
-          type="button"
-          role="tab"
-          id="import-browser-tab"
-          aria-controls="import-browser-panel"
-          aria-selected={method === 'browser'}
-          tabIndex={method === 'browser' ? 0 : -1}
-          disabled={busy}
-          onClick={() => setMethod('browser')}
-        >
+    <Tabs.Root
+      className="browser-import-settings"
+      value={method}
+      onValueChange={(value) => setMethod(value as 'browser' | 'export')}
+    >
+      <Tabs.List aria-label="Import method">
+        <Tabs.Trigger value="browser" aria-label="From browser" disabled={busy}>
           From browser
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="import-export-tab"
-          aria-controls="import-export-panel"
-          aria-selected={method === 'export'}
-          tabIndex={method === 'export' ? 0 : -1}
-          disabled={busy}
-          onClick={() => setMethod('export')}
-        >
+        </Tabs.Trigger>
+        <Tabs.Trigger value="export" aria-label="From export" disabled={busy}>
           From export
-        </button>
-      </div>
-      <div
-        role="tabpanel"
-        id="import-browser-panel"
-        aria-labelledby="import-browser-tab"
-        hidden={method !== 'browser'}
-      >
+        </Tabs.Trigger>
+      </Tabs.List>
+      <Tabs.Content value="browser" forceMount hidden={method !== 'browser'}>
         <BrowserMigrationSettings />
-      </div>
-      <div
+      </Tabs.Content>
+      <Tabs.Content
         className="browser-export-panel"
-        role="tabpanel"
-        id="import-export-panel"
-        aria-labelledby="import-export-tab"
+        value="export"
+        forceMount
         hidden={method !== 'export'}
       >
         <p className="preference-note">
@@ -208,10 +168,20 @@ export function BrowserImportSettings() {
             passwords or website logins.
           </PreferenceHint>
         </div>
-        <label className="bookmark-file-label" htmlFor="browser-bookmark-file">
-          Choose browser export
+        <div className="migration-controls">
+          <Button
+            variant="soft"
+            disabled={busy}
+            onClick={() => fileInput.current?.click()}
+          >
+            Choose browser export
+          </Button>
+          {fileName && <span className="preference-note">{fileName}</span>}
           <input
+            ref={fileInput}
             id="browser-bookmark-file"
+            aria-label="Browser export file"
+            hidden
             type="file"
             accept=".html,.htm,.md,text/html,text/markdown"
             disabled={busy}
@@ -219,6 +189,7 @@ export function BrowserImportSettings() {
               const file = event.target.files?.[0];
               event.target.value = '';
               if (!file) return;
+              setFileName(file.name);
               setBusy(true);
               setLinks([]);
               setMessage('');
@@ -236,7 +207,7 @@ export function BrowserImportSettings() {
               }
             }}
           />
-        </label>
+        </div>
         <p className="preference-note">Or paste links, one per line</p>
         <TextArea
           aria-label="Links to import"
@@ -300,7 +271,7 @@ export function BrowserImportSettings() {
           </div>
         )}
         {message && <p role="status">{message}</p>}
-      </div>
-    </div>
+      </Tabs.Content>
+    </Tabs.Root>
   );
 }

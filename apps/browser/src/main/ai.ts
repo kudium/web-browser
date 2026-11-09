@@ -1,4 +1,3 @@
-import { storageRecoveryMessage } from '../browser/storageRecovery';
 /* Sequential tools and waits preserve browser action ordering. */
 /* eslint-disable no-await-in-loop, no-restricted-syntax, no-continue */
 import {
@@ -14,6 +13,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
+import { storageRecoveryMessage } from '../browser/storageRecovery';
 import { parseAISuggestions } from '../browser/aiSuggestions';
 import { getBrowserWindows } from './browserWindows';
 import {
@@ -1941,7 +1941,14 @@ export function registerAI(
     )
       throw new Error('Supply the source tabId to share its login session.');
     const newGroupFields = creatingGroup
-      ? aiNewGroupFields(groupName!, tab, args.shareSession)
+      ? aiNewGroupFields(
+          groupName!,
+          tab,
+          args.shareSession,
+          args.collectionId,
+          args.groupDisplay,
+          args.sessionMode
+        )
       : undefined;
     if (creatingGroup && !access.createTab)
       throw new Error('Group creation requires native tab creation.');
@@ -1976,6 +1983,8 @@ export function registerAI(
                     ? `sharing cookies and login with “${
                         tab?.sessionName || tab?.name
                       }”`
+                    : newGroupFields?.sessionMode === 'collection'
+                    ? 'using its collection’s shared login session'
                     : 'in a new login session'
                 } and switch AI scope to it. First website: ${newDestination}`
               : String(newDestination || tab?.name || 'Browser action'),
@@ -2591,22 +2600,41 @@ export function registerAI(
       });
     }
     if (name === 'search_personal_data')
-      return discloseData(tab, name, signal, () =>
-        withPersonalData((vault) =>
-          vault.search(String(args.query || ''), dataScope, contents.getURL())
-        )
-      );
-    if (name === 'read_personal_data')
-      return discloseData(tab, name, signal, () =>
-        withPersonalData((vault) =>
-          vault.readSafe(
-            String(args.recordId || ''),
+      return discloseData(tab, name, signal, () => {
+        const vault = passwordVault();
+        const notes = vault.search(
+          String(args.query || ''),
+          dataScope,
+          contents.getURL()
+        );
+        if (notes.length || !vault.status().initialized) return notes;
+        return withPersonalData((current) =>
+          current.search(String(args.query || ''), dataScope, contents.getURL())
+        );
+      });
+    if (name === 'read_personal_data') {
+      const vault = passwordVault();
+      const recordId = String(args.recordId || '');
+      const note = vault.noteSummaries().find((item) => item.id === recordId);
+      if (note?.sensitive) await authenticatePersonalData();
+      return discloseData(tab, name, signal, () => {
+        if (vault.isOrdinaryNote(recordId))
+          return vault.readSafe(
+            recordId,
+            dataScope,
+            Number(args.offset || 0),
+            contents.getURL()
+          );
+        return withPersonalData((current) =>
+          current.readSafe(
+            recordId,
             dataScope,
             Number(args.offset || 0),
             contents.getURL()
           )
-        )
-      );
+        );
+      });
+    }
     if (name === 'save_personal_data' || name === 'capture_personal_form') {
       if (
         typeof args.reason !== 'string' ||
@@ -4910,7 +4938,9 @@ export function registerAI(
     if (request?.action === 'list') return skills.list();
     idle();
     if (
-      ['add', 'import-link', 'import-path', 'create'].includes(request?.action)
+      ['add', 'import-link', 'import-path', 'create', 'update'].includes(
+        request?.action
+      )
     ) {
       const binding = watchIPCRequest(
         event,
@@ -4923,7 +4953,7 @@ export function registerAI(
       skillImportBusy = true;
       try {
         let imported;
-        if (request.action === 'create') {
+        if (request.action === 'create' || request.action === 'update') {
           if (
             typeof request.name !== 'string' ||
             !request.name.trim() ||
@@ -4990,7 +5020,10 @@ export function registerAI(
         binding.assert();
         if (run || externalRun || taskDraftRun)
           throw new Error('Stop the AI run before adding a skill.');
-        if (imported) skills.add(imported);
+        if (imported) {
+          if (request.action === 'update') skills.update(request.id, imported);
+          else skills.add(imported);
+        }
       } finally {
         skillImportBusy = false;
         binding.dispose();

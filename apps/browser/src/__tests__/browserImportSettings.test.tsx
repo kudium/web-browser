@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { importBrowsers } from '../browser/browserImport';
 import { ImportOrganizationChoices } from '../components/View/Settings/ImportOrganizationChoices';
@@ -45,7 +45,9 @@ test('reviews links before saving and preserves existing tabs in a fresh group',
       <BrowserImportSettings />
     </Theme>
   );
-  fireEvent.click(screen.getByRole('tab', { name: 'From export' }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'From export' }), {
+    button: 0,
+  });
   fireEvent.change(screen.getByLabelText('Links to import'), {
     target: { value: 'https://example.com\nhttps://other.example' },
   });
@@ -71,12 +73,12 @@ test('Arc organization choices default on and can be changed', () => {
     />
   );
   expect(
-    (screen.getByLabelText('Folders as tab groups') as HTMLInputElement).checked
-  ).toBe(true);
+    screen.getByLabelText('Folders as tab groups').getAttribute('aria-checked')
+  ).toBe('true');
   expect(
-    (screen.getByLabelText('Spaces as folders') as HTMLInputElement).checked
-  ).toBe(true);
-  fireEvent.click(screen.getByLabelText('Spaces as folders'));
+    screen.getByLabelText('Spaces as collections').getAttribute('aria-checked')
+  ).toBe('true');
+  fireEvent.click(screen.getByLabelText('Spaces as collections'));
   expect(change).toHaveBeenCalledWith({
     foldersAsGroups: true,
     spacesAsFolders: false,
@@ -95,9 +97,10 @@ test.each(importBrowsers)(
       />
     );
     expect(
-      (screen.getByLabelText('Folders as tab groups') as HTMLInputElement)
-        .checked
-    ).toBe(true);
+      screen
+        .getByLabelText('Folders as tab groups')
+        .getAttribute('aria-checked')
+    ).toBe('true');
   }
 );
 
@@ -110,7 +113,9 @@ test('rolls back stored tabs when an export save fails', () => {
       <BrowserImportSettings />
     </Theme>
   );
-  fireEvent.click(screen.getByRole('tab', { name: 'From export' }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'From export' }), {
+    button: 0,
+  });
   fireEvent.change(screen.getByLabelText('Links to import'), {
     target: { value: 'https://example.com' },
   });
@@ -121,4 +126,35 @@ test('rolls back stored tabs when an export save fails', () => {
   expect(screen.getByRole('status').textContent).toContain(
     'Storage unavailable'
   );
+});
+
+test('opens the export picker from the themed button and reviews the chosen file', async () => {
+  render(
+    <Theme>
+      <BrowserImportSettings />
+    </Theme>
+  );
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'From export' }), {
+    button: 0,
+  });
+  const input = screen.getByLabelText(
+    'Browser export file'
+  ) as HTMLInputElement;
+  const picker = jest.spyOn(input, 'click');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Choose browser export' })
+  );
+  expect(picker).toHaveBeenCalledTimes(1);
+  expect(input.hidden).toBe(true);
+  const file = new File([''], 'bookmarks.html', { type: 'text/html' });
+  Object.defineProperty(file, 'text', {
+    value: async () => '<a href="https://example.com">Example</a>',
+  });
+  fireEvent.change(input, { target: { files: [file] } });
+  await waitFor(() =>
+    expect(screen.getByText('1 links ready to import')).toBeTruthy()
+  );
+  expect(screen.getByText('bookmarks.html')).toBeTruthy();
+  expect(save).not.toHaveBeenCalled();
+  picker.mockRestore();
 });

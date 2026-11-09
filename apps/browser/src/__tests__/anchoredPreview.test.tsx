@@ -104,3 +104,67 @@ it('renders a bounded window of 10,000 tabs and reaches the end and search resul
   expect(choose).toHaveBeenLastCalledWith('tab-8123');
   anchor.remove();
 });
+
+it('shows group identity above a compact hover list, including single-tab groups', () => {
+  const anchor = document.createElement('button');
+  document.body.append(anchor);
+  const choose = jest.fn();
+  const selectGroup = jest.fn();
+  const toggleFavorite = jest.fn();
+  const tabMenu = jest.fn();
+  const groupMenu = jest.fn();
+  render(
+    <Theme>
+      <AnchoredTabPreview
+        target={{ kind: 'session', id: 'team', anchor, interaction: 'hover' }}
+        title="Office & Team"
+        subtitle="office-team"
+        entries={[
+          {
+            id: 'standup',
+            title: 'Standup',
+            detail: 'https://docs.google.com',
+            icon: '',
+          },
+        ]}
+        selectedId="standup"
+        onSelect={choose}
+        onSelectGroup={selectGroup}
+        onToggleFavorite={toggleFavorite}
+        onEntryContextMenu={tabMenu}
+        onGroupContextMenu={groupMenu}
+        onRemove={jest.fn()}
+        onNewTab={jest.fn()}
+        onBack={jest.fn()}
+        onClose={jest.fn()}
+        onEnter={jest.fn()}
+        onLeave={jest.fn()}
+      />
+    </Theme>
+  );
+  expect(screen.getByText('Office & Team')).toBeInTheDocument();
+  expect(screen.getByText('@office-team')).toHaveAttribute(
+    'title',
+    'Select @office-team in the AI sidebar'
+  );
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'Select @office-team in the AI sidebar',
+    })
+  );
+  expect(selectGroup).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'AI Chat' }));
+  expect(selectGroup).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole('button', { name: 'Pin to favorites' }));
+  expect(toggleFavorite).toHaveBeenCalledTimes(1);
+  expect(screen.queryByLabelText('1 tab')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Search preview')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Standup' }));
+  expect(choose).toHaveBeenCalledWith('standup');
+  fireEvent.contextMenu(screen.getByRole('button', { name: 'Standup' }));
+  expect(tabMenu).toHaveBeenCalledWith('standup');
+  expect(groupMenu).not.toHaveBeenCalled();
+  fireEvent.contextMenu(screen.getByText('Office & Team'));
+  expect(groupMenu).toHaveBeenCalledTimes(1);
+  anchor.remove();
+});

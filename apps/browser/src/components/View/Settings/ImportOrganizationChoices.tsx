@@ -1,4 +1,6 @@
+/* eslint-disable jsx-a11y/label-has-associated-control -- Radix Checkbox renders the control referenced by htmlFor. */
 import { useId } from 'react';
+import { Checkbox } from '@radix-ui/themes';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import type { ImportOrganizationOptions } from '../../../browser/importWorkspace';
 
@@ -21,35 +23,33 @@ export function ImportOrganizationChoices({
       <div className="migration-organization-heading">
         <strong>Organization</strong>
         <PreferenceHint label="import organization">
-          Import folders as tab groups, and Arc or Dia spaces as folders when
+          Import folders as tab groups, and Arc or Dia spaces as collections when
           available. Turn an option off to keep the source organization.
           Imported groups share website sessions and the password manager.
         </PreferenceHint>
       </div>
       <label htmlFor={`${id}-folders`}>
-        <input
+        <Checkbox
           id={`${id}-folders`}
-          type="checkbox"
           checked={options.foldersAsGroups}
           disabled={disabled}
-          onChange={(event) =>
-            onChange({ ...options, foldersAsGroups: event.target.checked })
+          onCheckedChange={(value) =>
+            onChange({ ...options, foldersAsGroups: value === true })
           }
         />
         Folders as tab groups
       </label>
       {hasSpaces && (
         <label htmlFor={`${id}-spaces`}>
-          <input
+          <Checkbox
             id={`${id}-spaces`}
-            type="checkbox"
             checked={options.spacesAsFolders}
             disabled={disabled}
-            onChange={(event) =>
-              onChange({ ...options, spacesAsFolders: event.target.checked })
+            onCheckedChange={(value) =>
+              onChange({ ...options, spacesAsFolders: value === true })
             }
           />
-          Spaces as folders
+          Spaces as collections
         </label>
       )}
     </div>

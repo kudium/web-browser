@@ -219,6 +219,7 @@ export function registerGroupRemoval(
           while (operation.next < steps.length) {
             const step = steps[operation.next];
             if (step.kind === 'scope') {
+              passwordVault().removeOrdinaryNoteScope(step.target, 'delete');
               if (passwordVault().status().initialized)
                 withPersonalData((vault) =>
                   vault.removeScope(step.target, 'delete')

@@ -8,6 +8,8 @@ export function moveGroupToFolder(
   spaceId: string,
   folderId?: string
 ): IApp[] {
+  if ((source.spaceId || 'default') === spaceId && source.folderId === folderId)
+    return apps;
   return apps.map((item) =>
     groupKey(item) === groupKey(source) &&
     (item.spaceId || 'default') === (source.spaceId || 'default')
@@ -15,6 +17,9 @@ export function moveGroupToFolder(
           ...item,
           spaceId,
           folderId,
+          ...(item.sessionMode === 'collection'
+            ? { sessionMode: 'separate' as const }
+            : {}),
           ...(folderId ? { pinned: true, favorite: false } : {}),
         }
       : item
@@ -23,11 +28,23 @@ export function moveGroupToFolder(
 export function removeGroupFolder(
   apps: IApp[],
   spaceId: string,
-  folderId: string
+  folderId: string,
+  deleteGroups = false
 ): IApp[] {
+  if (deleteGroups)
+    return apps.filter(
+      (item) =>
+        !((item.spaceId || 'default') === spaceId && item.folderId === folderId)
+    );
   return apps.map((item) =>
     (item.spaceId || 'default') === spaceId && item.folderId === folderId
-      ? { ...item, folderId: undefined }
+      ? {
+          ...item,
+          folderId: undefined,
+          ...(item.sessionMode === 'collection'
+            ? { sessionMode: 'separate' as const }
+            : {}),
+        }
       : item
   );
 }

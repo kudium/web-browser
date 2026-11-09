@@ -5,9 +5,10 @@ type AIPagePreferences = {
   open: boolean;
   historyOpen: boolean;
   historyPinned: boolean;
-  pane: 'assistant' | 'tasks' | 'developer';
+  pane: 'assistant' | 'tasks' | 'developer' | 'notes';
   preview: boolean;
   showStats: boolean;
+  noteFontSize: number;
 };
 
 /** Layout preferences only; chats and credentials use main-process storage. */
@@ -19,8 +20,12 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
   const [value, setValue] = useState<AIPagePreferences[K]>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
+      if (key === 'noteFontSize')
+        return Number.isInteger(saved) && saved >= 12 && saved <= 24
+          ? saved
+          : fallback;
       if (key === 'pane')
-        return ['assistant', 'tasks', 'developer'].includes(saved)
+        return ['assistant', 'tasks', 'developer', 'notes'].includes(saved)
           ? saved
           : fallback;
       return typeof saved === 'boolean' ? saved : fallback;
@@ -44,8 +49,11 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
       if (changed !== storageKey) return;
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
-        if (key === 'pane') {
-          if (['assistant', 'tasks', 'developer'].includes(saved))
+        if (key === 'noteFontSize') {
+          if (Number.isInteger(saved) && saved >= 12 && saved <= 24)
+            setValue(saved);
+        } else if (key === 'pane') {
+          if (['assistant', 'tasks', 'developer', 'notes'].includes(saved))
             setValue(saved);
         } else if (typeof saved === 'boolean')
           setValue(saved as AIPagePreferences[K]);

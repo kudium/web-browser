@@ -20,6 +20,7 @@ export function moveGroupToSection(
           pinned: section !== 'regular',
           spaceId,
           folderId: undefined,
+          sessionMode: 'separate',
         }
       : item
   );
@@ -63,6 +64,8 @@ export function moveTab(
           url,
           sessionId: target ? target.sessionId : crypto.randomUUID(),
           sessionProfileId: target?.sessionProfileId,
+          groupDisplay: target?.groupDisplay || 'folder',
+          sessionMode: target?.sessionMode || 'separate',
           sessionName: target
             ? target.sessionName || target.name
             : newGroupName(

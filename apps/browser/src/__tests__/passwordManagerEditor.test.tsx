@@ -161,3 +161,19 @@ it('persists explicit AI consent from the local editor', async () => {
     })
   );
 });
+
+it('shows initial load failure and lets the user retry', async () => {
+  let failed = false;
+  request.mockImplementation(async (input) => {
+    if (input.action === 'status' && !failed) {
+      failed = true;
+      throw new Error('Unavailable');
+    }
+    return input.action === 'status' ? status : [];
+  });
+  show();
+  await screen.findByText('Personal Data is unavailable.');
+  expect(screen.queryByText('Loading Personal Data…')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  await screen.findByRole('button', { name: 'Add item' });
+});

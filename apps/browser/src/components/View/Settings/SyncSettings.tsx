@@ -4,6 +4,7 @@ import {
   PanelsTopLeft,
   SlidersHorizontal,
   KeyRound,
+  NotebookPen,
 } from 'lucide-react';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import { AccountSyncSettings } from './AccountSyncSettings';
@@ -14,11 +15,13 @@ import {
 import { browser } from '../../../browser/client';
 
 const categoryDescriptions = {
+  notes: 'Encrypted notes with manual backup and restore',
   workspace: 'Spaces, groups, and folders',
   openTabs: 'Continue on another device',
   preferences: 'Search, fonts, and shortcuts',
 };
 const categoryIcons = {
+  notes: NotebookPen,
   workspace: FolderOpen,
   openTabs: PanelsTopLeft,
   preferences: SlidersHorizontal,
@@ -37,6 +40,7 @@ export function SyncSettings({
       <AccountSyncSettings
         enabled={settings.enabled && settings.provider === 'kudiumbrowser'}
         passwordsEnabled={Boolean(settings.categories.passwords)}
+        notesEnabled={Boolean(settings.categories.notes)}
         onEnabled={() => {}}
       />
       <div className="sync-control-card">
@@ -80,7 +84,7 @@ export function SyncSettings({
                 </span>
                 <Switch
                   aria-label={`Sync ${category.title.toLowerCase()}`}
-                  checked={settings.categories[category.id]}
+                  checked={Boolean(settings.categories[category.id])}
                   disabled={busy}
                   onCheckedChange={(enabled) =>
                     save({
