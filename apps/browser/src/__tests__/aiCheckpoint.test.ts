@@ -3,7 +3,10 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { AICheckpointStore } from '../main/aiCheckpoint';
+import {
+  AICheckpointStore,
+  extendCheckpointBudget,
+} from '../main/aiCheckpoint';
 
 let directory: string;
 beforeEach(() => {
@@ -78,7 +81,7 @@ it.each(['expired', 'corrupt', 'oversized', 'invalid-step'])(
     const store = new AICheckpointStore(filename, storage as any);
     const value = checkpoint();
     if (kind === 'expired') value.expires = Date.now() - 1;
-    if (kind === 'invalid-step') value.step = 30;
+    if (kind === 'invalid-step') value.step = 60;
     store.save(value);
     if (kind === 'corrupt') fs.writeFileSync(filename, 'broken');
     if (kind === 'oversized')
@@ -97,3 +100,76 @@ it('never falls back to plaintext when OS encryption is unavailable', () => {
   expect(fs.existsSync(filename)).toBe(false);
   expect(store.load()).toBeUndefined();
 });
+
+it('restores a budget pause the next day with a fresh segment and completed tool results', () => {
+  const filename = path.join(directory, 'checkpoint');
+  const value = {
+    ...checkpoint(),
+    pauseKind: 'budget' as const,
+    step: 0,
+    expires: Date.now() + 24 * 60 * 60 * 1000,
+    messages: [
+      { role: 'user', content: 'Original task' },
+      {
+        role: 'assistant',
+        tool_calls: [
+          { id: 'done', function: { name: 'list_tabs', arguments: '{}' } },
+        ],
+      },
+      { role: 'tool', tool_call_id: 'done', content: 'Completed result' },
+    ],
+  };
+  new AICheckpointStore(filename, storage as any).save(value);
+  const now = Date.now();
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(now + 60 * 60 * 1000);
+  try {
+    expect(new AICheckpointStore(filename, storage as any).load()).toEqual(
+      value
+    );
+  } finally {
+    clock.mockRestore();
+  }
+});
+
+it('does not grant ordinary error checkpoints the longer budget-pause lifetime', () => {
+  const filename = path.join(directory, 'checkpoint');
+  new AICheckpointStore(filename, storage as any).save({
+    ...checkpoint(),
+    expires: Date.now() + 24 * 60 * 60 * 1000,
+  });
+  expect(
+    new AICheckpointStore(filename, storage as any).load()
+  ).toBeUndefined();
+});
+
+it('doubles the round allowance on every continuation while preserving completed results', () => {
+  let value = checkpoint();
+  for (const limit of [120, 240, 480]) {
+    const next = extendCheckpointBudget(value);
+    expect(next.roundLimit).toBe(limit);
+    expect(next.step).toBe(0);
+    expect(next.messages).toBe(value.messages);
+    value = next;
+  }
+});
+
+it('restores expanded round budgets after restart', () => {
+  const filename = path.join(directory, 'checkpoint');
+  const value = { ...checkpoint(), roundLimit: 240, step: 130 };
+  new AICheckpointStore(filename, storage as any).save(value);
+  expect(new AICheckpointStore(filename, storage as any).load()).toEqual(value);
+});
+
+it.each([0, -1, 1.5, '120', Number.MAX_SAFE_INTEGER + 1])(
+  'rejects invalid round allowance %s',
+  (roundLimit) => {
+    const filename = path.join(directory, 'checkpoint');
+    new AICheckpointStore(filename, storage as any).save({
+      ...checkpoint(),
+      roundLimit,
+    } as any);
+    expect(
+      new AICheckpointStore(filename, storage as any).load()
+    ).toBeUndefined();
+  }
+);

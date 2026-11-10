@@ -28,7 +28,11 @@ function host() {
   serial += 1;
   const window = Object.assign(new EventEmitter(), {
     id: serial,
-    webContents: { mainFrame: {}, send: jest.fn() },
+    webContents: {
+      mainFrame: {},
+      send: jest.fn(),
+      executeJavaScript: jest.fn(async () => {}),
+    },
     contentView: {
       children: [] as unknown[],
       addChildView: jest.fn(),
@@ -309,4 +313,56 @@ it('rejects locked groups, foreign renderer frames and malformed requests', asyn
     { action: 'finish-drag', token: randomUUID(), cancelled: 'yes' },
     { action: 'open-tab', id: {} },
   ].forEach((value) => expect(isBrowserWindowRequest(value)).toBe(false));
+});
+
+it('keeps the live page visible until its snapshot is painted and cancels stale handoffs', async () => {
+  const { root, windows } = fixture();
+  let painted!: () => void;
+  (root.webContents.executeJavaScript as jest.Mock).mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        painted = resolve;
+      })
+  );
+  windows.attach({
+    view: () =>
+      ({
+        webContents: {
+          isDestroyed: () => false,
+          capturePage: async () => ({
+            toDataURL: () => 'data:image/png;base64,frame',
+          }),
+        },
+      } as any),
+    state: () => undefined,
+  });
+  windows.setLayout(root, {
+    ...layout([tab('one')]),
+    suspended: true,
+    visible: [],
+  });
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+  expect(windows.mergedLayout().visible).toHaveLength(1);
+  painted();
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+  expect(windows.mergedLayout().visible).toHaveLength(0);
+  windows.setLayout(root, layout([tab('one')]));
+  windows.setLayout(root, {
+    ...layout([tab('one')]),
+    suspended: true,
+    visible: [],
+  });
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+  windows.setLayout(root, layout([tab('one')]));
+  painted();
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+  expect(windows.mergedLayout().visible).toHaveLength(1);
 });

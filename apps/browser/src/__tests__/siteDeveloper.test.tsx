@@ -240,3 +240,86 @@ it('allows and revokes only the bound notification permission and blocks approva
     isBrowserCommand({ id: 'page', action: 'activate-hook-notification' })
   ).toBe(false);
 });
+
+it('keeps all hooks visible and preserves drafts while switching, adding and removing hooks', () => {
+  const send = jest.fn();
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{
+          config: {
+            ...emptyDeveloperConfig,
+            enabled: true,
+            hooks: [
+              {
+                id: 'research',
+                name: 'Research updates',
+                enabled: true,
+                path: '/research/*',
+                before: '',
+                after: 'original',
+                css: '',
+              },
+              {
+                id: 'prices',
+                name: 'Price alerts',
+                enabled: false,
+                path: '/pricing',
+                before: '',
+                after: 'prices',
+                css: '',
+              },
+            ],
+          },
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  expect(
+    screen.queryByRole('combobox', { name: 'Selected hook' })
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Research updates/ }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
+    target: { value: 'research draft' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /Price alerts/ }));
+  expect(screen.getByRole('textbox', { name: 'After load code' })).toHaveValue(
+    'prices'
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Research updates/ }));
+  expect(screen.getByRole('textbox', { name: 'After load code' })).toHaveValue(
+    'research draft'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Hook settings' }));
+  fireEvent.change(screen.getByLabelText('Name'), {
+    target: { value: 'Renamed research' },
+  });
+  expect(
+    screen.getByRole('button', { name: /Renamed research/ })
+  ).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: 'Remove hook' }));
+  expect(
+    screen.queryByRole('button', { name: /Renamed research/ })
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Add hook' }));
+  expect(screen.getByRole('button', { name: /New hook/ })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Save hooks' }));
+  expect(send).toHaveBeenCalledWith(
+    'set-site-developer',
+    expect.objectContaining({
+      developer: expect.objectContaining({
+        hooks: expect.arrayContaining([
+          expect.objectContaining({ id: 'prices', after: 'prices' }),
+          expect.objectContaining({ name: 'New hook' }),
+        ]),
+      }),
+    })
+  );
+});

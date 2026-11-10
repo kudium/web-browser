@@ -1,5 +1,7 @@
 import { ReactNode, RefObject, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useAssistantPanelDocument } from './AssistantPanelContext';
+import { usePanelOverlay } from './PanelDialog';
 
 export function AIComposerSuggestions({
   input,
@@ -14,6 +16,9 @@ export function AIComposerSuggestions({
   selectedIndex: number;
   children: ReactNode;
 }) {
+  const panelDocument = useAssistantPanelDocument();
+  const panelWindow = panelDocument.defaultView || window;
+  const overlay = usePanelOverlay();
   const popup = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const textarea = input.current;
@@ -23,8 +28,8 @@ export function AIComposerSuggestions({
       const rect = textarea.getBoundingClientRect();
       const styles = getComputedStyle(textarea);
       // Mirror textarea wrapping to find the caret on wrapped/scrolled lines.
-      const mirror = document.createElement('div');
-      for (const property of [
+      const mirror = panelDocument.createElement('div');
+      [
         'font',
         'line-height',
         'letter-spacing',
@@ -33,8 +38,9 @@ export function AIComposerSuggestions({
         'padding',
         'tab-size',
         'word-spacing',
-      ])
-        mirror.style.setProperty(property, styles.getPropertyValue(property));
+      ].forEach((property) =>
+        mirror.style.setProperty(property, styles.getPropertyValue(property))
+      );
       Object.assign(mirror.style, {
         position: 'fixed',
         visibility: 'hidden',
@@ -46,11 +52,11 @@ export function AIComposerSuggestions({
         overflowWrap: 'break-word',
       });
       mirror.textContent = value.slice(0, cursor);
-      const marker = document.createElement('span');
+      const marker = panelDocument.createElement('span');
       marker.textContent = '\u200b';
       mirror.appendChild(marker);
-      mirror.appendChild(document.createTextNode(value.slice(cursor)));
-      document.body.appendChild(mirror);
+      mirror.appendChild(panelDocument.createTextNode(value.slice(cursor)));
+      panelDocument.body.appendChild(mirror);
       const caret = marker.getBoundingClientRect();
       const lineHeight =
         parseFloat(styles.lineHeight) || parseFloat(styles.fontSize) * 1.6;
@@ -61,16 +67,19 @@ export function AIComposerSuggestions({
           rect.top + textarea.clientTop + caret.top - textarea.scrollTop
         )
       );
-      const width = Math.min(360, Math.max(0, window.innerWidth - 16));
+      const width = Math.min(360, Math.max(0, panelWindow.innerWidth - 16));
       const left = Math.max(
         8,
         Math.min(
-          window.innerWidth - width - 8,
+          panelWindow.innerWidth - width - 8,
           rect.left + textarea.clientLeft + caret.left - textarea.scrollLeft
         )
       );
       mirror.remove();
-      const below = Math.max(0, window.innerHeight - lineTop - lineHeight - 14);
+      const below = Math.max(
+        0,
+        panelWindow.innerHeight - lineTop - lineHeight - 14
+      );
       const above = Math.max(0, lineTop - 14);
       const opensBelow = below >= 100 || below >= above;
       Object.assign(container.style, {
@@ -87,14 +96,14 @@ export function AIComposerSuggestions({
         ? new ResizeObserver(position)
         : undefined;
     observer?.observe(textarea);
-    window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
+    panelWindow.addEventListener('resize', position);
+    panelWindow.addEventListener('scroll', position, true);
     return () => {
       observer?.disconnect();
-      window.removeEventListener('resize', position);
-      window.removeEventListener('scroll', position, true);
+      panelWindow.removeEventListener('resize', position);
+      panelWindow.removeEventListener('scroll', position, true);
     };
-  }, [input, cursor, value, children]);
+  }, [input, cursor, value, children, panelDocument, panelWindow]);
   useLayoutEffect(() => {
     popup.current
       ?.querySelector('[aria-selected="true"]')
@@ -104,8 +113,9 @@ export function AIComposerSuggestions({
     <div className="ai-composer-suggestions" ref={popup}>
       {children}
     </div>,
-    input.current?.closest('.workspace') ||
+    overlay ||
+      input.current?.closest('.workspace') ||
       input.current?.closest('.radix-themes') ||
-      document.body
+      panelDocument.body
   );
 }

@@ -1,3 +1,5 @@
+import { aiThinking, thinkingOptions, AIThinking } from '../browser/aiThinking';
+import { isOllamaEndpoint } from '../browser/aiProviders';
 /* Translate native Claude tool blocks into the agent's shared conversation format. */
 export const isClaude = (endpoint: string) =>
   new URL(endpoint).hostname === 'api.anthropic.com';
@@ -12,7 +14,12 @@ export function providerHeaders(
         'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       }
-    : { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+    : {
+        ...(isOllamaEndpoint(endpoint)
+          ? {}
+          : { Authorization: `Bearer ${key}` }),
+        'Content-Type': 'application/json',
+      };
 }
 
 export function providerRequest(
@@ -20,11 +27,24 @@ export function providerRequest(
   model: string,
   messages: any[],
   tools: any[],
-  options: { cacheSystem?: boolean } = {}
-) {
+  options: { cacheSystem?: boolean; thinking?: AIThinking } = {}
+): Record<string, any> {
+  const thinking = aiThinking(options.thinking);
+  const supported = thinkingOptions(endpoint, model).some(
+    (option) => option.id === thinking
+  );
+  const level =
+    supported && ['low', 'medium', 'high'].includes(thinking)
+      ? (thinking as 'low' | 'medium' | 'high')
+      : undefined;
+  let reasoning: Record<string, unknown> = {};
+  if (isOllamaEndpoint(endpoint) && supported && thinking !== 'auto')
+    reasoning = { think: level || thinking === 'on' };
+  else if (level) reasoning = { reasoning_effort: level };
   if (!isClaude(endpoint))
     return {
       model,
+      ...reasoning,
       messages: messages.some((message) => 'retainImages' in message)
         ? messages.map(({ retainImages: _retainImages, ...message }) => message)
         : messages,
@@ -32,7 +52,15 @@ export function providerRequest(
     };
   return {
     model,
-    max_tokens: 4096,
+    max_tokens: level ? { low: 4096, medium: 8192, high: 16384 }[level] : 4096,
+    ...(level
+      ? {
+          thinking: {
+            type: 'enabled',
+            budget_tokens: { low: 1024, medium: 4096, high: 8192 }[level],
+          },
+        }
+      : {}),
     system: options.cacheSystem
       ? messages
           .filter((m) => m.role === 'system')

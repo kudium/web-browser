@@ -15,6 +15,7 @@ import {
   nativeImage,
   RestoreOptions,
 } from 'electron';
+import { presentSnapshots } from './snapshotPresentation';
 import {
   getGroupRemovalJournal,
   registerGroupRemoval,
@@ -272,6 +273,8 @@ export function registerElectronBrowser(
   let focusedId: string | undefined;
   let visible = new Set<string>();
   let suspended = false;
+  let pendingOverlay: BrowserLayout | undefined;
+  let overlayGeneration = 0;
   const playingMedia = new Set<string>();
   const icons = new Map<string, string>();
   const faviconLoader = new FaviconLoader();
@@ -373,7 +376,11 @@ export function registerElectronBrowser(
     failures.delete(id);
     loaded.delete(id);
   };
-  const applyLayout = (incomingLayout: BrowserLayout) => {
+  const applyLayout = (incomingLayout: BrowserLayout, prepared = false) => {
+    if (!incomingLayout.suspended && pendingOverlay) {
+      pendingOverlay = undefined;
+      overlayGeneration += 1;
+    }
     let layout = incomingLayout;
     if (removals.hasRestrictions()) {
       const retired = layout.apps.filter((item) => removals.removed(item.id));
@@ -409,7 +416,14 @@ export function registerElectronBrowser(
     configurations.forEach((_, id) => {
       if (!ids.has(id)) close(id);
     });
-    if (layout.suspended && !suspended) {
+    if (layout.suspended && !suspended && !prepared) {
+      if (pendingOverlay) {
+        pendingOverlay = layout;
+        return;
+      }
+      pendingOverlay = layout;
+      overlayGeneration += 1;
+      const generation = overlayGeneration;
       const previewIds = layout.tabSwitcher
         ? layout.apps
             .filter(
@@ -447,15 +461,37 @@ export function registerElectronBrowser(
         }
       );
       Promise.all(snapshots)
-        .then((frames) => {
-          if (suspended && !window.isDestroyed())
-            window.webContents.send(
-              'browser-snapshots',
-              frames.filter(Boolean)
-            );
+        .then(async (frames) => {
+          if (
+            !pendingOverlay ||
+            generation !== overlayGeneration ||
+            window.isDestroyed()
+          )
+            return undefined;
+          await presentSnapshots(
+            window,
+            frames.filter(
+              (frame): frame is NonNullable<typeof frame> =>
+                !!frame &&
+                !!configurations.get(frame.id) &&
+                !isGroupLocked(configurations.get(frame.id)!)
+            )
+          );
+          if (
+            !pendingOverlay ||
+            generation !== overlayGeneration ||
+            window.isDestroyed()
+          )
+            return undefined;
+          const pending = pendingOverlay;
+          pendingOverlay = undefined;
+          applyLayout(pending, true);
           return undefined;
         })
-        .catch(() => {});
+        .catch(() => {
+          if (generation === overlayGeneration) pendingOverlay = undefined;
+        });
+      return;
     }
     focusedId = layout.focusedId;
     suspended = Boolean(layout.suspended);

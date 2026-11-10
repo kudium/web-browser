@@ -1,6 +1,5 @@
 import { useState, useRef, FormEvent } from 'react';
 import { Button, TextField, TextArea, Badge, Dialog } from '@radix-ui/themes';
-import { SettingsLibrary } from '../../UI/SettingsLibrary';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import { BrowserPreferences } from '../../../browser/preferences';
 import {
@@ -70,82 +69,66 @@ export function SearchEngineManager({
             </PreferenceHint>
           </div>
         </div>
+        <Button
+          variant="soft"
+          disabled={busy || !!draft}
+          onClick={() => edit()}
+        >
+          Add search engine
+        </Button>
       </div>
-      <SettingsLibrary
-        renderToolbar={(engine) => (
-          <>
-            <Button
-              size="1"
-              variant="ghost"
-              color="gray"
-              aria-label="Add search engine"
-              disabled={busy || !!draft}
-              onClick={() => edit()}
-            >
-              +
-            </Button>
-            <Button
-              size="1"
-              variant="ghost"
-              color="gray"
-              aria-label={
-                engine ? `Delete ${engine.name}` : 'Delete search engine'
-              }
-              disabled={
-                busy || !engine || preferences.searchEngines.length === 1
-              }
-              onClick={() => engine && remove(engine.id)}
-            >
-              −
-            </Button>
-          </>
-        )}
-        label="Search engines"
-        entries={preferences.searchEngines}
-      >
-        {(engine) => (
-          <div className="preference-row search-engine-row" key={engine.id}>
-            <div className="search-engine-copy">
-              <strong>{engine.name}</strong>
-              {preferences.searchEngine === engine.id && (
-                <Badge color="gray" ml="2">
-                  Default
-                </Badge>
+      {preferences.searchEngines.map((engine) => (
+        <div className="preference-row search-engine-row" key={engine.id}>
+          <div className="search-engine-copy">
+            <strong>{engine.name}</strong>
+            {preferences.searchEngine === engine.id && (
+              <Badge color="gray" ml="2">
+                Default
+              </Badge>
+            )}
+            <p title={engine.url}>
+              {engine.keyword && (
+                <>
+                  <code>{engine.keyword}</code> ·{' '}
+                </>
               )}
-              <p title={engine.url}>
-                {engine.keyword && (
-                  <>
-                    <code>{engine.keyword}</code> ·{' '}
-                  </>
-                )}
-                {engine.url}
-              </p>
-            </div>
-            <div className="preference-actions search-engine-actions">
-              {preferences.searchEngine !== engine.id && (
-                <Button
-                  variant="soft"
-                  className="search-engine-default"
-                  disabled={busy}
-                  onClick={() => save({ searchEngine: engine.id })}
-                >
-                  Set default
-                </Button>
-              )}
+              {engine.url}
+            </p>
+          </div>
+          <div className="preference-actions search-engine-actions">
+            {preferences.searchEngine !== engine.id && (
               <Button
                 variant="soft"
-                color="gray"
-                className="search-engine-edit"
+                className="search-engine-default"
                 disabled={busy}
-                aria-label={`Edit ${engine.name}`}
-                onClick={() => edit(engine)}
+                onClick={() => save({ searchEngine: engine.id })}
               >
-                Edit
+                Set default
               </Button>
-            </div>
+            )}
+            <Button
+              variant="soft"
+              color="gray"
+              className="search-engine-edit"
+              disabled={busy}
+              aria-label={`Edit ${engine.name}`}
+              onClick={() => edit(engine)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="soft"
+              color="gray"
+              className="search-engine-delete"
+              disabled={busy || preferences.searchEngines.length === 1}
+              aria-label={`Delete ${engine.name}`}
+              onClick={() => remove(engine.id)}
+            >
+              Delete
+            </Button>
           </div>
-        )}
-      </SettingsLibrary>
+        </div>
+      ))}
       {draft && (
         <Dialog.Root
           open={!!draft}

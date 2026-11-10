@@ -1,5 +1,10 @@
 import type { WebContents } from 'electron';
 
+const panelOwners = new WeakMap<WebContents, WebContents>();
+export function isAssistantPanelOf(child: WebContents, owner: WebContents) {
+  return panelOwners.get(child) === owner;
+}
+
 export function externalLinkURL(value: string): string | undefined {
   try {
     const url = new URL(value);
@@ -16,7 +21,8 @@ export function externalLinkURL(value: string): string | undefined {
 export function protectWindowNavigation(
   contents: WebContents,
   documentURL: string,
-  openExternal: (url: string) => Promise<void>
+  openExternal: (url: string) => Promise<void>,
+  assistantPanels = false
 ) {
   const document = new URL(documentURL);
   document.hash = '';
@@ -34,7 +40,45 @@ export function protectWindowNavigation(
   };
   contents.on('will-navigate', navigate);
   contents.on('will-redirect', navigate);
-  contents.setWindowOpenHandler(({ url }) => {
+  contents.on('did-create-window', (child) => {
+    if (!assistantPanels) return;
+    const childContents = child.webContents;
+    panelOwners.set(childContents, contents);
+    child.once('closed', () => panelOwners.delete(childContents));
+    child.webContents.on('before-input-event', (event, input) => {
+      if (
+        input.type === 'keyDown' &&
+        (input.meta || input.control) &&
+        input.key.toLowerCase() === 'w'
+      ) {
+        event.preventDefault();
+        child.close();
+      }
+    });
+    protectWindowNavigation(child.webContents, 'about:blank', openExternal);
+    child.setMinimumSize(320, 360);
+  });
+  contents.setWindowOpenHandler(({ url, frameName }) => {
+    if (
+      assistantPanels &&
+      url === 'about:blank' &&
+      /^kudium-assistant-(assistant|notes|activity|tasks|developer)$/.test(
+        frameName
+      )
+    ) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          autoHideMenuBar: true,
+          webPreferences: {
+            contextIsolation: true,
+            sandbox: true,
+            nodeIntegration: false,
+            webviewTag: false,
+          },
+        },
+      };
+    }
     const destination = externalLinkURL(url);
     if (destination) {
       // External launch failures must not become unhandled promise rejections.

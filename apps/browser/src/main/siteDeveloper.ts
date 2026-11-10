@@ -7,7 +7,11 @@ import {
   hookMatchesPath,
   SiteDeveloperState,
 } from '../browser/siteDeveloper';
-import { hookNotifications } from './hookNotifications';
+import { hookNotifications, hookScriptHash } from './hookNotifications';
+import { browserActivity } from './activity';
+import { saveNoteWithActivity } from './noteActivity';
+import { getGroupLocks } from './groupLocks';
+import { validateActivity } from '../browser/activity';
 import type { HookContext } from './hookNotifications';
 import { getSiteSettings, siteOrigin } from './siteSettings';
 
@@ -27,7 +31,9 @@ if (window === window.top) {
     const log = (...values) => send('log', values.map(format).join(' ').slice(0, 2000));
     const page = Object.freeze(Object.fromEntries(['reload','back','forward','stop'].map(action => [action, () => send('control', action)])));
     const notify = (key, text) => ipcRenderer.invoke('site-developer-notify', {token, key, text});
-    const context = Object.freeze({url: location.href, document, notify,
+    const activity = Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind: 'activity', input})});
+    const notes = Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind: 'note', input})});
+    const context = Object.freeze({url: location.href, document, notify, activity, notes,
       get content() { return document.documentElement?.outerHTML || ''; }, page, log});
     let failed = false;
     const run = async (phase, source) => {
@@ -35,7 +41,7 @@ if (window === window.top) {
       send('running', phase);
       try {
         const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-        const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify} = context;\n' + source);
+        const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify, activity, notes} = context;\n' + source);
         let timer;
         try { await Promise.race([callback(context), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Callback timed out after 10 seconds')), 10000); })]); }
         finally { clearTimeout(timer); }
@@ -86,6 +92,8 @@ interface ManagedPage {
   publish: () => void;
   states: Map<string, SiteDeveloperState>;
   token?: string;
+  scriptHash?: string;
+  outputs?: number[];
   origin?: string;
   controls: number[];
   events: number[];
@@ -167,6 +175,88 @@ export function registerDeveloperPage(
   contents.once('destroyed', () => pages.delete(contents));
   if (listening) return;
   listening = true;
+  ipcMain.handle('site-developer-output', (event, request: unknown) => {
+    const page = pages.get(event.sender);
+    const data = request as {
+      token?: unknown;
+      kind?: unknown;
+      input?: unknown;
+    };
+    const identity = page?.scope();
+    const origin = siteOrigin(event.senderFrame?.url || '');
+    const config =
+      page && origin
+        ? getSiteSettings(page.profile, origin).developer
+        : undefined;
+    if (
+      !page ||
+      !identity ||
+      !origin ||
+      origin !== page.origin ||
+      event.senderFrame !== event.sender.mainFrame ||
+      !data ||
+      !page.token ||
+      data.token !== page.token ||
+      !config?.enabled ||
+      page.scriptHash !== hookScriptHash(config) ||
+      getGroupLocks().locked(identity.groupId)
+    )
+      throw new Error('Unauthorized hook output. Reload the approved hook.');
+    const now = Date.now();
+    page.outputs = (page.outputs || []).filter((time) => now - time < 60000);
+    if (page.outputs.length >= 10)
+      throw new Error(
+        'Hook output limit reached: ten items per minute per page.'
+      );
+    const context = { source: 'hook' as const, ...identity };
+    if (data.kind === 'activity') {
+      const input = validateActivity(data.input);
+      // Hooks cannot link to arbitrary saved notes or read private data.
+      if (input.noteId)
+        throw new Error('Use notes.create to create a linked note.');
+      page.outputs.push(now);
+      return browserActivity().create(
+        { ...input, url: input.url || event.senderFrame.url },
+        context
+      );
+    }
+    if (data.kind === 'note') {
+      const input = data.input as { title?: unknown; body?: unknown };
+      if (
+        !input ||
+        Object.keys(input).some((key) => !['title', 'body'].includes(key)) ||
+        typeof input.title !== 'string' ||
+        !input.title.trim() ||
+        input.title.length > 120 ||
+        typeof input.body !== 'string' ||
+        input.body.length > 100000
+      )
+        throw new Error('Provide a note title and Markdown body.');
+      page.outputs.push(now);
+      return saveNoteWithActivity(
+        {
+          id: '',
+          kind: 'note',
+          title: input.title,
+          notes: input.body,
+          origin: '',
+          username: '',
+          password: '',
+          fields: [],
+          allowAI: false,
+          source: {
+            label: 'Page hook',
+            url: event.senderFrame.url,
+            capturedAt: new Date(now).toISOString(),
+          },
+        },
+        identity.scope,
+        context,
+        event.senderFrame.url
+      );
+    }
+    throw new Error('Invalid hook output kind.');
+  });
   ipcMain.handle('site-developer-notify', async (event, request: unknown) => {
     const page = pages.get(event.sender);
     const data = request as { token?: unknown; key?: unknown; text?: unknown };
@@ -253,6 +343,7 @@ export function registerDeveloperPage(
       return;
     }
     page.token = randomUUID();
+    page.scriptHash = hookScriptHash(config);
     page.origin = origin;
     const state = developerState(event.sender, origin);
     state.status = 'running';
@@ -290,6 +381,8 @@ export function registerDeveloperPage(
       !page.origin ||
       siteOrigin(event.senderFrame.url) !== page.origin ||
       !getSiteSettings(page.profile, page.origin).developer?.enabled ||
+      hookScriptHash(getSiteSettings(page.profile, page.origin).developer!) !==
+        page.scriptHash ||
       typeof value !== 'string'
     )
       return;
@@ -342,6 +435,30 @@ export function registerDeveloperPage(
         if (value === 'stop') event.sender.stop();
       }
     } else if (['log', 'error', 'running', 'success'].includes(String(kind))) {
+      if (kind === 'error' || kind === 'success') {
+        const identity = page.scope();
+        if (identity && !getGroupLocks().locked(identity.groupId)) {
+          try {
+            browserActivity().create(
+              {
+                title:
+                  kind === 'error'
+                    ? 'Page hook failed'
+                    : 'Page hooks completed',
+                message:
+                  kind === 'error'
+                    ? value.slice(0, 2000)
+                    : 'The hooks finished for this page.',
+                url: event.senderFrame.url,
+              },
+              { source: 'hook', ...identity },
+              kind === 'success'
+            );
+          } catch {
+            /* Hook status remains visible if activity storage is unavailable. */
+          }
+        }
+      }
       if (kind === 'error') state.status = 'error';
       if (kind === 'running' && state.status !== 'error')
         state.status = 'running';

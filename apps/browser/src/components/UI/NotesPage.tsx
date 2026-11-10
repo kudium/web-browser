@@ -1,3 +1,4 @@
+import { AssistantPageHeader } from './AssistantPageHeader';
 /* Native controls have visible or accessible labels. */
 /* eslint-disable react/require-default-props, jsx-a11y/label-has-associated-control */
 import {
@@ -13,6 +14,7 @@ import {
   Button,
   IconButton,
   TextField,
+  TextArea,
   Switch,
   Popover,
   Dialog,
@@ -38,6 +40,9 @@ import { personalDataScope } from '../../utils/groups';
 import { HistorySidebarFrame, HistoryToolbar } from './HistorySidebarFrame';
 import { PanelPopoverContent, PanelDialogContent } from './PanelDialog';
 import { GroupPicker } from './GroupPicker';
+import { HistorySearchInput } from './HistorySearchInput';
+import { NotesHistoryList } from './NotesHistoryList';
+import { useAssistantPanelDocument } from './AssistantPanelContext';
 import type { NoteEditorHandle, NoteFormat } from './MarkdownNoteEditor';
 
 const MarkdownNoteEditor = lazy(() =>
@@ -53,6 +58,7 @@ export function NotesPage({
   tabs?: IApp[];
   initialScope?: string;
 }) {
+  const panelDocument = useAssistantPanelDocument();
   const [notes, setNotes] = useState<VaultSummary[]>([]);
   const [draft, setDraft] = useState<VaultItem>();
   const currentDraft = useRef<VaultItem>();
@@ -63,6 +69,7 @@ export function NotesPage({
   const [historyPinned, setHistoryPinned] = useState(false);
   const [fontSize, setFontSize] = useAIPagePreference('noteFontSize', 16);
   const [formatOpen, setFormatOpen] = useState(false);
+  const [markdownMode, setMarkdownMode] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const history = useRef<HTMLDivElement>(null);
   const historyToggle = useRef<HTMLButtonElement>(null);
@@ -70,10 +77,42 @@ export function NotesPage({
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [deleting, setDeleting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    scope?: string;
+    title: string;
+  }>();
+  const [noteOrder, setNoteOrder] = useAIPagePreference('noteOrder', []);
   const editVersion = useRef(0);
   const privacyEpoch = useRef(0);
-  const editor = useRef<NoteEditorHandle>(null);
+  const editor = useRef<NoteEditorHandle | null>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const sourceInput = useRef<HTMLTextAreaElement>(null);
+  const pendingBodyFocus = useRef(false);
+  const setEditorHandle = useCallback((handle: NoteEditorHandle | null) => {
+    editor.current = handle;
+    if (handle && pendingBodyFocus.current) {
+      pendingBodyFocus.current = false;
+      handle.focusStart();
+    }
+  }, []);
+  const focusTitle = useCallback(() => {
+    titleInput.current?.focus();
+    const end = titleInput.current?.value.length || 0;
+    titleInput.current?.setSelectionRange(end, end);
+  }, []);
+  const focusBody = () => {
+    if (markdownMode) {
+      sourceInput.current?.focus();
+      sourceInput.current?.setSelectionRange(0, 0);
+    } else if (editor.current) editor.current.focusStart();
+    else pendingBodyFocus.current = true;
+  };
+  useEffect(() => {
+    pendingBodyFocus.current = false;
+    if (currentDraft.current && !currentDraft.current.title)
+      titleInput.current?.focus();
+  }, [draft?.id]);
   const groups = useMemo(
     () =>
       Array.from(
@@ -88,8 +127,10 @@ export function NotesPage({
   const refresh = useCallback(async () => {
     const epoch = privacyEpoch.current;
     const result = await window.electron.passwordManager({ action: 'notes' });
-    if (epoch === privacyEpoch.current) setNotes(result as VaultSummary[]);
-  }, []);
+    if (epoch !== privacyEpoch.current) return;
+    const summaries = result as VaultSummary[];
+    setNotes(summaries);
+  }, [scope]);
   useEffect(() => {
     refresh().catch((failure) =>
       setError(
@@ -175,13 +216,13 @@ export function NotesPage({
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setHistoryOpen(false);
     };
-    document.addEventListener('pointerdown', outside, true);
-    document.addEventListener('keydown', escape);
+    panelDocument.addEventListener('pointerdown', outside, true);
+    panelDocument.addEventListener('keydown', escape);
     return () => {
-      document.removeEventListener('pointerdown', outside, true);
-      document.removeEventListener('keydown', escape);
+      panelDocument.removeEventListener('pointerdown', outside, true);
+      panelDocument.removeEventListener('keydown', escape);
     };
-  }, [historyOpen, historyPinned]);
+  }, [historyOpen, historyPinned, panelDocument]);
   const create = () =>
     run(async () => {
       await save();
@@ -218,17 +259,94 @@ export function NotesPage({
         scope: note.scope,
       });
       if (epoch !== privacyEpoch.current) return;
-      setDraft(item as VaultItem);
+      const opened = item as VaultItem;
+      if (opened.asRead === false) {
+        opened.asRead = true;
+        await window.electron.passwordManager({
+          action: 'save',
+          item: opened,
+          scope: opened.scope,
+        });
+        await refresh();
+      }
+      setDraft(opened);
       setDirty(false);
       if (!historyPinned) setHistoryOpen(false);
     });
+  useEffect(() => {
+    const timer = setInterval(() => {
+      refresh().catch(() => {});
+    }, 3000);
+    const open = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      window.electron
+        .passwordManager({ action: 'notes' })
+        .then((result) => {
+          const note = (result as VaultSummary[]).find(
+            (entry) => entry.id === id
+          );
+          if (note) select(note);
+        })
+        .catch(() => setError('Note unavailable.'));
+    };
+    window.addEventListener('kudiumbrowser-open-note', open);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('kudiumbrowser-open-note', open);
+    };
+  });
   const update = (patch: Partial<VaultItem>) => {
     editVersion.current += 1;
     setError('');
     setDraft((value) => value && { ...value, ...patch });
     setDirty(true);
   };
-  const visible = notes
+  const orderedNotes = [...notes].sort((a, b) => {
+    const aIndex = noteOrder.indexOf(a.id);
+    const bIndex = noteOrder.indexOf(b.id);
+    return (
+      (aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex) -
+      (bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex)
+    );
+  });
+  const reorder = (id: string, beforeId: string | null) => {
+    const ids = orderedNotes
+      .map((note) => note.id)
+      .filter((value) => value !== id);
+    const index = beforeId ? ids.indexOf(beforeId) : ids.length;
+    if (index < 0 || !orderedNotes.some((note) => note.id === id)) return;
+    ids.splice(index, 0, id);
+    setNoteOrder(ids);
+  };
+  const renameNote = async (note: VaultSummary, title: string) => {
+    let renamed = false;
+    await run(async () => {
+      const epoch = privacyEpoch.current;
+      await save();
+      const item =
+        currentDraft.current?.id === note.id
+          ? currentDraft.current
+          : ((await window.electron.passwordManager({
+              action: 'edit',
+              id: note.id,
+              scope: note.scope,
+            })) as VaultItem);
+      if (epoch !== privacyEpoch.current) return;
+      await window.electron.passwordManager({
+        action: 'save',
+        scope: note.scope,
+        item: { ...item, title },
+      });
+      if (epoch !== privacyEpoch.current) return;
+      setDraft((current) =>
+        current?.id === note.id ? { ...current, title } : current
+      );
+      await refresh();
+      renamed = true;
+    });
+    return renamed;
+  };
+  const visible = orderedNotes
     .filter(
       (note) =>
         (scope === 'all' ||
@@ -240,21 +358,85 @@ export function NotesPage({
     <section
       className={`notes-page ${historyOpen ? 'ai-history-open' : ''} ${
         historyPinned ? 'ai-history-pinned' : ''
-      }`}
+      } ${draft ? 'notes-has-draft' : 'notes-library-only'}`}
       aria-label="Notes"
     >
-      <div className="notes-toolbar">
-        <HistoryToolbar
-          toggleRef={historyToggle}
-          open={historyOpen}
-          label="Note history"
-          panelId="notes-history-panel"
-          busy={busy}
-          onOpen={() => setHistoryOpen(true)}
-          onNew={create}
-          newLabel="New note"
-        />
+      {historyOpen && (
+        <div
+          ref={history}
+          id="notes-history-panel"
+          className="ai-chat-history-panel notes-history-panel"
+        >
+          <HistorySidebarFrame
+            title="Notes"
+            label="Note history"
+            pinned={historyPinned}
+            busy={busy}
+            onPin={() => setHistoryPinned(!historyPinned)}
+            onClose={() => {
+              setHistoryOpen(false);
+              requestAnimationFrame(() => historyToggle.current?.focus());
+            }}
+            onNew={create}
+          >
+            <HistorySearchInput
+              label="Search note titles"
+              placeholder="Search notes"
+              value={query}
+              onChange={setQuery}
+            />
+            <NotesHistoryList
+              notes={visible}
+              groupNames={Object.fromEntries(
+                groups.map(([id, tab]) => [id, tab.sessionName || tab.name])
+              )}
+              selectedId={draft?.id}
+              busy={busy}
+              searching={!!query}
+              onSelect={select}
+              onRename={renameNote}
+              onDelete={setDeleteTarget}
+              onReorder={reorder}
+            />
+            {notes.length > visible.length && (
+              <small>Search to find more notes.</small>
+            )}
+          </HistorySidebarFrame>
+        </div>
+      )}
+      {error && (
+        <div className="notes-error" role="alert">
+          {error}
+        </div>
+      )}
+      <AssistantPageHeader className="notes-toolbar">
+        {draft ? (
+          <HistoryToolbar
+            toggleRef={historyToggle}
+            open={historyOpen}
+            label="Note history"
+            panelId="notes-history-panel"
+            busy={busy}
+            onOpen={() => setHistoryOpen(true)}
+            onNew={create}
+            newLabel="New note"
+          />
+        ) : (
+          <h2>Notes</h2>
+        )}
         <div className="notes-toolbar-spacer" />
+        {!draft && (
+          <IconButton
+            size="1"
+            variant="ghost"
+            color="gray"
+            aria-label="New note"
+            disabled={busy}
+            onClick={create}
+          >
+            <Plus size={16} />
+          </IconButton>
+        )}
         {draft && (
           <>
             {dirty && !textSelected && (
@@ -262,7 +444,7 @@ export function NotesPage({
                 {busy ? 'Saving…' : 'Edited'}
               </span>
             )}
-            {textSelected && (
+            {textSelected && !markdownMode && (
               <div
                 className="notes-inline-format"
                 aria-label="Format selected text"
@@ -290,7 +472,7 @@ export function NotesPage({
                 })}
               </div>
             )}
-            {!textSelected && (
+            {(!textSelected || markdownMode) && (
               <Popover.Root open={formatOpen} onOpenChange={setFormatOpen}>
                 <Popover.Trigger>
                   <IconButton
@@ -307,30 +489,31 @@ export function NotesPage({
                     className="notes-format"
                     aria-label="Markdown formatting"
                   >
-                    {[
-                      [Bold, 'Bold', 'bold'],
-                      [Italic, 'Italic', 'italic'],
-                      [Heading, 'Heading', 'heading'],
-                      [List, 'List', 'list'],
-                      [Code, 'Code snippet', 'code'],
-                    ].map(([Icon, label, command]) => {
-                      const Glyph = Icon as typeof Bold;
-                      return (
-                        <IconButton
-                          size="1"
-                          variant="ghost"
-                          key={String(label)}
-                          aria-label={String(label)}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => {
-                            editor.current?.format(command as NoteFormat);
-                            setFormatOpen(false);
-                          }}
-                        >
-                          <Glyph size={14} />
-                        </IconButton>
-                      );
-                    })}
+                    {!markdownMode &&
+                      [
+                        [Bold, 'Bold', 'bold'],
+                        [Italic, 'Italic', 'italic'],
+                        [Heading, 'Heading', 'heading'],
+                        [List, 'List', 'list'],
+                        [Code, 'Code snippet', 'code'],
+                      ].map(([Icon, label, command]) => {
+                        const Glyph = Icon as typeof Bold;
+                        return (
+                          <IconButton
+                            size="1"
+                            variant="ghost"
+                            key={String(label)}
+                            aria-label={String(label)}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              editor.current?.format(command as NoteFormat);
+                              setFormatOpen(false);
+                            }}
+                          >
+                            <Glyph size={14} />
+                          </IconButton>
+                        );
+                      })}
                   </div>
                   <div className="notes-font-size">
                     <span>Text size</span>
@@ -381,36 +564,66 @@ export function NotesPage({
                 </IconButton>
               </Popover.Trigger>
               <PanelPopoverContent className="notes-options-popup" size="1">
-                <GroupPicker
-                  label="Assign note to group"
-                  disabled={busy}
-                  value={draft.scope || 'browser'}
-                  options={[
-                    { id: 'browser', name: 'Personal note' },
-                    ...groups.map(([id, tab]) => ({
-                      id,
-                      name: tab.sessionName || tab.name,
-                      group: tab,
-                    })),
-                  ]}
-                  onChange={(value) =>
-                    run(async () => {
-                      await save();
-                      const destination =
-                        value === 'browser' ? undefined : value;
-                      await window.electron.passwordManager({
-                        action: 'moveNote',
-                        id: draft.id,
-                        destination,
-                      });
-                      setDraft(
-                        (current) =>
-                          current && { ...current, scope: destination }
-                      );
-                      await refresh();
-                    })
-                  }
-                />
+                <Button
+                  size="1"
+                  variant="ghost"
+                  onClick={() => {
+                    setMarkdownMode((value) => !value);
+                    setTextSelected(false);
+                    setFormatOpen(false);
+                    setOptionsOpen(false);
+                  }}
+                >
+                  <Code size={14} />
+                  {markdownMode ? 'Use visual editor' : 'Edit as Markdown'}
+                </Button>
+                <div
+                  className="notes-location"
+                  role="group"
+                  aria-label="Note location"
+                >
+                  <span className="notes-location-label">Note location</span>
+                  <GroupPicker
+                    label="Choose note location"
+                    disabled={busy}
+                    value={draft.scope || 'browser'}
+                    options={[
+                      {
+                        id: 'browser',
+                        name: 'Personal notes',
+                        detail: 'Available across all browser groups',
+                      },
+                      ...groups.map(([id, tab]) => ({
+                        id,
+                        name: tab.sessionName || tab.name,
+                        group: tab,
+                        detail: 'Notes for this browser group',
+                      })),
+                    ]}
+                    onChange={(value) =>
+                      run(async () => {
+                        await save();
+                        const destination =
+                          value === 'browser' ? undefined : value;
+                        await window.electron.passwordManager({
+                          action: 'moveNote',
+                          id: draft.id,
+                          destination,
+                        });
+                        setDraft(
+                          (current) =>
+                            current && { ...current, scope: destination }
+                        );
+                        await refresh();
+                      })
+                    }
+                  />
+                  <span className="notes-location-help">
+                    {draft.scope
+                      ? 'This note belongs to the selected browser group.'
+                      : 'Available across all browser groups. Choose a group to keep this note with that group.'}
+                  </span>
+                </div>
                 <label className="notes-option-row">
                   <span>Allow AI access</span>
                   <Switch
@@ -473,7 +686,7 @@ export function NotesPage({
                   disabled={busy}
                   onClick={() => {
                     setOptionsOpen(false);
-                    setDeleting(true);
+                    setDeleteTarget(draft);
                   }}
                 >
                   <Trash2 size={14} />
@@ -483,96 +696,142 @@ export function NotesPage({
             </Popover.Root>
           </>
         )}
-      </div>
-      {historyOpen && (
-        <div
-          ref={history}
-          id="notes-history-panel"
-          className="ai-chat-history-panel notes-history-panel"
-        >
-          <HistorySidebarFrame
-            title="Notes"
-            label="Note history"
-            pinned={historyPinned}
-            busy={busy}
-            onPin={() => setHistoryPinned(!historyPinned)}
-            onClose={() => {
-              setHistoryOpen(false);
-              requestAnimationFrame(() => historyToggle.current?.focus());
-            }}
-            onNew={create}
-          >
-            <TextField.Root
-              size="1"
-              aria-label="Search note titles"
-              placeholder="Search notes"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <div className="ai-chat-history-list">
-              {visible.map((note) => (
-                <div className="ai-chat-history-row" key={note.id}>
-                  <button
-                    type="button"
-                    aria-pressed={draft?.id === note.id}
-                    disabled={busy}
-                    onClick={() => select(note)}
-                  >
-                    <span>{note.title || 'Untitled note'}</span>
-                    {note.sensitive && (
-                      <LockKeyhole size={12} aria-label="Locked note" />
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
-            {notes.length > visible.length && (
-              <small>Search to find more notes.</small>
-            )}
-          </HistorySidebarFrame>
-        </div>
-      )}
-      {error && (
-        <div className="notes-error" role="alert">
-          {error}
-        </div>
-      )}
+      </AssistantPageHeader>
       <div
         className="notes-editor"
+        hidden={!draft && historyOpen}
         style={{ '--note-font-size': `${fontSize}px` } as CSSProperties}
       >
         {draft ? (
           <>
             <TextField.Root
+              ref={titleInput}
               className="notes-title"
               aria-label="Note title"
               placeholder="Title"
               maxLength={120}
               value={draft.title}
               onChange={(event) => update({ title: event.target.value })}
+              onKeyDown={(event) => {
+                if (
+                  event.nativeEvent.isComposing ||
+                  event.nativeEvent.keyCode === 229 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.altKey ||
+                  event.shiftKey
+                )
+                  return;
+                if (
+                  event.key === 'Enter' ||
+                  (event.key === 'ArrowDown' &&
+                    event.currentTarget.selectionStart ===
+                      event.currentTarget.value.length &&
+                    event.currentTarget.selectionEnd ===
+                      event.currentTarget.value.length)
+                ) {
+                  event.preventDefault();
+                  focusBody();
+                }
+              }}
             />
-            <Suspense
-              fallback={<div aria-label="Loading note editor" role="status" />}
-            >
-              <MarkdownNoteEditor
+            {markdownMode ? (
+              <TextArea
                 key={draft.id}
-                ref={editor}
-                onSelectionChange={setTextSelected}
-                markdown={draft.notes || ''}
-                onChange={(markdown) => update({ notes: markdown })}
+                ref={sourceInput}
+                className="notes-markdown-source"
+                aria-label="Note Markdown source"
+                placeholder="Write Markdown…"
+                value={draft.notes || ''}
+                onChange={(event) => update({ notes: event.target.value })}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === 'ArrowUp' &&
+                    !event.nativeEvent.isComposing &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.altKey &&
+                    !event.shiftKey &&
+                    event.currentTarget.selectionStart === 0 &&
+                    event.currentTarget.selectionEnd === 0
+                  ) {
+                    event.preventDefault();
+                    focusTitle();
+                  }
+                }}
+                spellCheck={false}
               />
-            </Suspense>
+            ) : (
+              <Suspense
+                fallback={
+                  <div aria-label="Loading note editor" role="status" />
+                }
+              >
+                <MarkdownNoteEditor
+                  key={draft.id}
+                  ref={setEditorHandle}
+                  onFocusTitle={focusTitle}
+                  onSelectionChange={setTextSelected}
+                  markdown={draft.notes || ''}
+                  onChange={(markdown) => update({ notes: markdown })}
+                />
+              </Suspense>
+            )}
           </>
         ) : (
-          <div className="notes-empty">
-            <span>Select a note or create a new one.</span>
-            <Button size="1" variant="ghost" disabled={busy} onClick={create}>
-              Create note
-            </Button>
-          </div>
+          !historyOpen &&
+          (notes.some(
+            (note) =>
+              scope === 'all' ||
+              (scope === 'browser' ? !note.scope : note.scope === scope)
+          ) ? (
+            <div className="notes-landing-list">
+              <HistorySearchInput
+                label="Search note titles"
+                placeholder="Search notes"
+                value={query}
+                onChange={setQuery}
+              />
+              <NotesHistoryList
+                notes={visible}
+                groupNames={Object.fromEntries(
+                  groups.map(([id, tab]) => [id, tab.sessionName || tab.name])
+                )}
+                selectedId={undefined}
+                busy={busy}
+                searching={!!query}
+                onSelect={select}
+                onRename={renameNote}
+                onDelete={setDeleteTarget}
+                onReorder={reorder}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="notes-empty">
+                <span className="notes-empty-title">
+                  Your notes, all in one place
+                </span>
+                <span>Capture an idea or start writing.</span>
+                <Button
+                  size="1"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={create}
+                >
+                  Create note
+                </Button>
+              </div>
+            </>
+          ))
         )}
       </div>
-      <Dialog.Root open={deleting} onOpenChange={setDeleting}>
+      <Dialog.Root
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !busy) setDeleteTarget(undefined);
+        }}
+      >
         <PanelDialogContent
           className="notes-delete-dialog"
           size="1"
@@ -580,7 +839,8 @@ export function NotesPage({
         >
           <Dialog.Title size="3">Delete note?</Dialog.Title>
           <Dialog.Description size="2">
-            This permanently removes this note from Personal Data.
+            This permanently removes “{deleteTarget?.title || 'Untitled note'}”
+            from Personal Data.
           </Dialog.Description>
           <div className="notes-dialog-actions">
             <Dialog.Close>
@@ -591,15 +851,18 @@ export function NotesPage({
               disabled={busy}
               onClick={() =>
                 run(async () => {
-                  if (!draft) return;
+                  if (!deleteTarget) return;
                   await window.electron.passwordManager({
                     action: 'delete',
-                    id: draft.id,
-                    scope: draft.scope,
+                    id: deleteTarget.id,
+                    scope: deleteTarget.scope,
                   });
-                  setDraft(undefined);
-                  setDirty(false);
-                  setDeleting(false);
+                  if (currentDraft.current?.id === deleteTarget.id) {
+                    editVersion.current += 1;
+                    setDraft(undefined);
+                    setDirty(false);
+                  }
+                  setDeleteTarget(undefined);
                   await refresh();
                 })
               }

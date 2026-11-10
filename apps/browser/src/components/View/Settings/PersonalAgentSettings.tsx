@@ -1,8 +1,7 @@
+import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 import { useEffect, useState } from 'react';
 import { Button, Callout, DropdownMenu, IconButton } from '@radix-ui/themes';
 import { Bot, Ellipsis, Check } from 'lucide-react';
-import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
-import { SettingsLibrary } from '../../UI/SettingsLibrary';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import { PERSONAL_AGENTS } from '../../../browser/personalAgents';
 import type {
@@ -118,107 +117,97 @@ export function PersonalAgentSettings({
         </div>
       </div>
       <div className="preference-card">
-        <SettingsLibrary
-          label="AI connections"
-          entries={PERSONAL_AGENTS.map((agent) => ({
-            ...agent,
-            subtitle: statusText(
-              agents.find((entry) => entry.id === agent.id)?.state
-            ),
-          }))}
-        >
-          {(agent) => {
-            const state = agents.find((entry) => entry.id === agent.id);
-            const locate =
-              !state || state.state === 'missing' || state.state === 'error';
-            const configured = state?.state === 'configured';
-            let action: PersonalAgentRequest['action'] = 'connect';
-            let label = 'Connect';
-            if (locate) {
-              action = 'locate';
-              label = 'Locate…';
-            } else if (configured) {
-              action = 'disconnect';
-              label = 'Disconnect';
-            } else if (state?.state === 'outdated') label = 'Reconnect';
-            if (active === agent.id) label = 'Working…';
-            return (
-              <div className="personal-agent-row" key={agent.id}>
-                <span className="personal-agent-icon" aria-hidden="true">
-                  {configured ? <Check size={18} /> : <Bot size={18} />}
-                </span>
-                <div className="personal-agent-info">
-                  <div className="personal-agent-title">
-                    <strong>{agent.name}</strong>
-                    <PreferenceHint label={`${agent.name} connection`}>
-                      <p>{agent.discoveryHelp}</p>
-                      <p>{agent.fallbackHelp}</p>
-                      {agent.id === 'openclaw' && (
-                        <p>
-                          Use a version with Settings → MCP. This connects the
-                          local installation.
-                        </p>
-                      )}
-                      {state && (
-                        <p className="personal-agent-config-path">
-                          {state.configPath}
-                        </p>
-                      )}
-                      <a
-                        href={agent.guide}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Setup guide
-                      </a>
-                    </PreferenceHint>
-                  </div>
-                  <p>
-                    {loading && !state
-                      ? 'Checking installation…'
-                      : statusText(state?.state)}
-                  </p>
+        {PERSONAL_AGENTS.map((agent) => {
+          const state = agents.find((entry) => entry.id === agent.id);
+          const locate =
+            !state || state.state === 'missing' || state.state === 'error';
+          const configured = state?.state === 'configured';
+          let action: PersonalAgentRequest['action'] = 'connect';
+          let label = 'Connect';
+          if (locate) {
+            action = 'locate';
+            label = 'Locate…';
+          } else if (configured) {
+            action = 'disconnect';
+            label = 'Disconnect';
+          } else if (state?.state === 'outdated') label = 'Reconnect';
+          if (active === agent.id) label = 'Working…';
+          return (
+            <div className="personal-agent-row" key={agent.id}>
+              <span className="personal-agent-icon" aria-hidden="true">
+                {configured ? <Check size={18} /> : <Bot size={18} />}
+              </span>
+              <div className="personal-agent-info">
+                <div className="personal-agent-title">
+                  <strong>{agent.name}</strong>
+                  <PreferenceHint label={`${agent.name} connection`}>
+                    <p>{agent.discoveryHelp}</p>
+                    <p>{agent.fallbackHelp}</p>
+                    {agent.id === 'openclaw' && (
+                      <p>
+                        Use a version with Settings → MCP. This connects the
+                        local installation.
+                      </p>
+                    )}
+                    {state && (
+                      <p className="personal-agent-config-path">
+                        {state.configPath}
+                      </p>
+                    )}
+                    <a
+                      href={agent.guide}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Setup guide
+                    </a>
+                  </PreferenceHint>
                 </div>
-                <div className="personal-agent-actions">
-                  <Button
-                    variant="soft"
-                    disabled={busy || loading}
-                    aria-label={`${label.replace('…', '')} ${agent.name}`}
-                    onClick={() => perform(agent.id, action)}
-                  >
-                    {label}
-                  </Button>
-                  <DropdownMenu.Root>
-                    <DropdownMenu.Trigger>
-                      <IconButton
-                        variant="ghost"
-                        color="gray"
-                        disabled={busy || loading}
-                        aria-label={`${agent.name} options`}
-                      >
-                        <Ellipsis size={16} />
-                      </IconButton>
-                    </DropdownMenu.Trigger>
-                    <DropdownMenu.Content>
-                      <DropdownMenu.Item
-                        onSelect={() => perform(agent.id, 'locate')}
-                      >
-                        Choose configuration…
-                      </DropdownMenu.Item>
-                      {configured && (
-                        <DropdownMenu.Item
-                          onSelect={() => perform(agent.id, 'connect')}
-                        >
-                          Update connection
-                        </DropdownMenu.Item>
-                      )}
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Root>
-                </div>
+                <p>
+                  {loading && !state
+                    ? 'Checking installation…'
+                    : statusText(state?.state)}
+                </p>
               </div>
-            );
-          }}
-        </SettingsLibrary>
+              <div className="personal-agent-actions">
+                <Button
+                  variant="soft"
+                  disabled={busy || loading}
+                  aria-label={`${label.replace('…', '')} ${agent.name}`}
+                  onClick={() => perform(agent.id, action)}
+                >
+                  {label}
+                </Button>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger>
+                    <IconButton
+                      variant="ghost"
+                      color="gray"
+                      disabled={busy || loading}
+                      aria-label={`${agent.name} options`}
+                    >
+                      <Ellipsis size={16} />
+                    </IconButton>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content>
+                    <DropdownMenu.Item
+                      onSelect={() => perform(agent.id, 'locate')}
+                    >
+                      Choose configuration…
+                    </DropdownMenu.Item>
+                    {configured && (
+                      <DropdownMenu.Item
+                        onSelect={() => perform(agent.id, 'connect')}
+                      >
+                        Update connection
+                      </DropdownMenu.Item>
+                    )}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
+              </div>
+            </div>
+          );
+        })}
       </div>
       {error && (
         <Callout.Root color="red" role="alert">

@@ -105,7 +105,7 @@
       ".erb/dll"
     ],
     "transform": {
-      "node_modules/marked/.*\\.js$": [
+      "node_modules/(marked|lowlight|devlop|hast-util-to-text)/.*\\.js$": [
         "babel-jest",
         {
           "plugins": [
@@ -132,7 +132,7 @@
       ]
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!@tiptap/markdown/|marked/|@toon-format/toon/|react-arborist/|react-dnd/|react-dnd-html5-backend/|dnd-core/|@react-dnd/)"
+      "/node_modules/(?!lowlight/|devlop/|hast-util-to-text/|@tiptap/markdown/|marked/|@toon-format/toon/|react-arborist/|react-dnd/|react-dnd-html5-backend/|dnd-core/|@react-dnd/)"
     ],
     "modulePathIgnorePatterns": [
       "<rootDir>/release/app/package.json"
@@ -145,6 +145,7 @@
     "@codemirror/search": "^6.7.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@radix-ui/themes": "^3.3.0",
+    "@tiptap/extension-code-block-lowlight": "^3.33.0",
     "@tiptap/markdown": "^3.33.0",
     "@tiptap/react": "^3.33.0",
     "@tiptap/starter-kit": "^3.33.0",
@@ -160,6 +161,7 @@
     "image-size": "2.1.0",
     "jju": "^1.4.0",
     "json5": "^2.2.3",
+    "lowlight": "^3.3.0",
     "lucide-react": "^1.67.0",
     "mammoth": "^1.11.0",
     "marked": "^15.0.12",
@@ -329,7 +331,7 @@
       "owner": "samtax01",
       "repo": "KudiumBrowser"
     },
-    "copyright": "Copyright \u00a9 2026 Kudium",
+    "copyright": "Copyright © 2026 Kudium",
     "protocols": [
       {
         "name": "Web pages",

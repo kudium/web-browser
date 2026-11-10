@@ -13,7 +13,7 @@ it('uses compatible transport and preserves reasoning across tool turns', () => 
         { role: 'assistant', reasoning_content: 'reasoning', tool_calls: [] },
       ];
       expect(providerHeaders(provider.endpoint, 'key').Authorization).toBe(
-        'Bearer key'
+        provider.id === 'ollama' ? undefined : 'Bearer key'
       );
       expect(
         providerRequest(provider.endpoint, provider.model, messages, [])
@@ -143,4 +143,70 @@ it('replaces earlier image payloads while preserving task text and tool results'
   expect(messages[2].content[0].text).toBe('Old screenshot of first');
   expect(JSON.stringify(messages)).toContain('recent-image');
   expect(messages[4].content).toBe(images);
+});
+
+it('uses Ollama tool calls and results through the shared agent protocol without sending credentials', () => {
+  const endpoint = 'http://localhost:11434/v1';
+  const tools = [
+    {
+      type: 'function',
+      function: { name: 'read_page', parameters: { type: 'object' } },
+    },
+  ];
+  const message = {
+    role: 'assistant',
+    content: '',
+    tool_calls: [
+      {
+        id: 'call-local',
+        type: 'function',
+        function: { name: 'read_page', arguments: '{}' },
+      },
+    ],
+  };
+  expect(providerMessage(endpoint, { choices: [{ message }] })).toBe(message);
+  const messages = [
+    message,
+    { role: 'tool', tool_call_id: 'call-local', content: 'Page content' },
+  ];
+  expect(providerRequest(endpoint, 'qwen3:8b', messages, tools)).toEqual({
+    model: 'qwen3:8b',
+    messages,
+    tools,
+  });
+  expect(providerHeaders(endpoint, 'previous-cloud-secret')).toEqual({
+    'Content-Type': 'application/json',
+  });
+});
+
+it('maps thinking levels to provider controls and leaves default requests unchanged', () => {
+  const request = (endpoint: string, model: string, thinking: any) =>
+    providerRequest(endpoint, model, [], [], { thinking });
+  expect(
+    request('http://localhost:11434/v1', 'qwen3:8b', 'off')
+  ).toHaveProperty('think', false);
+  expect(request('http://localhost:11434/v1', 'qwen3:8b', 'on')).toHaveProperty(
+    'think',
+    true
+  );
+  expect(
+    request('http://localhost:11434/v1', 'gpt-oss:20b', 'high')
+  ).toHaveProperty('think', 'high');
+  expect(request('https://api.openai.com/v1', 'gpt-5', 'high')).toHaveProperty(
+    'reasoning_effort',
+    'high'
+  );
+  expect(
+    request('https://api.openai.com/v1', 'gpt-4.1', 'high')
+  ).not.toHaveProperty('reasoning_effort');
+  expect(
+    request('http://localhost:11434/v1', 'qwen3:8b', 'auto')
+  ).not.toHaveProperty('think');
+  const claude = request(
+    'https://api.anthropic.com/v1',
+    'claude-sonnet-4',
+    'medium'
+  );
+  expect(claude.thinking).toEqual({ type: 'enabled', budget_tokens: 4096 });
+  expect(claude.max_tokens).toBeGreaterThan(claude.thinking.budget_tokens);
 });

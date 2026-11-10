@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { TextField } from '@radix-ui/themes';
-import { Search, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Trash2, Pencil, Check, X } from 'lucide-react';
+import { useAssistantPanelDocument } from './AssistantPanelContext';
 import { StorageRecoveryAction } from './StorageRecoveryAction';
+import { HistorySearchInput } from './HistorySearchInput';
 import { HistorySidebarFrame } from './HistorySidebarFrame';
 import type {
   AIConversationsState,
@@ -25,6 +27,7 @@ export function AIChatSwitcher({
   onPin: () => void;
   onClose: () => void;
 }) {
+  const panelDocument = useAssistantPanelDocument();
   const history = useRef<HTMLElement>(null);
   const dismissalGeneration = useRef(0);
   const dismissalTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -39,9 +42,10 @@ export function AIChatSwitcher({
   useEffect(() => {
     if (pinned) return undefined;
     const dismissOutside = (event: PointerEvent) => {
-      const { target } = event;
+      const target = event.target as Element | null;
       if (
-        !(target instanceof Element) ||
+        !target ||
+        target.nodeType !== 1 ||
         history.current?.contains(target) ||
         target.closest('[aria-controls="ai-chat-history-panel"]')
       )
@@ -50,10 +54,10 @@ export function AIChatSwitcher({
       clearTimeout(dismissalTimer.current);
       onClose();
     };
-    document.addEventListener('pointerdown', dismissOutside, true);
+    panelDocument.addEventListener('pointerdown', dismissOutside, true);
     return () =>
-      document.removeEventListener('pointerdown', dismissOutside, true);
-  }, [pinned, onClose]);
+      panelDocument.removeEventListener('pointerdown', dismissOutside, true);
+  }, [pinned, onClose, panelDocument]);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -64,9 +68,9 @@ export function AIChatSwitcher({
         onClose();
       }
     };
-    document.addEventListener('keydown', dismiss);
-    return () => document.removeEventListener('keydown', dismiss);
-  }, [onClose, editing]);
+    panelDocument.addEventListener('keydown', dismiss);
+    return () => panelDocument.removeEventListener('keydown', dismiss);
+  }, [onClose, editing, panelDocument]);
   useEffect(() => {
     if (pinned || editing) {
       dismissalGeneration.current += 1;
@@ -98,16 +102,12 @@ export function AIChatSwitcher({
       onClose={onClose}
       onNew={() => choose({ action: 'create' })}
     >
-      <TextField.Root
-        aria-label="Search chats"
+      <HistorySearchInput
+        label="Search chats"
         placeholder="Search chats"
         value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      >
-        <TextField.Slot>
-          <Search size={14} />
-        </TextField.Slot>
-      </TextField.Root>
+        onChange={setQuery}
+      />
       <div className="ai-chat-history-list">
         {state.conversations
           .filter((chat) =>

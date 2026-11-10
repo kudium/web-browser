@@ -9,6 +9,7 @@ export interface MigrationProfile {
   cookies: boolean;
 }
 export interface MigrationRequest {
+  destinationSpace?: string;
   profileId: string;
   bookmarks: boolean;
   history: boolean;

@@ -50,6 +50,8 @@ import type {
 import type {
   AIComposerAttachment,
   AIComposerTask,
+  AIQueueState,
+  AIQueueRequest,
 } from '../browser/aiComposer';
 import type {
   VaultRequest,
@@ -80,7 +82,11 @@ import type {
 } from '../browser/accountSync';
 import type { CloudSyncStatus } from '../browser/cloudSync';
 import { retainExtensionIcons } from '../browser/extensionIconRetention';
-import type { NativeMenuItem, NativePrompt } from '../browser/nativeUi';
+import type {
+  NativeMenuItem,
+  NativePrompt,
+  NativeTooltipRequest,
+} from '../browser/nativeUi';
 import type {
   BrowserPreferences,
   PreferenceAction,
@@ -124,7 +130,12 @@ let storageReady: Promise<void> | undefined;
 function invokeWhenReady(channel: string, ...args: unknown[]) {
   if (
     channel.startsWith('ai-') ||
-    ['password-manager', 'account-sync', 'browser-migration'].includes(channel)
+    [
+      'password-manager',
+      'account-sync',
+      'browser-migration',
+      'browser-activity',
+    ].includes(channel)
   ) {
     if (!storageReady)
       storageReady = ipcRenderer.invoke('browser-storage-ready');
@@ -192,6 +203,18 @@ const electronHandler = {
     | import('../browser/browserMigration').MigrationRecovery[]
   > {
     return invokeWhenReady('browser-migration', action, input);
+  },
+  activity(request: {
+    action: 'list' | 'read' | 'readAll' | 'delete';
+    id?: string;
+  }): Promise<import('../browser/activity').BrowserActivity[] | undefined> {
+    return invokeWhenReady('browser-activity', request);
+  },
+  onActivityChanged(callback: () => void) {
+    const listener = () => callback();
+    ipcRenderer.on('browser-activity-changed', listener);
+    return () =>
+      ipcRenderer.removeListener('browser-activity-changed', listener);
   },
   onPasswordManagerLock(callback: () => void) {
     const listener = () => callback();
@@ -331,6 +354,7 @@ const electronHandler = {
       endpoint: string;
       model: string;
       key?: string;
+      thinking?: import('../browser/aiThinking').AIThinking;
       remember?: boolean;
       clear?: boolean;
     }): Promise<AISettings> {
@@ -368,6 +392,15 @@ const electronHandler = {
     },
     run(prompt: string | AIComposerTask): Promise<boolean> {
       return trackedInvoke('ai_run', 'ai-run', prompt);
+    },
+    queue(request: AIQueueRequest = { action: 'list' }): Promise<AIQueueState> {
+      return invokeWhenReady('ai-queue', request);
+    },
+    onQueue(callback: (state: AIQueueState) => void) {
+      const listener = (_event: IpcRendererEvent, state: AIQueueState) =>
+        callback(state);
+      ipcRenderer.on('ai-queue-changed', listener);
+      return () => ipcRenderer.removeListener('ai-queue-changed', listener);
     },
     conversations(
       request: AIConversationRequest = { action: 'list' }
@@ -628,6 +661,9 @@ const electronHandler = {
       ipcRenderer.on('browser-downloads-changed', listener);
       return () =>
         ipcRenderer.removeListener('browser-downloads-changed', listener);
+    },
+    tooltip(request: NativeTooltipRequest): Promise<void> {
+      return ipcRenderer.invoke('browser-native-tooltip', request);
     },
     nativeMenu(items: NativeMenuItem[]): Promise<string | null> {
       return ipcRenderer.invoke('browser-native-menu', items);

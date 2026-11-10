@@ -420,6 +420,7 @@ export class PasswordVault {
       origin: input.origin ? secureOrigin(input.origin) : '',
       version: 2,
       sensitive: input.sensitive === true,
+      asRead: input.asRead !== false,
       scope,
       notes: bounded(input.notes || '', 100000),
       source: input.source

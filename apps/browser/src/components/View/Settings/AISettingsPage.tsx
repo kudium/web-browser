@@ -1,14 +1,15 @@
-import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 /* eslint jsx-a11y/label-has-associated-control: ["error", { "assert": "htmlFor" }] */
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, Callout, Switch } from '@radix-ui/themes';
+import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 import { AISkillsSettings } from './AISkillsSettings';
 import { ExternalAISettings } from './ExternalAISettings';
 import {
   AI_PROVIDERS,
   AI_MODEL_EXAMPLES,
   providerFor,
+  isOllamaEndpoint,
 } from '../../../browser/aiProviders';
 import { AI_DEFAULTS, AISettings } from '../../../browser/ai';
 import { useAIPagePreference } from '../../../utils/useAIPagePreference';
@@ -65,6 +66,39 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
       alive = false;
     };
   }, [retry]);
+  const local = isOllamaEndpoint(endpoint);
+  useEffect(() => {
+    if (!ready || !local) return undefined;
+    let alive = true;
+    setLoadingModels(true);
+    setModelError('');
+    window.electron.ai
+      .models({ endpoint, key: '' })
+      .then((available) => {
+        if (!alive) return undefined;
+        setModels(available);
+        setModel((current) => current || available[0] || '');
+        if (!available.length)
+          setModelError(
+            'No installed models. Install a model with ollama pull, then refresh models.'
+          );
+        return undefined;
+      })
+      .catch(() => {
+        if (alive)
+          setModelError(
+            'Unable to connect to Ollama. Start Ollama, then refresh models.'
+          );
+      })
+      .finally(() => {
+        if (alive) setLoadingModels(false);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      setLoadingModels(false);
+    };
+  }, [endpoint, local, ready]);
   const save = async (clear = false) => {
     setBusy(true);
     setError('');
@@ -91,10 +125,19 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
     try {
       const available = await window.electron.ai.models({ endpoint, key });
       setModels(available);
+      if (local) setModel((current) => current || available[0] || '');
       if (!available.length)
-        setModelError('No models were returned. Enter a model ID manually.');
+        setModelError(
+          local
+            ? 'No installed models. Install a model with ollama pull, then refresh models.'
+            : 'No models were returned. Enter a model ID manually.'
+        );
     } catch (reason) {
-      setModelError(errorText(reason as Error));
+      setModelError(
+        local
+          ? 'Unable to connect to Ollama. Start Ollama, then refresh models.'
+          : errorText(reason as Error)
+      );
     } finally {
       setLoadingModels(false);
     }
@@ -248,36 +291,47 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
                   value={endpoint}
                   onChange={(event) => {
                     setEndpoint(event.target.value);
-                    setProvider('custom');
+                    setProvider(providerFor(event.target.value));
                     setModels([]);
                     setModelError('');
                   }}
                 />
               </div>
-              <div className="preference-row">
-                <div>
-                  <label htmlFor="ai-key">API key</label>
+              {!local && (
+                <div className="preference-row">
+                  <div>
+                    <label htmlFor="ai-key">API key</label>
+                  </div>
+                  <input
+                    id="ai-key"
+                    type="password"
+                    autoComplete="off"
+                    value={key}
+                    placeholder={
+                      saved.hasKey
+                        ? '••••••••  Key configured'
+                        : 'Enter your API key'
+                    }
+                    onChange={(event) => setKey(event.target.value)}
+                  />
                 </div>
-                <input
-                  id="ai-key"
-                  type="password"
-                  autoComplete="off"
-                  value={key}
-                  placeholder={
-                    saved.hasKey
-                      ? '••••••••  Key configured'
-                      : 'Enter your API key'
-                  }
-                  onChange={(event) => setKey(event.target.value)}
-                />
-              </div>
+              )}
               <div className="preference-row ai-model-row">
                 <div>
                   <label htmlFor="ai-model">Model</label>
+                  {local && (
+                    <p id="ai-ollama-model-help">
+                      Installed in Ollama. Choose a model with tool support for
+                      browser actions and vision for screenshots.
+                    </p>
+                  )}
                 </div>
                 <div className="ai-model-controls">
                   <select
                     id="ai-model"
+                    aria-describedby={
+                      local ? 'ai-ollama-model-help' : undefined
+                    }
                     value={customModel ? '__custom__' : model}
                     onChange={(event) => {
                       setCustomModel(event.target.value === '__custom__');
@@ -316,9 +370,11 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
                     size="1"
                     onClick={loadModels}
                     disabled={
-                      !key.trim() &&
-                      (!saved.hasKey ||
-                        endpoint.replace(/\/$/, '') !== saved.endpoint)
+                      loadingModels ||
+                      (!local &&
+                        !key.trim() &&
+                        (!saved.hasKey ||
+                          endpoint.replace(/\/$/, '') !== saved.endpoint))
                     }
                   >
                     Refresh models
@@ -330,24 +386,27 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
                   )}
                 </div>
               </div>
-              <div className="preference-row">
-                <div>
-                  <label htmlFor="ai-remember">Remember API key</label>
+              {!local && (
+                <div className="preference-row">
+                  <div>
+                    <label htmlFor="ai-remember">Remember API key</label>
+                  </div>
+                  <Switch
+                    id="ai-remember"
+                    checked={remember}
+                    onCheckedChange={setRemember}
+                  />
                 </div>
-                <Switch
-                  id="ai-remember"
-                  checked={remember}
-                  onCheckedChange={setRemember}
-                />
-              </div>
+              )}
             </div>
             <div className="ai-preferences-actions">
               <Button
                 type="submit"
                 disabled={
                   !model.trim() ||
-                  ((!saved.hasKey ||
-                    endpoint.replace(/\/$/, '') !== saved.endpoint) &&
+                  (!local &&
+                    (!saved.hasKey ||
+                      endpoint.replace(/\/$/, '') !== saved.endpoint) &&
                     !key.trim())
                 }
               >

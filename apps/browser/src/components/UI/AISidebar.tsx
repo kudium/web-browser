@@ -14,8 +14,10 @@ import {
   Save,
   Trash2,
   ListTodo,
-  Code2,
 } from 'lucide-react';
+import { aiThinking, thinkingOptions } from '../../browser/aiThinking';
+import { isOllamaEndpoint } from '../../browser/aiProviders';
+import { AssistantPageHeader } from './AssistantPageHeader';
 import { AIComposerSuggestions } from './AIComposerSuggestions';
 import { AISkill, skillCommands } from '../../browser/aiSkills';
 import { StorageRecoveryAction } from './StorageRecoveryAction';
@@ -23,6 +25,8 @@ import { AIStarterActions } from './AIStarterActions';
 import { AIWorkingTabsBadge, AIWorkingTab } from './AIWorkingTabsBadge';
 import { useAIPagePreference } from '../../utils/useAIPagePreference';
 import { NotesPage } from './NotesPage';
+import { ActivityPage } from './ActivityPage';
+import { AssistantPanelHost, focusAssistantPanel } from './AssistantPanelHost';
 import { HistoryToolbar } from './HistorySidebarFrame';
 import { AIChatSwitcher } from './AIChatSwitcher';
 import type {
@@ -38,6 +42,7 @@ import {
   AI_ATTACHMENT_BYTES,
   AI_ATTACHMENT_LIMIT,
   AIComposerAttachment,
+  AIQueueState,
 } from '../../browser/aiComposer';
 import { GroupPicker } from './GroupPicker';
 import { AIContextPicker } from './AIContextPicker';
@@ -88,7 +93,7 @@ export function AISidebar({
   focusedTabId?: string;
   developerRequest?: number;
   menuPaneRequest?: {
-    pane: 'assistant' | 'tasks' | 'developer';
+    pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
     token: number;
   };
   onFocusTab?: (id: string) => void;
@@ -135,21 +140,30 @@ export function AISidebar({
   const [mentionIndex, setMentionIndex] = useState(0);
   const [cursor, setCursor] = useState(0);
   const [pane, setPane] = useAIPagePreference('pane', 'assistant');
+
   const [showStats] = useAIPagePreference('showStats', true);
+  const handledMenuPaneRequest = useRef<number>();
+  const handledDeveloperRequest = useRef(0);
   useEffect(() => {
-    if (menuPaneRequest) setPane(menuPaneRequest.pane);
+    if (
+      menuPaneRequest &&
+      menuPaneRequest.token !== handledMenuPaneRequest.current
+    ) {
+      handledMenuPaneRequest.current = menuPaneRequest.token;
+      setPane(menuPaneRequest.pane);
+      focusAssistantPanel(menuPaneRequest.pane);
+    }
   }, [menuPaneRequest, setPane]);
   useEffect(() => {
-    if (developerRequest) setPane('developer');
+    if (
+      developerRequest &&
+      developerRequest !== handledDeveloperRequest.current
+    ) {
+      handledDeveloperRequest.current = developerRequest;
+      setPane('developer');
+      focusAssistantPanel('developer');
+    }
   }, [developerRequest, setPane]);
-  const [notesVisited, setNotesVisited] = useState(false);
-  useEffect(() => {
-    if (pane === 'notes') setNotesVisited(true);
-  }, [pane]);
-  const [developerVisited, setDeveloperVisited] = useState(false);
-  useEffect(() => {
-    if (pane === 'developer') setDeveloperVisited(true);
-  }, [pane]);
   const showTasks = pane === 'tasks';
   const setShowTasks = useCallback(
     (value: boolean) => setPane(value ? 'tasks' : 'assistant'),
@@ -160,6 +174,7 @@ export function AISidebar({
     hasKey: false,
     remembered: false,
   });
+  const aiConnected = settings.hasKey || isOllamaEndpoint(settings.endpoint);
   const [external, setExternal] = useState<MCPStatus>();
   const [chatSkills, setChatSkills] = useState<AISkill[]>([]);
   const refreshSkills = () => {
@@ -195,6 +210,11 @@ export function AISidebar({
   const attachmentRef = useRef<AIComposerAttachment[]>([]);
   attachmentRef.current = attachments;
   const [busy, setBusy] = useState(false);
+  const submitting = useRef(false);
+  const [queue, setQueue] = useState<AIQueueState>({
+    messages: [],
+    paused: false,
+  });
   const [feedbackId, setFeedbackId] = useState<string>();
   const [resumable, setResumable] = useState(false);
   const [events, setEvents] = useState<AIConversationEvent[]>([]);
@@ -281,7 +301,7 @@ export function AISidebar({
   useEffect(() => {
     let mounted = true;
     setModels([]);
-    if (settings.hasKey && window.electron.ai.models) {
+    if (aiConnected && window.electron.ai.models) {
       window.electron.ai
         .models()
         .then((value) => {
@@ -293,7 +313,7 @@ export function AISidebar({
     return () => {
       mounted = false;
     };
-  }, [settings.endpoint, settings.hasKey]);
+  }, [settings.endpoint, aiConnected]);
   const slash = /(?:^|\s)\/([\p{L}\p{N}_-]*)$/u.exec(prompt.slice(0, cursor));
   const skillSuggestions = slash
     ? skillCommands(chatSkills).filter(
@@ -380,6 +400,24 @@ export function AISidebar({
     },
     [showError]
   );
+  const thinkingChoices = thinkingOptions(settings.endpoint, settings.model);
+  const selectedThinking =
+    thinkingChoices.find((option) => option.id === settings.thinking) ||
+    thinkingChoices[0];
+  const changeThinking = async (value: string) => {
+    try {
+      setSettings(
+        await window.electron.ai.settings({
+          endpoint: settings.endpoint,
+          model: settings.model,
+          remember: settings.remembered,
+          thinking: aiThinking(value),
+        })
+      );
+    } catch (reason) {
+      showError(reason as Error);
+    }
+  };
   const changeModel = async (model: string) => {
     try {
       setSettings(
@@ -408,6 +446,35 @@ export function AISidebar({
       off?.();
     };
   }, [showError]);
+  useEffect(() => {
+    if (!window.electron.ai.queue) return undefined;
+    let mounted = true;
+    let received = false;
+    const off = window.electron.ai.onQueue?.((state) => {
+      received = true;
+      setQueue(state);
+      if (state.started) setEvents((previous) => [...previous, state.started!]);
+    });
+    window.electron.ai
+      .queue()
+      .then((state) => {
+        if (mounted && !received) setQueue(state);
+      })
+      .catch(showError);
+    return () => {
+      mounted = false;
+      off?.();
+    };
+  }, [showError]);
+  const changeQueue = async (
+    request: Parameters<typeof window.electron.ai.queue>[0]
+  ) => {
+    try {
+      setQueue(await window.electron.ai.queue(request));
+    } catch (reason) {
+      showError(reason as Error);
+    }
+  };
   const refreshChats = () => {
     window.electron.ai
       .conversations?.({ action: 'list' })
@@ -439,7 +506,7 @@ export function AISidebar({
       }
       return;
     }
-    if (busy || attaching) return;
+    if (busy || attaching || queue.messages.length) return;
     chatDrafts.current[chatState.selectedId] = {
       prompt,
       attachments,
@@ -586,7 +653,7 @@ export function AISidebar({
     window.electron.ai.openPreferences().catch(showError);
   const continueTask = async () => {
     if (changingChat) return false;
-    if (busy || !settings.hasKey || unavailable) return false;
+    if (busy || !aiConnected || unavailable) return false;
     setBusy(true);
     setError('');
     try {
@@ -897,6 +964,7 @@ export function AISidebar({
       ? contexts[0].groupId
       : 'all';
   const submit = async () => {
+    if (submitting.current) return;
     if (feedbackId) {
       if (!prompt.trim() || changingChat) return;
       const answer = prompt.trim();
@@ -919,14 +987,15 @@ export function AISidebar({
       !task ||
       attaching ||
       changingChat ||
-      busy ||
-      !settings.hasKey ||
+      !aiConnected ||
       unavailable ||
       blockedMention ||
       blockedContext
     )
       return;
     if (
+      !busy &&
+      !queue.messages.length &&
       resumable &&
       !attachments.length &&
       !contexts.length &&
@@ -940,8 +1009,9 @@ export function AISidebar({
       }
       return;
     }
-    setBusy(true);
-    setResumable(false);
+    submitting.current = true;
+    if (!busy && !queue.messages.length) setBusy(true);
+    if (!busy && !queue.messages.length) setResumable(false);
     setError('');
     const usedSkills = skillCommands(chatSkills).filter(
       (skill) => skill.enabled && task.split(/\s+/).includes(skill.command)
@@ -955,7 +1025,7 @@ export function AISidebar({
     const sentAttachments = attachments;
     const sentContexts = contexts;
     try {
-      await window.electron.ai.run(
+      const accepted = await window.electron.ai.run(
         sentAttachments.length || sentContexts.length
           ? {
               prompt: task,
@@ -971,24 +1041,26 @@ export function AISidebar({
             }
           : task
       );
-      setEvents((previous) => [
-        ...previous,
-        {
-          type: 'user',
-          text: task,
-          attachments: sentAttachments.map(({ id, name, kind }) => ({
-            id,
-            name,
-            kind,
-          })),
-          contexts: sentContexts.map(({ id, name, kind }) => ({
-            id,
-            name,
-            kind,
-          })),
-        },
-      ]);
-      setSentFiles((current) => [...current, ...sentAttachments]);
+      if (accepted !== false)
+        setEvents((previous) => [
+          ...previous,
+          {
+            type: 'user',
+            text: task,
+            attachments: sentAttachments.map(({ id, name, kind }) => ({
+              id,
+              name,
+              kind,
+            })),
+            contexts: sentContexts.map(({ id, name, kind }) => ({
+              id,
+              name,
+              kind,
+            })),
+          },
+        ]);
+      if (accepted !== false)
+        setSentFiles((current) => [...current, ...sentAttachments]);
       refreshChats();
       if (chatState)
         window.electron.ai
@@ -1013,16 +1085,58 @@ export function AISidebar({
         )
       );
     } catch (reason) {
-      setBusy(false);
+      if (!busy) setBusy(false);
       showError(reason as Error);
+    } finally {
+      submitting.current = false;
     }
   };
+  const assistantActions = (
+    <div className="ai-compact-actions">
+      <button
+        type="button"
+        className="ai-history-toggle"
+        aria-label={showTasks ? 'Back to Assistant' : 'Saved AI tasks'}
+        title={showTasks ? 'Back to Assistant' : 'Saved AI tasks'}
+        onClick={() => setShowTasks(!showTasks)}
+      >
+        {showTasks ? <Sparkles size={15} /> : <ListTodo size={15} />}
+      </button>
+      {(busy || (external?.running && external?.paused)) && (
+        <button
+          type="button"
+          aria-label={
+            external?.paused && !busy ? 'Resume external AI' : 'Take control'
+          }
+          title={
+            external?.paused && !busy ? 'Resume external AI' : 'Take control'
+          }
+          onClick={() =>
+            (external?.paused && !busy
+              ? window.electron.ai.resumeExternal()
+              : window.electron.ai.takeOver()
+            ).catch(showError)
+          }
+        >
+          {external?.paused && !busy ? <Play size={17} /> : <Hand size={17} />}
+        </button>
+      )}
+      <button
+        type="button"
+        aria-label="AI settings"
+        title="Connection settings"
+        onClick={openSettings}
+      >
+        <Settings2 size={17} />
+      </button>
+    </div>
+  );
   return createElement(
     PanelOverlayContext.Provider,
     { value: overlayContainer },
     <aside
       className="ai-sidebar"
-      aria-label="AI browser assistant"
+      aria-label="Assistant"
       onContextMenu={(event) => {
         if (
           (event.target as HTMLElement).closest(
@@ -1046,6 +1160,7 @@ export function AISidebar({
               enabled: pane !== 'developer',
             },
             { id: 'notes', label: 'Notes', enabled: pane !== 'notes' },
+            { id: 'activity', label: 'Activity', enabled: pane !== 'activity' },
             { type: 'separator' },
             { id: 'settings', label: 'AI settings…' },
           ])
@@ -1054,7 +1169,8 @@ export function AISidebar({
               choice === 'assistant' ||
               choice === 'tasks' ||
               choice === 'developer' ||
-              choice === 'notes'
+              choice === 'notes' ||
+              choice === 'activity'
             )
               setPane(choice);
             if (choice === 'settings') openSettings();
@@ -1089,166 +1205,68 @@ export function AISidebar({
         } else addFiles(Array.from(event.dataTransfer.files));
       }}
     >
-      <header className="ai-sidebar-header">
+      <AssistantPanelHost panel="activity" active={pane === 'activity'}>
         <div
-          className="ai-sidebar-tabs"
-          role="tablist"
-          aria-label="Assistant tools"
+          className="ai-sidebar-pane ai-activity-pane"
+          role="region"
+          id="ai-activity-panel"
+          aria-label="Activity"
         >
-          {(['assistant', 'tasks', 'developer', 'notes'] as const).map(
-            (tab) => (
-              <button
-                type="button"
-                key={tab}
-                id={`ai-${tab}-tab`}
-                role="tab"
-                tabIndex={pane === tab ? 0 : -1}
-                onKeyDown={(event) => {
-                  const tabs = [
-                    'assistant',
-                    'tasks',
-                    'developer',
-                    'notes',
-                  ] as const;
-                  const index = tabs.indexOf(tab);
-                  let next = index;
-                  if (event.key === 'ArrowRight')
-                    next = (index + 1) % tabs.length;
-                  else if (event.key === 'ArrowLeft')
-                    next = (index + tabs.length - 1) % tabs.length;
-                  else if (event.key === 'Home') next = 0;
-                  else if (event.key === 'End') next = tabs.length - 1;
-                  else return;
-                  event.preventDefault();
-                  setPane(tabs[next]);
-                  document.getElementById(`ai-${tabs[next]}-tab`)?.focus();
-                }}
-                title={
-                  {
-                    assistant: 'Assistant',
-                    tasks: 'Tasks',
-                    developer: 'Developer',
-                    notes: 'Notes',
-                  }[tab]
-                }
-                aria-label={
-                  {
-                    assistant: 'Assistant',
-                    tasks: 'Tasks',
-                    developer: 'Developer',
-                    notes: 'Notes',
-                  }[tab]
-                }
-                aria-selected={pane === tab}
-                aria-controls={`ai-${tab}-panel`}
-                onClick={() => setPane(tab)}
-              >
-                <span className="ai-sidebar-tab-icon" aria-hidden="true">
-                  {tab === 'assistant' && <Sparkles size={15} />}
-                  {tab === 'tasks' && <ListTodo size={15} />}
-                  {tab === 'developer' && <Code2 size={15} />}
-                  {tab === 'notes' && <FileText size={15} />}
-                </span>
-                <span className="ai-sidebar-tab-label">
-                  {
-                    {
-                      assistant: 'Assistant',
-                      tasks: 'Tasks',
-                      developer: 'Developer',
-                      notes: 'Notes',
-                    }[tab]
-                  }
-                </span>
-              </button>
-            )
-          )}
+          <ActivityPage active />
         </div>
-        <div className="ai-header-actions">
-          {(busy || (external?.running && external?.paused)) && (
-            <button
-              type="button"
-              aria-label={
-                external?.paused && !busy
-                  ? 'Resume external AI'
-                  : 'Take control'
-              }
-              title={
-                external?.paused && !busy
-                  ? 'Resume external AI'
-                  : 'Take control'
-              }
-              onClick={() =>
-                (external?.paused && !busy
-                  ? window.electron.ai.resumeExternal()
-                  : window.electron.ai.takeOver()
-                ).catch(showError)
-              }
-            >
-              {external?.paused && !busy ? (
-                <Play size={17} />
-              ) : (
-                <Hand size={17} />
-              )}
-            </button>
-          )}
-          <button
-            type="button"
-            aria-label="AI settings"
-            title="Connection settings"
-            onClick={openSettings}
-          >
-            <Settings2 size={17} />
-          </button>
-        </div>
-      </header>
-      {(notesVisited || pane === 'notes') && (
+      </AssistantPanelHost>
+      <AssistantPanelHost panel="notes" active={pane === 'notes'}>
         <div
           className="ai-sidebar-pane ai-notes-pane"
-          role="tabpanel"
+          role="region"
           id="ai-notes-panel"
-          aria-labelledby="ai-notes-tab"
-          hidden={pane !== 'notes'}
+          aria-label="Notes workspace"
         >
           <NotesPage tabs={allContextTabs} />
         </div>
-      )}
-      {(developerVisited || pane === 'developer') && (
+      </AssistantPanelHost>
+      <AssistantPanelHost panel="developer" active={pane === 'developer'}>
         <DeveloperSidebar
           onManageGroup={onManageGroup}
-          active={pane === 'developer'}
+          active
           focusedTabId={focusedTabId}
           onFocusTab={onFocusTab}
           onTabContextMenu={onTabContextMenu}
           onGroupContextMenu={onGroupContextMenu}
         />
-      )}
-      {showTasks && (
+      </AssistantPanelHost>
+      <AssistantPanelHost panel="tasks" active={showTasks}>
         <div
           className="ai-sidebar-pane"
-          role="tabpanel"
+          role="region"
           id="ai-tasks-panel"
-          aria-labelledby="ai-tasks-tab"
+          aria-label="Tasks"
         >
+          <AssistantPageHeader className="ai-conversation-toolbar">
+            {assistantActions}
+          </AssistantPageHeader>
           <AITasksPanel busy={busy} resumable={resumable} />
         </div>
-      )}
-      {pane === 'assistant' && (
+      </AssistantPanelHost>
+      <AssistantPanelHost panel="assistant" active={pane === 'assistant'}>
         <div
           className={`ai-sidebar-pane ai-assistant-layout${
             historyOpen ? ' ai-history-open' : ''
           }${historyPinned ? ' ai-history-pinned' : ''}`}
-          role="tabpanel"
+          role="region"
           id="ai-assistant-panel"
-          aria-labelledby="ai-assistant-tab"
+          aria-label="Assistant"
         >
-          {chatState && (
-            <div className="ai-conversation-toolbar" hidden={historyOpen}>
+          <AssistantPageHeader className="ai-conversation-toolbar">
+            {chatState && !historyOpen && (
               <HistoryToolbar
                 toggleRef={historyToggle}
                 open={historyOpen}
                 label="Chat history"
                 panelId="ai-chat-history-panel"
-                busy={busy || attaching || changingChat}
+                busy={
+                  busy || attaching || changingChat || !!queue.messages.length
+                }
                 onOpen={() => {
                   setHistoryOpen(true);
                   refreshChats();
@@ -1256,13 +1274,14 @@ export function AISidebar({
                 onNew={() => changeChat({ action: 'create' })}
                 newLabel="Start new chat"
               />
-            </div>
-          )}
+            )}
+            {assistantActions}
+          </AssistantPageHeader>
           {chatState && historyOpen && (
             <div id="ai-chat-history-panel" className="ai-chat-history-panel">
               <AIChatSwitcher
                 state={chatState}
-                busy={busy || attaching}
+                busy={busy || attaching || !!queue.messages.length}
                 changing={changingChat}
                 onChange={changeChat}
                 pinned={historyPinned}
@@ -1292,7 +1311,7 @@ export function AISidebar({
                 <h3>
                   {external?.running ? 'External AI ready' : 'How can I help?'}
                 </h3>
-                {!settings.hasKey && (
+                {!aiConnected && (
                   <button
                     className="ai-connect-button"
                     type="button"
@@ -1486,7 +1505,7 @@ export function AISidebar({
             <button
               type="button"
               className="ai-retry"
-              disabled={!settings.hasKey || unavailable}
+              disabled={!aiConnected || unavailable}
               onClick={continueTask}
             >
               <Play size={14} /> Continue task
@@ -1691,6 +1710,39 @@ export function AISidebar({
                 ))}
               </div>
             )}
+            {!!queue.messages.length && (
+              <div className="ai-message-queue" aria-label="Queued messages">
+                <div className="ai-message-queue-heading">
+                  <span>
+                    {queue.paused ? 'Queue paused' : 'Queued'} ·{' '}
+                    {queue.messages.length}
+                  </span>
+                  {queue.paused && (
+                    <button
+                      type="button"
+                      disabled={busy || resumable || changingChat}
+                      onClick={() => changeQueue({ action: 'resume' })}
+                    >
+                      Send queued messages
+                    </button>
+                  )}
+                </div>
+                {queue.messages.map((message) => (
+                  <div className="ai-message-queue-row" key={message.id}>
+                    <span title={message.prompt}>{message.prompt}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove queued message: ${message.prompt}`}
+                      onClick={() =>
+                        changeQueue({ action: 'remove', id: message.id })
+                      }
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <textarea
               ref={taskInput}
               onFocus={refreshSkills}
@@ -1705,7 +1757,7 @@ export function AISidebar({
               aria-label="Task for AI"
               placeholder={
                 (feedbackId && 'Reply to the question…') ||
-                (busy && 'Draft your next request while AI works…') ||
+                (busy && 'Write a message to queue…') ||
                 'Ask anything, / for skills, @ for tabs…'
               }
               value={prompt}
@@ -1896,7 +1948,12 @@ export function AISidebar({
                   triggerClassName="ai-access-picker"
                   optionIcon={accessIcon}
                   placeholder="Search access modes…"
-                  disabled={changingChat || busy || unavailable}
+                  disabled={
+                    changingChat ||
+                    busy ||
+                    !!queue.messages.length ||
+                    unavailable
+                  }
                   options={AI_ACCESS_MODES.map((mode) => ({
                     id: mode.id,
                     name: `${mode.name}${
@@ -1917,7 +1974,11 @@ export function AISidebar({
                   triggerClassName="ai-group-picker"
                   placeholder="Search groups…"
                   disabled={
-                    changingChat || busy || unavailable || !!external?.paused
+                    changingChat ||
+                    busy ||
+                    !!queue.messages.length ||
+                    unavailable ||
+                    !!external?.paused
                   }
                   options={[
                     {
@@ -1936,19 +1997,62 @@ export function AISidebar({
                   onChange={changeScope}
                 />
               </div>
-              {settings.hasKey && (
+              {aiConnected && (
                 <GroupPicker
                   label="AI model"
                   triggerClassName="ai-model-picker"
                   optionIcon={noPickerIcon}
                   placeholder="Search models or enter ID…"
                   allowCustom
-                  disabled={changingChat || busy || unavailable}
+                  disabled={
+                    changingChat ||
+                    busy ||
+                    !!queue.messages.length ||
+                    unavailable
+                  }
                   options={[...new Set([settings.model, ...models])].map(
                     (model) => ({ id: model, name: model })
                   )}
                   value={settings.model}
                   onChange={changeModel}
+                  triggerDetail={
+                    thinkingChoices.length > 1
+                      ? selectedThinking.name.replace('Thinking: ', '')
+                      : undefined
+                  }
+                  footer={
+                    thinkingChoices.length > 1 && (
+                      <div
+                        className="ai-model-thinking"
+                        role="group"
+                        aria-label="Thinking level"
+                      >
+                        <span className="ai-model-thinking-label">
+                          Thinking
+                        </span>
+                        <div className="ai-model-thinking-options">
+                          {thinkingChoices.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              aria-label={option.name}
+                              aria-pressed={selectedThinking.id === option.id}
+                              title={option.detail}
+                              disabled={
+                                changingChat ||
+                                busy ||
+                                !!queue.messages.length ||
+                                unavailable
+                              }
+                              onClick={() => changeThinking(option.id)}
+                            >
+                              {option.name.replace('Thinking: ', '')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  }
                 />
               )}
               <span className="ai-composer-state" role="status">
@@ -1971,31 +2075,40 @@ export function AISidebar({
                 >
                   <Square size={14} />
                 </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="ai-send-button"
-                  title={feedbackId ? 'Send reply' : 'Send task'}
-                  disabled={
-                    changingChat ||
-                    (!feedbackId && !settings.hasKey) ||
-                    (!prompt.trim() &&
-                      !attachments.length &&
-                      !contexts.length) ||
-                    attaching ||
-                    (!feedbackId && unavailable) ||
-                    (!feedbackId && !!blockedMention) ||
-                    (!feedbackId && blockedContext)
-                  }
-                  aria-label={feedbackId ? 'Send reply' : 'Send AI task'}
-                >
-                  <ArrowUp size={17} />
-                </button>
-              )}
+              ) : null}
+              <button
+                type="submit"
+                className="ai-send-button"
+                title={
+                  feedbackId
+                    ? 'Send reply'
+                    : busy
+                    ? 'Queue message'
+                    : 'Send task'
+                }
+                disabled={
+                  changingChat ||
+                  (!feedbackId && !aiConnected) ||
+                  (!prompt.trim() && !attachments.length && !contexts.length) ||
+                  attaching ||
+                  (!feedbackId && unavailable) ||
+                  (!feedbackId && !!blockedMention) ||
+                  (!feedbackId && blockedContext)
+                }
+                aria-label={
+                  feedbackId
+                    ? 'Send reply'
+                    : busy
+                    ? 'Queue message'
+                    : 'Send AI task'
+                }
+              >
+                <ArrowUp size={17} />
+              </button>
             </div>
           </form>
         </div>
-      )}
+      </AssistantPanelHost>
       {chatState?.undoDeletion && (
         <div className="ai-chat-undo-fab" role="status">
           <span>Chat deleted</span>

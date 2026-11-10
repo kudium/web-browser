@@ -29,6 +29,8 @@ const effects = new Set([
   'fill_personal_data',
   'fill_saved_login',
   'save_personal_data',
+  'manage_note',
+  'create_activity',
   'control_download',
 ]);
 

@@ -149,3 +149,32 @@ it('shows suggested follow-ups as inert buttons and hides them on older replies'
   ).toBeNull();
   expect(screen.getByText('Done.')).toBeVisible();
 });
+
+it('opens an in-app note deep link without navigating away from chat', () => {
+  const open = jest.fn();
+  window.addEventListener('kudiumbrowser-open-note', open);
+  try {
+    render(
+      <AIMessage text="[Research verdict](#kudiumbrowser-note-research_1)" />
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Research verdict' }));
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open.mock.calls[0][0].detail).toBe('research_1');
+  } finally {
+    window.removeEventListener('kudiumbrowser-open-note', open);
+  }
+});
+
+it('opens an activity deep link in the Activity workspace', () => {
+  const open = jest.fn();
+  window.addEventListener('kudiumbrowser-open-activity', open);
+  try {
+    render(
+      <AIMessage text="[View update](#kudiumbrowser-activity-update_1)" />
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'View update' }));
+    expect(open.mock.calls[0][0].detail).toBe('update_1');
+  } finally {
+    window.removeEventListener('kudiumbrowser-open-activity', open);
+  }
+});

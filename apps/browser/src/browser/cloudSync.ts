@@ -9,6 +9,7 @@ export interface SyncCategories {
 export interface SyncSettings {
   enabled: boolean;
   provider: SyncProvider;
+  icloud?: boolean;
   categories: SyncCategories;
 }
 export const syncCategories = [
@@ -35,16 +36,17 @@ export const syncCategories = [
     description: 'Search engines, appearance and keyboard shortcuts.',
   },
 ] as const;
-export function defaultSyncSettings(platform = 'darwin'): SyncSettings {
+export function defaultSyncSettings(_platform = 'darwin'): SyncSettings {
   return {
-    enabled: false,
-    provider: platform === 'darwin' ? 'icloud' : 'kudiumbrowser',
+    enabled: true,
+    provider: 'kudiumbrowser',
+    icloud: false,
     categories: {
       workspace: true,
       openTabs: true,
       preferences: true,
       passwords: true,
-      notes: false,
+      notes: true,
     },
   };
 }
@@ -54,9 +56,10 @@ export function validateSyncSettings(value: unknown): SyncSettings {
   const settings = value as SyncSettings;
   if (
     Object.keys(settings).some(
-      (key) => !['enabled', 'provider', 'categories'].includes(key)
+      (key) => !['enabled', 'provider', 'icloud', 'categories'].includes(key)
     ) ||
     typeof settings.enabled !== 'boolean' ||
+    (settings.icloud !== undefined && typeof settings.icloud !== 'boolean') ||
     !['icloud', 'kudiumbrowser'].includes(settings.provider) ||
     !settings.categories ||
     typeof settings.categories !== 'object' ||
@@ -85,9 +88,11 @@ export function validateSyncSettings(value: unknown): SyncSettings {
   if (settings.enabled && !Object.values(settings.categories).some(Boolean))
     throw new Error('Select at least one category to sync');
   return {
-    enabled: settings.enabled,
-    provider: settings.provider,
-    categories: { notes: false, passwords: true, ...settings.categories },
+    enabled: settings.provider === 'kudiumbrowser' && settings.enabled,
+    provider: 'kudiumbrowser',
+    icloud:
+      settings.icloud ?? (settings.provider === 'icloud' && settings.enabled),
+    categories: { notes: true, passwords: true, ...settings.categories },
   };
 }
 export interface CloudSyncStatus {
@@ -101,9 +106,13 @@ export function cloudSyncStatus(
   settings: SyncSettings,
   platform: string
 ): CloudSyncStatus {
+  const accountEnabled =
+    settings.enabled && settings.provider === 'kudiumbrowser';
+  const icloudEnabled =
+    settings.icloud || (settings.enabled && settings.provider === 'icloud');
   let message = 'Your sync choices are saved. Sync is off.';
-  if (settings.enabled) {
-    if (settings.provider === 'kudiumbrowser')
+  if (accountEnabled || icloudEnabled) {
+    if (accountEnabled)
       message =
         'Connect your Kudium account and enroll your recovery key in Sync settings to start encrypted sync.';
     else if (platform !== 'darwin')
@@ -114,8 +123,8 @@ export function cloudSyncStatus(
         'iCloud connection is not available in this build. Your choices are saved; no data is uploaded.';
   }
   return {
-    provider: settings.provider,
-    state: settings.enabled ? 'setup-required' : 'off',
+    provider: !accountEnabled && icloudEnabled ? 'icloud' : settings.provider,
+    state: accountEnabled || icloudEnabled ? 'setup-required' : 'off',
     connected: false,
     message,
     lastSyncedAt: null,

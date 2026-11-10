@@ -1,3 +1,4 @@
+import { fetchOllamaThinking } from './aiOllamaThinking';
 /* Retry inference only: browser effects remain outside this request boundary. */
 /* eslint-disable no-await-in-loop, no-continue */
 import { aiProviderURL } from '../browser/ai';
@@ -8,10 +9,12 @@ import {
 
 /** Never forward private provider requests through an endpoint redirect. */
 export async function fetchAIProvider(url: string, request: RequestInit) {
-  const response = await fetch(aiProviderURL(url), {
-    ...request,
-    redirect: 'manual',
-  });
+  const response =
+    (await fetchOllamaThinking(aiProviderURL(url), request)) ??
+    (await fetch(aiProviderURL(url), {
+      ...request,
+      redirect: 'manual',
+    }));
   if (response.status >= 300 && response.status < 400) {
     await response.body?.cancel().catch(() => {});
     throw new Error(

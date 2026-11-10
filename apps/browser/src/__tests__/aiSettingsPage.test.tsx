@@ -246,3 +246,79 @@ it('remembers the Show stats setting independently of provider settings', async 
   );
   localStorage.removeItem('kudiumbrowser-ai-page-showStats');
 });
+
+it('automatically discovers installed Ollama models and saves without an API key', async () => {
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  await waitFor(() => expect(screen.getByLabelText('API key')).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'ollama' },
+  });
+  await screen.findByRole('option', { name: 'model-a' });
+  expect(window.electron.ai.models).toHaveBeenCalledWith({
+    endpoint: 'http://localhost:11434/v1',
+    key: '',
+  });
+  expect(screen.queryByLabelText('API key')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Model')).toHaveValue('model-a');
+  fireEvent.change(screen.getByLabelText('Model'), {
+    target: { value: 'model-b' },
+  });
+  fireEvent.click(screen.getByText('Save AI settings'));
+  await waitFor(() =>
+    expect(window.electron.ai.settings).toHaveBeenLastCalledWith({
+      endpoint: 'http://localhost:11434/v1',
+      model: 'model-b',
+      key: '',
+      remember: true,
+    })
+  );
+});
+
+it('explains how to recover when Ollama has no installed models', async () => {
+  (window.electron.ai.models as jest.Mock).mockResolvedValue([]);
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  await waitFor(() => expect(screen.getByLabelText('API key')).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'ollama' },
+  });
+  await screen.findByText(/No installed models/);
+  expect(screen.getByText('Save AI settings')).toBeDisabled();
+  expect(screen.getByText('Refresh models')).toBeEnabled();
+});
+
+it('ignores discovery from Ollama after switching providers', async () => {
+  let complete!: (models: string[]) => void;
+  (window.electron.ai.models as jest.Mock).mockReturnValue(
+    new Promise<string[]>((resolve) => {
+      complete = resolve;
+    })
+  );
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  await waitFor(() => expect(screen.getByLabelText('API key')).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'ollama' },
+  });
+  await waitFor(() => expect(window.electron.ai.models).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'openai' },
+  });
+  complete(['local-only']);
+  await waitFor(() =>
+    expect(screen.getByLabelText('Model')).toHaveValue('gpt-6.1-sol')
+  );
+  expect(
+    screen.queryByRole('option', { name: 'local-only' })
+  ).not.toBeInTheDocument();
+});

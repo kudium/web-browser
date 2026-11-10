@@ -15,13 +15,29 @@ export function parseNativeMenu(value: unknown): NativeMenuItem[] {
       const item = entry as NativeMenuItem;
       if (
         item.type !== undefined &&
-        !['normal', 'separator'].includes(item.type)
+        !['normal', 'separator', 'checkbox'].includes(item.type)
       )
         throw new Error('Invalid menu type');
+      if (
+        item.checked !== undefined &&
+        (typeof item.checked !== 'boolean' || item.type !== 'checkbox')
+      )
+        throw new Error('Invalid menu check state');
+      if (
+        item.role !== undefined &&
+        !['cut', 'copy', 'paste', 'pasteAndMatchStyle', 'selectAll'].includes(
+          item.role
+        )
+      )
+        throw new Error('Invalid menu role');
       if (item.enabled !== undefined && typeof item.enabled !== 'boolean')
         throw new Error('Invalid menu state');
       if (item.type === 'separator') {
-        if (item.id !== undefined || item.submenu !== undefined)
+        if (
+          item.id !== undefined ||
+          item.submenu !== undefined ||
+          item.role !== undefined
+        )
           throw new Error('Invalid separator');
         return { type: 'separator' };
       }
@@ -39,6 +55,10 @@ export function parseNativeMenu(value: unknown): NativeMenuItem[] {
       }
       return {
         label: item.label,
+        ...(item.type === 'checkbox'
+          ? { type: 'checkbox' as const, checked: item.checked === true }
+          : {}),
+        ...(item.role ? { role: item.role } : {}),
         enabled: item.enabled !== false,
         ...(item.id === undefined ? {} : { id: item.id }),
         ...(item.submenu === undefined

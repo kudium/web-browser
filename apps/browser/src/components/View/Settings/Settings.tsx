@@ -98,7 +98,7 @@ const sections = [
   },
   {
     id: 'ai',
-    title: 'AI assistant',
+    title: 'Assistant',
     icon: Sparkles,
     description: 'Models and connections.',
   },

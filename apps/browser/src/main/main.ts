@@ -39,6 +39,7 @@ import { configureDNS, registerAdvancedLifecycle } from './advancedPreferences';
 import { getBrowserPreferences, registerPreferences } from './preferences';
 import { browserUserAgent } from './browserIdentity';
 import { registerPasswordManager } from './passwordManager';
+import { registerActivity } from './activity';
 import { registerBrowserMigration } from './browserMigration';
 import { registerAppUpdates, startAppUpdates } from './appUpdates';
 import { registerSystemSpaceRetention } from './systemSpaceRetention';
@@ -204,8 +205,28 @@ export const createNewWindow = async ({
     }
     return undefined;
   }
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  const preferencesOwner =
+    view === 'settings' &&
+    Object.entries(activeWindows).find(
+      ([key, window]) =>
+        (key === 'main' || key.startsWith('browser-')) &&
+        window === focusedWindow
+    )?.[1];
+  const parentWindow =
+    view === 'settings'
+      ? preferencesOwner ||
+        activeWindows.settings?.getParentWindow() ||
+        activeWindows[MAIN_WINDOW.view]
+      : isChild && activeWindows[MAIN_WINDOW.view];
+
   if (activeWindows[view] && !additional) {
     const existing = activeWindows[view]!;
+    if (view === 'settings' && parentWindow && !parentWindow.isDestroyed()) {
+      existing.setParentWindow(parentWindow);
+      if (parentWindow.isMinimized()) parentWindow.restore();
+    }
+    if (existing.isMinimized()) existing.restore();
     existing.show();
     existing.focus();
     if (view === 'settings' && preferencesSection) {
@@ -217,8 +238,6 @@ export const createNewWindow = async ({
     }
     return undefined;
   }
-
-  const parentWindow = isChild && activeWindows[MAIN_WINDOW.view];
 
   const RESOURCES_PATH = app.isPackaged
     ? path.join(process.resourcesPath, 'assets')
@@ -310,8 +329,11 @@ export const createNewWindow = async ({
   const initialURL = preferencesSection
     ? `${documentURL}#${preferencesSection}`
     : documentURL;
-  protectWindowNavigation(newWindow.webContents, documentURL, (url) =>
-    shell.openExternal(url)
+  protectWindowNavigation(
+    newWindow.webContents,
+    documentURL,
+    (url) => shell.openExternal(url),
+    view === 'main'
   );
   newWindow.once('ready-to-show', () => {
     if (!activeWindows[windowKey]) {
@@ -458,6 +480,7 @@ registerBrowserMigration(
     activeWindows.settings?.webContents === contents ||
     isBrowserChrome(contents)
 );
+registerActivity((contents) => isBrowserChrome(contents));
 registerPasswordManager(
   (contents) =>
     activeWindows.settings?.webContents === contents ||

@@ -49,7 +49,7 @@ export const shortcutActions = [
     title: 'Toggle Space sidebar',
     keys: ['Mod+KeyS', 'Mod+Shift+KeyS'],
   },
-  { id: 'ai-sidebar', title: 'Toggle AI assistant', keys: ['Mod+KeyI'] },
+  { id: 'ai-sidebar', title: 'Toggle Assistant', keys: ['Mod+KeyI'] },
   { id: 'next-space', title: 'Next space', keys: ['Mod+Alt+Shift+ArrowRight'] },
   {
     id: 'previous-space',

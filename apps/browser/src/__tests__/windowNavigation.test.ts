@@ -59,3 +59,55 @@ it('keeps the exact trusted document, permits fragments, and denies remote navig
   expect(launch).toHaveBeenCalledWith('https://kudium.com/');
   await Promise.resolve();
 });
+
+it('allows only named Assistant blank windows from the main host and protects their navigation', () => {
+  let popup: (details: { url: string; frameName: string }) => any = () => {};
+  const contents = Object.assign(new EventEmitter(), {
+    setWindowOpenHandler: (handler: typeof popup) => {
+      popup = handler;
+    },
+  });
+  protectWindowNavigation(
+    contents as any,
+    'file:///app/index.html?view=main',
+    async () => {},
+    true
+  );
+  for (const panel of [
+    'assistant',
+    'notes',
+    'activity',
+    'tasks',
+    'developer',
+  ]) {
+    const result = popup({
+      url: 'about:blank',
+      frameName: `kudium-assistant-${panel}`,
+    });
+    expect(result.action).toBe('allow');
+    expect(result.overrideBrowserWindowOptions.webPreferences).toMatchObject({
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      webviewTag: false,
+    });
+  }
+  expect(popup({ url: 'about:blank', frameName: 'unrelated' }).action).toBe(
+    'deny'
+  );
+  expect(
+    popup({ url: 'https://example.com', frameName: 'kudium-assistant-notes' })
+      .action
+  ).toBe('deny');
+  const childContents = Object.assign(new EventEmitter(), {
+    setWindowOpenHandler: jest.fn(),
+  });
+  const child = Object.assign(new EventEmitter(), {
+    webContents: childContents,
+    setMinimumSize: jest.fn(),
+  });
+  contents.emit('did-create-window', child);
+  const event = { preventDefault: jest.fn() };
+  childContents.emit('will-navigate', event, 'https://example.com');
+  expect(event.preventDefault).toHaveBeenCalled();
+});

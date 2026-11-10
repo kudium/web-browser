@@ -85,7 +85,7 @@ export function AccountSyncSettings({
     }
   };
   let stateLabel = 'Sync is off';
-  if (status?.connected) stateLabel = 'Connected';
+  if (status?.connected) stateLabel = enabled ? 'Connected' : 'Sync is off';
   if (enabled && status?.phase === 'ready') stateLabel = 'Synced';
   if (status?.phase === 'syncing') stateLabel = 'Syncing…';
   return (
@@ -94,14 +94,7 @@ export function AccountSyncSettings({
         <section className="preference-card" aria-label="Kudium account">
           <div className="preference-row">
             <div>
-              <div className="preference-label">
-                <strong>Kudium account</strong>
-                <PreferenceHint label="Kudium sync">
-                  Sync tabs, workspace and preferences across devices. Your data
-                  is end-to-end encrypted with your recovery key.
-                </PreferenceHint>
-              </div>
-              <p>Sign in to sync across devices.</p>
+              <p>Sign in to start syncing.</p>
             </div>
             <div className="sync-sign-in-actions">
               <Button
@@ -130,8 +123,7 @@ export function AccountSyncSettings({
                 <Cloud size={20} />
               </span>
               <div>
-                <strong>Kudium Account</strong>
-                <p className="preference-note">{status.email}</p>
+                <strong>{status.email}</strong>
               </div>
             </div>
             <span
@@ -140,14 +132,15 @@ export function AccountSyncSettings({
             >
               {stateLabel}
             </span>
-            {status.phase !== 'key-required' &&
+            {enabled &&
+              status.phase !== 'key-required' &&
               status.phase !== 'recovery-required' && (
                 <Button
                   variant="soft"
                   disabled={busy}
-                  onClick={() => action(enabled ? 'sync' : 'enable')}
+                  onClick={() => action('sync')}
                 >
-                  {enabled ? 'Sync now' : 'Enable sync'}
+                  Sync now
                 </Button>
               )}
           </div>
@@ -244,180 +237,196 @@ export function AccountSyncSettings({
           </Button>
         </div>
       )}
-      <div className="preference-card">
-        <div className="preference-row">
-          <div>
-            <strong>Personal notes</strong>
-            <p>
-              Enable Personal notes under What to sync to back up encrypted
-              Markdown notes. Restoring keeps existing notes and turns AI access
-              off for restored copies.
-            </p>
-          </div>
-          <Button
-            size="1"
-            variant="soft"
-            disabled={
-              busy || !enabled || !notesEnabled || status?.phase !== 'ready'
-            }
-            onClick={() => action('sync-notes')}
-          >
-            Unlock & back up notes
-          </Button>
-        </div>
-        {status?.noteDevices?.map((device) => (
-          <Button
-            key={device.recordId}
-            size="1"
-            variant="ghost"
-            disabled={busy}
-            onClick={() =>
-              action('restore-notes', { recordId: device.recordId })
-            }
-          >
-            Restore notes from {device.deviceId.slice(0, 8)}
-          </Button>
-        ))}
-      </div>
-      {passwordsEnabled && (
-        <div className="preference-card">
-          <div className="preference-row">
-            <div>
-              <div className="preference-label">
-                <strong>Saved passwords</strong>
-                <PreferenceHint label="password sync">
-                  Unlock Personal Data to encrypt and sync saved logins.
-                  Restoring keeps your existing passwords.
-                </PreferenceHint>
+      {status?.connected && (
+        <details className="sync-details sync-advanced-actions">
+          <summary>Backup, restore and account options</summary>
+          <div className="sync-advanced-content">
+            <div className="preference-card">
+              <div className="preference-row">
+                <div>
+                  <strong>Personal notes</strong>
+                  <p>
+                    Select Personal notes under Included in sync to back up
+                    encrypted Markdown notes. Restoring keeps existing notes and
+                    turns AI access off for restored copies.
+                  </p>
+                </div>
+                <Button
+                  size="1"
+                  variant="soft"
+                  disabled={
+                    busy ||
+                    !enabled ||
+                    !notesEnabled ||
+                    status?.phase !== 'ready'
+                  }
+                  onClick={() => action('sync-notes')}
+                >
+                  Unlock & back up notes
+                </Button>
               </div>
-              <p>Sync your saved logins.</p>
-            </div>
-            <div className="sync-password-actions">
-              <Button
-                variant="soft"
-                disabled={
-                  busy ||
-                  !enabled ||
-                  !status?.connected ||
-                  status.phase === 'key-required' ||
-                  status.phase === 'recovery-required'
-                }
-                onClick={() => action('sync-passwords')}
-              >
-                Unlock & sync passwords
-              </Button>
-              {status?.passwordDevices?.map((device) => (
+              {status?.noteDevices?.map((device) => (
                 <Button
                   key={device.recordId}
-                  variant="soft"
-                  disabled={busy || !enabled}
+                  size="1"
+                  variant="ghost"
+                  disabled={busy}
                   onClick={() =>
-                    action('restore-passwords', { recordId: device.recordId })
+                    action('restore-notes', { recordId: device.recordId })
                   }
                 >
-                  Restore logins from another device
+                  Restore notes from {device.deviceId.slice(0, 8)}
                 </Button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-      {status?.lastSyncedAt && (
-        <p className="preference-note">
-          Last synced: {new Date(status.lastSyncedAt).toLocaleString()}
-        </p>
-      )}
-      {status?.connected &&
-        (status.phase === 'key-required' ||
-          status.phase === 'recovery-required') && (
-          <Button
-            variant="soft"
-            disabled={busy}
-            onClick={() => action('disconnect')}
-          >
-            Set up later
-          </Button>
-        )}
-      {Boolean(status?.remote.length) && (
-        <details className="sync-details">
-          <summary>
-            <Laptop size={16} /> Other devices · {status?.remote.length}
-          </summary>
-          {status?.remote.map((item) => (
-            <div className="preference-row" key={item.recordId}>
-              <div>
-                <strong>
-                  <Laptop size={20} />
-                  Workspace from another device
-                </strong>
-                <p className="preference-note">
-                  {item.groups} groups · {item.tabs} tabs ·{' '}
-                  {new Date(item.updatedAt).toLocaleString()}
-                </p>
+            {passwordsEnabled && (
+              <div className="preference-card">
+                <div className="preference-row">
+                  <div>
+                    <div className="preference-label">
+                      <strong>Saved passwords</strong>
+                      <PreferenceHint label="password sync">
+                        Unlock Personal Data to encrypt and sync saved logins.
+                        Restoring keeps your existing passwords.
+                      </PreferenceHint>
+                    </div>
+                    <p>Sync your saved logins.</p>
+                  </div>
+                  <div className="sync-password-actions">
+                    <Button
+                      variant="soft"
+                      disabled={
+                        busy ||
+                        !enabled ||
+                        !status?.connected ||
+                        status.phase === 'key-required' ||
+                        status.phase === 'recovery-required'
+                      }
+                      onClick={() => action('sync-passwords')}
+                    >
+                      Unlock & sync passwords
+                    </Button>
+                    {status?.passwordDevices?.map((device) => (
+                      <Button
+                        key={device.recordId}
+                        variant="soft"
+                        disabled={busy || !enabled}
+                        onClick={() =>
+                          action('restore-passwords', {
+                            recordId: device.recordId,
+                          })
+                        }
+                      >
+                        Restore logins from another device
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <Button
-                variant="soft"
-                disabled={busy}
-                onClick={() => action('restore', { recordId: item.recordId })}
-              >
-                Restore as new groups
-              </Button>
-              <Button
-                variant="soft"
-                disabled={busy}
-                onClick={async () => {
-                  if (
-                    await browser.confirm({
-                      message: 'Use synced browser preferences?',
-                      detail:
-                        'Replace portable search, font, zoom, language, and shortcut preferences with this device’s synced choices.',
-                      confirm: 'Use preferences',
-                    })
-                  )
-                    action('apply-preferences', { recordId: item.recordId });
-                }}
-              >
-                Use preferences…
-              </Button>
-            </div>
-          ))}
-        </details>
-      )}
-      {status?.connected && (
-        <details className="sync-details">
-          <summary>Account options</summary>
-          <Button
-            variant="soft"
-            disabled={busy}
-            onClick={() => action('connect')}
-          >
-            Reconnect
-          </Button>
-          <Button
-            variant="soft"
-            disabled={busy}
-            onClick={() => action('disconnect')}
-          >
-            Disconnect
-          </Button>
-          <Button
-            variant="ghost"
-            color="red"
-            disabled={busy}
-            onClick={async () => {
-              if (
-                await browser.confirm({
-                  message: 'Delete cloud sync data?',
-                  detail:
-                    'Remove all encrypted data from your Kudium account and disconnect this device. Local groups stay on your devices.',
-                  confirm: 'Delete cloud data',
-                })
-              )
-                action('delete-data');
-            }}
-          >
-            Delete cloud data…
-          </Button>
+            )}
+            {status?.lastSyncedAt && (
+              <p className="preference-note">
+                Last synced: {new Date(status.lastSyncedAt).toLocaleString()}
+              </p>
+            )}
+            {status?.connected &&
+              (status.phase === 'key-required' ||
+                status.phase === 'recovery-required') && (
+                <Button
+                  variant="soft"
+                  disabled={busy}
+                  onClick={() => action('disconnect')}
+                >
+                  Set up later
+                </Button>
+              )}
+            {Boolean(status?.remote.length) && (
+              <details className="sync-details">
+                <summary>
+                  <Laptop size={16} /> Other devices · {status?.remote.length}
+                </summary>
+                {status?.remote.map((item) => (
+                  <div className="preference-row" key={item.recordId}>
+                    <div>
+                      <strong>
+                        <Laptop size={20} />
+                        Workspace from another device
+                      </strong>
+                      <p className="preference-note">
+                        {item.groups} groups · {item.tabs} tabs ·{' '}
+                        {new Date(item.updatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <Button
+                      variant="soft"
+                      disabled={busy}
+                      onClick={() =>
+                        action('restore', { recordId: item.recordId })
+                      }
+                    >
+                      Restore as new groups
+                    </Button>
+                    <Button
+                      variant="soft"
+                      disabled={busy}
+                      onClick={async () => {
+                        if (
+                          await browser.confirm({
+                            message: 'Use synced browser preferences?',
+                            detail:
+                              'Replace portable search, font, zoom, language, and shortcut preferences with this device’s synced choices.',
+                            confirm: 'Use preferences',
+                          })
+                        )
+                          action('apply-preferences', {
+                            recordId: item.recordId,
+                          });
+                      }}
+                    >
+                      Use preferences…
+                    </Button>
+                  </div>
+                ))}
+              </details>
+            )}
+            {status?.connected && (
+              <details className="sync-details">
+                <summary>Account options</summary>
+                <Button
+                  variant="soft"
+                  disabled={busy}
+                  onClick={() => action('connect')}
+                >
+                  Reconnect
+                </Button>
+                <Button
+                  variant="soft"
+                  disabled={busy}
+                  onClick={() => action('disconnect')}
+                >
+                  Disconnect
+                </Button>
+                <Button
+                  variant="ghost"
+                  color="red"
+                  disabled={busy}
+                  onClick={async () => {
+                    if (
+                      await browser.confirm({
+                        message: 'Delete cloud sync data?',
+                        detail:
+                          'Remove all encrypted data from your Kudium account and disconnect this device. Local groups stay on your devices.',
+                        confirm: 'Delete cloud data',
+                      })
+                    )
+                      action('delete-data');
+                  }}
+                >
+                  Delete cloud data…
+                </Button>
+              </details>
+            )}
+          </div>
         </details>
       )}
     </div>

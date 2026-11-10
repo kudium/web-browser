@@ -45,6 +45,11 @@ test('shows readable migration failures next to the import controls and brings t
       false
     )
   );
+  expect(
+    screen
+      .getByLabelText('Cookies and website logins')
+      .getAttribute('aria-checked')
+  ).toBe('false');
   fireEvent.click(screen.getByText('Review import'));
   const alert = await screen.findByRole('alert');
   expect(alert.textContent).toBe(
@@ -67,7 +72,7 @@ test('requires an explicit scan on each visit before accessing browser data', as
           name: 'Default',
           bookmarks: true,
           history: true,
-          cookies: false,
+          cookies: true,
         },
       ];
     return [];
@@ -81,16 +86,24 @@ test('requires an explicit scan on each visit before accessing browser data', as
   const first = render(page());
   expect(migration).not.toHaveBeenCalled();
   expect(screen.getByText(/macOS may ask you to allow access/)).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Review import' })).toBeNull();
+  expect(screen.queryByLabelText('Source browser profile')).toBeNull();
+  expect(screen.queryByLabelText('Migration destination space')).toBeNull();
   expect(
-    (screen.getByRole('button', { name: 'Review import' }) as HTMLButtonElement)
+    (screen.getByRole('button', { name: 'Choose CSV' }) as HTMLButtonElement)
       .disabled
-  ).toBe(true);
+  ).toBe(false);
   fireEvent.click(
     screen.getByRole('button', { name: 'Scan for browser data' })
   );
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Scan again' })).toBeTruthy()
   );
+  expect(
+    screen
+      .getByLabelText('Cookies and website logins')
+      .getAttribute('aria-checked')
+  ).toBe('true');
   expect(migration.mock.calls.map(([action]) => action)).toEqual([
     'profiles',
     'recover',

@@ -60,7 +60,7 @@ test.each(['error', 'cookies'])(
       if (action === 'prepare')
         return {
           token: 'token',
-          profileId: 'shared',
+          profileId: 'collection:target:token',
           history: 2,
           cookies: false,
           warnings: ['Older entries were omitted.'],
@@ -104,7 +104,7 @@ test.each(['error', 'cookies'])(
     );
     fireEvent.click(screen.getByText('Review import'));
     await screen.findByText('Older entries were omitted.');
-    fireEvent.click(screen.getByText('Import into new groups'));
+    fireEvent.click(screen.getByText('Import into collection'));
     await waitFor(() => expect(attempts).toBe(1));
     const retry = await screen.findByText('Retry remaining data');
     await waitFor(() =>
@@ -113,8 +113,8 @@ test.each(['error', 'cookies'])(
     expect(mockSave).toHaveBeenCalledTimes(1);
     expect(mockTabs).toHaveLength(3);
     expect(mockTabs.slice(1).map((tab) => tab.sessionProfileId)).toEqual([
-      'shared',
-      'shared',
+      'collection:target:token',
+      'collection:target:token',
     ]);
     expect(mockTabs[1].sessionId).not.toBe(mockTabs[2].sessionId);
     expect(

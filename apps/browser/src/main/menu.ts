@@ -178,7 +178,7 @@ export default class MenuBuilder {
         this.action('Actual Size', 'zoom-reset'),
         separator,
         this.action('Show / Hide Space Sidebar', 'sidebar'),
-        this.action('Show / Hide AI Assistant', 'ai-sidebar'),
+        this.action('Show / Hide Assistant', 'ai-sidebar'),
         { label: 'Enter / Exit Full Screen', role: 'togglefullscreen' },
       ],
     };

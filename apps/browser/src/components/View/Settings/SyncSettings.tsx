@@ -1,4 +1,4 @@
-import { Button, Switch } from '@radix-ui/themes';
+import { Switch } from '@radix-ui/themes';
 import {
   FolderOpen,
   PanelsTopLeft,
@@ -12,10 +12,9 @@ import {
   SyncSettings as SyncConfiguration,
   syncCategories,
 } from '../../../browser/cloudSync';
-import { browser } from '../../../browser/client';
 
 const categoryDescriptions = {
-  notes: 'Encrypted notes with manual backup and restore',
+  notes: 'Encrypted notes; unlock to back up',
   workspace: 'Spaces, groups, and folders',
   openTabs: 'Continue on another device',
   preferences: 'Search, fonts, and shortcuts',
@@ -37,32 +36,56 @@ export function SyncSettings({
 }) {
   return (
     <div className="cloud-sync-settings sync-visual-page">
-      <AccountSyncSettings
-        enabled={settings.enabled && settings.provider === 'kudiumbrowser'}
-        passwordsEnabled={Boolean(settings.categories.passwords)}
-        notesEnabled={Boolean(settings.categories.notes)}
-        onEnabled={() => {}}
-      />
-      <div className="sync-control-card">
+      <div className="sync-section-heading">
+        <h2>Syncing options</h2>
+      </div>
+      <div className="preference-card sync-options-card">
         <div className="preference-row">
           <div>
-            <strong>Sync across devices</strong>
+            <strong>Kudium Browser Account</strong>
             <p className="preference-note">
-              Keep your selected data up to date with your Kudium account.
+              Sync across devices after signing in and setting up your recovery
+              key.
             </p>
           </div>
           <Switch
-            aria-label="Enable sync"
+            aria-label="Sync with Kudium Browser Account"
             checked={settings.enabled && settings.provider === 'kudiumbrowser'}
-            disabled={busy || !Object.values(settings.categories).some(Boolean)}
+            disabled={busy}
             onCheckedChange={(enabled) =>
               save({ ...settings, provider: 'kudiumbrowser', enabled })
             }
           />
         </div>
+        <div className="preference-row">
+          <div>
+            <strong>iCloud</strong>
+            <p className="preference-note">
+              Not available in this build. Your choice is saved for when iCloud
+              sync is available.
+            </p>
+          </div>
+          <Switch
+            aria-label="Sync with iCloud"
+            checked={Boolean(
+              settings.icloud ||
+                (settings.provider === 'icloud' && settings.enabled)
+            )}
+            disabled={busy}
+            onCheckedChange={(icloud) => save({ ...settings, icloud })}
+          />
+        </div>
+        {settings.enabled && settings.provider === 'kudiumbrowser' && (
+          <AccountSyncSettings
+            enabled
+            passwordsEnabled={Boolean(settings.categories.passwords)}
+            notesEnabled={Boolean(settings.categories.notes)}
+            onEnabled={() => {}}
+          />
+        )}
       </div>
       <div className="sync-section-heading">
-        <h2>What to sync</h2>
+        <h2>Included in sync</h2>
         <PreferenceHint label="sync privacy">
           Data is encrypted with your recovery key. Password sync requires
           unlocking Personal Data. Group-only credentials, passkeys, cookies, AI
@@ -123,32 +146,7 @@ export function SyncSettings({
             />
           </div>
           <strong>Saved passwords</strong>
-        </div>
-      </div>
-      <div className="preference-card">
-        <div className="preference-row">
-          <div className="preference-label">
-            <strong>iCloud Passwords</strong>
-            <PreferenceHint label="iCloud Passwords">
-              Apple’s browser approval is required before its Passwords
-              extension can connect to Kudium. This is separate from Kudium
-              account sync.
-            </PreferenceHint>
-          </div>
-          <span className="preference-note">Requires Apple approval</span>
-        </div>
-        <div className="preference-row">
-          <strong>Personal Data</strong>
-          <Button
-            type="button"
-            variant="soft"
-            size="1"
-            onClick={() =>
-              browser.preferences('open', { section: 'passwords' })
-            }
-          >
-            Open Personal Data
-          </Button>
+          <p>Saved logins sync when Personal Data is unlocked.</p>
         </div>
       </div>
     </div>

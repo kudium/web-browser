@@ -478,6 +478,19 @@ Show migration feedback immediately after its import controls, before Passwords,
 
 Locked Chromium databases use a stable private temporary snapshot, including WAL/journal files, and remove it after reading. Verified the locked Arc Default history can be read using this fallback; no actual import or cookie transfer was performed. A SQLite regression verifies exclusive locks, large timestamps and temporary-copy cleanup.
 
+## Clean Apple-style list items
+
+When the user asks for “clean Apple design” for list items, use the Activity cards as the visual reference. Keep the layout compact, calm and easy to scan.
+
+- Give each item one softly rounded surface with a subtle neutral background that differs from the main container. Use an 8px gap between items and approximately 12px internal padding. Avoid borders, divider lines and nested decorative containers.
+- Use system typography: a compact medium-weight title, muted supporting text and a quiet timestamp. Align content to one left edge. Keep previews short and reveal longer content only when needed.
+- Remove decorative icons and unnecessary controls. Keep meaningful unread indicators small. Show the destination or item type as a subtle neutral tag rather than a prominent action button.
+- Make the whole item the primary action target. Clicking an Activity card opens its linked note, or its page when no note is linked. Preserve keyboard activation and a visible focus outline.
+- Put secondary actions such as Copy and Delete in small, quiet icon buttons. Reveal them only when the item is hovered or contains keyboard focus. Reserve their space so the layout does not shift. Secondary actions must operate independently without triggering the item's primary action.
+- Retain clear empty and error states. Check narrow and standard widths in light and dark appearance, including hover and keyboard focus. Reuse shared icon buttons and existing page spacing.
+
+This is the preferred appearance for standalone list items. Keep existing split libraries and their selection/detail behavior where appropriate; do not change navigation or restore removed tab headers to apply this styling.
+
 ## Apple-style libraries and adding features
 Use clean, simple, compact desktop layouts. Skills is the reference: one quiet command list, a selected detail pane, and a small + / − toolbar at the list's foot. Show instructions directly in system typography with generous line spacing; avoid repeating cards, badges, code boxes, or explanatory banners. Keep secondary actions neutral and place Edit Skill at the detail pane's foot. Adapt to a stacked layout before either pane becomes cramped.
 
@@ -493,7 +506,9 @@ Validation: the production-component Electron fixture captures all seven librari
 
 
 ## Personal notes
-Use the existing Assistant tool tabs and the shared chat-history sidebar frame. Keep history collapsible and pinnable; do not add a permanently cramped list beside the editor on narrow panels. The note title and body use system typography without bordered field boxes. Show formatting on selection or through Aa, and place group assignment, AI access, Lock note and deletion under the compact options disclosure. Reuse GroupPicker and the panel popover/dialog wrappers. Save quietly after typing pauses, keep errors readable, and preserve drafts across tool switches.
+Use the existing Assistant tool tabs and the shared chat-history sidebar frame. Keep history collapsible and pinnable. History always remains a left sidebar: beside the editor at wide widths and overlaying it at narrow widths. Never stack history above the editor. Start unpinned, close unpinned history on note selection or outside click, and show an explicit selected state only when the user pins it. Align history with the assistant panel’s left edge, without an extra outer gutter. Use the attached group’s name in note rows instead of “Group note”. The note title and body use system typography without bordered field boxes. Show formatting on selection or through Aa, and place group assignment, AI access, Lock note and deletion under the compact options disclosure. Reuse GroupPicker and the panel popover/dialog wrappers. Save quietly after typing pauses, keep errors readable, and preserve drafts across tool switches.
+
+When Notes has no selected note, show the existing note list with search and creation controls. Reuse NotesHistoryList with the same subtle card styling for the landing page and sidebar. Hide the editor’s history toolbar when there is no selected note; put New note beside the landing heading. Use HistorySearchInput for both Notes lists and Assistant chat history; show the introductory empty state only when there are no notes.
 
 Ordinary notes remain encrypted on disk but do not require Personal Data authentication. The user explicitly chooses Lock note to add protected-vault authentication. Show a lock indicator in the note list, clear sensitive content when the vault locks, and preserve ordinary drafts. Title browsing and autosave must not read or rewrite the entire note library.
 
@@ -510,3 +525,33 @@ Validation: 40 focused tests, TypeScript and targeted ESLint pass. Notes were re
 Notes body text defaults to 16px. Aa exposes compact decrease/increase controls (12–24px) and a size button that resets to 16px. Remember this reading preference across notes, panes and windows; it changes presentation without editing saved Markdown. Verify size changes and reset in the open formatting popover at narrow/standard widths in both appearances.
 
 Font-size validation: seven existing note/preference regressions, TypeScript and targeted lint pass. The open Aa controls, 17px adjustment, remembered value and reset to 16px passed four isolated Electron runs at 240px/368px panel widths in light/dark (28 captures). Narrow light and standard dark captures were inspected. The combined multi-window fixture encountered renderer disposal; isolated runs completed successfully.
+
+## Activity
+Activity uses compact cards in its dedicated assistant pane. Use 13px titles, 12px one-line message previews, short timestamps and small unread dots. Give cards a subtle neutral background and an 8px list gap, without borders, dividers or decorative icons. Clicking a card opens its linked note, or its page URL when no note is linked. Show the destination as a subtle Note/Page badge and keep Copy link and Delete activity in quiet icon buttons. Show Copy and Delete only while the card is hovered or contains keyboard focus. Deleting an activity removes only the event, retaining its linked note. Events without a destination expand their message on click and collapse on a second click. At narrow widths, keep the source text accessible while omitting it visually to leave room for actions. Respect the shared sidebar inset instead of adding a second outer gutter.
+
+Validation: 33 focused Activity/navigation tests pass, along with TypeScript and targeted ESLint. The running development app was inspected in dark appearance at 580px and 365px pane widths, including selected detail and keyboard focus. A disposable production-component Electron fixture captured collapsed/expanded, focus, all-read/disabled, empty and error states at 240px, 368px and 640px in light/dark appearance (42 captures); horizontal overflow checks passed. Narrow and standard screenshots in both appearances were inspected. Initial loading, native tooltip timing, live hook execution and external page navigation were not part of this visual review. Evidence: `docs/evidence/activity/`; repeat with `.erb/scripts/activity-review.cjs`.
+
+## Assistant workspace name
+Call the workspace “Assistant” in navigation, Preferences, menus and shortcuts. It contains Chat, Notes, Activity and Developer panes. Keep the individual pane names and existing sidebar toggles.
+
+## Independent Assistant panels
+Chat, Notes, Activity, Tasks, and Developer each use the same panel host. All five pages share one compact header with 26px quiet icon controls, a 6px action gap, and consistent vertical spacing. Put the window control at the trailing edge alongside existing header actions; never add a separate window-control row. A quiet arrow button opens the current page in a native window; the floating window offers Dock back. Do not introduce a tab header or combine pages. Existing toolbar buttons focus their floating window when that page is undocked.
+
+Move the existing content rather than recreating an editor or conversation. Drafts, undo history, selection, searches, scroll positions, and ongoing AI work must survive docking. DOM-dependent controls use the panel's current document for selection, dismissal, and popup positioning. Floating pages use the same theme, spacing, and shared controls as docked pages.
+
+Closing a floating window hides its page and leaves its content safely docked for reopening. Dock back selects the page and opens Assistant. Remember floating placement and window geometry across browser restarts, including when the docked Assistant was closed. Floating windows belong to their browser workspace and close with it; they do not run a separate AI session.
+
+Docking validation: 80 focused tests, TypeScript, and targeted lint pass. Disposable Electron fixtures exercise undock, dock back, close, placement restoration after reload, retained drafts, and real Markdown editor input for all five panel hosts. Reviewed docked, floating, expanded Activity, focused docking controls, and editor screenshots at 368px and 720px in light and dark appearance. Evidence is in `docs/evidence/assistant-panels/`. Live provider streaming and full Developer/Tasks workflows were not exercised in this review.
+
+Header integration validation: 63 tests across Notes, Activity, sidebar recovery and pane toggles pass, along with TypeScript and targeted lint. Reviewed production Notes editor/sidebar screenshots at 272/400/672px and Activity docked/floating screenshots at 368/720px in light and dark Electron fixtures. Shared placement controls retain dock/undock, focus, close and draft behavior. The Chat, Tasks and Developer fixture uses placeholder content; their complete page headers and workflows were not visually reviewed in this pass.
+
+Notes uses one persistent shared page header outside the editor and list content. Align its inset and top edge with the other Assistant headers. Open directly to the reusable notes list; do not auto-open the history sidebar or duplicate its header. Editor navigation, formatting, and window controls stay in that same toolbar. Reviewed landing, editor, and sidebar open/closed at 272/400/672px in light/dark Electron fixtures.
+
+Developer page cards follow the clean-list pattern: one subtle neutral surface, 12px padding, 8px separation, aligned title and URL, and a small neutral hook-status tag. Remove decorative globe tiles and navigation arrows; the entire card opens its hook editor and retains keyboard/context-menu actions. Verified five Developer sidebar tests, TypeScript and targeted lint. Production list reviewed in disposable Electron fixtures at 272/640px, light/dark, covering hover, focus, disabled pages, hook statuses, empty and error states. Project-folder and terminal content were stubbed; live hook editing was not exercised. Evidence: `docs/evidence/developer-cards/`.
+
+## Hook editor navigation
+Show hooks in a persistent left sidebar beside their editor, rather than a dropdown. Include the default hook and every saved hook with its name, page pattern and enabled state. Use compact neutral cards, quiet selection, and a small Add button in the sidebar heading. Keep the Hooks sidebar for navigation. Put the selected hook's name, page targeting, enabled switch and settings button in one compact row above the editor. Rename and removal belong in the settings popover. Retain drafts when switching hooks, and preserve explicit Save/Run behavior. The sidebar remains beside the editor at narrow widths; stage tabs must remain reachable.
+
+Validated hook selection, retained drafts, rename, removal, creation and save with five tests, TypeScript and targeted lint. Reviewed the production panel in disposable Electron fixtures at 400/1000px in light/dark, including default/selected/new hooks, disabled controls, settings and targeting popovers. Live hook execution and native file import were not exercised. Evidence: `docs/evidence/hook-sidebar/`.
+
+Hook inspector refinement reviewed in production-component Electron fixtures at 400/1000px, light/dark, including selected/default/new hooks, disabled controls and the page-filter popover. Five hook-editing tests, TypeScript and targeted lint pass. Live hook execution and native imports were not exercised.

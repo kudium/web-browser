@@ -7,7 +7,6 @@ import {
   Button,
   IconButton,
   Popover,
-  Select,
   Switch,
   Tabs,
   TextField,
@@ -147,242 +146,273 @@ export function SiteDeveloperPanel({
             {dirty && <span className="site-developer-unsaved">Unsaved</span>}
           </div>
         </div>
-        <div className="site-hook-selection">
-          <div className="site-hook-identity">
-            <Select.Root
-              value={selectedHook ? hookId : 'default'}
-              onValueChange={(value) =>
-                setHookId(value === 'default' ? '' : value)
-              }
-              disabled={disabled}
-            >
-              <Select.Trigger
-                aria-label="Selected hook"
-                className="site-hook-selector"
-              />
-              <Select.Content>
-                <Select.Item value="default">Default hook</Select.Item>
-                {draft.hooks?.map((hook) => (
-                  <Select.Item key={hook.id} value={hook.id}>
-                    {hook.name || 'Untitled hook'}
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Root>
-            <IconButton
-              size="1"
-              variant="ghost"
-              color="gray"
-              aria-label="Add hook"
-              disabled={disabled || (draft.hooks?.length || 0) >= 20}
-              onClick={() => {
-                const id = crypto.randomUUID();
-                setDraft({
-                  ...draft,
-                  hooks: [
-                    ...(draft.hooks || []),
-                    {
-                      id,
-                      name: 'New hook',
-                      enabled: true,
-                      path: '/*',
-                      before: '',
-                      after: '',
-                      css: '',
-                    },
-                  ],
-                });
-                setHookId(id);
-              }}
-            >
-              <Plus size={16} />
-            </IconButton>
-          </div>
-          <div className="site-hook-options">
-            {selectedHook ? (
-              <>
-                <HookPageTarget
-                  path={selectedHook.path}
+        <div className="site-hooks-layout">
+          <aside className="site-hooks-sidebar" aria-label="Site hooks">
+            <div className="site-hooks-sidebar-heading">
+              <h2>Hooks</h2>
+              <IconButton
+                size="1"
+                variant="ghost"
+                color="gray"
+                aria-label="Add hook"
+                disabled={disabled || (draft.hooks?.length || 0) >= 20}
+                onClick={() => {
+                  const id = crypto.randomUUID();
+                  setDraft({
+                    ...draft,
+                    hooks: [
+                      ...(draft.hooks || []),
+                      {
+                        id,
+                        name: 'New hook',
+                        enabled: true,
+                        path: '/*',
+                        before: '',
+                        after: '',
+                        css: '',
+                      },
+                    ],
+                  });
+                  setHookId(id);
+                }}
+              >
+                <Plus size={16} />
+              </IconButton>
+            </div>
+            <div className="site-hooks-list">
+              <button
+                type="button"
+                className="site-hooks-list-item"
+                aria-pressed={!selectedHook}
+                disabled={disabled}
+                onClick={() => setHookId('')}
+              >
+                <strong>Default hook</strong>
+                <small>All pages</small>
+              </button>
+              {draft.hooks?.map((hook) => (
+                <button
+                  key={hook.id}
+                  type="button"
+                  className="site-hooks-list-item"
+                  aria-pressed={hook.id === hookId}
                   disabled={disabled}
-                  origin={origin}
-                  onChange={(path) => updateCode({ path })}
-                />
-                <label className="site-hook-enabled">
-                  <Switch
-                    size="1"
-                    aria-label="Enable selected hook"
-                    checked={selectedHook.enabled}
-                    disabled={disabled}
-                    onCheckedChange={(enabled) => updateCode({ enabled })}
-                  />
-                  Enabled
-                </label>
-                <Popover.Root>
-                  <Popover.Trigger>
-                    <IconButton
-                      size="1"
-                      color="gray"
-                      variant="ghost"
+                  onClick={() => setHookId(hook.id)}
+                >
+                  <strong>{hook.name || 'Untitled hook'}</strong>
+                  <small>{hook.path}</small>
+                  <span>{hook.enabled ? 'Enabled' : 'Disabled'}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
+          <div className="site-hook-detail">
+            <div className="site-hook-selection">
+              <h2>{selectedHook?.name || 'Default hook'}</h2>
+              <div className="site-hook-options">
+                {selectedHook ? (
+                  <>
+                    <HookPageTarget
+                      path={selectedHook.path}
                       disabled={disabled}
-                      aria-label="Hook settings"
-                    >
-                      <Settings2 size={15} />
-                    </IconButton>
-                  </Popover.Trigger>
-                  <Popover.Content width="280px" className="site-hook-popover">
-                    <div className="site-hook-popover-title">Hook settings</div>
-                    <label htmlFor="site-hook-name">Name</label>
-                    <TextField.Root
-                      id="site-hook-name"
-                      size="2"
-                      maxLength={120}
-                      value={selectedHook.name}
-                      onChange={(event) =>
-                        updateCode({ name: event.target.value })
-                      }
+                      origin={origin}
+                      onChange={(path) => updateCode({ path })}
                     />
-                    <Button
-                      size="1"
-                      variant="soft"
-                      color="red"
-                      onClick={() => {
-                        setDraft({
-                          ...draft,
-                          hooks: draft.hooks?.filter(
-                            (hook) => hook.id !== hookId
-                          ),
-                        });
-                        setHookId('');
+                    <label className="site-hook-enabled">
+                      <Switch
+                        size="1"
+                        aria-label="Enable selected hook"
+                        checked={selectedHook.enabled}
+                        disabled={disabled}
+                        onCheckedChange={(enabled) => updateCode({ enabled })}
+                      />
+                      Enabled
+                    </label>
+                    <Popover.Root>
+                      <Popover.Trigger>
+                        <IconButton
+                          size="1"
+                          color="gray"
+                          variant="ghost"
+                          disabled={disabled}
+                          aria-label="Hook settings"
+                        >
+                          <Settings2 size={15} />
+                        </IconButton>
+                      </Popover.Trigger>
+                      <Popover.Content
+                        width="280px"
+                        className="site-hook-popover"
+                      >
+                        <div className="site-hook-popover-title">
+                          Hook settings
+                        </div>
+                        <label htmlFor="site-hook-name">Name</label>
+                        <TextField.Root
+                          id="site-hook-name"
+                          size="2"
+                          maxLength={120}
+                          value={selectedHook.name}
+                          disabled={disabled}
+                          onChange={(event) =>
+                            updateCode({ name: event.target.value })
+                          }
+                        />
+                        <Button
+                          size="1"
+                          variant="soft"
+                          color="red"
+                          onClick={() => {
+                            setDraft({
+                              ...draft,
+                              hooks: draft.hooks?.filter(
+                                (hook) => hook.id !== hookId
+                              ),
+                            });
+                            setHookId('');
+                          }}
+                        >
+                          Remove hook
+                        </Button>
+                      </Popover.Content>
+                    </Popover.Root>
+                  </>
+                ) : (
+                  <span className="site-hook-default-target">All pages</span>
+                )}
+              </div>
+            </div>
+            <SiteDeveloperWorkspace
+              code={
+                <Tabs.Root
+                  value={editor}
+                  onValueChange={(value) => setEditor(value as typeof editor)}
+                  className="site-hook-editor"
+                >
+                  <Tabs.List aria-label="Hook stage">
+                    <Tabs.Trigger value="before">Before load</Tabs.Trigger>
+                    <Tabs.Trigger value="after">After load</Tabs.Trigger>
+                    <Tabs.Trigger value="css">CSS</Tabs.Trigger>
+                  </Tabs.List>
+                  <Tabs.Content
+                    value={editor}
+                    className="site-hook-editor-body"
+                  >
+                    <div className="site-section-heading">
+                      <span className="site-hook-editor-label">
+                        {editor === 'css'
+                          ? 'Stylesheet'
+                          : 'JavaScript callback'}
+                      </span>
+                      <div className="site-hook-editor-actions">
+                        <Button
+                          size="1"
+                          variant="ghost"
+                          color="gray"
+                          disabled={disabled || !!code[editor]}
+                          onClick={() =>
+                            updateCode({ [editor]: examples[editor] })
+                          }
+                        >
+                          Use example
+                        </Button>
+                        <Button
+                          size="1"
+                          variant="ghost"
+                          color="gray"
+                          disabled={disabled}
+                          onClick={() => importInput.current?.click()}
+                        >
+                          Import
+                        </Button>
+                      </div>
+                    </div>
+                    <input
+                      ref={importInput}
+                      type="file"
+                      hidden
+                      aria-label="Import hook file"
+                      accept={
+                        editor === 'css'
+                          ? '.css,text/css'
+                          : '.js,.mjs,.txt,text/javascript,text/plain'
+                      }
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = '';
+                        if (!file) return;
+                        try {
+                          if (file.size > 100000)
+                            throw new Error(
+                              'Choose a file smaller than 100 KB.'
+                            );
+                          const source = await file.text();
+                          updateCode({ [editor]: source });
+                          setImportError('');
+                        } catch (error) {
+                          setImportError(String(error));
+                        }
                       }}
-                    >
-                      Remove hook
-                    </Button>
-                  </Popover.Content>
-                </Popover.Root>
-              </>
-            ) : (
-              <span className="site-hook-default-target">All pages</span>
-            )}
-          </div>
-        </div>
-        <SiteDeveloperWorkspace
-          code={
-            <Tabs.Root
-              value={editor}
-              onValueChange={(value) => setEditor(value as typeof editor)}
-              className="site-hook-editor"
-            >
-              <Tabs.List aria-label="Hook stage">
-                <Tabs.Trigger value="before">Before load</Tabs.Trigger>
-                <Tabs.Trigger value="after">After load</Tabs.Trigger>
-                <Tabs.Trigger value="css">CSS</Tabs.Trigger>
-              </Tabs.List>
-              <Tabs.Content value={editor} className="site-hook-editor-body">
-                <div className="site-section-heading">
-                  <span className="site-hook-editor-label">
-                    {editor === 'css' ? 'Stylesheet' : 'JavaScript callback'}
-                  </span>
-                  <div className="site-hook-editor-actions">
-                    <Button
-                      size="1"
-                      variant="ghost"
-                      color="gray"
-                      disabled={disabled || !!code[editor]}
-                      onClick={() => updateCode({ [editor]: examples[editor] })}
-                    >
-                      Use example
-                    </Button>
-                    <Button
-                      size="1"
-                      variant="ghost"
-                      color="gray"
+                    />
+                    {importError && (
+                      <p className="site-hook-import-error" role="alert">
+                        {importError}
+                      </p>
+                    )}
+                    <CodeEditor
+                      key={editor}
+                      label={`${stageLabels[editor]} code`}
+                      language={editor === 'css' ? 'css' : 'javascript'}
+                      value={code[editor]}
                       disabled={disabled}
-                      onClick={() => importInput.current?.click()}
+                      onChange={(value) => updateCode({ [editor]: value })}
+                    />
+                    <p className="site-hook-stage-hint">{stageHints[editor]}</p>
+                  </Tabs.Content>
+                </Tabs.Root>
+              }
+              activity={
+                <section aria-labelledby="site-developer-activity">
+                  <div className="site-section-heading">
+                    <h2 id="site-developer-activity">Activity</h2>
+                    <Button
+                      size="1"
+                      variant="ghost"
+                      color="gray"
+                      disabled={disabled || !developer?.logs.length}
+                      onClick={() => send('clear-site-developer-logs')}
                     >
-                      Import
+                      Clear
                     </Button>
                   </div>
-                </div>
-                <input
-                  ref={importInput}
-                  type="file"
-                  hidden
-                  aria-label="Import hook file"
-                  accept={
-                    editor === 'css'
-                      ? '.css,text/css'
-                      : '.js,.mjs,.txt,text/javascript,text/plain'
-                  }
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = '';
-                    if (!file) return;
-                    try {
-                      if (file.size > 100000)
-                        throw new Error('Choose a file smaller than 100 KB.');
-                      const source = await file.text();
-                      updateCode({ [editor]: source });
-                      setImportError('');
-                    } catch (error) {
-                      setImportError(String(error));
-                    }
-                  }}
-                />
-                {importError && (
-                  <p className="site-hook-import-error" role="alert">
-                    {importError}
-                  </p>
-                )}
-                <CodeEditor
-                  key={editor}
-                  label={`${stageLabels[editor]} code`}
-                  language={editor === 'css' ? 'css' : 'javascript'}
-                  value={code[editor]}
-                  disabled={disabled}
-                  onChange={(value) => updateCode({ [editor]: value })}
-                />
-                <p className="site-hook-stage-hint">{stageHints[editor]}</p>
-              </Tabs.Content>
-            </Tabs.Root>
-          }
-          activity={
-            <section aria-labelledby="site-developer-activity">
-              <div className="site-section-heading">
-                <h2 id="site-developer-activity">Activity</h2>
-                <Button
-                  size="1"
-                  variant="ghost"
-                  color="gray"
-                  disabled={disabled || !developer?.logs.length}
-                  onClick={() => send('clear-site-developer-logs')}
-                >
-                  Clear
-                </Button>
-              </div>
-              <div
-                className="site-hook-logs"
-                role="log"
-                aria-label="Hook activity"
-                aria-live="polite"
-              >
-                {developer?.logs.length ? (
-                  developer.logs.map((entry, index) => (
-                    <div
-                      className="site-hook-log"
-                      data-level={entry.level}
-                      key={`${entry.time}-${index}`}
-                    >
-                      <time>{new Date(entry.time).toLocaleTimeString()}</time>
-                      <span>{entry.message}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p>Run a page load to see hook activity here.</p>
-                )}
-              </div>
-            </section>
-          }
-        />
+                  <div
+                    className="site-hook-logs"
+                    role="log"
+                    aria-label="Hook activity"
+                    aria-live="polite"
+                  >
+                    {developer?.logs.length ? (
+                      developer.logs.map((entry, index) => (
+                        <div
+                          className="site-hook-log"
+                          data-level={entry.level}
+                          key={`${entry.time}-${index}`}
+                        >
+                          <time>
+                            {new Date(entry.time).toLocaleTimeString()}
+                          </time>
+                          <span>{entry.message}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p>Run a page load to see hook activity here.</p>
+                    )}
+                  </div>
+                </section>
+              }
+            />
+          </div>
+        </div>
       </div>
       {!!developer?.notifications?.length && (
         <section

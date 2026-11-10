@@ -77,3 +77,44 @@ it.each(['react-refresh-overlay', 'webpack-dev-server-client-overlay'])(
     await screen.findByText('visible');
   }
 );
+
+it.each(['delayed-open', 'instant-open'])(
+  'suspends native pages for visible tooltip state %s and resumes on close',
+  async (state) => {
+    render(<Status />);
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('data-radix-popper-content-wrapper', '');
+    const tooltip = document.createElement('div');
+    tooltip.dataset.state = state;
+    visible(tooltip);
+    wrapper.append(tooltip);
+    act(() => document.body.append(wrapper));
+    await screen.findByText('suspended');
+    expect(hasGlobalOverlay()).toBe(true);
+    act(() => {
+      tooltip.dataset.state = 'closed';
+    });
+    await screen.findByText('visible');
+    act(() => wrapper.remove());
+  }
+);
+
+it('keeps sidebar hints and popovers outside the page from suspending native views', () => {
+  const root = document.createElement('div');
+  root.innerHTML =
+    '<div class="browser-viewport"></div><div data-radix-popper-content-wrapper><div data-state="open"></div></div>';
+  const viewport = root.querySelector<HTMLElement>('.browser-viewport')!;
+  const content = root.querySelector<HTMLElement>('[data-state]')!;
+  visible(viewport);
+  visible(content);
+  viewport.getBoundingClientRect = () =>
+    ({ left: 200, right: 800, top: 50, bottom: 600 } as DOMRect);
+  content.getBoundingClientRect = () =>
+    ({ left: 20, right: 180, top: 100, bottom: 140 } as DOMRect);
+  expect(hasGlobalOverlay(root)).toBe(false);
+  content.getBoundingClientRect = () =>
+    ({ left: 180, right: 300, top: 100, bottom: 140 } as DOMRect);
+  expect(hasGlobalOverlay(root)).toBe(true);
+  content.className = 'sidebar-tooltip';
+  expect(hasGlobalOverlay(root)).toBe(false);
+});

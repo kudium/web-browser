@@ -13,7 +13,7 @@ import { authenticateSession, syncAccountId, type Authenticate, type Auth } from
 import { envelopeSchema, opaqueId, targetSchema } from './validation';
 import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest, releaseHistory } from './releases';
-import { homepage, downloadPage, documentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
+import { homepage, downloadPage, documentation, notesAndActivityDocumentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
 import { tutorials } from './tutorials';
 export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing }: { publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
   const app = new Hono<{ Variables: { account: string } }>();
@@ -54,6 +54,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     return route === '/v1/releases' ? c.json(history) : c.html(releaseHistoryPage(history, query.data.channel));
   });
   app.get('/docs', c => c.html(documentation()));
+  app.get('/docs/notes-and-activity', c => c.html(notesAndActivityDocumentation()));
   app.get('/tutorials', c => c.html(tutorialIndex()));
   app.get('/tutorials/:slug', c => { const tutorial = tutorials.find(t => t.slug === c.req.param('slug')); return tutorial ? c.html(tutorialPage(tutorial)) : c.notFound(); });
   const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-mentions', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace']);

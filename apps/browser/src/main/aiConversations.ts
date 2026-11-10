@@ -1,7 +1,13 @@
-import { storageRecoveryMessage } from '../browser/storageRecovery';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { storageRecoveryMessage } from '../browser/storageRecovery';
+import {
+  AI_CONTINUATION_TTL,
+  AI_CHECKPOINT_TTL,
+  checkpointRoundLimit,
+  validCheckpointRoundLimit,
+} from './aiCheckpoint';
 import { AITaskMemory, validAITaskMemory } from '../browser/aiTaskMemory';
 import type { SynchronousSecureStorage } from './secureStorage';
 import type { AICheckpoint } from './aiCheckpoint';
@@ -93,12 +99,19 @@ export class AIConversationStore {
             checkpoint:
               chat.checkpoint?.expires &&
               chat.checkpoint.expires > Date.now() &&
-              chat.checkpoint.expires <= Date.now() + 15 * 60000 &&
+              chat.checkpoint.expires <=
+                Date.now() +
+                  (chat.checkpoint.pauseKind === 'budget'
+                    ? AI_CONTINUATION_TTL
+                    : AI_CHECKPOINT_TTL) &&
+              (chat.checkpoint.pauseKind === undefined ||
+                chat.checkpoint.pauseKind === 'budget') &&
               Array.isArray(chat.checkpoint.messages) &&
               chat.checkpoint.messages.length <= 1000 &&
               Number.isInteger(chat.checkpoint.step) &&
               chat.checkpoint.step >= 0 &&
-              chat.checkpoint.step < 30 &&
+              chat.checkpoint.step < checkpointRoundLimit(chat.checkpoint) &&
+              validCheckpointRoundLimit(chat.checkpoint) &&
               typeof chat.checkpoint.endpoint === 'string' &&
               /^https?:\/\//.test(chat.checkpoint.endpoint) &&
               (chat.checkpoint.groupId === undefined ||

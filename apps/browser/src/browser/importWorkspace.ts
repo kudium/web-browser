@@ -1,6 +1,7 @@
 import type { ImportedLink } from './browserImport';
 import type { Space } from '../utils/SpaceManager';
 import type { IApp } from '../types';
+import { collectionProfile } from '../utils/collectionGroups';
 
 export interface ImportOrganizationOptions {
   foldersAsGroups: boolean;
@@ -16,7 +17,8 @@ export function buildImportedWorkspace(
     foldersAsGroups: true,
     spacesAsFolders: true,
   },
-  sessionProfileId: string = crypto.randomUUID()
+  sessionProfileId: string = crypto.randomUUID(),
+  collection?: { id: string; name: string }
 ) {
   const compact = source === 'Arc' || source === 'Dia';
   const { foldersAsGroups } = options;
@@ -27,12 +29,15 @@ export function buildImportedWorkspace(
   }));
   if (!spaces.some((space) => space.id === targetId))
     throw new Error('Choose a destination space.');
+  if (collection) {
+    spaces.find((space) => space.id === targetId)!.folders.push(collection);
+  }
   const spaceIds = new Map<string, string>();
   const folderIds = new Map<string, string>();
   const groups = new Map<string, string>();
   const apps: IApp[] = links.map((link) => {
     let spaceId = targetId;
-    if (link.spaceName && !spacesAsFolders) {
+    if (!collection && link.spaceName && !spacesAsFolders) {
       if (!spaceIds.has(link.spaceName)) {
         const id = crypto.randomUUID();
         spaceIds.set(link.spaceName, id);
@@ -47,7 +52,7 @@ export function buildImportedWorkspace(
     ];
     const folderKey = JSON.stringify([spaceId, destinationPath]);
     let folderId: string | undefined;
-    if (destinationPath.length) {
+    if (!collection && destinationPath.length) {
       if (!folderIds.has(folderKey)) {
         const id = crypto.randomUUID();
         folderIds.set(folderKey, id);
@@ -75,12 +80,20 @@ export function buildImportedWorkspace(
       sessionName: path.at(-1) || link.spaceName || `Imported from ${source}`,
       sessionNameCustom: true,
       spaceId,
-      folderId,
+      folderId: collection?.id || folderId,
+      ...(collection
+        ? {
+            sessionMode:
+              sessionProfileId === collectionProfile(targetId, collection.id)
+                ? ('collection' as const)
+                : ('separate' as const),
+          }
+        : {}),
       name: link.name,
       url: link.url,
       icon: '',
-      favorite: link.favorite === true,
-      pinned: link.pinned !== false,
+      favorite: !collection && link.favorite === true,
+      pinned: !!collection || link.pinned !== false,
     };
   });
   return { apps, spaces };

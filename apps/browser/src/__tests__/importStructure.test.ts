@@ -1,3 +1,4 @@
+import { prepareCollectionGroups } from '../utils/collectionGroups';
 import { loginProfileKey } from '../utils/groups';
 import { importBrowsers, parseBrowserLinks } from '../browser/browserImport';
 import { buildImportedWorkspace } from '../browser/importWorkspace';
@@ -183,4 +184,63 @@ test('an import shares one login profile across groups and keeps separate import
     'cookie-transfer-profile',
     'cookie-transfer-profile',
   ]);
+});
+
+test('migration groups share the destination collection session, including new groups', () => {
+  const collection = { id: 'migration', name: 'Imported from Chrome' };
+  const profile = 'collection:target:migration';
+  const plan = buildImportedWorkspace(
+    [
+      {
+        name: 'One',
+        url: 'https://one.example',
+        folderPath: ['Work'],
+        favorite: true,
+      },
+      {
+        name: 'Two',
+        url: 'https://two.example',
+        spaceName: 'Personal',
+        folderPath: ['Reading'],
+        pinned: false,
+      },
+    ],
+    [{ id: 'target', name: 'Personal', color: 'iris', folders: [] }],
+    'target',
+    'Chrome',
+    undefined,
+    profile,
+    collection
+  );
+  expect(plan.spaces).toHaveLength(1);
+  expect(plan.spaces[0].folders).toEqual([collection]);
+  expect(plan.apps[0].sessionId).not.toBe(plan.apps[1].sessionId);
+  expect(
+    plan.apps.every(
+      (tab) =>
+        tab.folderId === collection.id &&
+        tab.sessionMode === 'collection' &&
+        tab.pinned &&
+        !tab.favorite
+    )
+  ).toBe(true);
+  expect(prepareCollectionGroups(plan.apps, []).map(loginProfileKey)).toEqual([
+    profile,
+    profile,
+  ]);
+  const added = prepareCollectionGroups(
+    [
+      {
+        id: 'new',
+        sessionId: 'new-group',
+        folderId: collection.id,
+        spaceId: 'target',
+        name: 'New',
+        url: 'https://new.example',
+        icon: '',
+      },
+    ],
+    []
+  );
+  expect(loginProfileKey(added[0])).toBe(profile);
 });

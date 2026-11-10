@@ -84,7 +84,7 @@ export function BrowserMigrationSettings() {
       setScanned(true);
       setProfiles(result);
       setProfileId(result[0]?.id || '');
-      setCookies(false);
+      setCookies(!!result[0]?.cookies);
       const recovery = (await window.electron.browserMigration(
         'recover'
       )) as MigrationRecovery[];
@@ -114,6 +114,7 @@ export function BrowserMigrationSettings() {
       setPreview(
         (await window.electron.browserMigration('prepare', {
           profileId,
+          destinationSpace: space,
           bookmarks: bookmarks && !!profile?.bookmarks,
           history: history && !!profile?.history,
           cookies,
@@ -147,7 +148,11 @@ export function BrowserMigrationSettings() {
           space,
           profile.browser,
           organization,
-          preview.profileId
+          preview.profileId,
+          {
+            id: preview.token,
+            name: `Imported from ${profile.browser} · ${profile.name}`,
+          }
         );
         const apps = plan.apps.map((tab, index) => ({
           ...tab,
@@ -273,193 +278,215 @@ export function BrowserMigrationSettings() {
         </div>
       )}
       <div className="preference-card">
-        <p className="preference-note">
-          Scan for browser data to find profiles from Chrome, Edge, Brave,
-          Chromium and Arc on this Mac. This accesses other browsers’ profile
-          folders, and macOS may ask you to allow access. Choose Scan for
-          browser data when you’re ready, then review what to import.
-        </p>
-        <div className="preference-row">
-          <strong>Browser profile</strong>
-          <div className="migration-controls">
-            <Select.Root
-              value={profileId || undefined}
-              disabled={busy || savedGroups || !profiles.length}
-              onValueChange={(value) => {
-                setProfileId(value);
-                setCookies(false);
-                setPreview(undefined);
-              }}
-            >
-              <Select.Trigger
-                aria-label="Source browser profile"
-                placeholder={
-                  scanned ? 'No profiles found' : 'Scan to find profiles'
-                }
-              />
-              <Select.Content>
-                {profiles.map((item) => (
-                  <Select.Item key={item.id} value={item.id}>
-                    {item.browser} · {item.name}
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Root>
+        {!scanned && (
+          <p className="preference-note">
+            Scan for browser data to find profiles from Chrome, Edge, Brave,
+            Chromium and Arc on this Mac. This accesses other browsers’ profile
+            folders, and macOS may ask you to allow access. Choose Scan for
+            browser data when you’re ready, then review what to import.
+          </p>
+        )}
+        {!scanned && (
+          <div className="preference-row">
             <Button
-              variant="soft"
-              disabled={busy || savedGroups}
+              variant="solid"
+              className="migration-scan-primary"
+              disabled={busy}
               onClick={scan}
             >
               {scanLabel}
             </Button>
           </div>
-        </div>
-        <div className="preference-row">
-          <strong>Destination space</strong>
-          <Select.Root
-            value={space}
-            disabled={busy || savedGroups}
-            onValueChange={(value) => {
-              setSpace(value);
-              setPreview(undefined);
-            }}
-          >
-            <Select.Trigger aria-label="Migration destination space" />
-            <Select.Content>
-              {SpaceManager.getAll().map((item) => (
-                <Select.Item key={item.id} value={item.id}>
-                  {item.name}
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-        </div>
-        <p className="preference-note">
-          Import up to 5,000 saved tabs, 10,000 history entries and 10,000
-          cookies. History keeps the 10,000 most recent entries across all
-          profiles. Your review will show if source data exceeds an import
-          limit.
-        </p>
-        <div className="migration-data-choices">
-          <label htmlFor="migration-bookmarks">
-            <Checkbox
-              id="migration-bookmarks"
-              checked={bookmarks && !!profile?.bookmarks}
-              disabled={busy || savedGroups || !profile?.bookmarks}
-              onCheckedChange={(value) => {
-                setBookmarks(value === true);
-                setPreview(undefined);
-              }}
-            />
-            {profile?.browser === 'Arc'
-              ? 'Sidebar tabs and folders'
-              : 'Bookmarks and folders'}
-          </label>
-          <label htmlFor="migration-history">
-            <Checkbox
-              id="migration-history"
-              checked={history && !!profile?.history}
-              disabled={busy || savedGroups || !profile?.history}
-              onCheckedChange={(value) => {
-                setHistory(value === true);
-                setPreview(undefined);
-              }}
-            />
-            Browsing history
-          </label>
-          <label htmlFor="migration-cookies">
-            <Checkbox
-              id="migration-cookies"
-              checked={cookies}
-              disabled={busy || savedGroups || !profile?.cookies}
-              onCheckedChange={(value) => {
-                setCookies(value === true);
-                setPreview(undefined);
-              }}
-            />
-            Cookies and website logins
-          </label>
-          <p className="preference-note">
-            {profile?.cookies
-              ? 'Cookie transfer needs macOS Keychain access. Some websites will ask you to sign in again.'
-              : 'Cookie transfer is currently available for supported Chromium browsers on macOS.'}
-          </p>
-        </div>
-        <ImportOrganizationChoices
-          source={profile?.browser || ''}
-          options={organization}
-          onChange={setOrganization}
-          disabled={busy || savedGroups}
-        />
-        {preview?.warnings?.map((warning) => (
-          <p className="preference-note" key={warning}>
-            {warning}
-          </p>
-        ))}
-        {busy && progress && (
-          <div role="status" aria-live="polite">
-            {progress.stage}
-            {progress.total > 0
-              ? ` · ${progress.completed} / ${progress.total}`
-              : ''}
-            <progress
-              aria-label="Import progress"
-              max={progress.total || undefined}
-              value={progress.total ? progress.completed : undefined}
-            />
-          </div>
         )}
-        <div className="migration-actions">
-          {preview ? (
-            <>
-              <span>
-                {preview.links.length}{' '}
-                {profile?.browser === 'Arc' ? 'saved tabs' : 'bookmarks'} ·{' '}
-                {preview.history} history entries
-                {preview.cookies ? ' · cookies included' : ''}
-              </span>
-              <Button disabled={busy} onClick={migrate}>
-                {savedGroups
-                  ? 'Retry remaining data'
-                  : 'Import into new groups'}
-              </Button>
-              <Button
-                variant="ghost"
-                disabled={busy}
-                onClick={async () => {
-                  try {
-                    await window.electron.browserMigration('discard', {
-                      token: preview.token,
-                    });
-                    setRecoveries((current) =>
-                      current.filter((item) => item.token !== preview.token)
+        {scanned && (
+          <>
+            <div className="preference-row">
+              <strong>Browser profile</strong>
+              <div className="migration-controls">
+                <Select.Root
+                  value={profileId || undefined}
+                  disabled={busy || savedGroups || !profiles.length}
+                  onValueChange={(value) => {
+                    setProfileId(value);
+                    setCookies(
+                      !!profiles.find((item) => item.id === value)?.cookies
                     );
                     setPreview(undefined);
-                  } catch (error) {
-                    setMessage((error as Error).message);
-                  }
+                  }}
+                >
+                  <Select.Trigger
+                    aria-label="Source browser profile"
+                    placeholder={
+                      scanned ? 'No profiles found' : 'Scan to find profiles'
+                    }
+                  />
+                  <Select.Content>
+                    {profiles.map((item) => (
+                      <Select.Item key={item.id} value={item.id}>
+                        {item.browser} · {item.name}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+                <Button
+                  variant={scanned ? 'soft' : 'solid'}
+                  className={scanned ? undefined : 'migration-scan-primary'}
+                  disabled={busy || savedGroups}
+                  onClick={scan}
+                >
+                  {scanLabel}
+                </Button>
+              </div>
+            </div>
+            <div className="preference-row">
+              <strong>Destination space</strong>
+              <Select.Root
+                value={space}
+                disabled={busy || savedGroups}
+                onValueChange={(value) => {
+                  setSpace(value);
+                  setPreview(undefined);
                 }}
               >
-                {savedGroups ? 'Finish without remaining data' : 'Cancel'}
-              </Button>
-            </>
-          ) : (
-            <Button
-              disabled={
-                busy ||
-                !profile ||
-                !(
-                  (bookmarks && profile.bookmarks) ||
-                  (history && profile.history) ||
-                  cookies
-                )
-              }
-              onClick={review}
-            >
-              {busy ? 'Working…' : 'Review import'}
-            </Button>
-          )}
-        </div>
+                <Select.Trigger aria-label="Migration destination space" />
+                <Select.Content>
+                  {SpaceManager.getAll().map((item) => (
+                    <Select.Item key={item.id} value={item.id}>
+                      {item.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </div>
+            <p className="preference-note">
+              Import up to 5,000 saved tabs, 10,000 history entries and 10,000
+              cookies. History keeps the 10,000 most recent entries across all
+              profiles. Your review will show if source data exceeds an import
+              limit.
+            </p>
+            <div className="migration-data-choices">
+              <label htmlFor="migration-bookmarks">
+                <Checkbox
+                  id="migration-bookmarks"
+                  checked={bookmarks && !!profile?.bookmarks}
+                  disabled={busy || savedGroups || !profile?.bookmarks}
+                  onCheckedChange={(value) => {
+                    setBookmarks(value === true);
+                    setPreview(undefined);
+                  }}
+                />
+                {profile?.browser === 'Arc'
+                  ? 'Sidebar tabs and folders'
+                  : 'Bookmarks and folders'}
+              </label>
+              <label htmlFor="migration-history">
+                <Checkbox
+                  id="migration-history"
+                  checked={history && !!profile?.history}
+                  disabled={busy || savedGroups || !profile?.history}
+                  onCheckedChange={(value) => {
+                    setHistory(value === true);
+                    setPreview(undefined);
+                  }}
+                />
+                Browsing history
+              </label>
+              <label htmlFor="migration-cookies">
+                <Checkbox
+                  id="migration-cookies"
+                  checked={cookies}
+                  disabled={busy || savedGroups || !profile?.cookies}
+                  onCheckedChange={(value) => {
+                    setCookies(value === true);
+                    setPreview(undefined);
+                  }}
+                />
+                Cookies and website logins
+              </label>
+              <p className="preference-note">
+                {profile?.cookies
+                  ? 'Cookie transfer needs macOS Keychain access. Some websites will ask you to sign in again.'
+                  : 'Cookie transfer is currently available for supported Chromium browsers on macOS.'}
+              </p>
+            </div>
+            <ImportOrganizationChoices
+              singleCollection
+              source={profile?.browser || ''}
+              options={organization}
+              onChange={setOrganization}
+              disabled={busy || savedGroups}
+            />
+            {preview?.warnings?.map((warning) => (
+              <p className="preference-note" key={warning}>
+                {warning}
+              </p>
+            ))}
+            {busy && progress && (
+              <div role="status" aria-live="polite">
+                {progress.stage}
+                {progress.total > 0
+                  ? ` · ${progress.completed} / ${progress.total}`
+                  : ''}
+                <progress
+                  aria-label="Import progress"
+                  max={progress.total || undefined}
+                  value={progress.total ? progress.completed : undefined}
+                />
+              </div>
+            )}
+            <div className="migration-actions">
+              {preview ? (
+                <>
+                  <span>
+                    {preview.links.length}{' '}
+                    {profile?.browser === 'Arc' ? 'saved tabs' : 'bookmarks'} ·{' '}
+                    {preview.history} history entries
+                    {preview.cookies ? ' · cookies included' : ''}
+                  </span>
+                  <Button disabled={busy} onClick={migrate}>
+                    {savedGroups
+                      ? 'Retry remaining data'
+                      : 'Import into collection'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={async () => {
+                      try {
+                        await window.electron.browserMigration('discard', {
+                          token: preview.token,
+                        });
+                        setRecoveries((current) =>
+                          current.filter((item) => item.token !== preview.token)
+                        );
+                        setPreview(undefined);
+                      } catch (error) {
+                        setMessage((error as Error).message);
+                      }
+                    }}
+                  >
+                    {savedGroups ? 'Finish without remaining data' : 'Cancel'}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  disabled={
+                    busy ||
+                    !profile ||
+                    !(
+                      (bookmarks && profile.bookmarks) ||
+                      (history && profile.history) ||
+                      cookies
+                    )
+                  }
+                  onClick={review}
+                >
+                  {busy ? 'Working…' : 'Review import'}
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </div>
       {message && (
         <p ref={feedback} role="alert" className="migration-feedback">

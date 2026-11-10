@@ -40,6 +40,8 @@ export function GroupPicker({
   showTriggerIcon = true,
   onContextMenu,
   onOpenChange,
+  footer,
+  triggerDetail,
 }: {
   options: GroupOption[];
   value: string;
@@ -53,6 +55,8 @@ export function GroupPicker({
   showTriggerIcon?: boolean;
   onContextMenu?: (id: string) => void;
   onOpenChange?: (open: boolean) => void;
+  footer?: ReactNode;
+  triggerDetail?: string;
 }) {
   const tabs = AppManager.getAll();
   const renderIcon = (option: GroupOption) => {
@@ -155,6 +159,9 @@ export function GroupPicker({
           <span className="group-picker-label">
             {selected?.name || (allowCustom && value) || 'Choose a group'}
           </span>
+          {triggerDetail && (
+            <span className="group-picker-detail">{triggerDetail}</span>
+          )}
           <ChevronDown size={14} />
         </Button>
       </Popover.Trigger>
@@ -237,6 +244,7 @@ export function GroupPicker({
         {matches.length > visible.length && (
           <p>Showing 100 of {matches.length}. Search to narrow the list.</p>
         )}
+        {footer}
       </PanelPopoverContent>
     </Popover.Root>
   );

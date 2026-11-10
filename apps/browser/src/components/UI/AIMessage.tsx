@@ -71,7 +71,10 @@ export function renderAIMessage(text: string, groups: AIGroup[] = []) {
   const document = new DOMParser().parseFromString(clean, 'text/html');
   document.querySelectorAll('a').forEach((link) => {
     try {
-      const url = new URL(link.getAttribute('href') || '');
+      const href = link.getAttribute('href') || '';
+      if (/^#kudiumbrowser-(?:note|activity)-[a-zA-Z0-9_-]{1,100}$/.test(href))
+        return;
+      const url = new URL(href);
       if (!['http:', 'https:', 'mailto:'].includes(url.protocol))
         throw new Error('Unsupported link');
       link.href = url.href;
@@ -153,6 +156,34 @@ export function AIMessage({
   const element = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const click = (event: MouseEvent) => {
+      const activity = (event.target as HTMLElement).closest(
+        'a[href^="#kudiumbrowser-activity-"]'
+      );
+      if (activity) {
+        event.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('kudiumbrowser-open-activity', {
+            detail: activity
+              .getAttribute('href')!
+              .slice('#kudiumbrowser-activity-'.length),
+          })
+        );
+        return;
+      }
+      const noteLink = (event.target as HTMLElement).closest(
+        'a[href^="#kudiumbrowser-note-"]'
+      );
+      if (noteLink) {
+        event.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('kudiumbrowser-open-note', {
+            detail: noteLink
+              .getAttribute('href')!
+              .slice('#kudiumbrowser-note-'.length),
+          })
+        );
+        return;
+      }
       const link = (event.target as HTMLElement).closest(
         'a.ai-inline-reference'
       );

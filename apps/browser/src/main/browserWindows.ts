@@ -6,6 +6,7 @@ import type {
   WebContents,
 } from 'electron';
 import { randomUUID } from 'crypto';
+import { presentSnapshots } from './snapshotPresentation';
 import type {
   BrowserLayout,
   BrowserState,
@@ -32,6 +33,7 @@ type Host = {
   stamp: number;
   signature?: string;
   overlayGeneration?: number;
+  pendingOverlay?: BrowserLayout;
 };
 type Drag = {
   source: number;
@@ -261,13 +263,21 @@ export class BrowserWindows {
     };
   }
 
-  setLayout(window: BrowserWindow, layout: BrowserLayout) {
+  setLayout(window: BrowserWindow, layout: BrowserLayout, prepared = false) {
     const host = this.hosts.get(window.id);
     if (!host || !isBrowserLayout(layout)) return;
-    if (Boolean(layout.suspended) !== Boolean(host.layout.suspended))
+    if (!layout.suspended && host.pendingOverlay) {
       host.overlayGeneration = (host.overlayGeneration || 0) + 1;
-    if (layout.suspended && !host.layout.suspended) {
-      const generation = host.overlayGeneration;
+      host.pendingOverlay = undefined;
+    }
+    if (layout.suspended && !host.layout.suspended && !prepared) {
+      if (host.pendingOverlay) {
+        host.pendingOverlay = layout;
+        return;
+      }
+      host.pendingOverlay = layout;
+      const generation = (host.overlayGeneration || 0) + 1;
+      host.overlayGeneration = generation;
       Promise.all(
         host.layout.visible.map(async (slot) => {
           const view = this.runtime?.view(slot.id);
@@ -282,19 +292,36 @@ export class BrowserWindows {
           }
         })
       )
-        .then((frames) => {
+        .then(async (frames) => {
           if (
-            !window.isDestroyed() &&
-            host.layout.suspended &&
-            host.overlayGeneration === generation
+            window.isDestroyed() ||
+            host.overlayGeneration !== generation ||
+            !host.pendingOverlay
           )
-            window.webContents.send(
-              'browser-snapshots',
-              frames.filter(Boolean)
-            );
+            return undefined;
+          await presentSnapshots(
+            window,
+            frames.filter(
+              (frame): frame is NonNullable<typeof frame> =>
+                !!frame && this.allows(window, frame.id)
+            )
+          );
+          if (
+            window.isDestroyed() ||
+            host.overlayGeneration !== generation ||
+            !host.pendingOverlay
+          )
+            return undefined;
+          const pending = host.pendingOverlay;
+          host.pendingOverlay = undefined;
+          this.setLayout(window, pending, true);
           return undefined;
         })
-        .catch(() => {});
+        .catch(() => {
+          if (host.overlayGeneration === generation)
+            host.pendingOverlay = undefined;
+        });
+      return;
     }
     host.layout = {
       ...layout,
@@ -421,6 +448,11 @@ export class BrowserWindows {
   }
 
   locksChanged() {
+    this.hosts.forEach((host) => {
+      host.overlayGeneration = (host.overlayGeneration || 0) + 1;
+      host.pendingOverlay = undefined;
+    });
+    this.broadcast('browser-snapshots', []);
     this.broadcast('browser-window-mirrors', []);
     this.changed();
   }

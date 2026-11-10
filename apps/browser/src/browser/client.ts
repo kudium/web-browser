@@ -11,6 +11,7 @@ export const browser: BrowserClient = {
   downloadRecovery: () => window.electron.browser.downloadRecovery(),
   downloadThumbnail: (id) => window.electron.browser.downloadThumbnail(id),
   onDownloads: (callback) => window.electron.browser.onDownloads(callback),
+  tooltip: (request) => window.electron.browser.tooltip(request),
   nativeMenu: (items) => window.electron.browser.nativeMenu(items),
   confirm: (prompt) => window.electron.browser.confirm(prompt),
   showEmojiPicker: () => window.electron.browser.showEmojiPicker(),
@@ -18,7 +19,8 @@ export const browser: BrowserClient = {
   onTabRequest: (callback) => window.electron.browser.onTabRequest(callback),
   sync: (layout) => window.electron.browser.sync(layout),
   command: (command) => window.electron.browser.command(command),
-  accountSync: (action, input) => window.electron.browser.accountSync(action, input),
+  accountSync: (action, input) =>
+    window.electron.browser.accountSync(action, input),
   preferences: (action, patch) =>
     window.electron.browser.preferences(action, patch),
   appUpdates: (action) => window.electron.browser.appUpdates(action),

@@ -11,6 +11,7 @@ export interface VaultItem {
   kind: 'login' | 'profile' | 'payment' | 'knowledge' | 'note';
   version?: 2;
   sensitive?: boolean;
+  asRead?: boolean;
   scope?: string;
   source?: { label: string; url?: string; capturedAt: string };
   notes?: string;

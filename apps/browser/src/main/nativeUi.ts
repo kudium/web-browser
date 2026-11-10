@@ -9,7 +9,10 @@ import {
   IpcMainInvokeEvent,
 } from 'electron';
 import path from 'path';
+import { NativeTooltip, validateTooltip } from './nativeTooltip';
+import type { NativeTooltipRequest } from '../browser/nativeUi';
 import { parseNativeMenu } from './nativeMenu';
+import { isAssistantPanelOf } from './windowNavigation';
 import { showBrowserDialog } from './dialogs';
 import { NativeMenuItem, NativePrompt } from '../browser/nativeUi';
 import { loadLocalIcon } from './localImage';
@@ -28,11 +31,23 @@ export function registerNativeUi(
       !isTrusted(event.sender)
     )
       throw new Error('Untrusted native UI request');
-    return owner;
+    const focused = BrowserWindow.getFocusedWindow();
+    return focused && isAssistantPanelOf(focused.webContents, event.sender)
+      ? focused
+      : owner;
   };
   const stillTrusted = (event: IpcMainInvokeEvent, owner: BrowserWindow) => {
     try {
-      return ownerOf(event) === owner;
+      const requester = BrowserWindow.fromWebContents(event.sender);
+      return (
+        !!requester &&
+        !requester.isDestroyed() &&
+        !owner.isDestroyed() &&
+        event.senderFrame === event.sender.mainFrame &&
+        isTrusted(event.sender) &&
+        (requester === owner ||
+          isAssistantPanelOf(owner.webContents, event.sender))
+      );
     } catch {
       return false;
     }
@@ -62,6 +77,20 @@ export function registerNativeUi(
       },
     };
   };
+  const tooltips = new WeakMap<BrowserWindow, NativeTooltip>();
+  ipcMain.handle(
+    'browser-native-tooltip',
+    (event, request: NativeTooltipRequest) => {
+      const owner = ownerOf(event);
+      validateTooltip(request);
+      let tooltip = tooltips.get(owner);
+      if (!tooltip) {
+        tooltip = new NativeTooltip(owner);
+        tooltips.set(owner, tooltip);
+      }
+      return tooltip.update(request);
+    }
+  );
   ipcMain.handle('browser-native-menu', (event, items: unknown) => {
     const owner = ownerOf(event);
     return new Promise<string | null>((resolve) => {
@@ -90,14 +119,19 @@ export function registerNativeUi(
             ? { type: 'separator' }
             : {
                 label: item.label,
+                type: item.type,
+                checked: item.checked,
+                role: item.role,
                 enabled: item.enabled,
                 submenu: item.submenu ? compile(item.submenu) : undefined,
-                click: () =>
-                  finish(
-                    item.enabled !== false && !item.submenu
-                      ? item.id || null
-                      : null
-                  ),
+                click: item.role
+                  ? undefined
+                  : () =>
+                      finish(
+                        item.enabled !== false && !item.submenu
+                          ? item.id || null
+                          : null
+                      ),
               }
         );
       const menu = Menu.buildFromTemplate(compile(entries));
