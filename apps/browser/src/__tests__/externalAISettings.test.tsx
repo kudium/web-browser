@@ -361,6 +361,7 @@ it('locates missing agents and keeps setup failures visible outside advanced set
       <ExternalAISettings />
     </Theme>
   );
+  fireEvent.click(await screen.findByRole('button', { name: /^OpenClaw/ }));
   const locate = await screen.findByRole('button', { name: 'Locate OpenClaw' });
   await waitFor(() => expect(locate).toBeEnabled());
   (window.electron.ai.personalAgents as jest.Mock).mockRejectedValueOnce(
