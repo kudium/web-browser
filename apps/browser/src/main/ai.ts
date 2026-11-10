@@ -4568,6 +4568,7 @@ export function registerAI(
         'Kudium manages execution pauses and continuation. A prior runtime pause is not a blocker or a request to change the task. Continue the original requested work using existing tool results. Ask the user only for genuinely missing information or human action, and report completion only after verifying it.',
     });
     const catalog = new AIToolCatalog(messages);
+    catalog.preloadIntent(prompt);
     const usage = new AIUsageTracker();
     const recoveryObservation =
       recovery || taskId ? new AIRecoveryObservation() : undefined;
@@ -4608,6 +4609,10 @@ export function registerAI(
         emit({ type: 'status', text: 'Thinking…' });
         inferencePending = true;
         compactAIToolContext(messages);
+        const runtimeGuide = catalog.guidance();
+        if (runtimeGuide && !messages.some((message) => message.role === 'system' && message.content === runtimeGuide))
+          messages.push({ role: 'system', content: runtimeGuide });
+        catalog.recordRequest();
         const payload = await requestAIProvider(
           `${settings.endpoint}/${
             isClaude(settings.endpoint) ? 'messages' : 'chat/completions'
@@ -4679,7 +4684,7 @@ export function registerAI(
               ? { contextNotice: historyContext.notice }
               : {}),
             ...(!message.tool_calls?.length
-              ? { usage: usage.snapshot(), execution: execution.snapshot() }
+              ? { usage: { ...usage.snapshot(), ...catalog.diagnostics() }, execution: execution.snapshot() }
               : {}),
           });
         if (!message.tool_calls?.length) {
@@ -4729,7 +4734,7 @@ export function registerAI(
             });
             usage.tool();
             if (call.function.name === 'discover_tools') {
-              output = catalog.load(args.family);
+              output = catalog.discover(args);
             } else if (call.function.name === 'update_task_memory') {
               if (taskId)
                 throw new Error('Working notes are available only in chats.');
@@ -4815,7 +4820,7 @@ export function registerAI(
         type: 'handoff',
         resumable: true,
         text: summary,
-        usage: usage.snapshot(),
+        usage: { ...usage.snapshot(), ...catalog.diagnostics() },
         execution: { ...progress, incomplete: true },
       });
       return { state: 'paused', summary };
@@ -4871,7 +4876,7 @@ export function registerAI(
         type: 'error',
         resumable: !!activeCheckpoint,
         text: signal.aborted ? cancelledText : (error as Error).message,
-        usage: usage.snapshot(),
+        usage: { ...usage.snapshot(), ...catalog.diagnostics() },
         execution: { ...execution.snapshot(), incomplete: true },
       });
       let outcomeState: AITaskOutcome['state'] = 'failed';
