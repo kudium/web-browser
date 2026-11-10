@@ -7,6 +7,10 @@ export interface AISettings {
   thinking?: AIThinking;
 }
 export interface AIUsage {
+  /** Local schema characters, not provider-reported tokens. */
+  toolSchemaCharacters?: number;
+  toolDiscoveryCalls?: number;
+  toolDiscoveryMisses?: number;
   requestAttempts?: number;
   streamingFallbacks?: number;
   requestsWithUsage?: number;

@@ -30,6 +30,105 @@ test('starts with smaller schemas and loads every optional tool without executio
   expect(() => catalog.load('execute_everything')).toThrow('supported');
 });
 
+test('advertises hooks compactly and loads schemas on demand', () => {
+  [
+    new AIToolCatalog(),
+    new AIToolCatalog([
+      { role: 'assistant', content: 'I cannot create hooks.' },
+    ]),
+  ].forEach((catalog) => {
+    ['read_site_hooks', 'configure_site_hooks'].forEach((name) => {
+      expect(catalog.has(name)).toBe(false);
+      expect(catalog.tools().some((tool) => tool.function.name === name)).toBe(
+        false
+      );
+      expect(catalog.tools()[0].function.description).toContain(name);
+    });
+    expect(catalog.has('find_hook_personal_data')).toBe(false);
+    catalog.load('site_customization');
+    expect(catalog.has('find_hook_personal_data')).toBe(true);
+    expect(
+      catalog
+        .tools()
+        .filter((tool) => tool.function.name === 'configure_site_hooks')
+    ).toHaveLength(1);
+  });
+});
+
+test('searches intent with bounded schemas and restores query discovery', () => {
+  const catalog = new AIToolCatalog();
+  const query = 'customize JavaScript CSS hook';
+  const found = catalog.discover({ query });
+  expect(found.loaded).toContain('configure_site_hooks');
+  expect(found.loaded).toContain('read_site_hooks');
+  expect(found.loaded.length).toBeLessThanOrEqual(5);
+  expect(catalog.has('project_terminal')).toBe(false);
+  expect(() => catalog.discover({ query: '' })).toThrow();
+  expect(() => catalog.discover({ query: 'x'.repeat(241) })).toThrow();
+  expect(catalog.discover({ query: 'zzzzzzzz' }).loaded).toEqual([]);
+  const recovered = new AIToolCatalog([
+    {
+      tool_calls: [
+        {
+          function: {
+            name: 'discover_tools',
+            arguments: JSON.stringify({ query }),
+          },
+        },
+      ],
+    },
+  ]);
+  expect(recovered.has('configure_site_hooks')).toBe(true);
+  expect(recovered.has('project_terminal')).toBe(false);
+});
+
+test('every registered tool is visible as a schema or directory entry', () => {
+  const catalog = new AIToolCatalog();
+  const directory = catalog.tools()[0].function.description;
+  aiProviderTools().forEach((tool) => {
+    expect(
+      catalog.has(tool.function.name) || directory.includes(tool.function.name)
+    ).toBe(true);
+  });
+  expect(
+    catalog.discover({ query: 'schedule reminder task' }).loaded
+  ).toContain('create_task');
+  expect(catalog.discover({ query: 'manage_note' }).loaded[0]).toBe(
+    'manage_note'
+  );
+});
+
+test('preloads narrow workflows from user intent without executing them', () => {
+  for (const prompt of [
+    'auto-scroll TikTok',
+    'scroll automatically',
+    'create a hook for this page',
+    'watch for price changes',
+  ]) {
+    const catalog = new AIToolCatalog();
+    expect(catalog.preloadIntent(prompt)).toEqual([
+      'read_site_hooks',
+      'configure_site_hooks',
+    ]);
+    expect(catalog.has('find_hook_personal_data')).toBe(false);
+    expect(catalog.guidance()).toContain('10 seconds');
+    expect(catalog.discover({ query: prompt }).loaded).toEqual([
+      'read_site_hooks',
+      'configure_site_hooks',
+    ]);
+  }
+  const catalog = new AIToolCatalog();
+  expect(catalog.preloadIntent('summarize this article')).toEqual([]);
+  expect(catalog.guidance()).toBe('');
+  catalog.recordRequest();
+  catalog.discover({ query: 'zzzzzzzz' });
+  expect(catalog.diagnostics()).toMatchObject({
+    toolDiscoveryCalls: 1,
+    toolDiscoveryMisses: 1,
+  });
+  expect(catalog.diagnostics().toolSchemaCharacters).toBeGreaterThan(0);
+});
+
 test('restores loaded tool definitions on recovery without changing permissions', () => {
   const catalog = new AIToolCatalog([
     {
