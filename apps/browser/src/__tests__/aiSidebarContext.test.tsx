@@ -165,3 +165,57 @@ it('selects scope and model in the composer and expands scope explicitly for men
     })
   );
 });
+
+it('offers thinking controls for Ollama and saves the selected setting', async () => {
+  const settings = {
+    endpoint: 'http://localhost:11434/v1',
+    model: 'qwen3:8b',
+    hasKey: false,
+    remembered: false,
+  };
+  const ai = {
+    settings: jest
+      .fn()
+      .mockImplementation((patch) =>
+        Promise.resolve({ ...settings, ...patch })
+      ),
+    skills: jest.fn().mockResolvedValue([]),
+    models: jest.fn().mockResolvedValue(['qwen3:8b']),
+    groups: jest.fn().mockResolvedValue({ groupId: null, groups: [] }),
+    permissions: jest.fn().mockResolvedValue({
+      mode: 'standard',
+      effectiveMode: 'standard',
+      taskOnly: false,
+    }),
+    mcpStatus: jest.fn().mockResolvedValue({ running: false }),
+    taskStatus: jest.fn().mockResolvedValue({ busy: false, resumable: false }),
+    onEvent: () => () => {},
+    onMCP: () => () => {},
+    onSettings: () => () => {},
+    onScope: () => () => {},
+    onPermissions: () => () => {},
+  };
+  Object.assign(window, { electron: { ai } });
+  render(<AISidebar />);
+  const control = await screen.findByRole('button', { name: 'AI model' });
+  expect(
+    screen.queryByRole('button', { name: 'Thinking level' })
+  ).not.toBeInTheDocument();
+  fireEvent.click(control);
+  fireEvent.click(await screen.findByRole('button', { name: 'Thinking: On' }));
+  await waitFor(() =>
+    expect(ai.settings).toHaveBeenLastCalledWith({
+      endpoint: settings.endpoint,
+      model: settings.model,
+      remember: false,
+      thinking: 'on',
+    })
+  );
+  expect(screen.getByRole('button', { name: 'Thinking: On' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(screen.getByRole('button', { name: 'AI model' })).toHaveTextContent(
+    'On'
+  );
+});

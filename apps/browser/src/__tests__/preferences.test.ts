@@ -246,14 +246,15 @@ it('persists sync consent and category selections without claiming a cloud conne
     },
   });
   expect(getBrowserPreferences().cloudSync).toEqual({
-    enabled: true,
-    provider: 'icloud',
+    enabled: false,
+    provider: 'kudiumbrowser',
+    icloud: true,
     categories: {
       workspace: true,
       openTabs: false,
       preferences: true,
       passwords: true,
-      notes: false,
+      notes: true,
     },
   });
   expect(() =>

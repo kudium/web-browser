@@ -88,3 +88,21 @@ test('title browsing does not decrypt note bodies and edits do not rewrite other
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('unread state survives restart and read-only changes persist without changing content', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'unread-notes-'));
+  try {
+    const file = path.join(root, 'notes.bin');
+    const storage = ordinaryNotesStorage(file);
+    storage.upsert!({ ...note, asRead: false });
+    const restarted = ordinaryNotesStorage(file);
+    expect(restarted.summaries!()[0].asRead).toBe(false);
+    const opened = restarted.get!(note.id)!;
+    restarted.upsert!({ ...opened, asRead: true });
+    const read = ordinaryNotesStorage(file);
+    expect(read.summaries!()[0].asRead).toBe(true);
+    expect(read.get!(note.id)!.notes).toBe(note.notes);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

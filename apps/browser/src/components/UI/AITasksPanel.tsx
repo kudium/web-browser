@@ -113,8 +113,18 @@ export function AITasksPanel({
   if (kind === 'daily') scheduleLabel = `Daily at ${dailyTime}`;
   let saveLabel = draft ? 'Save task' : 'Generate task';
   if (saving) saveLabel = 'Working…';
+  const newTask = () => {
+    setCreating(true);
+    setDraft(undefined);
+    setName('');
+  };
   return (
-    <section className="ai-tasks-panel" aria-label="Saved AI tasks">
+    <section
+      className={`ai-tasks-panel${
+        !loading && !error && !tasks.length ? ' ai-tasks-empty' : ''
+      }`}
+      aria-label="Saved AI tasks"
+    >
       <div className="ai-tasks-heading">
         <strong>Tasks</strong>
       </div>
@@ -281,16 +291,21 @@ export function AITasksPanel({
         </Button>
       )}
       <SettingsLibrary
+        emptyContent={
+          <div className="ai-tasks-welcome">
+            <strong>{loading ? 'Loading tasks…' : 'No tasks yet'}</strong>
+            <p>Save instructions to run on demand or on a schedule.</p>
+            <Button variant="soft" color="gray" onClick={newTask}>
+              <Plus size={16} /> New task
+            </Button>
+          </div>
+        }
         renderToolbar={() => (
           <Button
             variant="soft"
             color="gray"
             type="button"
-            onClick={() => {
-              setCreating(!creating);
-              setDraft(undefined);
-              setName('');
-            }}
+            onClick={newTask}
             aria-label="New AI task"
           >
             <Plus size={16} />

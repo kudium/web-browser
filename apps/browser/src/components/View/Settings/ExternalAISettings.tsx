@@ -153,6 +153,9 @@ export function ExternalAISettings() {
               </PreferenceHint>
             </div>
             <p className="ai-model-help">Enable control, then run setup.</p>
+            <code className="external-ai-setup-command">
+              npx @kudiumbrowser/mcp setup
+            </code>
           </div>
           <Button
             variant="soft"

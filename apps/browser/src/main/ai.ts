@@ -13,6 +13,16 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
+import {
+  AI_RUN_STEP_LIMIT,
+  checkpointRoundLimit,
+  extendCheckpointBudget,
+  AI_CONTINUATION_TTL,
+  AICheckpointStore,
+  AICheckpoint,
+} from './aiCheckpoint';
+import { aiThinking } from '../browser/aiThinking';
+import { isOllamaEndpoint } from '../browser/aiProviders';
 import { storageRecoveryMessage } from '../browser/storageRecovery';
 import { parseAISuggestions } from '../browser/aiSuggestions';
 import { getBrowserWindows } from './browserWindows';
@@ -32,11 +42,16 @@ import type {
 import { AIConversationStore } from './aiConversations';
 import { AIOriginalUploads } from './aiOriginalUploads';
 import { AIComposerAttachments } from './aiComposer';
+import { AIMessageQueue } from './aiMessageQueue';
 import { readAIAttachmentFile } from './aiAttachmentFile';
 import { readBoundedLocalFile } from './boundedLocalFile';
 import { createAIPrivateInputLease } from './aiPrivateInputLease';
 import { watchIPCRequest } from './ipcRequestBinding';
-import type { AIComposerAttachment } from '../browser/aiComposer';
+import type {
+  AIComposerAttachment,
+  AIComposerTask,
+  AIQueueRequest,
+} from '../browser/aiComposer';
 import { aiContextContent, resolveAIContexts } from '../browser/aiContext';
 import { AIComposerPreferences } from './aiComposerPreferences';
 import {
@@ -60,6 +75,8 @@ import { aiProjectTool, requiresAIProjectApproval } from './aiProject';
 import { aiProjectGroups, aiProjectReference } from './aiGroupProjects';
 import { isGroupLocked } from './groupLocks';
 import { hookNotifications, hookScriptHash } from './hookNotifications';
+import { browserActivity } from './activity';
+import { saveNoteWithActivity } from './noteActivity';
 import { validDeveloperConfig } from '../browser/siteDeveloper';
 import type { HookNotificationBinding } from '../browser/siteDeveloper';
 import type { VaultItem } from '../browser/passwordManager';
@@ -128,7 +145,6 @@ import {
 } from './aiDataDisclosure';
 import { AIActivityLayer } from './aiActivityLayer';
 import { AIRecoveryObservation } from './aiRecovery';
-import { AICheckpointStore, AICheckpoint } from './aiCheckpoint';
 import { captureAIPage } from './aiScreenshot';
 import { aiHandoffReason } from '../browser/aiHandoff';
 import { aiSelectValues, aiOptionRange } from '../browser/aiSelect';
@@ -176,7 +192,13 @@ let externalShutdown = Promise.resolve();
 let humanControl = false;
 let externalRecovery: AIRecoveryObservation | undefined;
 let activeConfiguration:
-  | { settings: typeof AI_DEFAULTS; key: string; remembered: boolean }
+  | {
+      settings: typeof AI_DEFAULTS & {
+        thinking?: import('../browser/aiThinking').AIThinking;
+      };
+      key: string;
+      remembered: boolean;
+    }
   | undefined;
 
 // Paused context survives window recreation and encrypted process restart.
@@ -1022,7 +1044,9 @@ export function registerAI(
     path.join(app.getPath('userData'), 'ai-upload-cache')
   );
   const settingsFile = path.join(app.getPath('userData'), 'ai-settings.json');
-  let settings = activeConfiguration?.settings || { ...AI_DEFAULTS };
+  let settings: typeof AI_DEFAULTS & {
+    thinking?: import('../browser/aiThinking').AIThinking;
+  } = activeConfiguration?.settings || { ...AI_DEFAULTS };
   let key = activeConfiguration?.key || '';
   let remembered = activeConfiguration?.remembered || false;
   if (!activeConfiguration) {
@@ -1031,6 +1055,7 @@ export function registerAI(
       settings = {
         endpoint: aiProviderURL(saved.endpoint).replace(/\/$/, ''),
         model: String(saved.model).slice(0, 120),
+        thinking: aiThinking(saved.thinking),
       };
       if (saved.key && safeStorage.isEncryptionAvailable()) {
         key = safeStorage.decryptString(Buffer.from(saved.key, 'base64'));
@@ -1043,6 +1068,13 @@ export function registerAI(
   activeConfiguration = { settings, key, remembered };
   let mcp: ReturnType<typeof createMCPController>;
   let run: AbortController | undefined;
+  let composerQueue:
+    | AIMessageQueue<{
+        input: string | AIComposerTask;
+        chatId: string;
+        scope: string | null;
+      }>
+    | undefined;
   let taskDraftRun: AbortController | undefined;
   let disclosureTask = '';
   let disclosureTaskPrivate = false;
@@ -1497,6 +1529,9 @@ export function registerAI(
     });
   };
   const emit = (event: AIEvent) => {
+    if (event.type === 'error' || event.type === 'handoff')
+      composerQueue?.pause();
+    if (event.type === 'done') setImmediate(() => composerQueue?.pump());
     rememberEvent(event);
     if (event.type === 'status') {
       workingTabId = event.tabId || scopeTab();
@@ -2453,6 +2488,95 @@ export function registerAI(
     if (!contents || contents.isDestroyed())
       throw new Error('Select this tab to wake it before reading.');
     const dataScope = tab ? personalDataScope(tab) : undefined;
+    if (name === 'create_activity') {
+      return bindAction(tab, signal, async (checkOwner) => {
+        checkOwner();
+        const input = {
+          title: args.title,
+          message: args.activityMessage,
+          url: args.url,
+          noteId: args.recordId,
+        };
+        if (input.noteId !== undefined) {
+          const note = passwordVault()
+            .noteSummaries()
+            .find((entry) => entry.id === input.noteId);
+          if (!note || (note.scope && note.scope !== dataScope))
+            throw new Error('Note outside this group or unavailable.');
+        }
+        return browserActivity().create(
+          input as import('../browser/activity').ActivityInput,
+          {
+            source: 'ai',
+            scope: dataScope,
+            groupId: tab ? groupKey(tab) : undefined,
+          }
+        );
+      });
+    }
+    if (name === 'manage_note') {
+      return bindAction(tab, signal, async (checkOwner) => {
+        const vault = passwordVault();
+        const action = String(args.noteAction || '');
+        if (!['create', 'update', 'delete'].includes(action))
+          throw new Error('Choose create, update or delete.');
+        let scope = dataScope;
+        let existing:
+          | import('../browser/passwordManager').VaultItem
+          | undefined;
+        if (action !== 'create') {
+          const summary = vault
+            .noteSummaries()
+            .find((note) => note.id === args.recordId);
+          if (
+            !summary ||
+            (summary.scope && summary.scope !== dataScope) ||
+            !summary.allowAI
+          )
+            throw new Error('Note unavailable or AI access is off.');
+          if (summary.sensitive) await authenticatePersonalData();
+          checkOwner();
+          scope = summary.scope;
+          existing = vault.edit(summary.id, scope);
+          if (!existing.allowAI) throw new Error('Note AI access was revoked.');
+        } else if (args.destination === 'browser') scope = undefined;
+        checkOwner();
+        if (action === 'delete') {
+          vault.delete(existing!.id, scope);
+          return { recordId: existing!.id, deleted: true };
+        }
+        const title = args.title ?? existing?.title;
+        const body = args.noteBody ?? existing?.notes;
+        if (
+          typeof title !== 'string' ||
+          !title.trim() ||
+          title.length > 120 ||
+          typeof body !== 'string' ||
+          body.length > 100000
+        )
+          throw new Error(
+            'Provide a title (up to 120 characters) and noteBody (up to 100,000 characters).'
+          );
+        return saveNoteWithActivity(
+          {
+            ...(existing || {
+              id: '',
+              kind: 'note',
+              origin: '',
+              username: '',
+              password: '',
+              fields: [],
+              allowAI: true,
+            }),
+            title,
+            notes: body,
+            asRead: false,
+          },
+          scope,
+          { source: 'ai', groupId: tab ? groupKey(tab) : undefined }
+        );
+      });
+    }
     if (name === 'request_personal_data') {
       return bindAction(tab, signal, async (checkOwner, retainUntil) => {
         const epoch = personalDataRevision();
@@ -4422,6 +4546,27 @@ export function registerAI(
           : prompt,
       },
     ];
+    if (recovery && prompt) {
+      messages.push(
+        {
+          role: 'system',
+          content:
+            'The latest user message updates the request after a runtime pause. Retain completed tool results, prioritize the latest request, and answer status questions using those results plus fresh verification. Do not repeat completed actions or assume the user requested new alternatives.',
+        },
+        {
+          role: 'user',
+          retainImages: !!attachedContent.length,
+          content: attachedContent.length
+            ? [{ type: 'text', text: prompt }, ...attachedContent]
+            : prompt,
+        }
+      );
+    }
+    messages.push({
+      role: 'system',
+      content:
+        'Kudium manages execution pauses and continuation. A prior runtime pause is not a blocker or a request to change the task. Continue the original requested work using existing tool results. Ask the user only for genuinely missing information or human action, and report completion only after verifying it.',
+    });
     const catalog = new AIToolCatalog(messages);
     const usage = new AIUsageTracker();
     const recoveryObservation =
@@ -4430,6 +4575,9 @@ export function registerAI(
     let inferencePending = false;
     const execution = new AIExecutionTracker(messages);
     let requestedCommandReview = false;
+    const roundLimit = recovery
+      ? checkpointRoundLimit(recovery)
+      : AI_RUN_STEP_LIMIT;
     let currentStep = recovery?.step ?? 0;
     const reviewPrivateContext = requiresAIContextReview(
       disclosureTaskPrivate,
@@ -4448,9 +4596,15 @@ export function registerAI(
         );
         reviewingRecovery = false;
       }
-      for (let step = currentStep; step < 30; step += 1) {
+      for (let step = currentStep; step < roundLimit; step += 1) {
         currentStep = step;
         signal.throwIfAborted();
+        if (step === roundLimit - 6)
+          messages.push({
+            role: 'system',
+            content:
+              'This execution segment is nearing a runtime pause. Focus on completing and verifying the original task. Inspect existing tool results and avoid repeating completed actions. If blocked, describe the actual blocker and completed work. The runtime preserves progress and offers Continue task; do not invent a step limit, ask for a new task, or offer optional alternatives merely because of the runtime budget.',
+          });
         emit({ type: 'status', text: 'Thinking…' });
         inferencePending = true;
         compactAIToolContext(messages);
@@ -4467,7 +4621,7 @@ export function registerAI(
                 settings.model,
                 messages,
                 catalog.tools(),
-                { cacheSystem: true }
+                { cacheSystem: true, thinking: settings.thinking }
               )
             ),
           },
@@ -4636,7 +4790,8 @@ export function registerAI(
           activeCheckpoint = {
             privateData: disclosureTaskPrivate,
             messages,
-            step: step + 1,
+            roundLimit,
+            step: (step + 1) % roundLimit,
             endpoint: settings.endpoint,
             expires: Date.now() + 15 * 60 * 1000,
             reason: handoffReason,
@@ -4644,13 +4799,26 @@ export function registerAI(
           return { state: 'paused', summary: handoffReason };
         }
       }
+      const progress = execution.snapshot();
+      const summary = `Task paused before completion after ${roundLimit} AI rounds. Progress saved: ${progress.applied} actions applied, ${progress.verifiedWrites} file writes verified, ${progress.errors} tool errors. Continue task to finish from this point; completed tool results are retained.`;
+      activeCheckpoint = {
+        privateData: disclosureTaskPrivate,
+        messages,
+        step: 0,
+        roundLimit,
+        pauseKind: 'budget',
+        endpoint: settings.endpoint,
+        expires: Date.now() + AI_CONTINUATION_TTL,
+        reason: summary,
+      };
       emit({
-        type: 'message',
-        text: 'Reached the 30-step limit. Review progress and give me the next task.',
+        type: 'handoff',
+        resumable: true,
+        text: summary,
         usage: usage.snapshot(),
-        execution: { ...execution.snapshot(), incomplete: true },
+        execution: { ...progress, incomplete: true },
       });
-      return { state: 'failed', summary: 'Reached the 30-step limit.' };
+      return { state: 'paused', summary };
     } catch (error) {
       // A refused or unavailable review must not consume the original paused
       // context. Only an explicit later resume may retry; Stop still discards it.
@@ -4679,7 +4847,8 @@ export function registerAI(
         activeCheckpoint = {
           privateData: disclosureTaskPrivate,
           messages,
-          step: Math.min(currentStep + 1, 29),
+          roundLimit,
+          step: Math.min(currentStep + 1, roundLimit - 1),
           endpoint: settings.endpoint,
           expires: Date.now() + 15 * 60 * 1000,
           reason: 'You have control. Continue when ready.',
@@ -4689,6 +4858,7 @@ export function registerAI(
         activeCheckpoint = {
           privateData: disclosureTaskPrivate,
           messages,
+          roundLimit,
           step: currentStep,
           endpoint: settings.endpoint,
           expires: Date.now() + 15 * 60 * 1000,
@@ -4739,7 +4909,7 @@ export function registerAI(
           run ||
           externalRun ||
           dialogs.busy() ||
-          !key ||
+          (!key && !isOllamaEndpoint(settings.endpoint)) ||
           activeCheckpoint ||
           (humanControl && scheduled)
         )
@@ -4751,7 +4921,7 @@ export function registerAI(
         return execute(task.instructions, run, undefined, task.id);
       },
       (resuming, scheduled) =>
-        !!key &&
+        (!!key || isOllamaEndpoint(settings.endpoint)) &&
         !run &&
         !externalRun &&
         !taskDraftRun &&
@@ -4780,7 +4950,8 @@ export function registerAI(
   }, 1000);
   taskTimer.unref?.();
   const draftTask = async (request: unknown): Promise<AITaskInput> => {
-    if (!key) throw new Error('Connect AI in Preferences to generate a task.');
+    if (!key && !isOllamaEndpoint(settings.endpoint))
+      throw new Error('Connect AI in Preferences to generate a task.');
     if (run || externalRun || taskDraftRun)
       throw new Error('Wait for the current AI request to finish.');
     if (
@@ -4816,7 +4987,8 @@ export function registerAI(
               messages,
               aiProviderTools().filter(
                 (item) => item.function.name === 'create_task'
-              )
+              ),
+              { thinking: configuration.thinking }
             )
           ),
         },
@@ -5039,10 +5211,14 @@ export function registerAI(
   });
   ipcMain.handle('ai-settings', (event, patch) => {
     trusted(event, true);
-    if ((run || externalRun || taskDraftRun) && patch)
+    if (
+      (run || externalRun || taskDraftRun || composerQueue?.hasPending) &&
+      patch
+    )
       throw new Error('Stop the current run before changing settings.');
     if (patch) {
       const nextSettings = {
+        thinking: aiThinking(patch.thinking ?? settings.thinking),
         endpoint: aiProviderURL(patch.endpoint).replace(/\/$/, ''),
         model:
           typeof patch.model === 'string'
@@ -5053,12 +5229,16 @@ export function registerAI(
       const newKey = typeof patch.key === 'string' ? patch.key.trim() : '';
       if (
         !patch.clear &&
+        !isOllamaEndpoint(nextSettings.endpoint) &&
         key &&
         nextSettings.endpoint !== settings.endpoint &&
         !newKey
       )
         throw new Error('Enter an API key for the new provider endpoint.');
-      const nextKey = patch.clear ? '' : newKey || key;
+      const nextKey =
+        patch.clear || isOllamaEndpoint(nextSettings.endpoint)
+          ? ''
+          : newKey || key;
       const nextRemembered = !!patch.remember && !!nextKey;
       if (
         nextRemembered &&
@@ -5101,15 +5281,21 @@ export function registerAI(
     const endpoint = config
       ? aiProviderURL(config.endpoint).replace(/\/$/, '')
       : settings.endpoint;
-    if (config && endpoint !== settings.endpoint && !config.key?.trim())
+    if (
+      !isOllamaEndpoint(endpoint) &&
+      config &&
+      endpoint !== settings.endpoint &&
+      !config.key?.trim()
+    )
       throw new Error(
         'Enter an API key for the selected provider to load models.'
       );
+    const savedCredential = endpoint === settings.endpoint ? key : '';
     const credential =
       typeof config?.key === 'string' && config.key.trim()
         ? config.key.trim()
-        : key;
-    if (!credential)
+        : savedCredential;
+    if (!credential && !isOllamaEndpoint(endpoint))
       throw new Error('Enter your API key to load available models.');
     const response = await fetchAIProvider(`${endpoint}/models`, {
       headers: providerHeaders(endpoint, credential),
@@ -5156,7 +5342,13 @@ export function registerAI(
       const store = conversationStore!;
       if (request.action === 'list') return store.snapshot();
       if (request.action === 'clear-memory') {
-        if (run || externalRun || taskDraftRun || dialogs.busy())
+        if (
+          run ||
+          externalRun ||
+          taskDraftRun ||
+          dialogs.busy() ||
+          composerQueue?.hasPending
+        )
           throw new Error(
             'Finish or stop the current task before clearing notes.'
           );
@@ -5167,7 +5359,13 @@ export function registerAI(
         return store.snapshot();
       }
       if (request.action === 'reorder') {
-        if (run || externalRun || taskDraftRun || dialogs.busy())
+        if (
+          run ||
+          externalRun ||
+          taskDraftRun ||
+          dialogs.busy() ||
+          composerQueue?.hasPending
+        )
           throw new Error(
             'Finish or stop the current task before reordering chats.'
           );
@@ -5193,7 +5391,13 @@ export function registerAI(
         store.save();
         return store.snapshot();
       }
-      if (run || externalRun || taskDraftRun || dialogs.busy())
+      if (
+        run ||
+        externalRun ||
+        taskDraftRun ||
+        dialogs.busy() ||
+        composerQueue?.hasPending
+      )
         throw new Error(
           'Finish or stop the current task before switching chats.'
         );
@@ -5267,7 +5471,13 @@ export function registerAI(
   ipcMain.handle('ai-permissions', (event, mode) => {
     trusted(event);
     if (mode !== undefined) {
-      if (run || externalRun || taskDraftRun || dialogs.busy())
+      if (
+        run ||
+        externalRun ||
+        taskDraftRun ||
+        dialogs.busy() ||
+        composerQueue?.hasPending
+      )
         throw new Error(
           'Stop the current AI action before changing permissions.'
         );
@@ -5279,7 +5489,13 @@ export function registerAI(
   ipcMain.handle('ai-groups', (event, next) => {
     trusted(event);
     if (next !== undefined) {
-      if (run || externalRun || taskDraftRun || dialogs.busy())
+      if (
+        run ||
+        externalRun ||
+        taskDraftRun ||
+        dialogs.busy() ||
+        composerQueue?.hasPending
+      )
         throw new Error('Stop the current AI action before changing scope.');
       scopedAITabs(access.tabs(), next);
       composerPreferences.save({ groupId: next });
@@ -5479,14 +5695,17 @@ export function registerAI(
     pendingFeedback.resolve(answer.trim());
     return true;
   });
-  ipcMain.handle('ai-run', (event, input) => {
+  const startComposerTask = (
+    input: string | AIComposerTask,
+    queued = false
+  ) => {
     const prompt = typeof input === 'string' ? input : input?.prompt;
     const ids = typeof input === 'string' ? [] : input?.attachmentIds;
 
-    trusted(event);
     if (run || externalRun)
       throw new Error('An AI controller is already running.');
-    if (!key) throw new Error('Add an API key first.');
+    if (!key && !isOllamaEndpoint(settings.endpoint))
+      throw new Error('Add an API key first.');
     if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 12000)
       throw new Error('Enter a task under 12,000 characters.');
     const contextReferences =
@@ -5497,6 +5716,14 @@ export function registerAI(
     ];
     const boundPrompt = bindReferences(prompt.trim());
     scopedAITabs(access.tabs(), groupId);
+    const continuation =
+      activeCheckpoint?.pauseKind === 'budget' &&
+      !activeCheckpoint.taskId &&
+      activeCheckpoint.expires > Date.now() &&
+      activeCheckpoint.endpoint === settings.endpoint &&
+      (activeCheckpoint.groupId ?? null) === groupId
+        ? extendCheckpointBudget(structuredClone(activeCheckpoint))
+        : undefined;
     if (activeCheckpoint?.taskId)
       tasks?.finishPaused(
         activeCheckpoint.taskId,
@@ -5543,7 +5770,7 @@ export function registerAI(
       !titleChat.history.some((item) => item.type === 'user') &&
       !titleChat.titleSource;
     composerAttachments.markSent(ids);
-    rememberEvent({
+    const userEvent: Extract<AIConversationEvent, { type: 'user' }> = {
       type: 'user',
       text: prompt.trim(),
       attachments: composerAttachments
@@ -5555,7 +5782,13 @@ export function registerAI(
         name,
         kind,
       })),
-    });
+    };
+    rememberEvent(userEvent);
+    if (queued)
+      sendUI('ai-queue-changed', {
+        ...composerQueue!.snapshot(),
+        started: userEvent,
+      });
     if (needsTitle) {
       const configuration = { ...settings };
       requestAIProvider(
@@ -5618,7 +5851,7 @@ export function registerAI(
       ]),
     ];
     conversationStore!.save();
-    execute(boundPrompt, run, undefined, undefined, userTaskAccess(prompt), [
+    execute(boundPrompt, run, continuation, undefined, userTaskAccess(prompt), [
       ...attachedContent,
       ...composerAttachments.catalog(
         conversationStore!.current().attachmentIds
@@ -5626,13 +5859,75 @@ export function registerAI(
     ]);
     // Originals remain available for follow-up uploads until explicitly removed.
     return true;
+  };
+  composerQueue = new AIMessageQueue(
+    () =>
+      !run &&
+      !externalRun &&
+      !taskDraftRun &&
+      !dialogs.busy() &&
+      !humanControl &&
+      !activeCheckpoint &&
+      !configurationDisposed &&
+      !host.isDestroyed(),
+    ({ input, chatId, scope }) => {
+      if (conversationStore!.current().id !== chatId || groupId !== scope)
+        throw new Error(
+          'Return to the original chat and scope to send queued messages.'
+        );
+      startComposerTask(input, true);
+    },
+    (state) => {
+      if (!host.isDestroyed()) sendUI('ai-queue-changed', state);
+    },
+    (error) => emit({ type: 'error', text: error.message })
+  );
+  ipcMain.handle('ai-queue', (event, request: AIQueueRequest) => {
+    trusted(event);
+    if (request?.action === 'resume') {
+      if (humanControl || activeCheckpoint)
+        throw new Error(
+          'Continue the paused task before sending queued messages.'
+        );
+      composerQueue!.resume();
+    } else if (request?.action === 'remove' && typeof request.id === 'string') {
+      composerQueue!.remove(request.id);
+    } else if (request?.action !== 'list')
+      throw new Error('Invalid queue request.');
+    return composerQueue!.snapshot();
+  });
+  ipcMain.handle('ai-run', (event, input: string | AIComposerTask) => {
+    trusted(event);
+    if (!run && !externalRun && !composerQueue!.hasPending)
+      return startComposerTask(input);
+    const prompt = typeof input === 'string' ? input : input?.prompt;
+    if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 12000)
+      throw new Error('Enter a task under 12,000 characters.');
+    if (!key && !isOllamaEndpoint(settings.endpoint))
+      throw new Error('Add an API key first.');
+    const queuedInput = structuredClone(input);
+    const ids = typeof input === 'string' ? [] : input.attachmentIds;
+    const refs = typeof input === 'string' ? [] : input.contextReferences ?? [];
+    composerAttachments.content(ids);
+    aiContextContent(access.tabs(), refs, groupId);
+    bindReferences(prompt.trim());
+    scopedAITabs(access.tabs(), groupId);
+    composerQueue!.add(prompt.trim(), {
+      input: queuedInput,
+      chatId: conversationStore!.current().id,
+      scope: groupId,
+    });
+    return false; // Accepted for later; a queue event announces when it starts.
   });
   ipcMain.handle('ai-resume', (event) => {
     trusted(event);
     if (run || externalRun)
       throw new Error('An AI controller is already running.');
-    if (!key) throw new Error('Add an API key first.');
-    const saved = activeCheckpoint && structuredClone(activeCheckpoint);
+    if (!key && !isOllamaEndpoint(settings.endpoint))
+      throw new Error('Add an API key first.');
+    const saved =
+      activeCheckpoint &&
+      extendCheckpointBudget(structuredClone(activeCheckpoint));
     if (!saved || saved.expires < Date.now()) {
       activeCheckpoint = undefined;
       saveCheckpoint();
@@ -5671,6 +5966,7 @@ export function registerAI(
   });
   ipcMain.handle('ai-stop', async (event) => {
     trusted(event);
+    composerQueue?.pause();
     clearPrivateInputs();
     pauseRequested = false;
     if (activeCheckpoint?.taskId) {
@@ -5751,6 +6047,7 @@ export function registerAI(
   });
   ipcMain.handle('ai-takeover', async (event) => {
     trusted(event);
+    composerQueue?.pause();
     pauseRequested = true;
     setHumanControl(true);
     externalRecovery = new AIRecoveryObservation();
@@ -5979,6 +6276,7 @@ export function registerAI(
   });
   return () => {
     configurationDisposed = true;
+    composerQueue?.dispose();
     composerRevision += 1;
     clearPrivateInputs();
     clearInterval(taskTimer);
@@ -6001,6 +6299,7 @@ export function registerAI(
       'ai-permissions',
       'ai-groups',
       'ai-run',
+      'ai-queue',
       'ai-feedback',
       'ai-composer-pick',
       'ai-composer-add',

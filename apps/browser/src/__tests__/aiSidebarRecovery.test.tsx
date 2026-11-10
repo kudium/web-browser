@@ -10,6 +10,7 @@ import {
 import { AISidebar } from '../components/UI/AISidebar';
 import type { MCPStatus } from '../browser/mcp';
 import type { AIEvent, AITaskStatus } from '../browser/ai';
+import type { AIQueueState } from '../browser/aiComposer';
 
 beforeEach(() => {
   Object.assign(global, {
@@ -31,9 +32,15 @@ function mockAI(
   })
 ) {
   let listener: (event: AIEvent) => void = () => {};
+  let queueListener: (state: AIQueueState) => void = () => {};
   let externalListener: (externalStatus: MCPStatus) => void = () => {};
   const ai = {
     taskStatus: jest.fn().mockReturnValue(status),
+    queue: jest.fn().mockResolvedValue({ messages: [], paused: false }),
+    onQueue: (callback: typeof queueListener) => {
+      queueListener = callback;
+      return () => {};
+    },
     settings: jest.fn().mockResolvedValue({
       endpoint: 'https://api.openai.com/v1',
       model: 'test',
@@ -62,6 +69,7 @@ function mockAI(
   return {
     ai,
     event: (event: AIEvent) => listener(event),
+    queueEvent: (state: AIQueueState) => queueListener(state),
     external: (externalStatus: MCPStatus) => externalListener(externalStatus),
   };
 }
@@ -701,36 +709,270 @@ it.each([false, true])(
   }
 );
 
-it('uses the existing tablist for Notes and preserves the page across tool switches', async () => {
+it.each(['shortcut', 'menu'] as const)(
+  'switches pages after a Developer %s request',
+  async (source) => {
+    localStorage.removeItem('kudiumbrowser-ai-page-pane');
+    const mock = mockAI();
+    Object.assign(mock.ai, {
+      tasks: jest.fn().mockResolvedValue([]),
+      onTasks: () => () => {},
+    });
+    Object.assign(window.electron, {
+      ipcRenderer: { on: () => () => {}, sendMessage: () => {} },
+      passwordManager: jest.fn().mockResolvedValue([]),
+      onPasswordManagerLock: () => () => {},
+    });
+    const page = (token: number) => (
+      <Theme>
+        <AISidebar
+          developerRequest={source === 'shortcut' ? token : 0}
+          menuPaneRequest={
+            source === 'menu' ? { pane: 'developer', token } : undefined
+          }
+        />
+      </Theme>
+    );
+    const view = render(page(1));
+    expect(
+      await screen.findByRole('region', { name: 'Developer' })
+    ).toBeVisible();
+    const switchPage = (pane: string) =>
+      act(() => {
+        localStorage.setItem(
+          'kudiumbrowser-ai-page-pane',
+          JSON.stringify(pane)
+        );
+        window.dispatchEvent(
+          new CustomEvent('ai-page-preference-changed', {
+            detail: 'kudiumbrowser-ai-page-pane',
+          })
+        );
+      });
+    switchPage('assistant');
+    expect(screen.getByRole('region', { name: 'Assistant' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Saved AI tasks' }));
+    expect(screen.getByRole('region', { name: 'Tasks' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Assistant' }));
+    expect(screen.getByRole('region', { name: 'Assistant' })).toBeVisible();
+    switchPage('notes');
+    view.rerender(page(1));
+    expect(
+      screen.getByRole('region', { name: 'Notes workspace' })
+    ).toBeVisible();
+    view.rerender(page(2));
+    expect(screen.getByRole('region', { name: 'Developer' })).toBeVisible();
+    switchPage('assistant');
+    expect(screen.getByRole('region', { name: 'Assistant' })).toBeVisible();
+    view.unmount();
+    localStorage.removeItem('kudiumbrowser-ai-page-pane');
+  }
+);
+
+it('opens Notes without a tab header and preserves it across page requests', async () => {
   localStorage.removeItem('kudiumbrowser-ai-page-pane');
   mockAI();
   Object.assign(window.electron, {
     passwordManager: jest.fn().mockResolvedValue([]),
     onPasswordManagerLock: () => () => {},
   });
-  const view = render(
+  const page = (pane: 'notes' | 'assistant', token: number) => (
+    <Theme>
+      <AISidebar menuPaneRequest={{ pane, token }} />
+    </Theme>
+  );
+  const view = render(page('notes', 1));
+  const panel = await screen.findByRole('region', { name: 'Notes workspace' });
+  expect(screen.queryByRole('tablist')).toBeNull();
+  expect(view.container.querySelector('.ai-sidebar-header')).toBeNull();
+  expect(panel).toContainElement(
+    screen.getByRole('button', { name: 'Create note' })
+  );
+  view.rerender(page('assistant', 2));
+  expect(panel).not.toBeVisible();
+  expect(screen.getByRole('button', { name: 'Saved AI tasks' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'AI settings' })).toBeVisible();
+  view.rerender(page('notes', 3));
+  expect(screen.getByRole('region', { name: 'Notes workspace' })).toBe(panel);
+  view.unmount();
+  localStorage.removeItem('kudiumbrowser-ai-page-pane');
+});
+
+it('shows Activity only on its dedicated page and never restores the tab row', async () => {
+  localStorage.removeItem('kudiumbrowser-ai-page-pane');
+  const mock = mockAI();
+  Object.assign(mock.ai, {
+    tasks: jest.fn().mockResolvedValue([]),
+    onTasks: () => () => {},
+  });
+  Object.assign(window.electron, {
+    ipcRenderer: { on: () => () => {}, sendMessage: () => {} },
+    passwordManager: jest.fn().mockResolvedValue([]),
+    onPasswordManagerLock: () => () => {},
+    activity: jest.fn().mockResolvedValue([]),
+    onActivityChanged: () => () => {},
+  });
+  // Include the production display rules: display:flex must not override hidden.
+  const css = require('fs').readFileSync(
+    require('path').join(__dirname, '../renderer/index.css'),
+    'utf8'
+  );
+  const style = document.createElement('style');
+  style.textContent = css
+    .match(/\.ai-sidebar-pane(?:\[hidden\])? \{[^}]*\}/g)
+    .join('\n');
+  document.head.appendChild(style);
+  type Pane = 'assistant' | 'tasks' | 'notes' | 'developer' | 'activity';
+  const page = (pane: Pane, token: number) => (
+    <Theme>
+      <AISidebar menuPaneRequest={{ pane, token }} />
+    </Theme>
+  );
+  const view = render(page('activity', 1));
+  try {
+    expect(
+      await screen.findByRole('region', { name: 'Activity' })
+    ).toBeVisible();
+    expect(screen.queryByRole('tablist')).toBeNull();
+    for (const [index, pane] of (
+      ['assistant', 'tasks', 'notes', 'developer'] as const
+    ).entries()) {
+      view.rerender(page(pane, index + 2));
+      await waitFor(() =>
+        expect(
+          view.container.querySelector('#ai-activity-panel')
+        ).not.toBeVisible()
+      );
+      expect(screen.queryByRole('tablist')).toBeNull();
+    }
+    view.rerender(page('activity', 6));
+    expect(
+      await screen.findByRole('region', { name: 'Activity' })
+    ).toBeVisible();
+  } finally {
+    view.unmount();
+    style.remove();
+    localStorage.removeItem('kudiumbrowser-ai-page-pane');
+  }
+});
+
+it('can continue repeatedly after runtime budget pauses without resubmitting the task', async () => {
+  const mock = mockAI();
+  render(<AISidebar />);
+  await screen.findByText('test');
+  for (let segment = 0; segment < 2; segment += 1) {
+    act(() => {
+      mock.event({
+        type: 'handoff',
+        text: 'Task paused before completion. Progress saved.',
+        resumable: true,
+      });
+      mock.event({ type: 'done', text: '', resumable: true });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue task' }));
+    await waitFor(() =>
+      expect(mock.ai.resume).toHaveBeenCalledTimes(segment + 1)
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Continue task' })
+      ).not.toBeInTheDocument()
+    );
+  }
+  act(() => mock.event({ type: 'done', text: '', resumable: false }));
+  expect(mock.ai.run).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole('button', { name: 'Send AI task' })
+  ).toBeInTheDocument();
+});
+
+it('sends follow-ups to the queue while running and leaves Stop available', async () => {
+  const mock = mockAI(Promise.resolve({ busy: true, resumable: false }));
+  mock.ai.run.mockResolvedValue(false);
+  render(
     <Theme>
       <AISidebar />
     </Theme>
   );
-  await screen.findByText('test');
-  expect(screen.getAllByRole('tablist')).toHaveLength(1);
-  expect(
-    screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'))
-  ).toEqual(['Assistant', 'Tasks', 'Developer', 'Notes']);
-  expect(view.container.querySelector('.personal-page-tabs')).toBeNull();
-  fireEvent.click(screen.getByRole('tab', { name: 'Notes' }));
-  const panel = screen.getByRole('tabpanel', { name: 'Notes' });
-  expect(panel).toContainElement(
-    screen.getByRole('button', { name: 'New note' })
+  await screen.findByRole('button', { name: 'Queue message' });
+  const input = screen.getByRole('textbox', { name: 'Task for AI' });
+  expect(input).toBeEnabled();
+  fireEvent.change(input, { target: { value: 'Then check the links' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  await waitFor(() =>
+    expect(mock.ai.run).toHaveBeenCalledWith('Then check the links')
   );
-  fireEvent.click(screen.getByRole('tab', { name: 'Assistant' }));
-  expect(panel).not.toBeVisible();
-  fireEvent.keyDown(screen.getByRole('tab', { name: 'Assistant' }), {
-    key: 'End',
+  await waitFor(() => expect(input).toHaveValue(''));
+  expect(
+    screen.getByRole('button', { name: 'Stop AI task' })
+  ).toBeInTheDocument();
+  act(() =>
+    mock.queueEvent({
+      messages: [{ id: 'queued', prompt: 'Then check the links' }],
+      paused: false,
+    })
+  );
+  expect(screen.getByText('Then check the links')).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'Remove queued message: Then check the links',
+    })
+  );
+  await waitFor(() =>
+    expect(mock.ai.queue).toHaveBeenCalledWith({
+      action: 'remove',
+      id: 'queued',
+    })
+  );
+});
+
+it('restores pending messages and announces them in the chat when they start', async () => {
+  const mock = mockAI();
+  mock.ai.queue.mockResolvedValue({
+    messages: [{ id: 'queued', prompt: 'Follow up' }],
+    paused: true,
   });
-  expect(screen.getByRole('tab', { name: 'Notes' })).toHaveFocus();
-  expect(panel).toBeVisible();
-  view.unmount();
-  localStorage.removeItem('kudiumbrowser-ai-page-pane');
+  render(
+    <Theme>
+      <AISidebar />
+    </Theme>
+  );
+  await screen.findByText('Queue paused · 1');
+  fireEvent.click(screen.getByRole('button', { name: 'Send queued messages' }));
+  await waitFor(() =>
+    expect(mock.ai.queue).toHaveBeenCalledWith({ action: 'resume' })
+  );
+  act(() =>
+    mock.queueEvent({
+      messages: [],
+      paused: false,
+      started: { type: 'user', text: 'Follow up' },
+    })
+  );
+  expect(screen.queryByText('Queue paused · 1')).toBeNull();
+  expect(screen.getByText('Follow up')).toBeInTheDocument();
+});
+
+it('avoids duplicate queued sends and preserves a newer draft during submission', async () => {
+  const mock = mockAI(Promise.resolve({ busy: true, resumable: false }));
+  let accept: (value: boolean) => void = () => {};
+  mock.ai.run.mockReturnValue(
+    new Promise((resolve) => {
+      accept = resolve;
+    })
+  );
+  render(
+    <Theme>
+      <AISidebar />
+    </Theme>
+  );
+  await screen.findByRole('button', { name: 'Queue message' });
+  const input = screen.getByRole('textbox', { name: 'Task for AI' });
+  fireEvent.change(input, { target: { value: 'First follow-up' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  expect(mock.ai.run).toHaveBeenCalledTimes(1);
+  fireEvent.change(input, { target: { value: 'Next draft' } });
+  await act(async () => accept(false));
+  expect(input).toHaveValue('Next draft');
 });

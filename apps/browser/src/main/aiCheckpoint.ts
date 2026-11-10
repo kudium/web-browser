@@ -2,7 +2,13 @@ import fs from 'fs';
 import type { SynchronousSecureStorage } from './secureStorage';
 import type { AIAccessMode } from '../browser/aiPermissions';
 
+export const AI_RUN_STEP_LIMIT = 60;
+export const AI_CHECKPOINT_TTL = 15 * 60 * 1000;
+export const AI_CONTINUATION_TTL = 24 * 60 * 60 * 1000;
+
 export interface AICheckpoint {
+  pauseKind?: 'budget';
+  roundLimit?: number;
   taskId?: string;
   accessMode?: AIAccessMode;
   privateData?: boolean;
@@ -12,6 +18,30 @@ export interface AICheckpoint {
   endpoint: string;
   expires: number;
   reason?: string;
+}
+
+/** Legacy checkpoints start with the current default allowance. */
+export const checkpointRoundLimit = (
+  checkpoint: Pick<AICheckpoint, 'roundLimit'>
+) => checkpoint.roundLimit ?? AI_RUN_STEP_LIMIT;
+
+export const validCheckpointRoundLimit = (
+  checkpoint: Pick<AICheckpoint, 'roundLimit'>
+) =>
+  checkpoint.roundLimit === undefined ||
+  (Number.isSafeInteger(checkpoint.roundLimit) &&
+    checkpoint.roundLimit >= AI_RUN_STEP_LIMIT);
+
+/** Every explicit continuation starts a fresh, doubled segment. */
+export function extendCheckpointBudget(checkpoint: AICheckpoint): AICheckpoint {
+  return {
+    ...checkpoint,
+    step: 0,
+    roundLimit: Math.min(
+      Number.MAX_SAFE_INTEGER,
+      checkpointRoundLimit(checkpoint) * 2
+    ),
+  };
 }
 
 /** Paused tasks are encrypted at rest; restoring never starts browser actions. */
@@ -76,7 +106,8 @@ export class AICheckpointStore {
         value.messages.length > 1000 ||
         !Number.isInteger(value.step) ||
         value.step < 0 ||
-        value.step >= 30 ||
+        value.step >= checkpointRoundLimit(value) ||
+        !validCheckpointRoundLimit(value) ||
         (value.groupId !== undefined &&
           value.groupId !== null &&
           (typeof value.groupId !== 'string' || value.groupId.length > 300)) ||
@@ -84,7 +115,12 @@ export class AICheckpointStore {
         !/^https?:\/\//.test(value.endpoint) ||
         !Number.isFinite(value.expires) ||
         value.expires <= Date.now() ||
-        value.expires > Date.now() + 15 * 60 * 1000 ||
+        value.expires >
+          Date.now() +
+            (value.pauseKind === 'budget'
+              ? AI_CONTINUATION_TTL
+              : AI_CHECKPOINT_TTL) ||
+        (value.pauseKind !== undefined && value.pauseKind !== 'budget') ||
         (value.reason !== undefined && typeof value.reason !== 'string')
       )
         throw new Error('Invalid checkpoint');

@@ -2,8 +2,8 @@
  * Distinguish pointer selection from keyboard navigation without blurring
  * controls.
  */
-export function installFocusModality() {
-  const root = document.documentElement;
+export function installFocusModality(targetDocument: Document = document) {
+  const root = targetDocument.documentElement;
   root.dataset.inputModality = 'pointer';
   const pointer = () => {
     root.dataset.inputModality = 'pointer';
@@ -22,11 +22,11 @@ export function installFocusModality() {
     )
       root.dataset.inputModality = 'keyboard';
   };
-  document.addEventListener('pointerdown', pointer, true);
-  document.addEventListener('keydown', keyboard, true);
+  targetDocument.addEventListener('pointerdown', pointer, true);
+  targetDocument.addEventListener('keydown', keyboard, true);
   return () => {
-    document.removeEventListener('pointerdown', pointer, true);
-    document.removeEventListener('keydown', keyboard, true);
+    targetDocument.removeEventListener('pointerdown', pointer, true);
+    targetDocument.removeEventListener('keydown', keyboard, true);
     delete root.dataset.inputModality;
   };
 }

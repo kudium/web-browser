@@ -1,8 +1,10 @@
+import type { AIThinking } from './aiThinking';
 export interface AISettings {
   endpoint: string;
   model: string;
   hasKey: boolean;
   remembered: boolean;
+  thinking?: AIThinking;
 }
 export interface AIUsage {
   requestAttempts?: number;
@@ -87,6 +89,8 @@ export const AI_TOOLS = [
   'read_personal_data',
   'fill_personal_data',
   'save_personal_data',
+  'manage_note',
+  'create_activity',
   'capture_personal_form',
   'attach_personal_document',
   'upload_chat_attachment',

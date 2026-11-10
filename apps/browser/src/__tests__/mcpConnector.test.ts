@@ -72,3 +72,44 @@ it('requires approval, excludes website origins and revokes connector access', a
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+it('enables external control by default and retains an explicit disable on restart', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-mcp-default-'));
+  const socket = net.createServer();
+  await new Promise<void>((resolve) => socket.listen(0, '127.0.0.1', resolve));
+  const { port } = socket.address() as net.AddressInfo;
+  await new Promise<void>((resolve) => socket.close(() => resolve()));
+  const filename = path.join(root, 'mcp.json');
+  // Use an available port without specifying an enable preference.
+  fs.writeFileSync(
+    filename,
+    JSON.stringify({ port, privateDataDisclosed: false })
+  );
+  const create = () =>
+    createMCPController({
+      filename,
+      execute: async () => null,
+      stop: () => {},
+      changed: () => {},
+    });
+  const controller = create();
+  try {
+    await controller.ready;
+    expect(controller.status()).toMatchObject({ enabled: true, running: true });
+    await controller.update({ enabled: false });
+    await controller.dispose();
+    const restored = create();
+    try {
+      await restored.ready;
+      expect(restored.status()).toMatchObject({
+        enabled: false,
+        running: false,
+      });
+    } finally {
+      await restored.dispose();
+    }
+  } finally {
+    await controller.dispose();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

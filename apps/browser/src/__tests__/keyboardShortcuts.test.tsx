@@ -29,7 +29,7 @@ it('lists both sidebar toggles in preferences', () => {
     screen.getByLabelText('Change Toggle Space sidebar shortcut')
   ).toBeInTheDocument();
   expect(
-    screen.getByLabelText('Change Toggle AI assistant shortcut')
+    screen.getByLabelText('Change Toggle Assistant shortcut')
   ).toBeInTheDocument();
   expect(screen.getByText('Ctrl + S')).toBeInTheDocument();
   expect(screen.getByText('Ctrl + I')).toBeInTheDocument();

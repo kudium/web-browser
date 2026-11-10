@@ -27,6 +27,9 @@ import {
   VolumeX,
   Play,
   Settings2,
+  Code2,
+  StickyNote,
+  Bell,
   Brush,
   ArrowDownToLine,
   ChevronDown,
@@ -36,9 +39,11 @@ import {
   Plus,
   RotateCw,
   Sparkles,
+  MessageCircle,
   Square,
   X,
 } from 'lucide-react';
+import { useSidebarPaneToggle } from '../../../utils/hooks/useSidebarPaneToggle';
 import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
 import { Archive } from '../Settings/tabs/Archive';
 import { spaceFooterMenu } from '../../../browser/spaceFooterMenu';
@@ -82,6 +87,7 @@ import {
   savedNavigationURL,
 } from '../../../browser/tabDefaults';
 import { AISidebar } from '../../UI/AISidebar';
+import { hasFloatingAssistantPanels } from '../../../utils/assistantPanelPlacement';
 import { ChromeIconButton } from '../../UI/ChromeIconButton';
 import { PictureInPictureButton } from '../../UI/PictureInPictureButton';
 import { useCollapsedItems } from '../../../utils/useCollapsedItems';
@@ -194,13 +200,85 @@ export function Main() {
     token: number;
   }>();
   const [aiOpen, setAIOpen] = useAIPagePreference('open', false);
+  const [aiPane, setAIPane] = useAIPagePreference('pane', 'assistant');
 
-  const [aiMounted, setAIMounted] = useState(aiOpen);
+  const [aiMounted, setAIMounted] = useState(
+    () => aiOpen || hasFloatingAssistantPanels()
+  );
+  const [unreadNotes, setUnreadNotes] = useState(0);
+  const [unreadActivity, setUnreadActivity] = useState(0);
+  useEffect(() => {
+    let active = true;
+    const refresh = () =>
+      window.electron
+        .activity?.({ action: 'list' })
+        .then((entries) => {
+          if (active)
+            setUnreadActivity(
+              (entries || []).filter((entry) => !entry.asRead).length
+            );
+        })
+        .catch(() => {});
+    refresh();
+    const stop = window.electron.onActivityChanged?.(refresh);
+    const open = () => {
+      setAIMounted(true);
+      setAIOpen(true);
+      setMenuPaneRequest((previous) => ({
+        pane: 'activity',
+        token: (previous?.token || 0) + 1,
+      }));
+    };
+    window.addEventListener('kudiumbrowser-open-activity', open);
+    return () => {
+      active = false;
+      stop?.();
+      window.removeEventListener('kudiumbrowser-open-activity', open);
+    };
+  }, []);
+  useEffect(() => {
+    let active = true;
+    const refresh = () =>
+      window.electron
+        .passwordManager({ action: 'notes' })
+        .then((result) => {
+          if (active)
+            setUnreadNotes(
+              (
+                result as import('../../../browser/passwordManager').VaultSummary[]
+              ).filter((note) => note.asRead === false).length
+            );
+        })
+        .catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 3000);
+    const open = () => {
+      setAIMounted(true);
+      setAIOpen(true);
+      setMenuPaneRequest((previous) => ({
+        pane: 'notes',
+        token: (previous?.token || 0) + 1,
+      }));
+    };
+    window.addEventListener('kudiumbrowser-open-note', open);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener('kudiumbrowser-open-note', open);
+    };
+  }, []);
   const [developerRequest, setDeveloperRequest] = useState(0);
   const [menuPaneRequest, setMenuPaneRequest] = useState<{
-    pane: 'assistant' | 'tasks' | 'developer';
+    pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
     token: number;
   }>();
+  const toggleSidebarPane = useSidebarPaneToggle(
+    aiOpen,
+    aiPane,
+    setAIOpen,
+    setAIPane,
+    setAIMounted
+  );
   const addToAI = (reference: AIContextReference, mode?: 'scope') => {
     setAIMounted(true);
     setAIOpen(true);
@@ -897,7 +975,6 @@ export function Main() {
     preview.close();
     setPaletteOpen(true);
   };
-  const [addressGroupPickerOpen, setAddressGroupPickerOpen] = useState(false);
   const switchableTabs = availableTabs.filter(
     (tab) =>
       !tab.archived &&
@@ -930,15 +1007,11 @@ export function Main() {
   const overlayOpen =
     !!tabSwitcher.shown ||
     nativeOverlayOpen ||
-    addressGroupPickerOpen ||
-    !!preview.target ||
-    menuOpen ||
     !!editingGroup ||
     !!droppedProject ||
     !!newGroupSpace ||
     siteSettingsOpen ||
     !!pageCapture ||
-    extensionPickerOpen ||
     paletteOpen ||
     spaceDialog ||
     folderDialog ||
@@ -1022,9 +1095,6 @@ export function Main() {
     () => window.electron.browser.onWindowMirrors?.(setWindowMirrors),
     []
   );
-  useEffect(() => {
-    if (!overlayOpen) setSnapshots([]);
-  }, [overlayOpen]);
 
   useEffect(() => {
     setSelectedId(active.selectedAppId);
@@ -1859,19 +1929,23 @@ export function Main() {
     onDrop: (event: DragEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      if (
-        dragged &&
-        event.dataTransfer.getData('application/x-kudiumbrowser-tab') ===
-          dragged.id
-      ) {
-        AppManager.set(
-          moveGroupToSection(
-            AppManager.getAll(),
-            dragged.id,
-            section,
-            active.id
-          )
-        );
+      try {
+        if (
+          dragged &&
+          event.dataTransfer.getData('application/x-kudiumbrowser-tab') ===
+            dragged.id
+        ) {
+          AppManager.set(
+            moveGroupToSection(
+              AppManager.getAll(),
+              dragged.id,
+              section,
+              active.id
+            )
+          );
+        }
+      } catch (error) {
+        setMoveMessage(error instanceof Error ? error.message : String(error));
       }
       finishDrag();
     },
@@ -2007,6 +2081,26 @@ export function Main() {
             </ContextMenu.Item>
             <ContextMenu.Item onSelect={() => edit(item)}>
               {nativeMenuLabels.groupSettings}
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              onSelect={() => {
+                try {
+                  AppManager.set(
+                    moveGroupToSection(
+                      AppManager.getAll(),
+                      item.id,
+                      item.favorite ? 'pinned' : 'favorites',
+                      item.spaceId || 'default'
+                    )
+                  );
+                } catch (error) {
+                  setMoveMessage(
+                    error instanceof Error ? error.message : String(error)
+                  );
+                }
+              }}
+            >
+              {item.favorite ? 'Remove from Favorites' : 'Pin to Favorites'}
             </ContextMenu.Item>
             <ContextMenu.Separator />
             <ContextMenu.Item
@@ -2332,19 +2426,52 @@ export function Main() {
         onClick={() => browser.preferences('open')}
       />
       <ChromeIconButton
-        icon={Sparkles}
+        icon={Code2}
+        className="ai-toolbar-toggle"
+        label="Toggle Developer sidebar"
+        aria-expanded={aiOpen && aiPane === 'developer'}
+        disabled={!selected || lockedGroup(selected)}
+        onClick={() => {
+          if (!selected || lockedGroup(selected)) return;
+          toggleSidebarPane('developer');
+        }}
+      />
+      <ChromeIconButton
+        icon={Bell}
         className="ai-toolbar-toggle"
         label={
+          unreadActivity
+            ? `Toggle Activity sidebar — ${unreadActivity} unread events`
+            : 'Toggle Activity sidebar'
+        }
+        badgeCount={unreadActivity}
+        aria-expanded={aiOpen && aiPane === 'activity'}
+        onClick={() => toggleSidebarPane('activity')}
+      />
+      <ChromeIconButton
+        icon={StickyNote}
+        className="ai-toolbar-toggle notes-toolbar-button"
+        label={
+          unreadNotes
+            ? `Toggle Notes sidebar — ${unreadNotes} unread notes`
+            : 'Toggle Notes sidebar'
+        }
+        badgeCount={unreadNotes}
+        aria-expanded={aiOpen && aiPane === 'notes'}
+        onClick={() => toggleSidebarPane('notes')}
+      />
+      <ChromeIconButton
+        icon={MessageCircle}
+        text="Chat"
+        className="ai-toolbar-toggle chat-toolbar-button"
+        label={
           aiWorkingTabs.length
-            ? `Toggle AI sidebar — ${aiWorkingTabs.length} active AI tabs`
-            : 'Toggle AI sidebar'
+            ? `Toggle Chat sidebar — ${aiWorkingTabs.length} active AI tabs`
+            : 'Toggle Chat sidebar'
         }
         badgeCount={aiWorkingTabs.length}
-        aria-expanded={aiOpen}
-        onClick={() => {
-          setAIMounted(true);
-          setAIOpen(!aiOpen);
-        }}
+        aria-expanded={aiOpen && aiPane === 'assistant'}
+        onClick={() => toggleSidebarPane('assistant')}
       />
     </>
   );
@@ -2363,7 +2490,6 @@ export function Main() {
           <GroupPicker
             triggerClassName="address-group-badge"
             showTriggerIcon={false}
-            onOpenChange={setAddressGroupPickerOpen}
             label="Switch group"
             value={aiGroupId(selected)}
             disabled={false}
@@ -3235,27 +3361,31 @@ export function Main() {
           ) : (
             <>
               {addressBarPlacement === 'sidebar' && renderAddressBar()}
-              {(favorites.length > 0 || dragged) && (
-                <nav
-                  className="favorites-grid"
-                  aria-label="Favorite groups"
-                  data-empty={favorites.length === 0 || undefined}
-                  data-drop-target={
-                    dropTarget === 'section-favorites' || undefined
-                  }
-                  onDragOver={sectionDropProps('favorites').onDragOver}
-                  onDrop={sectionDropProps('favorites').onDrop}
-                >
-                  {favorites.map(renderApp)}
-                  {favorites.length === 0 && (
-                    <span className="sidebar-section-hint">
-                      Drop to favorite
-                    </span>
-                  )}
-                </nav>
-              )}
+              <nav
+                className="favorites-grid"
+                aria-label="Favorite groups"
+                hidden={favorites.length === 0}
+                data-drop-target={
+                  dropTarget === 'section-favorites' || undefined
+                }
+                onDragOver={sectionDropProps('favorites').onDragOver}
+                onDrop={sectionDropProps('favorites').onDrop}
+              >
+                {favorites.map(renderApp)}
+              </nav>
               <div
                 className="space-heading"
+                data-favorite-drop={
+                  dropTarget === 'section-favorites' || undefined
+                }
+                onDragOver={(event) => {
+                  if (dragged?.axis === 'vertical')
+                    sectionDropProps('favorites').onDragOver(event);
+                }}
+                onDrop={(event) => {
+                  if (dragged?.axis === 'vertical')
+                    sectionDropProps('favorites').onDrop(event);
+                }}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   showSpaceMenu().catch((error) =>
@@ -3993,6 +4123,7 @@ export function Main() {
             }
             aria-busy={!split && !!state?.loading}
             className="browser-viewport"
+            data-split-dragging={!!dragged || undefined}
           >
             {!split && selected && !lockedGroup(selected) && (
               <PageStatus
@@ -4091,30 +4222,37 @@ export function Main() {
                   <span>Continue here</span>
                 </button>
               ))}
-            {overlayOpen &&
-              snapshots
-                .filter((frame) => {
-                  const item = appList.find((tab) => tab.id === frame.id);
-                  return item && !lockedGroup(item) && !frame.previewOnly;
-                })
-                .map((frame) => (
-                  <img
-                    alt=""
-                    key={frame.id}
-                    className="browser-snapshot"
-                    src={frame.image}
-                    style={{
-                      left:
-                        frame.x -
-                        (viewport.current?.getBoundingClientRect().x || 0),
-                      top:
-                        frame.y -
-                        (viewport.current?.getBoundingClientRect().y || 0),
-                      width: frame.width,
-                      height: frame.height,
-                    }}
-                  />
-                ))}
+            {snapshots
+              .filter((frame) => {
+                const item = appList.find((tab) => tab.id === frame.id);
+                return (
+                  item &&
+                  !lockedGroup(item) &&
+                  !frame.previewOnly &&
+                  (split
+                    ? [split.left, split.right].includes(frame.id)
+                    : selected?.id === frame.id)
+                );
+              })
+              .map((frame) => (
+                <img
+                  alt=""
+                  key={frame.id}
+                  className="browser-snapshot"
+                  data-presentation-id={frame.presentationId}
+                  src={frame.image}
+                  style={{
+                    left:
+                      frame.x -
+                      (viewport.current?.getBoundingClientRect().x || 0),
+                    top:
+                      frame.y -
+                      (viewport.current?.getBoundingClientRect().y || 0),
+                    width: frame.width,
+                    height: frame.height,
+                  }}
+                />
+              ))}
             {!split && selected && lockedGroup(selected) && (
               <GroupAccessGate item={selected}>
                 <span aria-hidden="true" />

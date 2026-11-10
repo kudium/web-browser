@@ -110,7 +110,8 @@ export function ordinaryNotesStorage(file: string): OrdinaryNotesStorage {
           old.title === note.title &&
           old.notes === note.notes &&
           old.scope === note.scope &&
-          old.allowAI === note.allowAI
+          old.allowAI === note.allowAI &&
+          old.asRead === note.asRead
         )
           next.push(existing);
         else {

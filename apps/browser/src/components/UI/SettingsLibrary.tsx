@@ -7,6 +7,7 @@ export function SettingsLibrary<T extends Entry>({
   children,
   label,
   renderToolbar = undefined,
+  emptyContent = undefined,
 }: {
   entries: T[];
   children: (entry: T, index: number) => ReactNode;
@@ -14,6 +15,8 @@ export function SettingsLibrary<T extends Entry>({
   // Generic render prop uses the default parameter above.
   // eslint-disable-next-line react/require-default-props
   renderToolbar?: (entry: T | undefined) => ReactNode;
+  // eslint-disable-next-line react/require-default-props
+  emptyContent?: ReactNode;
 }) {
   const [selected, setSelected] = useState<string>();
   const previousIds = useRef(entries.map((entry) => entry.id));
@@ -67,11 +70,11 @@ export function SettingsLibrary<T extends Entry>({
         )}
       </div>
       <div className="settings-library-detail" key={current?.id}>
-        {current ? (
-          children(current, entries.indexOf(current))
-        ) : (
-          <p className="empty-message">Add an item to get started.</p>
-        )}
+        {current
+          ? children(current, entries.indexOf(current))
+          : emptyContent || (
+              <p className="empty-message">Add an item to get started.</p>
+            )}
       </div>
     </div>
   );

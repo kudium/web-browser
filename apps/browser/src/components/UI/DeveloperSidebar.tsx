@@ -1,10 +1,10 @@
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import { useEffect, useMemo, useState } from 'react';
-import { Code2, Search, ArrowUpRight, Settings2 } from 'lucide-react';
+import { Code2, Search, Settings2 } from 'lucide-react';
 import { TextField, IconButton } from '@radix-ui/themes';
+import { AssistantPageHeader } from './AssistantPageHeader';
 import { GroupPicker } from './GroupPicker';
-import { AppIcon } from './AppIcon/AppIcon';
 import { useAppList } from '../../utils/hooks/useAppList';
 import { ScreenManager } from '../../utils/AppManager';
 import { lockedGroup, useGroupAccess } from '../../utils/groupAccess';
@@ -83,7 +83,10 @@ export function DeveloperSidebar({
     const updated = { ...views, [selectedGroup]: next };
     setViews(updated);
     try {
-      localStorage.setItem('kudiumbrowser.developer.views', JSON.stringify(updated));
+      localStorage.setItem(
+        'kudiumbrowser.developer.views',
+        JSON.stringify(updated)
+      );
     } catch {
       /* Keep the view usable if storage is unavailable. */
     }
@@ -170,11 +173,10 @@ export function DeveloperSidebar({
     <section
       hidden={!active}
       className="developer-sidebar"
-      role="tabpanel"
       id="ai-developer-panel"
-      aria-labelledby="ai-developer-tab"
+      aria-label="Developer"
     >
-      <div className="developer-sidebar-toolbar">
+      <AssistantPageHeader className="developer-sidebar-toolbar">
         <GroupPicker
           options={options}
           value={source ? selectedGroup : ''}
@@ -199,7 +201,7 @@ export function DeveloperSidebar({
         >
           <Settings2 size={16} />
         </IconButton>
-      </div>
+      </AssistantPageHeader>
       <div className="developer-sidebar-pages" aria-busy={loading && !!source}>
         {!source ? (
           <div className="developer-sidebar-empty">
@@ -298,7 +300,6 @@ export function DeveloperSidebar({
                       })
                     }
                   >
-                    <AppIcon icon={tab?.icon || ''} title={page.name} />
                     <span className="developer-sidebar-page-copy">
                       <strong>{page.name}</strong>
                       <small>{page.url}</small>
@@ -314,8 +315,14 @@ export function DeveloperSidebar({
                           ? ' · Error'
                           : ''}
                       </span>
+                      {page.origin && (
+                        <span className="developer-hook-hint">
+                          {page.hasHooks
+                            ? 'Click to edit hooks'
+                            : 'Click to add hook'}
+                        </span>
+                      )}
                     </span>
-                    <ArrowUpRight size={14} aria-hidden="true" />
                   </button>
                 );
               })}

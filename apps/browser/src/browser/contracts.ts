@@ -15,7 +15,11 @@ import type {
 } from './accountSync';
 import type { CloudSyncStatus } from './cloudSync';
 import type { ShortcutAction } from './shortcuts';
-import type { NativeMenuItem, NativePrompt } from './nativeUi';
+import type {
+  NativeMenuItem,
+  NativePrompt,
+  NativeTooltipRequest,
+} from './nativeUi';
 import type {
   BrowserPreferences,
   PreferenceAction,
@@ -154,6 +158,7 @@ export type SpaceWheelEvent =
     };
 
 export interface BrowserSnapshot {
+  presentationId?: string;
   previewOnly?: boolean;
   id: string;
   x: number;
@@ -171,6 +176,7 @@ export interface BrowserClient {
     allowArchive?: boolean
   ): Promise<{ removed: boolean; ids?: string[]; archive?: boolean }>;
   capture(request: PageCaptureRequest): Promise<PageCaptureResult>;
+  tooltip(request: NativeTooltipRequest): Promise<void>;
   nativeMenu(items: NativeMenuItem[]): Promise<string | null>;
   confirm(prompt: NativePrompt): Promise<boolean>;
   showEmojiPicker(): Promise<void>;

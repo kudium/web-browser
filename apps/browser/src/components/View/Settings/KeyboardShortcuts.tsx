@@ -71,7 +71,7 @@ export function KeyboardShortcuts({
   return (
     <div className="keyboard-shortcuts">
       <Text as="p" size="2" color="gray">
-        Toggle the Space sidebar or AI assistant without leaving your page.
+        Toggle the Space sidebar or Assistant without leaving your page.
         Command / Control + S saves the file when the developer editor has
         focus.
       </Text>

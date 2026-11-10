@@ -38,19 +38,26 @@ it('shows saved choices, category controls and honest setup-required status', as
       <SyncSettings settings={settings} busy={false} save={save} />
     </Theme>
   );
-  expect(await screen.findByText('Requires Apple approval')).toBeVisible();
-  const hint = screen.getByRole('button', { name: 'About iCloud Passwords' });
-  fireEvent.click(hint);
   expect(
-    await screen.findByText(/Apple’s browser approval is required/)
+    screen.getByRole('heading', { name: 'Syncing options' })
   ).toBeVisible();
-  fireEvent.click(hint);
-  expect(screen.getByLabelText('Enable sync')).toBeChecked();
-  fireEvent.click(screen.getByLabelText('Enable sync'));
+  expect(
+    screen.getByRole('heading', { name: 'Included in sync' })
+  ).toBeVisible();
+  expect(screen.getByText(/Not available in this build/)).toBeVisible();
+  expect(
+    screen.getByLabelText('Sync with Kudium Browser Account')
+  ).toBeChecked();
+  expect(screen.getByLabelText('Sync with iCloud')).not.toBeChecked();
+  fireEvent.click(screen.getByLabelText('Sync with iCloud'));
+  await waitFor(() =>
+    expect(save).toHaveBeenCalledWith({ ...settings, icloud: true })
+  );
+  fireEvent.click(screen.getByLabelText('Sync with Kudium Browser Account'));
   await waitFor(() =>
     expect(save).toHaveBeenCalledWith({ ...settings, enabled: false })
   );
-  expect(screen.queryByLabelText('Sync to')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Enable sync')).toBeNull();
   expect(screen.getByLabelText('Sync saved passwords')).toBeChecked();
   fireEvent.click(screen.getByLabelText('Sync open tabs'));
   await waitFor(() =>
@@ -111,6 +118,7 @@ it('includes saved passwords in new sync setups and exposes the unlock action', 
     </Theme>
   );
   const syncNow = await screen.findByRole('button', { name: 'Sync now' });
+  fireEvent.click(screen.getByText('Backup, restore and account options'));
   expect(
     screen.getByRole('button', { name: 'Unlock & sync passwords' })
   ).toBeEnabled();

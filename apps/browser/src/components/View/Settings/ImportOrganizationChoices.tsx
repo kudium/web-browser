@@ -9,11 +9,13 @@ export function ImportOrganizationChoices({
   options,
   onChange,
   disabled,
+  singleCollection = false,
 }: {
   source: string;
   options: ImportOrganizationOptions;
   onChange: (value: ImportOrganizationOptions) => void;
   disabled: boolean;
+  singleCollection?: boolean;
 }) {
   const id = useId();
   if (!source) return null;
@@ -23,9 +25,9 @@ export function ImportOrganizationChoices({
       <div className="migration-organization-heading">
         <strong>Organization</strong>
         <PreferenceHint label="import organization">
-          Import folders as tab groups, and Arc or Dia spaces as collections when
-          available. Turn an option off to keep the source organization.
-          Imported groups share website sessions and the password manager.
+          {singleCollection
+            ? 'Imported groups are kept in one collection and share its cookies and website sessions.'
+            : 'Import folders as tab groups, and Arc or Dia spaces as collections when available. Turn an option off to keep the source organization. Imported groups share website sessions and the password manager.'}
         </PreferenceHint>
       </div>
       <label htmlFor={`${id}-folders`}>
@@ -39,7 +41,7 @@ export function ImportOrganizationChoices({
         />
         Folders as tab groups
       </label>
-      {hasSpaces && (
+      {hasSpaces && !singleCollection && (
         <label htmlFor={`${id}-spaces`}>
           <Checkbox
             id={`${id}-spaces`}

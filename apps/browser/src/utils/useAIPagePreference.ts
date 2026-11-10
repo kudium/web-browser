@@ -5,10 +5,11 @@ type AIPagePreferences = {
   open: boolean;
   historyOpen: boolean;
   historyPinned: boolean;
-  pane: 'assistant' | 'tasks' | 'developer' | 'notes';
+  pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
   preview: boolean;
   showStats: boolean;
   noteFontSize: number;
+  noteOrder: string[];
 };
 
 /** Layout preferences only; chats and credentials use main-process storage. */
@@ -20,12 +21,24 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
   const [value, setValue] = useState<AIPagePreferences[K]>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
+      if (key === 'noteOrder')
+        return Array.isArray(saved) &&
+          saved.length <= 10000 &&
+          saved.every((id) => typeof id === 'string' && id.length <= 100)
+          ? saved
+          : fallback;
       if (key === 'noteFontSize')
         return Number.isInteger(saved) && saved >= 12 && saved <= 24
           ? saved
           : fallback;
       if (key === 'pane')
-        return ['assistant', 'tasks', 'developer', 'notes'].includes(saved)
+        return [
+          'assistant',
+          'tasks',
+          'developer',
+          'notes',
+          'activity',
+        ].includes(saved)
           ? saved
           : fallback;
       return typeof saved === 'boolean' ? saved : fallback;
@@ -49,11 +62,22 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
       if (changed !== storageKey) return;
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
-        if (key === 'noteFontSize') {
+        if (key === 'noteOrder') {
+          if (
+            Array.isArray(saved) &&
+            saved.length <= 10000 &&
+            saved.every((id) => typeof id === 'string' && id.length <= 100)
+          )
+            setValue(saved as AIPagePreferences[K]);
+        } else if (key === 'noteFontSize') {
           if (Number.isInteger(saved) && saved >= 12 && saved <= 24)
             setValue(saved);
         } else if (key === 'pane') {
-          if (['assistant', 'tasks', 'developer', 'notes'].includes(saved))
+          if (
+            ['assistant', 'tasks', 'developer', 'notes', 'activity'].includes(
+              saved
+            )
+          )
             setValue(saved);
         } else if (typeof saved === 'boolean')
           setValue(saved as AIPagePreferences[K]);

@@ -8,10 +8,11 @@ import { buildSyncSnapshot } from '../main/sync/snapshot';
 import { encryptSyncRecord, decryptSyncRecord } from '../main/sync/encryption';
 import { defaultPreferences } from '../browser/preferences';
 
-it('defaults to iCloud on Mac, remains off and rejects invalid consent/settings', () => {
+it('defaults to account sync with all categories and validates saved choices', () => {
   expect(defaultSyncSettings('darwin')).toMatchObject({
-    enabled: false,
-    provider: 'icloud',
+    enabled: true,
+    provider: 'kudiumbrowser',
+    icloud: false,
   });
   expect(defaultSyncSettings('win32').provider).toBe('kudiumbrowser');
   const defaults = defaultSyncSettings();
@@ -25,7 +26,13 @@ it('defaults to iCloud on Mac, remains off and rejects invalid consent/settings'
     validateSyncSettings({
       ...defaults,
       enabled: true,
-      categories: { workspace: false, openTabs: false, preferences: false },
+      categories: {
+        workspace: false,
+        openTabs: false,
+        preferences: false,
+        notes: false,
+        passwords: false,
+      },
     })
   ).toThrow('Select at least');
   expect(() =>
@@ -98,7 +105,10 @@ it('exports only selected portable data, excluding login tokens, local paths and
   expect(selected.workspace).toBeUndefined();
   expect(selected.preferences).toBeUndefined();
   expect(() =>
-    buildSyncSnapshot({ ...input, settings: defaultSyncSettings() })
+    buildSyncSnapshot({
+      ...input,
+      settings: { ...defaultSyncSettings(), enabled: false },
+    })
   ).toThrow('disabled');
   expect(() =>
     buildSyncSnapshot({ ...input, deviceId: '../partition' })
@@ -130,4 +140,38 @@ it('encrypts with independent nonces and rejects tampering, metadata substitutio
   expect(() => encryptSyncRecord(value, Buffer.alloc(16), 'record')).toThrow(
     '256-bit'
   );
+});
+
+it('preserves legacy provider opt-outs and supports both choices independently', () => {
+  const categories = {
+    workspace: true,
+    openTabs: true,
+    preferences: true,
+    notes: false,
+    passwords: false,
+  };
+  expect(
+    validateSyncSettings({
+      enabled: false,
+      provider: 'kudiumbrowser',
+      categories,
+    })
+  ).toMatchObject({ enabled: false, icloud: false, categories });
+  expect(
+    validateSyncSettings({ enabled: true, provider: 'icloud', categories })
+  ).toMatchObject({
+    enabled: false,
+    provider: 'kudiumbrowser',
+    icloud: true,
+    categories,
+  });
+  expect(
+    validateSyncSettings({ ...defaultSyncSettings(), icloud: true })
+  ).toMatchObject({ enabled: true, icloud: true });
+  expect(Object.values(defaultSyncSettings().categories).every(Boolean)).toBe(
+    true
+  );
+  expect(() =>
+    validateSyncSettings({ ...defaultSyncSettings(), icloud: 'yes' })
+  ).toThrow('Invalid');
 });

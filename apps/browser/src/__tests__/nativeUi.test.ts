@@ -16,7 +16,7 @@ jest.mock('../main/dialogs', () => ({ showBrowserDialog: jest.fn() }));
 jest.mock('electron', () => ({
   app: { showEmojiPanel: jest.fn() },
   ipcMain: { handle: jest.fn() },
-  BrowserWindow: { fromWebContents: jest.fn() },
+  BrowserWindow: { fromWebContents: jest.fn(), getFocusedWindow: jest.fn() },
   Menu: {
     buildFromTemplate: jest.fn(() => ({
       popup: jest.fn(),
@@ -50,6 +50,15 @@ it('uses OS menu templates, rejects untrusted requests and confirms account chan
   expect(() =>
     handler('browser-native-menu')({ ...event, senderFrame: {} }, [])
   ).toThrow('Untrusted');
+  expect(() =>
+    handler('browser-native-tooltip')(
+      { ...event, senderFrame: {} },
+      { id: 'chat' }
+    )
+  ).toThrow('Untrusted');
+  expect(() =>
+    handler('browser-native-tooltip')(event, { id: 'chat', label: 'Chat' })
+  ).toThrow('Invalid tooltip');
   await expect(
     handler('browser-native-menu')(event, [{ label: 42 }])
   ).rejects.toThrow('Invalid menu label');

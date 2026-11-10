@@ -84,5 +84,6 @@ export function normalizeNote(
     fields: [],
     allowAI: input.allowAI === true,
     sensitive: input.sensitive === true,
+    asRead: input.asRead !== false,
   };
 }

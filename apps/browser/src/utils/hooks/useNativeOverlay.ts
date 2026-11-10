@@ -17,8 +17,27 @@ export function hasGlobalOverlay(root: ParentNode = document) {
       `.rt-BaseDialogOverlay, ${developmentOverlaySelector}`
     )
       ? element
-      : element.querySelector<HTMLElement>('[data-state="open"]');
-    return !!content && !content.hidden && content.getClientRects().length > 0;
+      : element.querySelector<HTMLElement>(
+          '[data-state="open"], [data-state="delayed-open"], [data-state="instant-open"]'
+        );
+    // These hints are collision-constrained to the workspace sidebar.
+    if (content?.matches('.sidebar-tooltip')) return false;
+    if (!content || content.hidden || !content.getClientRects().length)
+      return false;
+    const viewports = Array.from(
+      root.querySelectorAll<HTMLElement>('.browser-viewport')
+    ).filter((viewport) => viewport.getClientRects().length);
+    if (!viewports.length) return true;
+    const bounds = content.getBoundingClientRect();
+    return viewports.some((viewport) => {
+      const page = viewport.getBoundingClientRect();
+      return (
+        bounds.left < page.right &&
+        bounds.right > page.left &&
+        bounds.top < page.bottom &&
+        bounds.bottom > page.top
+      );
+    });
   });
 }
 

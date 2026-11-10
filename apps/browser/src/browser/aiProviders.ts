@@ -71,6 +71,12 @@ export const AI_PROVIDERS = [
     endpoint: 'https://openrouter.ai/api/v1',
     model: 'openai/gpt-6.1-sol',
   },
+  {
+    id: 'ollama',
+    label: 'Ollama',
+    endpoint: 'http://localhost:11434/v1',
+    model: '',
+  },
   { id: 'custom', label: 'Custom', endpoint: '', model: '' },
 ];
 // API IDs checked against provider model catalogs on 2026-11-07.
@@ -129,6 +135,25 @@ export const AI_MODEL_EXAMPLES: Record<string, string[]> = {
   ],
 };
 
+/** Ollama's default local OpenAI-compatible server needs no API key. */
+export function isOllamaEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    return (
+      ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+      url.port === '11434' &&
+      url.pathname.replace(/\/$/, '') === '/v1' &&
+      ['http:', 'https:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
+}
+
 export const providerFor = (endpoint: string) =>
-  AI_PROVIDERS.find((item) => item.endpoint === endpoint.replace(/\/$/, ''))
-    ?.id || 'custom';
+  isOllamaEndpoint(endpoint)
+    ? 'ollama'
+    : AI_PROVIDERS.find((item) => item.endpoint === endpoint.replace(/\/$/, ''))
+        ?.id || 'custom';

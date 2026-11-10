@@ -15,6 +15,7 @@ import type {
   MigrationProgress,
   MigrationResult,
 } from '../browser/browserMigration';
+import { collectionProfile } from '../utils/collectionGroups';
 import type { ImportedLink } from '../browser/browserImport';
 import { importBrowsingHistory } from './history';
 import {
@@ -453,6 +454,9 @@ export function registerBrowserMigration(
         if (
           !request ||
           typeof request.profileId !== 'string' ||
+          (request.destinationSpace !== undefined &&
+            (typeof request.destinationSpace !== 'string' ||
+              !request.destinationSpace)) ||
           !['bookmarks', 'history', 'cookies'].every(
             (k) => typeof request[k as keyof MigrationRequest] === 'boolean'
           ) ||
@@ -553,7 +557,9 @@ export function registerBrowserMigration(
           )
             pending.delete(token);
         const token = randomUUID();
-        const profileId = randomUUID();
+        const profileId = request.destinationSpace
+          ? collectionProfile(request.destinationSpace, token)
+          : randomUUID();
         pending.set(token, {
           sender,
           frame,

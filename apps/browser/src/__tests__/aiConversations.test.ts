@@ -292,3 +292,29 @@ it('keeps work in the replacement chat and finalizes the earlier deletion on ano
     jest.useRealTimers();
   }
 });
+
+it('preserves budget-pause continuation within its chat after the short recovery window', () => {
+  const file = path.join(root, 'chats.bin');
+  const store = new AIConversationStore(file, storage);
+  const value = {
+    pauseKind: 'budget' as const,
+    messages: [
+      { role: 'user', content: 'Finish the hook' },
+      { role: 'tool', tool_call_id: 'saved-hook', content: 'Hook saved' },
+    ],
+    step: 0,
+    endpoint: 'http://localhost:11434/v1',
+    expires: Date.now() + 24 * 60 * 60 * 1000,
+  };
+  store.current().checkpoint = value;
+  store.save();
+  const now = Date.now();
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(now + 60 * 60 * 1000);
+  try {
+    expect(new AIConversationStore(file, storage).current().checkpoint).toEqual(
+      value
+    );
+  } finally {
+    clock.mockRestore();
+  }
+});

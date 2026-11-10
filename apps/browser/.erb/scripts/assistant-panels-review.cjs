@@ -1,0 +1,53 @@
+const {app,BrowserWindow}=require('electron');
+const fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert');
+const project=path.resolve(__dirname,'../..');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'assistant-panels-review-'));
+const out=path.join(project,'docs/evidence/assistant-panels');fs.mkdirSync(out,{recursive:true});
+app.setPath('userData',path.join(root,'profile'));app.on('window-all-closed',()=>{});
+fs.writeFileSync(path.join(root,'entry.tsx'),`import React,{useState}from'react';import{createRoot}from'react-dom/client';import{Theme}from'@radix-ui/themes';import'@radix-ui/themes/styles.css';import '${project}/src/renderer/index.css';import{AssistantPanelHost}from'${project}/src/components/UI/AssistantPanelHost';import{AssistantPageHeader}from'${project}/src/components/UI/AssistantPageHeader';import{ActivityPage}from'${project}/src/components/UI/ActivityPage';import{MarkdownNoteEditor}from'${project}/src/components/UI/MarkdownNoteEditor';function Draft(){const[text,setText]=useState('Research draft');return <><AssistantPageHeader><span>Page actions</span></AssistantPageHeader><textarea aria-label="Draft" value={text} onChange={e=>setText(e.target.value)}/></>;}function Note(){const[text,setText]=useState('# Research\\n\\nOriginal note');return <><AssistantPageHeader><span>Notes</span></AssistantPageHeader><MarkdownNoteEditor markdown={text} onChange={setText} onSelectionChange={()=>{}} onFocusTitle={()=>{}}/></>;}function Review(){const[active,setActive]=useState('activity');return <Theme appearance={new URLSearchParams(location.search).get('theme') as any}><div style={{height:'100vh',display:'flex',flexDirection:'column'}}><nav style={{display:'flex',gap:4,padding:8,fontSize:12}}>{['activity','notes','assistant','tasks','developer'].map(p=><button data-select={p} onClick={()=>setActive(p)}>{p}</button>)}</nav><aside className="ai-sidebar" style={{width:'100%',flex:1}}>{['activity','notes','assistant','tasks','developer'].map(p=><AssistantPanelHost key={p} panel={p as any} active={p===active}>{p==='activity'?<ActivityPage active/>:p==='notes'?<Note/>:<Draft/>}</AssistantPanelHost>)}</aside></div></Theme>;}window.electron={activity:async r=>r.action==='list'?[{id:'sample',title:'Research verdict is ready',message:'The note includes recommendations and supporting sources.',source:'ai',asRead:false,createdAt:Date.now()}]:undefined,onActivityChanged:()=>()=>{},browser:{tooltip:async()=>{}}} as any;createRoot(document.getElementById('root')).render(<Review/>);`);
+require(project+'/node_modules/esbuild').buildSync({entryPoints:[path.join(root,'entry.tsx')],bundle:true,outfile:path.join(root,'preview.js'),platform:'browser',jsx:'automatic',nodePaths:[project+'/node_modules'],define:{'process.env.NODE_ENV':'"development"'},loader:{'.woff2':'dataurl','.woff':'dataurl','.ttf':'dataurl','.svg':'dataurl','.png':'dataurl'}});
+fs.writeFileSync(path.join(root,'index.html'),'<html><head><link rel="stylesheet" href="preview.css"></head><body><div id="root"></div><script src="preview.js"></script></body></html>');
+require(project+'/node_modules/esbuild').buildSync({entryPoints:[project+'/src/main/windowNavigation.ts'],bundle:true,outfile:path.join(root,'navigation.cjs'),platform:'node',format:'cjs',external:['electron']});
+const {protectWindowNavigation}=require(path.join(root,'navigation.cjs'));
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+app.whenReady().then(async()=>{try{
+for(const theme of ['light','dark'])for(const width of [368,720]){
+ console.log('Review',theme,width);
+ const win=new BrowserWindow({width,height:700,show:true,webPreferences:{contextIsolation:true,sandbox:true,backgroundThrottling:false}});
+ protectWindowNavigation(win.webContents,require('url').pathToFileURL(path.join(root,'index.html')).href+'?theme='+theme,async()=>{},true);
+ const run=s=>win.webContents.executeJavaScript(s); const shot=async(w,state)=>{await pause(150);fs.writeFileSync(path.join(out,theme+'-'+width+'-'+state+'.png'),(await w.webContents.capturePage()).toPNG());assert(await w.webContents.executeJavaScript('document.documentElement.scrollWidth<=innerWidth'),'horizontal overflow '+state);};
+ await win.loadFile(path.join(root,'index.html'),{query:{theme}});await pause(250);await shot(win,'docked');console.log('docked');
+ await run("document.querySelector('[aria-label=\"Undock Activity\"]').click()");await pause(400);console.log('undocked');
+ let child=BrowserWindow.getAllWindows().find(w=>w!==win);assert(child,'floating native window');
+ child.setSize(width,700);
+ assert(await child.webContents.executeJavaScript("!!document.querySelector('.activity-item')"),'Activity moved');
+ await shot(child,'floating');
+ await child.webContents.executeJavaScript("document.querySelector('[aria-label=\"Dock Activity back\"]').focus()");await shot(child,'focused');
+ await child.webContents.executeJavaScript("document.querySelector('.activity-summary').click()");await shot(child,'expanded');
+ await child.webContents.executeJavaScript("document.querySelector('[aria-label=\"Dock Activity back\"]').click()");await pause(200);assert(BrowserWindow.getAllWindows().length===1,'docked closes floating window');
+ await shot(win,'returned');console.log('returned');
+ await run("document.querySelector('[data-select=assistant]').click()");
+ await run("const t=document.querySelector('[aria-label=Draft]');const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;setter.call(t,'Unsaved research');t.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('[aria-label=\"Undock Chat\"]').click()");await pause(250);
+ child=BrowserWindow.getAllWindows().find(w=>w!==win);
+ assert(await child.webContents.executeJavaScript("document.querySelector('textarea').value==='Unsaved research'"),'draft preserved on undock');
+ await child.webContents.executeJavaScript("document.querySelector('[aria-label=\"Dock Chat back\"]').click()");await pause(200);
+ assert(await run("document.querySelector('.assistant-panel-host:not([hidden]) textarea').value==='Unsaved research'"),'draft preserved on dock');
+ await run("document.querySelector('[data-select=notes]').click()");await pause(150);
+ await run("document.querySelector('[aria-label=\"Undock Notes\"]').click()");await pause(250);
+ child=BrowserWindow.getAllWindows().find(w=>w!==win);
+ await child.webContents.executeJavaScript("const e=document.querySelector('[aria-label=\"Note content\"]');e.focus();e.dispatchEvent(new KeyboardEvent('keydown',{key:'a',metaKey:true,bubbles:true}));document.execCommand('insertText',false,'Floating note text');");await pause(150);
+ assert(await child.webContents.executeJavaScript("document.querySelector('[aria-label=\"Note content\"]').textContent.includes('Floating note text')"),'rich editor works floating');
+ child.setSize(width,700);await shot(child,'notes-editor');
+ await child.webContents.executeJavaScript("document.querySelector('[aria-label=\"Dock Notes back\"]').click()");await pause(150);
+ assert(await run("document.querySelector('[aria-label=\"Note content\"]').textContent.includes('Floating note text')"),'rich editor survives dock');
+ for(const panel of ['assistant','tasks','developer']){
+ await run(`document.querySelector('[data-select=${panel}]').click()`);await pause(80);await run(`document.querySelector('[aria-label="Undock ${panel==='assistant'?'Chat':panel==='tasks'?'Tasks':'Developer'}"]').click()`);await pause(150);
+ child=BrowserWindow.getAllWindows().find(w=>w!==win);assert(child,'independent '+panel);child.close();await pause(150);assert(BrowserWindow.getAllWindows().length===1,'close '+panel);
+ }
+ await run("document.querySelector('[data-select=activity]').click()");await pause(80);await run("document.querySelector('[aria-label=\"Undock Activity\"]').click()");await pause(150);
+ win.reload();await pause(600);
+ child=BrowserWindow.getAllWindows().find(w=>w!==win);assert(child,'floating placement restored on reload');
+ assert(await child.webContents.executeJavaScript("!!document.querySelector('.activity-item')"),'restored floating content');
+ child.close();await pause(100);
+ win.destroy();
+}console.log('Assistant native docking, return, close and draft preservation passed in light/dark at 368/720px.');app.quit();}catch(e){console.error(e);app.exit(1);}});

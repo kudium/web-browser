@@ -140,11 +140,13 @@ test('profile migration reads real SQLite history and requires a trusted, idempo
     const found = await handler(event, 'profiles');
     expect(found[0].name).toBe('Sample profile');
     const preview = await handler(event, 'prepare', {
+      destinationSpace: 'target',
       profileId: found[0].id,
       bookmarks: true,
       history: true,
       cookies: false,
     });
+    expect(preview.profileId).toBe(`collection:target:${preview.token}`);
     expect(preview.links).toHaveLength(1);
     expect(preview.history).toBe(1);
     expect(preview).not.toHaveProperty('directory');

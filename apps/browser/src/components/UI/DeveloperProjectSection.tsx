@@ -434,7 +434,7 @@ export function DeveloperProjectSection({
         <div className="developer-project-empty">
           <div>
             {!settingsOnly && <strong>Project folder</strong>}
-            <p>Connect this group to your local code.</p>
+            <p>Connect a local project folder to work with AI and browser tools.</p>
           </div>
           <Button
             type="button"

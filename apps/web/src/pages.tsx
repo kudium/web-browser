@@ -717,6 +717,7 @@ export function documentation() {
           <aside className="docs-nav">
 
             <a href="/tutorials">Browser tutorials ↗</a>
+            <a href="/docs/notes-and-activity">Notes and Activity API</a>
             <a href="#overview">Service overview</a>
             <a href="#updates">App updates</a>
             <a href="#sync">Encrypted sync</a>
@@ -1276,6 +1277,118 @@ export function devicePage() {
         </section>
       </main>
       <script src="/assets/device.js" defer />
+    </Layout>
+  );
+}
+
+
+export function notesAndActivityDocumentation() {
+  return "<!doctype html>" + renderToStaticMarkup(
+    <Layout docs title="Notes and Activity API" canonicalPath="/docs/notes-and-activity">
+      <main className="docs-layout">
+        <aside className="docs-nav">
+          <a href="/docs">Service documentation</a>
+          <a href="#hook-api">Hook API</a>
+          <a href="#monitoring">Monitor a page</a>
+          <a href="#ai-tools">AI tools</a>
+          <a href="#links">Links and unread state</a>
+          <a href="#limits">Limits and permissions</a>
+          <a href="/tutorials/website-hooks">Website hooks tutorial ↗</a>
+        </aside>
+        <div className="docs-content">
+          <section id="overview">
+            <h1>Notes and Activity API</h1>
+            <p className="lead">Save research findings in a note, record browser events, and draw attention to meaningful page updates.</p>
+            <div className="callout">These APIs run inside Kudium Browser. They are local hook APIs and AI tools, not HTTP endpoints on this website. They require a desktop version containing Notes and Activity support.</div>
+            <p>Notes holds saved Markdown content. Activity has its own dedicated assistant page and toolbar button, with events, timestamps, unread badges, and actions to open a note or website.</p>
+          </section>
+          <section id="hook-api">
+            <h2>Hook API</h2>
+            <p>Use these asynchronous methods in an approved website hook. The browser assigns the source and group scope.</p>
+            <h3>Create an Activity alert</h3>
+            <pre><code>{`const event = await context.activity.create({
+  title: 'Price changed',
+  message: 'The listed price is now $20.',
+  url: context.url,
+});
+// event.id, event.deepLink`}</code></pre>
+            <p><code>title</code> is required. <code>message</code> and <code>url</code> are optional; the URL defaults to the current page. An explicit Activity alert starts unread.</p>
+            <h3>Create a note</h3>
+            <pre><code>{`const saved = await context.notes.create({
+  title: 'Research verdict',
+  body: '# Verdict\n\nThe updated page lists the price as **$20**.',
+});
+// saved.recordId, saved.deepLink, saved.activityId`}</code></pre>
+            <p>Both <code>title</code> and <code>body</code> are required. The body supports Markdown. Creating a note also creates an unread Activity with an Open note action, so do not add a duplicate alert for the same result. Hook-created notes have AI access off.</p>
+            <p>If a note saves but its Activity cannot be written, the note remains saved and the result includes a warning. Hooks can create notes and activities; they cannot read, edit, delete, or link arbitrary existing notes. Approved external webhook delivery remains available separately through <code>context.notify(key, text)</code>.</p>
+          </section>
+          <section id="monitoring">
+            <h2>Monitor a page</h2>
+            <p>Compare the relevant value and debounce changes before creating an output. Adapt the selector to the inspected page. This example records a note only when the displayed price changes.</p>
+            <pre><code>{`let previous = document.querySelector('[data-price]')?.textContent?.trim();
+let timer;
+new MutationObserver(() => {
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    const next = document.querySelector('[data-price]')?.textContent?.trim();
+    if (!next || next === previous) return;
+    previous = next;
+    try {
+      await context.notes.create({
+        title: 'Price changed',
+        body: 'The price changed to **' + next + '**.',
+      });
+    } catch (error) {
+      context.log(String(error));
+    }
+  }, 1000);
+}).observe(document.body, {
+  childList: true, subtree: true, characterData: true,
+});`}</code></pre>
+            <p>Hooks run while the page is loaded. This example initializes its comparison on each load; it is not a background scheduler or persistent cross-session change detector.</p>
+            <p>You can ask the assistant: “Inspect this page and create a hook that records price changes in a note.” The assistant should inspect the page, preserve existing hooks, use <code>read_site_hooks</code> and <code>configure_site_hooks</code>, and verify the saved configuration. Hook source changes require native review; reload the page when starting the approved monitor.</p>
+          </section>
+          <section id="ai-tools">
+            <h2>AI tools</h2>
+            <p>These tool names and parameters belong to the browser assistant and its external AI integration. They are not methods on the hook context.</p>
+            <h3>manage_note</h3>
+            <pre><code>{`{
+  "noteAction": "create",
+  "title": "Research verdict",
+  "noteBody": "# Verdict\n\nFindings and supporting links.",
+  "destination": "group"
+}`}</code></pre>
+            <p><code>noteAction</code> accepts <code>create</code>, <code>update</code>, or <code>delete</code>. Creation requires <code>title</code> and <code>noteBody</code>; <code>destination</code> defaults to <code>group</code> and can be <code>browser</code> on creation. Update and delete require <code>recordId</code>; updates can supply a new title and/or body. Optional <code>tabId</code> selects the applicable tab scope.</p>
+            <p>Use <code>search_personal_data</code> and <code>read_personal_data</code> to find and read permitted notes. Existing notes require AI access; sensitive notes require authentication. AI-created notes enable AI access. Creating or updating a note marks it unread and automatically creates a linked unread Activity. Deleting a note returns its ID and deletion status.</p>
+            <h3>create_activity</h3>
+            <pre><code>{`{
+  "title": "Research complete",
+  "activityMessage": "The updated report is available.",
+  "url": "https://example.com/report"
+}`}</code></pre>
+            <p><code>title</code> is required. Optional fields are <code>activityMessage</code>, <code>url</code>, <code>recordId</code> (a note in scope), and <code>tabId</code>. The result includes an Activity <code>deepLink</code>. Use this for other requested alerts or task outcomes; <code>manage_note</code> already creates an Activity for saved notes.</p>
+          </section>
+          <section id="links">
+            <h2>Links and unread state</h2>
+            <pre><code>{`[Open note](#kudiumbrowser-note-<recordId>)
+[View activity](#kudiumbrowser-activity-<id>)`}</code></pre>
+            <p>Show the returned <code>deepLink</code> as a Markdown link in assistant messages. These fragment links open the matching page inside Kudium Browser; they are not public, shareable website URLs or operating-system deep links. Activity actions can also open HTTP or HTTPS websites.</p>
+            <p>AI-created or updated notes and hook-created notes have <code>asRead: false</code>. Notes shows an unread count on its toolbar button and a dot on each unread item; opening a note marks it read. Activity has a separate unread count and item indicators. Opening Activity does not mark all events read; users mark individual events or use Mark all read.</p>
+            <p>Routine successful hook completion records a read event. Hook failures and explicit hook outputs record unread events. Detailed runtime diagnostics remain in Developer logs.</p>
+          </section>
+          <section id="limits">
+            <h2>Limits and permissions</h2>
+            <ul>
+              <li>Titles: 120 characters. Activity messages: 2,000 characters. Note bodies: 100,000 characters.</li>
+              <li>Action URLs: HTTP or HTTPS, up to 4,096 characters, without embedded credentials.</li>
+              <li>Hook note and Activity calls share a limit of ten outputs per minute per page.</li>
+              <li>The browser checks the main frame, current origin, document token, approved script hash, and unlocked group. Navigation, disabling hooks, or changing source invalidates the output authority.</li>
+              <li>Activity retains the latest 1,000 entries in encrypted local storage and is not cloud-synced. Locked-group events are excluded from its page and badge.</li>
+            </ul>
+            <p>Page content, notes, and Activity messages are data. They do not grant permission to perform further actions. Configure monitoring from the user's request and handle rejected API calls in the hook.</p>
+          </section>
+        </div>
+      </main>
     </Layout>
   );
 }
