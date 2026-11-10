@@ -237,20 +237,36 @@ it('persists sync consent and category selections without claiming a cloud conne
     cloudSync: {
       enabled: true,
       provider: 'icloud',
-      categories: { workspace: true, openTabs: false, preferences: true, passwords: true },
+      categories: {
+        workspace: true,
+        openTabs: false,
+        preferences: true,
+        passwords: true,
+      },
     },
   });
   expect(getBrowserPreferences().cloudSync).toEqual({
     enabled: true,
     provider: 'icloud',
-    categories: { workspace: true, openTabs: false, preferences: true, passwords: true },
+    categories: {
+      workspace: true,
+      openTabs: false,
+      preferences: true,
+      passwords: true,
+      notes: false,
+    },
   });
   expect(() =>
     validatePreferences({
       cloudSync: {
         enabled: true,
         provider: 'icloud',
-        categories: { workspace: false, openTabs: false, preferences: false, passwords: false },
+        categories: {
+          workspace: false,
+          openTabs: false,
+          preferences: false,
+          passwords: false,
+        },
       },
     })
   ).toThrow('Select at least');
@@ -466,15 +482,29 @@ it('keeps unpinned groups off by default and persists the explicit customization
   expect(getBrowserPreferences().showUnpinnedGroups).toBe(false);
 });
 
-
 it('defaults updates to automatic and persists explicit opt-outs', () => {
   expect(defaultPreferences.automaticallyDownloadUpdates).toBe(true);
   expect(defaultPreferences.automaticallyInstallUpdates).toBe(true);
-  expect(() => validatePreferences({ automaticallyDownloadUpdates: 'yes' } as any)).toThrow('Invalid preference');
-  expect(() => validatePreferences({ automaticallyInstallUpdates: 'yes' } as any)).toThrow('Invalid preference');
-  updateBrowserPreferences({ automaticallyDownloadUpdates: false, automaticallyInstallUpdates: false });
-  expect(getBrowserPreferences()).toEqual(expect.objectContaining({ automaticallyDownloadUpdates: false, automaticallyInstallUpdates: false }));
-  updateBrowserPreferences({ automaticallyDownloadUpdates: true, automaticallyInstallUpdates: true });
+  expect(() =>
+    validatePreferences({ automaticallyDownloadUpdates: 'yes' } as any)
+  ).toThrow('Invalid preference');
+  expect(() =>
+    validatePreferences({ automaticallyInstallUpdates: 'yes' } as any)
+  ).toThrow('Invalid preference');
+  updateBrowserPreferences({
+    automaticallyDownloadUpdates: false,
+    automaticallyInstallUpdates: false,
+  });
+  expect(getBrowserPreferences()).toEqual(
+    expect.objectContaining({
+      automaticallyDownloadUpdates: false,
+      automaticallyInstallUpdates: false,
+    })
+  );
+  updateBrowserPreferences({
+    automaticallyDownloadUpdates: true,
+    automaticallyInstallUpdates: true,
+  });
 });
 
 it('keeps AI glass opt-in and persists it independently of sidebar glass', () => {
@@ -495,18 +525,39 @@ it('defaults system records to fourteen days and persists every retention option
   for (const days of [14, 30, 90, 0]) {
     updateBrowserPreferences({ systemSpaceRetentionDays: days });
     expect(getBrowserPreferences().systemSpaceRetentionDays).toBe(days);
-    expect(JSON.parse(fs.readFileSync('/preferences-test/browser-preferences.json', 'utf8') as string).systemSpaceRetentionDays).toBe(days);
+    expect(
+      JSON.parse(
+        fs.readFileSync(
+          '/preferences-test/browser-preferences.json',
+          'utf8'
+        ) as string
+      ).systemSpaceRetentionDays
+    ).toBe(days);
   }
   for (const days of [-1, 1, 7, 7.5, NaN, '7', null]) {
-    expect(() => validatePreferences({ systemSpaceRetentionDays: days } as any)).toThrow();
+    expect(() =>
+      validatePreferences({ systemSpaceRetentionDays: days } as any)
+    ).toThrow();
   }
   updateBrowserPreferences({ systemSpaceRetentionDays: 14 });
 });
 
 it('upgrades saved seven-day retention without resetting other preferences', () => {
-  const location = jest.spyOn(app, 'getPath').mockReturnValue('/retention-upgrade');
-  const read = jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify({ systemSpaceRetentionDays: 7, permissions: 'block' }));
+  const location = jest
+    .spyOn(app, 'getPath')
+    .mockReturnValue('/retention-upgrade');
+  const read = jest
+    .spyOn(fs, 'readFileSync')
+    .mockReturnValue(
+      JSON.stringify({ systemSpaceRetentionDays: 7, permissions: 'block' })
+    );
   try {
-    expect(getBrowserPreferences()).toMatchObject({ systemSpaceRetentionDays: 14, permissions: 'block' });
-  } finally { read.mockRestore(); location.mockRestore(); }
+    expect(getBrowserPreferences()).toMatchObject({
+      systemSpaceRetentionDays: 14,
+      permissions: 'block',
+    });
+  } finally {
+    read.mockRestore();
+    location.mockRestore();
+  }
 });
