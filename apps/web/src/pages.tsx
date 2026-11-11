@@ -6,6 +6,7 @@ import { serviceOrigin } from "./config";
 import { tutorials, type Tutorial } from "./tutorials";
 import type { groupReleaseHistory, ReleaseHistoryEntry } from "./releases";
 const stylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/site.css", import.meta.url))).digest("hex").slice(0, 12);
+const accountDataVersion = createHash("sha256").update(readFileSync(new URL("../public/account-data.js", import.meta.url))).digest("hex").slice(0, 12);
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
 export function Layout({
@@ -1289,7 +1290,7 @@ export function accountPage(
         <script src="/assets/auth.js" defer />
         <script src="/assets/passkeys.js" type="module" />
         <script src="/assets/sessions.js?v=2" defer />
-        <script src="/assets/account-data.js" defer />
+        <script src={`/assets/account-data.js?v=${accountDataVersion}`} defer />
       </Layout>
     )
   );
