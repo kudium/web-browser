@@ -8,6 +8,7 @@ import {
 import path from 'path';
 import { EventEmitter } from 'events';
 import fs from 'fs';
+import { onWindowClosed } from '../windowLifecycle';
 import { storageRecoveryMessage } from '../../browser/storageRecovery';
 import { isProtectedField } from '../../browser/passwordManager';
 import { ordinaryNotesStorage } from './ordinaryNotes';
@@ -187,14 +188,16 @@ export function registerPasswordManager(
       authorized.delete(contents);
       if (!authorized.size) store?.lock();
     };
+    const owner = BrowserWindow.fromWebContents(contents);
+    const stopClosed = owner ? onWindowClosed(owner, revoke) : undefined;
     contents.once('destroyed', () => {
+      stopClosed?.();
       revoke();
       watched.delete(contents);
     });
     contents.on('did-start-navigation', (_event, _url, inPage, mainFrame) => {
       if (mainFrame && !inPage) revoke();
     });
-    BrowserWindow.fromWebContents(contents)?.once('closed', revoke);
   };
   let ordinaryNotesMigrated = false;
   ipcMain.handle('password-manager', async (event, request: VaultRequest) => {

@@ -80,6 +80,7 @@ export function validDeveloperConfig(
 }
 
 export interface SiteDeveloperWindowState {
+  selectedHookId?: string;
   origin: string;
   groupName: string;
   pageURL: string;

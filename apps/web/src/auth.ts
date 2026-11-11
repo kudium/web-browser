@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { passkey } from '@better-auth/passkey';
 import { betterAuth } from 'better-auth';
 import { bearer, deviceAuthorization } from 'better-auth/plugins';
 import { createAuthMiddleware } from 'better-auth/api';
@@ -7,7 +8,7 @@ import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import nodemailer from 'nodemailer';
 import type { Database } from './db';
 import type { AuthConfig } from './config';
-import { authUser, authSession, authAccount, authVerification, authRateLimit, authDeviceCode } from './schema';
+import { authUser, authSession, authAccount, authVerification, authRateLimit, authDeviceCode, authPasskey } from './schema';
 export type Authenticate = (token: string) => Promise<string>;
 export function syncAccountId(userId: string) {
   return createHash('sha256').update(`better-auth\0${userId}`).digest('hex');
@@ -19,7 +20,9 @@ export function createAuth(db: Database, config: AuthConfig, delivery?: MailDeli
   const auth = betterAuth({
     appName: 'Kudium Browser', secret: config.secret, baseURL: config.baseURL, basePath: '/api/auth',
     trustedOrigins: [config.baseURL],
-    database: drizzleAdapter(db, { provider: 'pg', schema: { user: authUser, session: authSession, account: authAccount, verification: authVerification, rateLimit: authRateLimit, deviceCode: authDeviceCode } }),
+    database: drizzleAdapter(db, { provider: 'pg', schema: { user: authUser, session: authSession, account: authAccount, verification: authVerification, rateLimit: authRateLimit, deviceCode: authDeviceCode, passkey: authPasskey } }),
+    socialProviders: config.google ? { google: { ...config.google, prompt: 'select_account' } } : {},
+    account: { encryptOAuthTokens: true, accountLinking: { enabled: true, requireLocalEmailVerified: true, allowDifferentEmails: false } },
     emailAndPassword: {
       enabled: true, minPasswordLength: 12, maxPasswordLength: 128,
       requireEmailVerification: Boolean(sendMail),
@@ -37,6 +40,7 @@ export function createAuth(db: Database, config: AuthConfig, delivery?: MailDeli
     session: { expiresIn: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60, cookieCache: { enabled: false } },
     advanced: { useSecureCookies: new URL(config.baseURL).protocol === 'https:', cookiePrefix: 'kudium', defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' } },
     plugins: [
+      passkey({ rpID: new URL(config.baseURL).hostname, rpName: 'Kudium Browser', origin: config.baseURL, authenticatorSelection: { residentKey: 'required', userVerification: 'required' } }),
       deviceAuthorization({ expiresIn: '10m', interval: '5s', deviceCodeLength: 64, validateClient: clientId => clientId === 'kudium-desktop', verificationUri: `${config.baseURL}/device` }),
       { id: 'desktop-signed-session', hooks: { after: [{ matcher: ctx => ctx.path === '/device/token', handler: createAuthMiddleware(async ctx => { if (ctx.context.newSession) await setSessionCookie(ctx, ctx.context.newSession); }) }] } },
       bearer({ requireSignature: true }),

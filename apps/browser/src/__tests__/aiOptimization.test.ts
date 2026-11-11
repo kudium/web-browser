@@ -2,7 +2,11 @@ import { AIToolCatalog } from '../main/aiToolCatalog';
 import { aiProviderTools } from '../browser/aiToolSchemas';
 import { compactAIToolContext } from '../main/aiContextBudget';
 import { AIUsageTracker, providerUsage } from '../main/aiUsage';
-import { providerRequest } from '../main/aiTransport';
+import {
+  providerRequest,
+  providerMessage,
+  portableMessages,
+} from '../main/aiTransport';
 import { AI_SYSTEM_PROMPT } from '../main/aiSystemPrompt';
 import { aiToolProgress } from '../browser/aiProgress';
 
@@ -318,4 +322,56 @@ test('caches stable Claude instructions and excludes the changing clock from the
   ).not.toHaveProperty('cache_control');
   expect(aiToolProgress('read_page')).toBe('Reading the page…');
   expect(aiToolProgress('unsupported_name')).toBe('Working on your request…');
+});
+
+test('continues tool history across Claude and OpenAI-compatible models', () => {
+  const claude = providerMessage('https://api.anthropic.com/v1', {
+    content: [
+      {
+        type: 'thinking',
+        thinking: 'private reasoning',
+        signature: 'old-signature',
+      },
+      { type: 'text', text: 'Reading the page' },
+      {
+        type: 'tool_use',
+        id: 'call_1',
+        name: 'read_page',
+        input: { tabId: 'tab' },
+      },
+    ],
+  });
+  const history = [
+    claude,
+    { role: 'tool', tool_call_id: 'call_1', content: 'Page loaded' },
+  ];
+  const openai = providerRequest(
+    'https://api.openai.com/v1',
+    'new-model',
+    history,
+    []
+  );
+  expect(openai.messages[0]).not.toHaveProperty('claudeContent');
+  expect(JSON.stringify(openai)).not.toContain('old-signature');
+  expect(openai.messages[0].tool_calls[0].function.name).toBe('read_page');
+  expect(openai.messages[1].tool_call_id).toBe('call_1');
+  const back = providerRequest(
+    'https://api.anthropic.com/v1',
+    'different-claude',
+    portableMessages(history),
+    []
+  );
+  expect(back.messages[0].content).toContainEqual({
+    type: 'tool_use',
+    id: 'call_1',
+    name: 'read_page',
+    input: { tabId: 'tab' },
+  });
+  expect(back.messages[1].content[0]).toMatchObject({
+    type: 'tool_result',
+    tool_use_id: 'call_1',
+    content: 'Page loaded',
+  });
+  expect(JSON.stringify(back)).not.toContain('old-signature');
+  expect(history[0]).toHaveProperty('claudeContent');
 });

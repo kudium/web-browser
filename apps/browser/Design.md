@@ -555,3 +555,8 @@ Show hooks in a persistent left sidebar beside their editor, rather than a dropd
 Validated hook selection, retained drafts, rename, removal, creation and save with five tests, TypeScript and targeted lint. Reviewed the production panel in disposable Electron fixtures at 400/1000px in light/dark, including default/selected/new hooks, disabled controls, settings and targeting popovers. Live hook execution and native file import were not exercised. Evidence: `docs/evidence/hook-sidebar/`.
 
 Hook inspector refinement reviewed in production-component Electron fixtures at 400/1000px, light/dark, including selected/default/new hooks, disabled controls and the page-filter popover. Five hook-editing tests, TypeScript and targeted lint pass. Live hook execution and native imports were not exercised.
+
+## Restored Personal Data and Workspace layouts
+Personal Data uses its original full-width saved-item table, with Add item and Import beside search. Groups and Spaces use their original full-width lists and directly accessible creation controls. Do not apply the generic split SettingsLibrary navigation/detail layout to these Preferences pages. Keep the Notes entry point and storage recovery behavior.
+
+The restored layouts were rendered in disposable Electron fixtures at 620/360px for Personal Data and 1000/760px for Workspace, in light/dark appearance. Reviewed populated/empty records and group/space lists; Workspace selection and removal checks passed. Nine editor and bulk-action regression tests and TypeScript passed. Notes rendering, authentication, native import and picker popovers were not visually re-audited in this rollback.

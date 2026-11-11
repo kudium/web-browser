@@ -37,6 +37,7 @@ export function GroupPicker({
   allowCustom = false,
   optionIcon,
   triggerClassName = '',
+  contentClassName = '',
   showTriggerIcon = true,
   onContextMenu,
   onOpenChange,
@@ -52,6 +53,7 @@ export function GroupPicker({
   allowCustom?: boolean;
   optionIcon?: (option: GroupOption) => ReactNode;
   triggerClassName?: string;
+  contentClassName?: string;
   showTriggerIcon?: boolean;
   onContextMenu?: (id: string) => void;
   onOpenChange?: (open: boolean) => void;
@@ -90,7 +92,7 @@ export function GroupPicker({
     return options.filter((option) => {
       if (seen.has(option.id)) return false;
       seen.add(option.id);
-      return `${option.name} ${option.detail || ''}`
+      return `${option.name} ${option.id} ${option.detail || ''}`
         .toLocaleLowerCase()
         .includes(search);
     });
@@ -165,7 +167,10 @@ export function GroupPicker({
           <ChevronDown size={14} />
         </Button>
       </Popover.Trigger>
-      <PanelPopoverContent className="group-picker" sideOffset={6}>
+      <PanelPopoverContent
+        className={`group-picker ${contentClassName}`}
+        sideOffset={6}
+      >
         <TextField.Root
           aria-label={`Search ${label.toLowerCase()}`}
           placeholder={placeholder}
@@ -214,6 +219,7 @@ export function GroupPicker({
               key={option.id}
               tabIndex={-1}
               aria-selected={option.id === value}
+              title={option.name}
               data-active={index === active || undefined}
               onMouseEnter={() => setActive(index)}
               onClick={() => choose(option.id)}

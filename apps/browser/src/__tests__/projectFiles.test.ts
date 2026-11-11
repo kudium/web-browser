@@ -182,7 +182,9 @@ it('saves UTF-8 edits, preserves permissions and returns a new version', async (
     access
   );
   expect(fs.readFileSync(target, 'utf8')).toBe('const next = "✓";\n');
-  if (process.platform !== 'win32') { expect(fs.statSync(target).mode & 0o777).toBe(0o640); }
+  if (process.platform !== 'win32') {
+    expect(fs.statSync(target).mode & 0o777).toBe(0o640);
+  }
   expect(result.file?.version).not.toBe(preview.file?.version);
   expect(result.file?.version).toBe(
     (await projectFiles(root, { action: 'preview', path: 'app.ts' }, access))
@@ -430,4 +432,88 @@ it('opens a terminal in the selected directory and trashes only project items', 
       false
     );
   expect(validFilesRequest({ action: 'create-file', path: '' })).toBe(false);
+});
+
+it('previews images above the text limit without treating them as editable text', async () => {
+  const bytes = Buffer.alloc(1320783);
+  Buffer.from('89504e470d0a1a0a', 'hex').copy(bytes);
+  fs.writeFileSync(path.join(root, 'buy.PNG'), bytes);
+  const result = await projectFiles(
+    root,
+    { action: 'preview', path: 'buy.PNG' },
+    access
+  );
+  expect(result.file?.imageURL).toBe(
+    `data:image/png;base64,${bytes.toString('base64')}`
+  );
+  expect(result.file?.text).toBeUndefined();
+  expect(result.file?.version).toBeUndefined();
+  expect(result.file?.notice).toBeUndefined();
+});
+
+it('bounds image previews separately and renders SVG as image data', async () => {
+  fs.writeFileSync(
+    path.join(root, 'large.png'),
+    Buffer.alloc(20 * 1024 * 1024 + 1)
+  );
+  const large = await projectFiles(
+    root,
+    { action: 'preview', path: 'large.png' },
+    access
+  );
+  expect(large.file?.imageURL).toBeUndefined();
+  expect(large.file?.notice).toContain('20 MB');
+  fs.writeFileSync(
+    path.join(root, 'icon.svg'),
+    '<svg xmlns="http://www.w3.org/2000/svg"/>'
+  );
+  const svg = await projectFiles(
+    root,
+    { action: 'preview', path: 'icon.svg' },
+    access
+  );
+  expect(svg.file?.imageURL).toMatch(/^data:image\/svg\+xml;base64,/);
+});
+
+it('opens an encoded local file URL and refuses folders and outside project links', async () => {
+  fs.writeFileSync(path.join(root, 'a # b.png'), 'image');
+  const result = await projectFiles(
+    root,
+    { action: 'open-tab', path: 'a # b.png' },
+    access
+  );
+  expect(result.url).toContain('/a%20%23%20b.png');
+  await expect(
+    projectFiles(root, { action: 'open-tab', path: '' }, access)
+  ).rejects.toThrow('regular file');
+  fs.writeFileSync(path.join(fixture, 'outside'), 'private');
+  fs.symlinkSync(path.join(fixture, 'outside'), path.join(root, 'link'));
+  await expect(
+    projectFiles(root, { action: 'open-tab', path: 'link' }, access)
+  ).rejects.toThrow('outside');
+});
+
+it('loads PDF, video and audio bytes independently of text limits', async () => {
+  const bytes = Buffer.alloc(300000, 1);
+  for (const [name, mime] of [
+    ['doc.pdf', 'application/pdf'],
+    ['clip.mp4', 'video/mp4'],
+    ['clip.webm', 'video/webm'],
+    ['sound.mp3', 'audio/mpeg'],
+    ['sound.wav', 'audio/wav'],
+    ['sound.m4a', 'audio/mp4'],
+    ['sound.ogg', 'audio/ogg'],
+  ]) {
+    fs.writeFileSync(path.join(root, name), bytes);
+    const result = await projectFiles(
+      root,
+      { action: 'preview', path: name },
+      access
+    );
+    expect(result.file?.media).toEqual({
+      type: mime,
+      url: `data:${mime};base64,${bytes.toString('base64')}`,
+    });
+    expect(result.file?.text).toBeUndefined();
+  }
 });

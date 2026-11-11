@@ -111,6 +111,8 @@ it('shows group identity above a compact hover list, including single-tab groups
   const choose = jest.fn();
   const selectGroup = jest.fn();
   const toggleFavorite = jest.fn();
+  const notes = jest.fn();
+  const developer = jest.fn();
   const tabMenu = jest.fn();
   const groupMenu = jest.fn();
   render(
@@ -131,6 +133,8 @@ it('shows group identity above a compact hover list, including single-tab groups
         onSelect={choose}
         onSelectGroup={selectGroup}
         onToggleFavorite={toggleFavorite}
+        onNotes={notes}
+        onDeveloper={developer}
         onEntryContextMenu={tabMenu}
         onGroupContextMenu={groupMenu}
         onRemove={jest.fn()}
@@ -155,6 +159,10 @@ it('shows group identity above a compact hover list, including single-tab groups
   expect(selectGroup).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole('button', { name: 'AI Chat' }));
   expect(selectGroup).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole('button', { name: 'Notes' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Developer' }));
+  expect(notes).toHaveBeenCalledTimes(1);
+  expect(developer).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole('button', { name: 'Pin to favorites' }));
   expect(toggleFavorite).toHaveBeenCalledTimes(1);
   expect(screen.queryByLabelText('1 tab')).not.toBeInTheDocument();

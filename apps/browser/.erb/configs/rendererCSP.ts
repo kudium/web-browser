@@ -45,6 +45,7 @@ export class RendererCSPPlugin {
           // Saved icons may contain legacy/custom web URLs; native favicons and
           // captures are data URLs. crx is the local extension icon protocol.
           "img-src 'self' data: blob: crx: https: http:",
+          'media-src data: blob:',
           "font-src 'self' data:",
           "connect-src 'none'",
           "object-src 'none'",

@@ -2,7 +2,16 @@
 /* eslint-disable react/require-default-props */
 import { Button, TextField, Text, Select, Callout } from '@radix-ui/themes';
 import { useState, useEffect, useRef, useId } from 'react';
-import { ChevronRight, Shield, ArrowLeft, FolderPlus } from 'lucide-react';
+import {
+  ChevronRight,
+  Shield,
+  ArrowLeft,
+  FolderPlus,
+  Folder,
+  Globe,
+  Check,
+} from 'lucide-react';
+import { websiteAddress } from '../../utils/websiteAddress';
 import { GroupTabsSettings, GroupTabChanges } from './GroupTabsSettings';
 import { PreferenceHint } from './PreferenceHint';
 import { GroupAccessGate } from './GroupAccessGate';
@@ -91,6 +100,7 @@ function GroupEditorContent({
   const [linking, setLinking] = useState(false);
   const slugEdited = useRef(false);
   const [error, setError] = useState('');
+  useEffect(() => setError(''), [tabChanges]);
   const [exporting, setExporting] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -180,23 +190,26 @@ function GroupEditorContent({
           const additions = tabChanges.added.map((tab) => ({
             ...source,
             ...tab,
-            customName: tab.name,
+            name: tab.name.trim() || new URL(websiteAddress(tab.url)).hostname,
+            customName: tab.name.trim() || undefined,
+            url: websiteAddress(tab.url),
             archived: false,
           }));
-          additions.forEach((tab) => {
-            const url = new URL(tab.url);
-            if (!['http:', 'https:'].includes(url.protocol))
-              throw new Error('Use an HTTP or HTTPS tab address.');
-          });
           if (creating && additions.length)
             source = { ...additions.shift()!, id: source.id };
           const current = AppManager.getAll().map((tab) => {
-            const patch = tabChanges.edits[tab.id];
-            if (patch?.url !== undefined && tab.url !== patch.url) {
-              const url = new URL(patch.url);
-              if (!['http:', 'https:'].includes(url.protocol))
-                throw new Error('Use an HTTP or HTTPS tab address.');
-            }
+            const edit = tabChanges.edits[tab.id];
+            const patch = edit && {
+              ...edit,
+              ...(edit.customName !== undefined
+                ? { customName: edit.customName.trim() }
+                : {}),
+              ...(edit.url !== undefined &&
+              edit.url !== tab.url &&
+              !tabChanges.removed.includes(tab.id)
+                ? { url: websiteAddress(edit.url) }
+                : {}),
+            };
             return tabChanges.removed.includes(tab.id)
               ? { ...tab, archived: true }
               : { ...tab, ...patch };
@@ -214,7 +227,7 @@ function GroupEditorContent({
               url: 'about:blank',
               archived: false,
             });
-          const updated = updateGroupSettings(
+          let updated = updateGroupSettings(
             creating
               ? [...current, source, ...additions]
               : [...current, ...additions],
@@ -230,6 +243,29 @@ function GroupEditorContent({
               homeURL: '',
             }
           );
+          if (tabChanges.order) {
+            const ordered = tabChanges.order
+              .map((id) =>
+                updated.find(
+                  (tab) =>
+                    tab.id ===
+                    (creating && id === tabChanges.added[0]?.id
+                      ? source.id
+                      : id)
+                )
+              )
+              .filter((tab): tab is IApp => !!tab);
+            const ids = new Set(ordered.map((tab) => tab.id));
+            let index = 0;
+            updated = updated
+              .map((tab) => {
+                if (!ids.has(tab.id)) return tab;
+                const next = ordered[index];
+                index += 1;
+                return next;
+              })
+              .map((tab, position) => ({ ...tab, position: position + 1 }));
+          }
           AppManager.set(updated);
           if (creating) {
             const created = updated.find((tab) => tab.id === source.id)!;
@@ -447,52 +483,55 @@ function GroupEditorContent({
               </Select.Root>
             </Text>
           </div>
+          <section className="group-presentation-settings">
+            <Text as="p" size="2">
+              Display group as
+            </Text>
+            <div
+              className="group-display-options"
+              role="radiogroup"
+              aria-label="Group display"
+            >
+              {(['folder', 'stack'] as const).map((display) => (
+                <label
+                  key={display}
+                  className="group-display-option"
+                  htmlFor={`${nameId}-${display}`}
+                >
+                  <input
+                    type="radio"
+                    id={`${nameId}-${display}`}
+                    name={`group-display-${nameId}`}
+                    value={display}
+                    checked={draft.groupDisplay === display}
+                    onChange={() => change({ groupDisplay: display })}
+                  />
+                  <span className="group-display-card">
+                    <span className="group-display-preview" aria-hidden="true">
+                      {display === 'folder' ? (
+                        <Folder size={20} />
+                      ) : (
+                        <span className="group-display-sites">
+                          <Globe size={18} />
+                          <Globe size={18} />
+                          <Globe size={18} />
+                        </span>
+                      )}
+                      <span className="group-display-preview-name">
+                        {draft.name.trim() || 'My group'}
+                      </span>
+                      <ChevronRight size={13} />
+                    </span>
+                    <span className="group-display-caption">
+                      {display === 'folder' ? 'Folder' : 'Stack'}
+                      <Check size={14} aria-hidden="true" />
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
         </details>
-        <section className="group-presentation-settings">
-          <Text as="p" size="2">
-            Display group as
-          </Text>
-          <Select.Root
-            value={draft.groupDisplay}
-            onValueChange={(value: 'stack' | 'folder') =>
-              change({ groupDisplay: value })
-            }
-          >
-            <Select.Trigger aria-label="Group display" />
-            <Select.Content>
-              <Select.Item value="folder">Folder</Select.Item>
-              <Select.Item value="stack">Stack</Select.Item>
-            </Select.Content>
-          </Select.Root>
-          <Text as="p" size="2">
-            Browser session
-          </Text>
-          <Select.Root
-            value={draft.sessionMode}
-            onValueChange={(value: 'collection' | 'separate') =>
-              change({
-                sessionMode: value,
-                loginProfileId:
-                  value === 'separate' ? ownProfile : draft.loginProfileId,
-              })
-            }
-          >
-            <Select.Trigger aria-label="Session inheritance" />
-            <Select.Content>
-              <Select.Item value="separate">Separate session</Select.Item>
-              <Select.Item
-                value="collection"
-                disabled={!draft.folderId || draft.placement === 'favorite'}
-              >
-                Use collection session
-              </Select.Item>
-            </Select.Content>
-          </Select.Root>
-          <Text as="p" size="1" color="gray">
-            Collection sessions share website logins. Group tabs, AI references
-            and personal data remain separate.
-          </Text>
-        </section>
         {creating && (
           <section className="group-project-folder">
             <div className="group-project-folder-header">
@@ -578,6 +617,35 @@ function GroupEditorContent({
         <details className="group-editor-advanced">
           <summary>Browser session</summary>
           <div className="group-editor-advanced-content">
+            <Text as="p" size="2">
+              Browser session
+            </Text>
+            <Select.Root
+              value={draft.sessionMode}
+              onValueChange={(value: 'collection' | 'separate') =>
+                change({
+                  sessionMode: value,
+                  loginProfileId:
+                    value === 'separate' ? ownProfile : draft.loginProfileId,
+                })
+              }
+            >
+              <Select.Trigger aria-label="Session inheritance" />
+              <Select.Content>
+                <Select.Item value="separate">Separate session</Select.Item>
+                <Select.Item
+                  value="collection"
+                  disabled={!draft.folderId || draft.placement === 'favorite'}
+                >
+                  Use collection session
+                </Select.Item>
+              </Select.Content>
+            </Select.Root>
+            <Text as="p" size="1" color="gray">
+              Collection sessions share website logins. Group tabs, AI
+              references and personal data remain separate.
+            </Text>
+
             <div className="group-editor-login">
               <Text size="2" weight="medium">
                 Browser session

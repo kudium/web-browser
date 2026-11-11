@@ -1,3 +1,4 @@
+import { portableMessages } from './aiTransport';
 /* Sequential tools and waits preserve browser action ordering. */
 /* eslint-disable no-await-in-loop, no-restricted-syntax, no-continue */
 import {
@@ -13,6 +14,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
+import { onWindowClosed } from './windowLifecycle';
 import {
   AI_RUN_STEP_LIMIT,
   checkpointRoundLimit,
@@ -1490,7 +1492,7 @@ export function registerAI(
     ) => {
       if (mainFrame && !inPage) revoke();
     };
-    host.once('closed', revoke);
+    const stopClosed = onWindowClosed(host, revoke);
     event.sender.once('destroyed', revoke);
     event.sender.on('render-process-gone', revoke);
     event.sender.on('did-start-navigation', navigating);
@@ -1509,7 +1511,7 @@ export function registerAI(
           throw new Error(changedMessage);
       },
       dispose: () => {
-        host.removeListener('closed', revoke);
+        stopClosed();
         event.sender.removeListener('destroyed', revoke);
         event.sender.removeListener('render-process-gone', revoke);
         event.sender.removeListener('did-start-navigation', navigating);
@@ -5938,8 +5940,10 @@ export function registerAI(
       saveCheckpoint();
       throw new Error('Task recovery expired. Start a new task.');
     }
-    if (saved.endpoint !== settings.endpoint)
-      throw new Error('Restore the original provider to resume this task.');
+    // Recovery stores shared tool calls/results. Rebuild provider-specific wire
+    // messages for the current model, including switches within one provider.
+    saved.messages = portableMessages(saved.messages);
+    saved.endpoint = settings.endpoint;
     setScope(saved.groupId ?? null);
     saved.messages.push({
       role: 'user',

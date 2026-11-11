@@ -3,6 +3,7 @@
 import { shell } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { constants } from 'fs';
 import { createHash, randomUUID } from 'crypto';
 import { openProjectEditor } from './projectEditors';
@@ -14,6 +15,28 @@ import type {
 } from '../browser/developerProject';
 
 const MAX_PREVIEW = 256 * 1024;
+const MAX_IMAGE_PREVIEW = 20 * 1024 * 1024;
+const IMAGE_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
+};
+const MEDIA_TYPES: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.ogg': 'audio/ogg',
+};
+const MAX_MEDIA_PREVIEW = 50 * 1024 * 1024;
 const saving = new Set<string>();
 function fileVersion(
   bytes: Buffer,
@@ -101,6 +124,7 @@ export function validFilesRequest(
       'trash',
       'terminal',
       'terminal-tab',
+      'open-tab',
     ].includes(request.action) &&
     typeof request.path === 'string' &&
     request.path.length <= 4096 &&
@@ -157,6 +181,11 @@ export async function projectFiles(
       throw new Error('This file changed. Refresh the folder.');
     ensureAccess();
   };
+  if (request.action === 'open-tab') {
+    if (!stat.isFile()) throw new Error('Choose a regular file.');
+    await recheck();
+    return { path: relative, url: pathToFileURL(target).href };
+  }
   if (request.action === 'editor') {
     if (!stat.isFile()) throw new Error('Choose a regular file.');
     await recheck();
@@ -350,17 +379,45 @@ export async function projectFiles(
   if (!stat.isFile()) throw new Error('This item cannot be previewed.');
   await recheck();
   const file = { name: path.basename(target), path: relative, size: stat.size };
-  if (stat.size > MAX_PREVIEW)
+  const extension = path.extname(target).toLowerCase();
+  const imageType = IMAGE_TYPES[extension];
+  const mediaType = MEDIA_TYPES[extension];
+  let previewLimit = MAX_PREVIEW;
+  let sizeNotice = 'This file is too large to preview. Open it in your editor.';
+  if (imageType) {
+    previewLimit = MAX_IMAGE_PREVIEW;
+    sizeNotice =
+      'This image is too large to preview (20 MB maximum). Open it in your editor.';
+  }
+  if (mediaType) {
+    previewLimit = MAX_MEDIA_PREVIEW;
+    sizeNotice =
+      'This file is too large to preview (50 MB maximum). Open it in a tab or external app.';
+  }
+  if (stat.size > previewLimit)
+    return { path: relative, file: { ...file, notice: sizeNotice } };
+  await recheck();
+  const bytes = await readPreview(target, stat, ensureAccess);
+  await recheck();
+  if (mediaType)
     return {
       path: relative,
       file: {
         ...file,
-        notice: 'This file is too large to preview. Open it in your editor.',
+        media: {
+          type: mediaType,
+          url: `data:${mediaType};base64,${bytes.toString('base64')}`,
+        },
       },
     };
-  await recheck();
-  const bytes = await readPreview(target, stat, ensureAccess);
-  await recheck();
+  if (imageType)
+    return {
+      path: relative,
+      file: {
+        ...file,
+        imageURL: `data:${imageType};base64,${bytes.toString('base64')}`,
+      },
+    };
   try {
     if (bytes.includes(0)) throw new Error('Binary file');
     const text = new TextDecoder('utf-8', {

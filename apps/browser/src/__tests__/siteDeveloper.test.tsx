@@ -301,7 +301,8 @@ it('keeps all hooks visible and preserves drafts while switching, adding and rem
   expect(
     screen.getByRole('button', { name: /Renamed research/ })
   ).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.click(screen.getByRole('button', { name: 'Remove hook' }));
+  fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape' });
+  fireEvent.click(screen.getByRole('button', { name: 'Delete hook' }));
   expect(
     screen.queryByRole('button', { name: /Renamed research/ })
   ).not.toBeInTheDocument();
@@ -322,4 +323,120 @@ it('keeps all hooks visible and preserves drafts while switching, adding and rem
       }),
     })
   );
+});
+
+it('lets users delete a custom hook directly and save the removal', () => {
+  const send = jest.fn();
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{
+          config: {
+            ...emptyDeveloperConfig,
+            enabled: true,
+            hooks: [
+              {
+                id: 'custom',
+                name: 'Dark mode',
+                path: '/*',
+                enabled: true,
+                before: '',
+                after: '',
+                css: 'body { color:white; }',
+              },
+            ],
+          },
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Delete hook' })
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Dark mode/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete hook' }));
+  expect(
+    screen.queryByRole('button', { name: /Dark mode/ })
+  ).not.toBeInTheDocument();
+  expect(send).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Save hooks' }));
+  expect(send).toHaveBeenCalledWith('set-site-developer', {
+    developer: expect.objectContaining({ hooks: [] }),
+  });
+});
+
+it('offers to enable a disabled site after saving without running it', () => {
+  const send = jest.fn();
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{
+          config: emptyDeveloperConfig,
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
+    target: { value: 'log(url);' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save hooks' }));
+  expect(screen.getByRole('alertdialog')).toBeVisible();
+  expect(send).toHaveBeenLastCalledWith('set-site-developer', {
+    developer: expect.objectContaining({ enabled: false, after: 'log(url);' }),
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Enable hook' }));
+  expect(send).toHaveBeenLastCalledWith('set-site-developer', {
+    developer: expect.objectContaining({ enabled: true, after: 'log(url);' }),
+  });
+  expect(send).not.toHaveBeenCalledWith('reload');
+});
+it('lets users keep a custom hook disabled while the site is enabled', () => {
+  const send = jest.fn();
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{
+          config: {
+            ...emptyDeveloperConfig,
+            enabled: true,
+            hooks: [
+              {
+                id: 'off',
+                name: 'Paused hook',
+                path: '/*',
+                enabled: false,
+                before: '',
+                after: '',
+                css: '',
+              },
+            ],
+          },
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Paused hook/ }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
+    target: { value: 'log(url);' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save hooks' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Keep disabled' }));
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send).toHaveBeenLastCalledWith('set-site-developer', {
+    developer: expect.objectContaining({
+      hooks: [expect.objectContaining({ enabled: false })],
+    }),
+  });
 });

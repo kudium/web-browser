@@ -16,6 +16,7 @@ it('opens group creation from the space menu in the active space', async () => {
     ts.ScriptKind.TSX
   );
   let actionFunction: ts.VariableDeclaration | undefined;
+  let createFunction: ts.VariableDeclaration | undefined;
   let menuFunction: ts.VariableDeclaration | undefined;
   const visit = (node: ts.Node) => {
     if (
@@ -28,6 +29,11 @@ it('opens group creation from the space menu in the active space', async () => {
       node.name.getText(tree) === 'applySpaceMenuChoice'
     )
       actionFunction = node;
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText(tree) === 'openNewGroup'
+    )
+      createFunction = node;
     ts.forEachChild(node, visit);
   };
   visit(tree);
@@ -35,6 +41,7 @@ it('opens group creation from the space menu in the active space', async () => {
   const nativeMenu = jest.fn().mockResolvedValue('new-group');
   const setNewGroupSpace = jest.fn();
   const setPaletteOpen = jest.fn();
+  const setEditingGroup = jest.fn();
   const context = vm.createContext({
     browser: { nativeMenu },
     active: { id: 'work' },
@@ -43,14 +50,16 @@ it('opens group creation from the space menu in the active space', async () => {
     showUnpinnedGroups: false,
     windowWorkspace: { state: () => undefined },
     setNewGroupSpace,
-    setEditingGroup: jest.fn(),
+    setDroppedProject: jest.fn(),
+    useCallback: (callback: unknown) => callback,
+    setEditingGroup,
     crypto: { randomUUID: () => 'draft-id' },
     setPaletteOpen,
   });
   const code = ts.transpileModule(
-    `const ${actionFunction!.getText(tree)}; const ${menuFunction!.getText(
+    `const ${createFunction!.getText(tree)}; const ${actionFunction!.getText(
       tree
-    )}; showSpaceMenu();`,
+    )}; const ${menuFunction!.getText(tree)}; showSpaceMenu();`,
     { compilerOptions: { target: ts.ScriptTarget.ES2022 } }
   ).outputText;
   await vm.runInContext(code, context);
@@ -59,5 +68,13 @@ it('opens group creation from the space menu in the active space', async () => {
     label: 'Create Group…',
   });
   expect(setNewGroupSpace).toHaveBeenCalledWith('work');
+  expect(setEditingGroup).toHaveBeenCalledWith(
+    expect.objectContaining({
+      spaceId: 'work',
+      name: '',
+      url: 'about:blank',
+      pinned: true,
+    })
+  );
   expect(setPaletteOpen).not.toHaveBeenCalled();
 });

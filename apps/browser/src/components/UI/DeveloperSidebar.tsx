@@ -1,6 +1,6 @@
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Code2, Search, Settings2 } from 'lucide-react';
 import { TextField, IconButton } from '@radix-ui/themes';
 import { AssistantPageHeader } from './AssistantPageHeader';
@@ -10,7 +10,7 @@ import { ScreenManager } from '../../utils/AppManager';
 import { lockedGroup, useGroupAccess } from '../../utils/groupAccess';
 import { aiGroupId } from '../../browser/aiGroups';
 import { browser } from '../../browser/client';
-import type { SiteDeveloperPageSummary } from '../../browser/siteDeveloper';
+import { developerPagesStore } from '../../browser/developerPagesStore';
 import { DeveloperProjectSection } from './DeveloperProjectSection';
 import { DeveloperTerminal } from './DeveloperTerminal';
 import { projectErrorMessage } from '../../browser/developerProject';
@@ -91,10 +91,20 @@ export function DeveloperSidebar({
       /* Keep the view usable if storage is unavailable. */
     }
   };
-  const [pages, setPages] = useState<SiteDeveloperPageSummary[]>([]);
+  const pageSourceId = source?.id || '';
+  const pageSnapshot = useSyncExternalStore(
+    useMemo(
+      () => (listener: () => void) =>
+        developerPagesStore.subscribe(pageSourceId, listener),
+      [pageSourceId]
+    ),
+    () => developerPagesStore.getSnapshot(pageSourceId)
+  );
+  const { pages, loading } = pageSnapshot;
+  const error = pageSnapshot.error
+    ? projectErrorMessage(pageSnapshot.error)
+    : '';
   const [query, setQuery] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [terminalRequest, setTerminalRequest] = useState({
     group: '',
     count: 0,
@@ -109,32 +119,10 @@ export function DeveloperSidebar({
     setTerminalRequest({ group: '', count: 0 });
   };
   useEffect(() => {
-    if (!active || !source) return undefined;
-    let live = true;
-    let revision = 0;
+    if (!source) return undefined;
     let timer: ReturnType<typeof setTimeout>;
-    setPages([]);
-    setError('');
-    setLoading(true);
     const refresh = () => {
-      revision += 1;
-      const request = revision;
-      window.electron.siteDeveloper
-        .pages(source.id)
-        .then((value) => {
-          if (live && request === revision) {
-            setPages(value);
-            setError('');
-            setLoading(false);
-          }
-          return undefined;
-        })
-        .catch((reason) => {
-          if (live && request === revision) {
-            setError(projectErrorMessage(reason));
-            setLoading(false);
-          }
-        });
+      developerPagesStore.refresh(source.id);
     };
     const schedule = () => {
       clearTimeout(timer);
@@ -152,13 +140,12 @@ export function DeveloperSidebar({
     const offChanges = window.electron.siteDeveloper.onPagesChanged(schedule);
     window.addEventListener('focus', schedule);
     return () => {
-      live = false;
       clearTimeout(timer);
       offState();
       offChanges();
       window.removeEventListener('focus', schedule);
     };
-  }, [active, source, appList]);
+  }, [source, appList]);
   useEffect(() => setQuery(''), [selectedGroup]);
   const showSearch = pages.length > 5;
   useEffect(() => {
@@ -304,6 +291,15 @@ export function DeveloperSidebar({
                       <strong>{page.name}</strong>
                       <small>{page.url}</small>
                       <span
+                        data-state={
+                          !page.hasHooks
+                            ? 'none'
+                            : !page.enabled
+                            ? 'disabled'
+                            : page.status === 'error'
+                            ? 'error'
+                            : 'active'
+                        }
                         className={`developer-hook-status ${
                           page.hasHooks && page.enabled ? 'enabled' : ''
                         }`}

@@ -13,6 +13,17 @@ const mockConfig = {
   before: '',
   after: 'await context.activity.create({title:"Changed"});',
   css: '',
+  hooks: [
+    {
+      id: 'prices',
+      name: 'Price watcher',
+      enabled: true,
+      path: '/*',
+      before: '',
+      after: 'log(url)',
+      css: '',
+    },
+  ],
 };
 jest.mock('electron', () => ({
   ipcMain: { on: jest.fn(), handle: jest.fn() },
@@ -75,7 +86,19 @@ test('hook alerts inherit host scope and default to the current page URL', () =>
       title: 'Price changed',
       url: event.senderFrame.url,
     }),
-    { source: 'hook', groupId: 'group-a', scope: 'scope-a' }
+    {
+      source: 'hook',
+      groupId: 'group-a',
+      scope: 'scope-a',
+      trigger: {
+        sourceId: undefined,
+        profile: 'profile',
+        origin: 'https://example.com',
+        pageURL: event.senderFrame.url,
+        hookId: undefined,
+        hookName: 'Default hook',
+      },
+    }
   );
 });
 test('hook notes create linked activity without granting AI access', () => {
@@ -87,7 +110,19 @@ test('hook notes create linked activity without granting AI access', () => {
   expect(saveNoteWithActivity).toHaveBeenCalledWith(
     expect.objectContaining({ notes: '**$20**', allowAI: false }),
     'scope-a',
-    { source: 'hook', groupId: 'group-a', scope: 'scope-a' },
+    {
+      source: 'hook',
+      groupId: 'group-a',
+      scope: 'scope-a',
+      trigger: {
+        sourceId: undefined,
+        profile: 'profile',
+        origin: 'https://example.com',
+        pageURL: event.senderFrame.url,
+        hookId: undefined,
+        hookName: 'Default hook',
+      },
+    },
     event.senderFrame.url
   );
 });
@@ -128,4 +163,31 @@ test('isolated hook context exposes only the standard create APIs', () => {
   expect(developerPreloadSource).toContain("kind: 'activity'");
   expect(developerPreloadSource).toContain("kind: 'note'");
   expect(developerPreloadSource).toContain('document, notify, activity, notes');
+});
+
+test('attributes custom outputs to the exact hook and rejects unknown hook IDs', () => {
+  output(event, {
+    token,
+    kind: 'activity',
+    hookId: 'prices',
+    input: { title: 'Changed' },
+  });
+  expect(create).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      trigger: expect.objectContaining({
+        hookId: 'prices',
+        hookName: 'Price watcher',
+        pageURL: event.senderFrame.url,
+      }),
+    })
+  );
+  expect(() =>
+    output(event, {
+      token,
+      kind: 'activity',
+      hookId: 'foreign',
+      input: { title: 'Changed' },
+    })
+  ).toThrow('no longer enabled');
 });

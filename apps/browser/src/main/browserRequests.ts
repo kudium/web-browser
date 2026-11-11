@@ -140,6 +140,7 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
       validDeveloperConfig(value.developer)) &&
     optionalText(value.permission) &&
     (value.grantId === undefined || text(value.grantId, 100)) &&
+    (value.hookId === undefined || text(value.hookId, 100)) &&
     (!['activate-hook-notification', 'revoke-hook-notification'].includes(
       String(value.action)
     ) ||

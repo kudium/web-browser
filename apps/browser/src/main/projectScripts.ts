@@ -24,8 +24,15 @@ export function validScriptRequest(
   if (request.action === 'list') return true;
   const validId = (id: unknown) =>
     typeof id === 'string' && !!id && id.length <= 100;
-  if (request.action === 'run' || request.action === 'delete')
-    return validId(request.id);
+  if (request.action === 'delete') return validId(request.id);
+  if (request.action === 'run')
+    return (
+      validId(request.id) &&
+      (request.cwd === undefined ||
+        (typeof request.cwd === 'string' &&
+          request.cwd.length <= 4096 &&
+          !request.cwd.includes('\0')))
+    );
   if (request.action === 'save')
     return (
       (request.id === undefined || validId(request.id)) &&

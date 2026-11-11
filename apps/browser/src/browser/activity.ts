@@ -4,7 +4,16 @@ export interface ActivityInput {
   url?: string;
   noteId?: string;
 }
+export interface HookActivityTrigger {
+  sourceId?: string;
+  profile: string;
+  origin: string;
+  pageURL: string;
+  hookId?: string;
+  hookName: string;
+}
 export interface BrowserActivity extends ActivityInput {
+  trigger?: HookActivityTrigger;
   id: string;
   createdAt: number;
   asRead: boolean;

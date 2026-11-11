@@ -125,6 +125,7 @@ export interface BrowserCommand {
   url?: string;
   developer?: SiteDeveloperConfig;
   grantId?: string;
+  hookId?: string;
   permission?: string;
   choice?: 'ask' | 'allow' | 'block';
 }

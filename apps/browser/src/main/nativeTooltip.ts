@@ -1,4 +1,5 @@
 import { BrowserWindow, screen } from 'electron';
+import { onWindowClosed } from './windowLifecycle';
 import type { NativeTooltipRequest } from '../browser/nativeUi';
 
 const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'"><style>html,body{margin:0;background:transparent}body{width:320px;padding:6px;box-sizing:border-box;font:12px/18px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}#hint{display:inline-block;max-width:288px;overflow-wrap:anywhere;padding:6px 10px;border:1px solid #0002;border-radius:7px;background:#f7f7f7;color:#202124;box-shadow:0 2px 5px #0003}body.dark #hint{background:#303033;color:#f5f5f5;border-color:#ffffff20}</style><div id="hint"></div>`;
@@ -38,7 +39,7 @@ export class NativeTooltip {
       owner.on(event as 'blur', this.hide);
     });
     owner.webContents.on('did-start-navigation', this.hide);
-    owner.once('closed', () => {
+    onWindowClosed(owner, () => {
       this.hide();
       if (this.window && !this.window.isDestroyed()) this.window.destroy();
     });

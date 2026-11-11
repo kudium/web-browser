@@ -6,7 +6,7 @@ import { browserActivity } from './activity';
 export function saveNoteWithActivity(
   note: VaultItem,
   scope: string | undefined,
-  context: Pick<BrowserActivity, 'source' | 'groupId'>,
+  context: Pick<BrowserActivity, 'source' | 'groupId' | 'trigger'>,
   url?: string
 ) {
   const recordId = passwordVault().save({ ...note, asRead: false }, scope);

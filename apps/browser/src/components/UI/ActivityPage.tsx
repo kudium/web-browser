@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Copy, Trash2 } from 'lucide-react';
+import { Copy, Trash2, Power } from 'lucide-react';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { ChromeIconButton } from './ChromeIconButton';
+import { browser } from '../../browser/client';
+import { AppManager } from '../../utils/AppManager';
+import { loginProfileKey } from '../../utils/groups';
 import type { BrowserActivity } from '../../browser/activity';
 
 function activityTime(timestamp: number) {
@@ -19,6 +22,7 @@ export function ActivityPage({ active }: { active: boolean }) {
   const [entries, setEntries] = useState<BrowserActivity[]>([]);
   const [selected, setSelected] = useState<string>();
   const [error, setError] = useState('');
+  const [disabledTriggers, setDisabledTriggers] = useState<string[]>([]);
   const target = useRef<string>();
   const refresh = useCallback(async () => {
     if (!window.electron.activity) return;
@@ -134,10 +138,43 @@ export function ActivityPage({ active }: { active: boolean }) {
             </button>
             <p className="activity-message">{entry.message}</p>
             <div className="activity-actions">
-              <small className="activity-source">
-                {entry.source === 'hook' ? 'Page hook' : 'Assistant'}
-              </small>
-
+              {entry.source === 'hook' && entry.trigger ? (
+                <button
+                  type="button"
+                  className="activity-source activity-source-link"
+                  title={`${entry.trigger.hookName} · ${entry.trigger.origin}`}
+                  aria-label={`Open hook: ${entry.trigger.hookName}`}
+                  onClick={() => {
+                    const trigger = entry.trigger!;
+                    const source = AppManager.getAll().find(
+                      (tab) =>
+                        !tab.archived &&
+                        loginProfileKey(tab) === trigger.profile &&
+                        (trigger.sourceId
+                          ? tab.id === trigger.sourceId
+                          : tab.url.startsWith(`${trigger.origin}/`))
+                    );
+                    if (!source) {
+                      setError(
+                        'The source tab is closed. Reopen its page to manage this hook.'
+                      );
+                      return;
+                    }
+                    browser.command({
+                      id: source.id,
+                      action: 'open-site-developer',
+                      url: trigger.origin,
+                      hookId: trigger.hookId,
+                    });
+                  }}
+                >
+                  Page hook
+                </button>
+              ) : (
+                <small className="activity-source">
+                  {entry.source === 'hook' ? 'Page hook' : 'Assistant'}
+                </small>
+              )}
               {(entry.noteId || entry.url) && (
                 <span className="activity-destination">
                   {entry.noteId ? 'Note' : 'Page'}
@@ -157,6 +194,33 @@ export function ActivityPage({ active }: { active: boolean }) {
                   }
                 }}
               />
+              {entry.trigger && (
+                <ChromeIconButton
+                  icon={Power}
+                  label={
+                    disabledTriggers.includes(entry.id)
+                      ? 'Hook disabled'
+                      : 'Disable hook'
+                  }
+                  className="activity-disable"
+                  disabled={disabledTriggers.includes(entry.id)}
+                  onClick={async () => {
+                    try {
+                      await window.electron.activity({
+                        action: 'disableHook',
+                        id: entry.id,
+                      });
+                      setDisabledTriggers((previous) => [
+                        ...previous,
+                        entry.id,
+                      ]);
+                      setError('');
+                    } catch {
+                      setError('The triggering hook could not be disabled.');
+                    }
+                  }}
+                />
+              )}
               <ChromeIconButton
                 icon={Trash2}
                 label="Delete activity"

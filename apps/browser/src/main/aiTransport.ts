@@ -22,6 +22,20 @@ export function providerHeaders(
       };
 }
 
+/** Keep shared task history while dropping provider-specific reasoning/signatures. */
+export function portableMessages(messages: any[]) {
+  return messages.map((message) => {
+    const { role, content, tool_calls, tool_call_id, retainImages } = message;
+    return {
+      role,
+      content: content ?? (role === 'assistant' ? '' : content),
+      ...(tool_calls?.length ? { tool_calls } : {}),
+      ...(tool_call_id ? { tool_call_id } : {}),
+      ...(retainImages !== undefined ? { retainImages } : {}),
+    };
+  });
+}
+
 export function providerRequest(
   endpoint: string,
   model: string,
@@ -45,9 +59,9 @@ export function providerRequest(
     return {
       model,
       ...reasoning,
-      messages: messages.some((message) => 'retainImages' in message)
-        ? messages.map(({ retainImages: _retainImages, ...message }) => message)
-        : messages,
+      messages: portableMessages(messages).map(
+        ({ retainImages: _retainImages, ...message }) => message
+      ),
       tools,
     };
   return {
@@ -107,6 +121,19 @@ export function providerRequest(
           });
         } else {
           content = [{ type: 'text', text: m.content || '' }];
+        }
+        if (role === 'assistant' && !m.claudeContent && m.tool_calls?.length) {
+          content = content.filter(
+            (block) => block.type !== 'text' || block.text
+          );
+          content.push(
+            ...m.tool_calls.map((call: any) => ({
+              type: 'tool_use',
+              id: call.id,
+              name: call.function.name,
+              input: JSON.parse(call.function.arguments),
+            }))
+          );
         }
         const previous = result[result.length - 1];
         if (previous?.role === role) previous.content.push(...content);

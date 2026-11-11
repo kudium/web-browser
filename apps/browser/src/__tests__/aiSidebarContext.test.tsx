@@ -2,6 +2,18 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AISidebar } from '../components/UI/AISidebar';
 
+beforeEach(() => {
+  Object.assign(global, {
+    ResizeObserver: class {
+      observe = jest.fn();
+
+      unobserve = jest.fn();
+
+      disconnect = jest.fn();
+    },
+  });
+});
+
 it('selects scope and model in the composer and expands scope explicitly for mentions', async () => {
   Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
     configurable: true,
@@ -202,7 +214,8 @@ it('offers thinking controls for Ollama and saves the selected setting', async (
     screen.queryByRole('button', { name: 'Thinking level' })
   ).not.toBeInTheDocument();
   fireEvent.click(control);
-  fireEvent.click(await screen.findByRole('button', { name: 'Thinking: On' }));
+  const slider = await screen.findByRole('slider', { name: 'Thinking level' });
+  fireEvent.keyDown(slider, { key: 'End' });
   await waitFor(() =>
     expect(ai.settings).toHaveBeenLastCalledWith({
       endpoint: settings.endpoint,
@@ -211,9 +224,9 @@ it('offers thinking controls for Ollama and saves the selected setting', async (
       thinking: 'on',
     })
   );
-  expect(screen.getByRole('button', { name: 'Thinking: On' })).toHaveAttribute(
-    'aria-pressed',
-    'true'
+  expect(screen.getByRole('slider', { name: 'Thinking level' })).toHaveAttribute(
+    'aria-valuetext',
+    'On'
   );
   expect(screen.getByRole('button', { name: 'AI model' })).toHaveTextContent(
     'On'

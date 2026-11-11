@@ -14,7 +14,7 @@ import {
   siteOrigin,
   onSiteSettingsChanged,
 } from './siteSettings';
-import { developerState } from './siteDeveloper';
+import { developerState, onDeveloperStateChanged } from './siteDeveloper';
 import { isGroupLocked, getGroupLocks } from './groupLocks';
 import { aiGroupId, aiGroups } from '../browser/aiGroups';
 import { projectAction, linkedProjectFolder } from './developerProject';
@@ -57,16 +57,17 @@ export function developerPageSummaries(
       origin,
       hasHooks:
         !!config &&
-        [
-          config.before,
-          config.after,
-          config.css,
-          ...(config.hooks || []).flatMap((hook) => [
-            hook.before,
-            hook.after,
-            hook.css,
-          ]),
-        ].some((code) => !!code.trim()),
+        (!!config.hooks?.length ||
+          [
+            config.before,
+            config.after,
+            config.css,
+            ...(config.hooks || []).flatMap((hook) => [
+              hook.before,
+              hook.after,
+              hook.css,
+            ]),
+          ].some((code) => !!code.trim())),
       enabled: config?.enabled || false,
       status: page && origin ? developerState(page, origin).status : 'waiting',
     };
@@ -185,7 +186,8 @@ export function registerSiteDeveloperLibrary(
           const terminal = owner.terminals.runCommand(
             group,
             script.name,
-            script.command
+            script.command,
+            request.cwd
           );
           return {
             scripts: projectScripts(group, folder, { action: 'list' }),
@@ -358,6 +360,10 @@ export function registerSiteDeveloperLibrary(
     if (!source) throw new Error('This group is no longer available.');
     return developerPageSummaries(items, source, contents);
   });
+  const offRuntime = onDeveloperStateChanged?.((page) => {
+    if (!host.isDestroyed() && tabs().some((tab) => contents(tab.id) === page))
+      host.webContents.send('site-developer-library-changed');
+  });
   const offChanges = onSiteSettingsChanged((profile) => {
     if (
       !host.isDestroyed() &&
@@ -368,6 +374,7 @@ export function registerSiteDeveloperLibrary(
   return () => {
     offDrop();
     offChanges();
+    offRuntime?.();
     libraries.delete(hostId);
     transfers.delete(hostId);
     if (!transfers.size) ipcMain.removeHandler('group-transfer');

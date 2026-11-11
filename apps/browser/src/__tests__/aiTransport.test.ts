@@ -6,7 +6,7 @@ import {
 } from '../main/aiTransport';
 import { AI_PROVIDERS } from '../browser/aiProviders';
 
-it('uses compatible transport and preserves reasoning across tool turns', () => {
+it('uses compatible transport without leaking provider-specific reasoning', () => {
   AI_PROVIDERS.filter((p) => p.endpoint && p.id !== 'anthropic').forEach(
     (provider) => {
       const messages = [
@@ -18,7 +18,8 @@ it('uses compatible transport and preserves reasoning across tool turns', () => 
       expect(
         providerRequest(provider.endpoint, provider.model, messages, [])
           .messages
-      ).toBe(messages);
+      ).toEqual([{ role: 'assistant', content: '' }]);
+      expect(messages[0].reasoning_content).toBe('reasoning');
       expect(
         providerRequest(provider.endpoint, provider.model, messages, [])
       ).not.toHaveProperty('temperature');
@@ -102,7 +103,8 @@ it('preserves screenshot blocks for compatible providers and translates them for
   expect(
     providerRequest('https://api.openai.com/v1', 'vision', messages, [])
       .messages
-  ).toBe(messages);
+  ).toEqual([{ ...messages[0], content: '' }, messages[1], messages[2]]);
+  expect(messages[0].content).toBeNull();
   const claude = providerRequest(
     'https://api.anthropic.com/v1',
     'vision',

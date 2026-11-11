@@ -6,6 +6,7 @@ import type {
   WebContents,
 } from 'electron';
 import { randomUUID } from 'crypto';
+import { onWindowClosed } from './windowLifecycle';
 import { presentSnapshots } from './snapshotPresentation';
 import type {
   BrowserLayout,
@@ -128,7 +129,7 @@ export class BrowserWindows {
         }
       });
     });
-    window.once('closed', () => {
+    onWindowClosed(window, () => {
       this.hosts.delete(window.id);
       const removed = [...this.reserved]
         .filter(([, owner]) => owner === window.id)

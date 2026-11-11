@@ -163,9 +163,7 @@ const configuration: webpack.Configuration = {
     static: {
       publicPath: '/',
     },
-    historyApiFallback: {
-      verbose: true,
-    },
+    historyApiFallback: true,
   },
 };
 

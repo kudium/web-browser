@@ -4,6 +4,7 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useEffect, useRef, useState } from 'react';
 import {
+  AlertDialog,
   Button,
   IconButton,
   Popover,
@@ -11,7 +12,8 @@ import {
   Tabs,
   TextField,
 } from '@radix-ui/themes';
-import { RotateCw, Plus, Settings2 } from 'lucide-react';
+import { RotateCw, Plus, Settings2, Trash2 } from 'lucide-react';
+import { HookExamples } from './HookExamples';
 import { HookPageTarget } from './HookPageTarget';
 import { SiteDeveloperWorkspace } from './SiteDeveloperWorkspace';
 import { CodeEditor } from './CodeEditor';
@@ -20,6 +22,7 @@ import {
   emptyDeveloperConfig,
   validDeveloperConfig,
   SiteDeveloperState,
+  SiteDeveloperConfig,
 } from '../../browser/siteDeveloper';
 import type { BrowserCommand } from '../../browser/contracts';
 
@@ -34,10 +37,12 @@ export function SiteDeveloperPanel({
   disabled,
   send,
   origin = '',
+  selectedHookId = '',
 }: {
   developer: SiteDeveloperState | undefined;
   disabled: boolean;
   origin?: string;
+  selectedHookId?: string;
   send: (
     action: BrowserCommand['action'],
     patch?: Partial<BrowserCommand>
@@ -46,7 +51,14 @@ export function SiteDeveloperPanel({
   const saved = developer?.config || emptyDeveloperConfig;
   const serialized = JSON.stringify(saved);
   const [draft, setDraft] = useState(saved);
-  const [hookId, setHookId] = useState('');
+  const [hookId, setHookId] = useState(selectedHookId);
+  const [enablePrompt, setEnablePrompt] = useState<{
+    config: SiteDeveloperConfig;
+    hookId: string;
+  }>();
+  useEffect(() => {
+    setHookId(selectedHookId);
+  }, [selectedHookId]);
   const selectedHook = draft.hooks?.find((hook) => hook.id === hookId);
   const code = selectedHook || draft;
   const updateCode = (patch: Partial<typeof code>) =>
@@ -68,12 +80,6 @@ export function SiteDeveloperPanel({
   const importInput = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState('');
   const dirty = JSON.stringify(draft) !== serialized;
-  const examples = {
-    before: "log('Starting', url);",
-    after:
-      "log('Loaded', url);\nlog('Page title', document.title);\n// document.querySelector('h1')?.style.setProperty('color', 'royalblue');",
-    css: '/* Applied to every page on this site */\nbody { outline: 2px solid royalblue; }',
-  };
   const stageLabels = {
     before: 'Before load',
     after: 'After load',
@@ -88,7 +94,7 @@ export function SiteDeveloperPanel({
     <>
       <div className="site-settings-scroll site-developer-scroll">
         <div className="site-developer-toolbar">
-          <span id="site-developer-enable-label">Manage this site</span>
+          <span id="site-developer-enable-label">Enable site hooks</span>
           <Switch
             id="site-developer-enabled"
             aria-labelledby="site-developer-enable-label"
@@ -117,6 +123,22 @@ export function SiteDeveloperPanel({
                 Write a JavaScript callback body with <code>url</code>,{' '}
                 <code>document</code>, <code>content</code> (HTML snapshot),{' '}
                 <code>log(...values)</code> and <code>await</code>.
+              </p>
+              <p>
+                Add an Activity update with{' '}
+                <code>
+                  await context.activity.create({'{ title, message, url }'})
+                </code>
+                . Save Markdown to Notes with{' '}
+                <code>await context.notes.create({'{ title, body }'})</code>;
+                this also creates a linked Activity entry. Hooks can create
+                entries, but cannot read or edit existing notes. Outputs are
+                limited to ten per minute per page.
+              </p>
+              <p>
+                Examples inserts ready-to-use enhancements into the current
+                stage. Save and Run to apply them. Dark mode and layout effects
+                vary by website. Save example to keep your own version.
               </p>
               <p>
                 Navigate with <code>page.reload()</code>,{' '}
@@ -195,6 +217,7 @@ export function SiteDeveloperPanel({
                   key={hook.id}
                   type="button"
                   className="site-hooks-list-item"
+                  title={`${hook.name || 'Untitled hook'} · ${hook.path}`}
                   aria-pressed={hook.id === hookId}
                   disabled={disabled}
                   onClick={() => setHookId(hook.id)}
@@ -258,24 +281,28 @@ export function SiteDeveloperPanel({
                             updateCode({ name: event.target.value })
                           }
                         />
-                        <Button
-                          size="1"
-                          variant="soft"
-                          color="red"
-                          onClick={() => {
-                            setDraft({
-                              ...draft,
-                              hooks: draft.hooks?.filter(
-                                (hook) => hook.id !== hookId
-                              ),
-                            });
-                            setHookId('');
-                          }}
-                        >
-                          Remove hook
-                        </Button>
                       </Popover.Content>
                     </Popover.Root>
+                    <IconButton
+                      size="1"
+                      color="gray"
+                      variant="ghost"
+                      className="site-hook-delete"
+                      aria-label="Delete hook"
+                      title="Delete selected hook"
+                      disabled={disabled}
+                      onClick={() => {
+                        setDraft((previous) => ({
+                          ...previous,
+                          hooks: previous.hooks?.filter(
+                            (hook) => hook.id !== hookId
+                          ),
+                        }));
+                        setHookId('');
+                      }}
+                    >
+                      <Trash2 size={15} />
+                    </IconButton>
                   </>
                 ) : (
                   <span className="site-hook-default-target">All pages</span>
@@ -305,17 +332,22 @@ export function SiteDeveloperPanel({
                           : 'JavaScript callback'}
                       </span>
                       <div className="site-hook-editor-actions">
-                        <Button
-                          size="1"
-                          variant="ghost"
-                          color="gray"
-                          disabled={disabled || !!code[editor]}
-                          onClick={() =>
-                            updateCode({ [editor]: examples[editor] })
+                        <HookExamples
+                          stage={editor}
+                          source={code[editor]}
+                          disabled={disabled}
+                          onInsert={(source) =>
+                            updateCode({
+                              [editor]: code[editor].trim()
+                                ? `${code[editor]}\n\n${
+                                    editor === 'css'
+                                      ? source
+                                      : `;\n{\n${source}\n}`
+                                  }`
+                                : source,
+                            })
                           }
-                        >
-                          Use example
-                        </Button>
+                        />
                         <Button
                           size="1"
                           variant="ghost"
@@ -374,7 +406,7 @@ export function SiteDeveloperPanel({
               activity={
                 <section aria-labelledby="site-developer-activity">
                   <div className="site-section-heading">
-                    <h2 id="site-developer-activity">Activity</h2>
+                    <h2 id="site-developer-activity">Run output</h2>
                     <Button
                       size="1"
                       variant="ghost"
@@ -405,7 +437,7 @@ export function SiteDeveloperPanel({
                         </div>
                       ))
                     ) : (
-                      <p>Run a page load to see hook activity here.</p>
+                      <p>Run a hook to see its logs here.</p>
                     )}
                   </div>
                 </section>
@@ -471,7 +503,14 @@ export function SiteDeveloperPanel({
           variant="soft"
           color="gray"
           disabled={disabled || !dirty || !validDeveloperConfig(draft)}
-          onClick={() => send('set-site-developer', { developer: draft })}
+          onClick={() => {
+            send('set-site-developer', { developer: draft });
+            if (!draft.enabled || (selectedHook && !selectedHook.enabled))
+              setEnablePrompt({
+                config: draft,
+                hookId: selectedHook?.id || '',
+              });
+          }}
         >
           Save hooks
         </Button>
@@ -483,6 +522,48 @@ export function SiteDeveloperPanel({
           Run
         </Button>
       </footer>
+      <AlertDialog.Root
+        open={!!enablePrompt}
+        onOpenChange={(open) => {
+          if (!open) setEnablePrompt(undefined);
+        }}
+      >
+        <AlertDialog.Content size="2" maxWidth="360px">
+          <AlertDialog.Title>Enable this hook?</AlertDialog.Title>
+          <AlertDialog.Description>
+            This hook is off. Enable it to run on the next page load.
+          </AlertDialog.Description>
+          <div className="site-hook-enable-actions">
+            <AlertDialog.Cancel>
+              <Button variant="soft" color="gray">
+                Keep disabled
+              </Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action>
+              <Button
+                disabled={disabled}
+                onClick={() => {
+                  if (!enablePrompt) return;
+                  const config = {
+                    ...enablePrompt.config,
+                    enabled: true,
+                    hooks: enablePrompt.config.hooks?.map((hook) =>
+                      hook.id === enablePrompt.hookId
+                        ? { ...hook, enabled: true }
+                        : hook
+                    ),
+                  };
+                  setDraft(config);
+                  send('set-site-developer', { developer: config });
+                  setEnablePrompt(undefined);
+                }}
+              >
+                Enable hook
+              </Button>
+            </AlertDialog.Action>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
     </>
   );
 }

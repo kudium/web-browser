@@ -1,11 +1,52 @@
 import path from 'path';
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import fs from 'fs';
+import { app, BrowserWindow, ipcMain, shell, screen } from 'electron';
 import type { IpcMainEvent, WebContents } from 'electron';
 import type { BrowserCommand } from '../browser/contracts';
 import type { SiteDeveloperWindowState } from '../browser/siteDeveloper';
 import { isBrowserCommand } from './browserRequests';
 import { resolveHtmlPath } from './util';
 import { protectWindowNavigation } from './windowNavigation';
+
+function editorSize() {
+  const fallback = { width: 820, height: 740 };
+  try {
+    const saved = JSON.parse(
+      fs.readFileSync(
+        path.join(app.getPath('userData'), 'hook-window-size.json'),
+        'utf8'
+      )
+    );
+    if (!Number.isFinite(saved.width) || !Number.isFinite(saved.height))
+      return fallback;
+    const { workAreaSize } = screen.getDisplayNearestPoint(
+      screen.getCursorScreenPoint()
+    );
+    return {
+      width: Math.max(
+        400,
+        Math.min(Math.round(saved.width), workAreaSize.width)
+      ),
+      height: Math.max(
+        480,
+        Math.min(Math.round(saved.height), workAreaSize.height)
+      ),
+    };
+  } catch {
+    return fallback;
+  }
+}
+function rememberEditorSize(editor: BrowserWindow) {
+  if (editor.isDestroyed() || editor.isMinimized()) return;
+  const { width, height } = editor.getNormalBounds();
+  try {
+    const file = path.join(app.getPath('userData'), 'hook-window-size.json');
+    fs.writeFileSync(`${file}.tmp`, JSON.stringify({ width, height }));
+    fs.renameSync(`${file}.tmp`, file);
+  } catch (error) {
+    console.warn('Could not remember hook window size', error);
+  }
+}
 
 /** Editor actions and breadcrumb navigation are bound to its original tab/group. */
 export function registerSiteDeveloperWindows(
@@ -24,10 +65,15 @@ export function registerSiteDeveloperWindows(
     string,
     { window: BrowserWindow; update: () => void }
   >();
-  const open = (event: IpcMainEvent, id: string, origin: string) => {
+  const open = (
+    event: IpcMainEvent,
+    id: string,
+    origin: string,
+    hookId?: string
+  ) => {
     const target = resolve(id);
     if (!target || target.state.origin !== origin) return;
-    const key = `${id}\n${origin}\n${target.profile}\n${
+    const key = `${id}\n${origin}\n${hookId || ''}\n${target.profile}\n${
       target.contents?.id || 'saved'
     }`;
     const existing = editors.get(key);
@@ -38,8 +84,7 @@ export function registerSiteDeveloperWindows(
     }
     const editor = new BrowserWindow({
       title: `${new URL(origin).host} — Developer`,
-      width: 820,
-      height: 740,
+      ...editorSize(),
       minWidth: 400,
       minHeight: 480,
       show: false,
@@ -53,6 +98,12 @@ export function registerSiteDeveloperWindows(
           : path.join(__dirname, '../../.erb/dll/preload.js'),
       },
     });
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    editor.on('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => rememberEditorSize(editor), 250);
+    });
+    editor.on('close', () => rememberEditorSize(editor));
     const current = () => {
       const latest = resolve(id);
       return latest &&
@@ -69,9 +120,9 @@ export function registerSiteDeveloperWindows(
       if (editor.isDestroyed()) return;
       const latest = current();
       if (latest) lastState = latest;
-      const state: SiteDeveloperWindowState = latest || {
-        ...lastState,
-        available: false,
+      const state: SiteDeveloperWindowState = {
+        ...(latest || { ...lastState, available: false }),
+        selectedHookId: hookId,
       };
       const serialized = JSON.stringify(state);
       if (force || serialized !== previous) {
@@ -140,6 +191,7 @@ export function registerSiteDeveloperWindows(
       update(true);
     });
     editor.once('closed', () => {
+      clearTimeout(resizeTimer);
       clearInterval(timer);
       ipcMain.removeListener('site-developer-command', receive);
       editors.delete(key);

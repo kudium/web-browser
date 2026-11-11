@@ -63,6 +63,7 @@ export function SiteDeveloperPage() {
         </p>
       )}
       <SiteDeveloperPanel
+        selectedHookId={state?.selectedHookId}
         origin={state?.pageURL || state?.origin}
         developer={state?.developer}
         disabled={!state?.available}

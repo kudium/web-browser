@@ -413,3 +413,27 @@ it('reconnects on input after a shell stops and forwards only the new input', ()
   expect(pty.write).toHaveBeenCalledWith('\x03');
   terminals.dispose();
 });
+
+it('runs a configured command in a selected subfolder and refuses outside folders', () => {
+  const fixture = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'script-cwd-'))
+  );
+  const root = path.join(fixture, 'project');
+  const child = path.join(root, 'src');
+  fs.mkdirSync(child, { recursive: true });
+  const terminals = new ProjectTerminals(host, () => root);
+  try {
+    terminals.runCommand('group', 'Development', 'npm run dev', 'src');
+    expect(spawn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({ cwd: child })
+    );
+    expect(() =>
+      terminals.runCommand('group', 'Development', 'npm run dev', '..')
+    ).toThrow();
+  } finally {
+    terminals.dispose();
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});

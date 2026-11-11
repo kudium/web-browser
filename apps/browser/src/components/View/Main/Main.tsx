@@ -1,3 +1,4 @@
+import { BrowserOptionsMenu } from '../../UI/BrowserOptionsMenu';
 import {
   CSSProperties,
   useCallback,
@@ -21,12 +22,12 @@ import {
 import {
   LockKeyhole,
   Library,
+  FolderPlus,
   ArrowLeft,
   ArrowRight,
   Volume2,
   VolumeX,
   Play,
-  Settings2,
   Code2,
   StickyNote,
   Bell,
@@ -43,6 +44,7 @@ import {
   Square,
   X,
 } from 'lucide-react';
+import { FindBar } from '../../UI/FindBar';
 import { useSidebarPaneToggle } from '../../../utils/hooks/useSidebarPaneToggle';
 import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
 import { Archive } from '../Settings/tabs/Archive';
@@ -57,6 +59,7 @@ import { BrowserImportSuggestion } from '../../UI/BrowserImportSuggestion';
 import { FirstGroupSyncSuggestion } from '../../UI/FirstGroupSyncSuggestion';
 import { TabSwitcher } from '../../UI/TabSwitcher';
 import { useTabSwitcher } from '../../../utils/hooks/useTabSwitcher';
+import { useProjectFileDrag } from '../../../utils/hooks/useProjectFileDrag';
 import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
 import {
   groupAccessAction,
@@ -99,6 +102,7 @@ import {
 } from '../../../utils/storageRecovery';
 import { AddressBar } from '../../UI/AddressBar';
 import { AnchoredTabPreview } from '../../UI/AnchoredTabPreview';
+import { BrowserCaptureImage } from '../../UI/BrowserCaptureImage';
 import { useAnchoredPreview } from '../../../utils/useAnchoredPreview';
 import {
   DOWNLOADS_PAGE,
@@ -134,6 +138,7 @@ import { Downloads } from '../Downloads/Downloads';
 import { smartTabLabels } from '../../../utils/smartTabLabels';
 import { GroupIcon } from '../../UI/GroupIcon';
 import { GroupPicker } from '../../UI/GroupPicker';
+import { SpaceDownloadsButton } from '../../UI/SpaceDownloadsButton';
 import { SidebarFileDropHint } from '../../UI/SidebarFileDropHint';
 import type { SidebarDropResult } from '../../../browser/sidebarDrop';
 import { GroupEditor } from '../../UI/GroupEditor';
@@ -438,6 +443,20 @@ export function Main() {
     useState<Extract<SidebarDropResult, { kind: 'project' }>>();
   const [fileDragging, setFileDragging] = useState(false);
   const [newGroupSpace, setNewGroupSpace] = useState<string>();
+  const openNewGroup = useCallback((spaceId: string) => {
+    setDroppedProject(undefined);
+    setNewGroupSpace(spaceId);
+    setEditingGroup({
+      id: crypto.randomUUID(),
+      sessionId: crypto.randomUUID(),
+      name: '',
+      sessionName: '',
+      url: 'about:blank',
+      icon: '',
+      spaceId,
+      pinned: true,
+    });
+  }, []);
   const sidebarDropBusy = useRef(false);
   const [groupPersonalData, setGroupPersonalData] = useState(false);
   useEffect(() => setGroupPersonalData(false), [editingGroup?.id]);
@@ -477,20 +496,22 @@ export function Main() {
     axis: 'vertical' | 'horizontal';
   }>();
   const [findOpen, setFindOpen] = useState(false);
+  const [aiPromptRequest, setAIPromptRequest] = useState<{
+    text: string;
+    token: number;
+  }>();
   const [findValue, setFindValue] = useState('');
   const [libraryTab, setLibraryTab] = useState<
     'downloads' | 'history' | 'archive'
   >('downloads');
   const [downloadsOpen, setDownloadsOpen] = useState(false);
-  const [activeDownloadCount, setActiveDownloadCount] = useState(0);
+  const [downloadRecords, setDownloadRecords] = useState<DownloadRecord[]>([]);
   useEffect(() => {
     let alive = true;
     let updated = false;
     const updateCount = (records: DownloadRecord[]) => {
       if (alive) {
-        setActiveDownloadCount(
-          records.filter((record) => record.active).length
-        );
+        setDownloadRecords(records);
       }
     };
     const stop = browser.onDownloads((records) => {
@@ -509,11 +530,7 @@ export function Main() {
       stop();
     };
   }, []);
-  const systemSpacesLabel = activeDownloadCount
-    ? `System spaces — ${activeDownloadCount} active download${
-        activeDownloadCount === 1 ? '' : 's'
-      }`
-    : 'System spaces';
+  const systemSpacesLabel = 'System spaces';
   const [compact, updateCompact] = useState(() => {
     try {
       return (
@@ -838,19 +855,7 @@ export function Main() {
           );
       }
     }
-    if (choice === 'new-group') {
-      setNewGroupSpace(target.id);
-      setEditingGroup({
-        id: crypto.randomUUID(),
-        sessionId: crypto.randomUUID(),
-        name: '',
-        sessionName: '',
-        url: 'about:blank',
-        icon: '',
-        spaceId: target.id,
-        pinned: true,
-      });
-    }
+    if (choice === 'new-group') openNewGroup(target.id);
     if (choice === 'new-tab') setPaletteOpen(true);
     if (choice === 'sort')
       AppManager.set(
@@ -1003,10 +1008,60 @@ export function Main() {
   useEffect(() => {
     if (tabSwitcherOpen) browser.command({ id: '', action: 'focus-chrome' });
   }, [tabSwitcherOpen]);
+  const projectFileDragging = useProjectFileDrag();
+  useEffect(() => {
+    const open = async (event: Event) => {
+      const { detail } = event as CustomEvent;
+      if (
+        !detail ||
+        typeof detail.sourceId !== 'string' ||
+        typeof detail.path !== 'string'
+      )
+        return;
+      const source = AppManager.getAll().find(
+        (tab) => tab.id === detail.sourceId && !tab.archived
+      );
+      if (!source || lockedGroup(source)) return;
+      try {
+        const result = await window.electron.siteDeveloper.files(source.id, {
+          action: 'open-tab',
+          path: detail.path,
+        });
+        if (
+          !result.url ||
+          !AppManager.getAll().some(
+            (tab) => tab.id === source.id && !tab.archived && !lockedGroup(tab)
+          )
+        )
+          return;
+        const destination = commandDestination(
+          AppManager.getAll(),
+          source,
+          result.url,
+          false,
+          source.spaceId || active.id
+        );
+        const tab = destination.existing || destination.app;
+        if (!tab) return;
+        const item = {
+          ...tab,
+          name: detail.path.split(/[\\/]/).pop() || 'File',
+        };
+        if (!destination.existing) AppManager.add(item);
+        select(item);
+      } catch (reason) {
+        setMoveMessage(String(reason));
+      }
+    };
+    window.addEventListener('kudiumbrowser-open-project-file', open);
+    return () =>
+      window.removeEventListener('kudiumbrowser-open-project-file', open);
+  }, [active.id, select]);
   const nativeOverlayOpen = useNativeOverlay();
   const overlayOpen =
     !!tabSwitcher.shown ||
     nativeOverlayOpen ||
+    projectFileDragging ||
     !!editingGroup ||
     !!droppedProject ||
     !!newGroupSpace ||
@@ -1116,10 +1171,7 @@ export function Main() {
             .windowRequest({ action: 'new-window' })
             .catch((error) => setMoveMessage(String(error)));
         if (action === 'command') setPaletteOpen(true);
-        if (action === 'new-session')
-          window.electron.ipcRenderer.sendMessage('ipc-create-window', [
-            { view: 'add-app', intent: 'new-session' },
-          ]);
+        if (action === 'new-session') openNewGroup(active.id);
         if (action === 'new-space') openCreateSpace();
         if (action === 'group-settings' && selected) setEditingGroup(selected);
         if (action === 'site-settings' && selected) setSiteSettingsOpen(true);
@@ -1252,6 +1304,7 @@ export function Main() {
     [
       spaces,
       active.id,
+      openNewGroup,
       selected,
       addressBarPlacement,
       switchableTabs,
@@ -2397,9 +2450,44 @@ export function Main() {
                       className={`sidebar-group-tab ${
                         selected?.id === tab.id ? 'active' : ''
                       }`}
+                      draggable={!renameTarget}
+                      data-dragging={dragged?.id === tab.id || undefined}
+                      data-drop-target={dropTarget === tab.id || undefined}
+                      onDragStart={(event) => {
+                        event.stopPropagation();
+                        closePreview();
+                        startDrag(event, tab, 'horizontal');
+                      }}
+                      onDragEnd={endWindowDrag}
+                      onDragOver={(event) => {
+                        if (
+                          dragged ||
+                          event.dataTransfer.types.includes(WINDOW_DRAG_MIME)
+                        ) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setDropTarget(tab.id);
+                        }
+                      }}
+                      onDrop={(event) => dropTab(event, tab, 'horizontal')}
                       onClick={() => {
                         closePreview();
                         select(tab);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        showTabContextMenu(tab.id, false);
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === 'ContextMenu' ||
+                          (event.shiftKey && event.key === 'F10')
+                        ) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          showTabContextMenu(tab.id, false);
+                        }
                       }}
                     >
                       <AppIcon
@@ -2420,10 +2508,37 @@ export function Main() {
   };
   const renderBrowserTools = () => (
     <>
-      <ChromeIconButton
-        icon={Settings2}
-        label="Browser Preferences"
-        onClick={() => browser.preferences('open')}
+      <BrowserOptionsMenu
+        pageAvailable={!!selected && !lockedGroup(selected)}
+        onSelect={(option) => {
+          if (option === 'new-tab') setPaletteOpen(true);
+          else if (option === 'new-window')
+            window.electron.browser
+              .windowRequest({ action: 'new-window' })
+              .catch((error) => setMoveMessage(String(error)));
+          else if (option === 'history') activateSidebarPage(HISTORY_PAGE);
+          else if (option === 'downloads') activateSidebarPage(DOWNLOADS_PAGE);
+          else if (option === 'find') setFindOpen(true);
+          else if (option === 'print') command('print');
+          else if (option === 'site-settings') setSiteSettingsOpen(true);
+          else if (option === 'extensions') {
+            if (addressBarPlacement === 'sidebar') {
+              setCompact(false);
+              activateSidebarPage(active.id);
+            }
+            browser
+              .preferences('update', { addressBarExtensionsExpanded: true })
+              .catch(() => {});
+            setAddressBarExtensionsExpanded(true);
+            setExtensionPickerOpen(true);
+          } else
+            browser
+              .preferences(
+                'open',
+                option === 'settings' ? undefined : { section: option }
+              )
+              .catch((error) => setMoveMessage(String(error)));
+        }}
       />
       <ChromeIconButton
         icon={Code2}
@@ -2681,23 +2796,36 @@ export function Main() {
           <ContextMenu.Item onSelect={() => select(item)}>
             Open tab
           </ContextMenu.Item>
-          <ContextMenu.Item
-            disabled={!/^https?:\/\//i.test(item.url)}
-            onSelect={() =>
-              browser.command({
-                id: item.id,
-                action: 'open-site-developer',
-                url: new URL(item.url).origin,
-              })
-            }
-          >
-            Manage hooks…
-          </ContextMenu.Item>
           <ContextMenu.Separator />
         </>
       )}
+      <ContextMenu.Item
+        disabled={!/^https?:\/\//i.test(item.url)}
+        onSelect={() =>
+          browser.command({
+            id: item.id,
+            action: 'open-site-developer',
+            url: new URL(item.url).origin,
+          })
+        }
+      >
+        Manage hooks…
+      </ContextMenu.Item>
+      <ContextMenu.Separator />
       <ContextMenu.Item onSelect={() => addToAI({ kind: 'tab', id: item.id })}>
         Add to AI
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        disabled={!/^https?:\/\//i.test(item.url)}
+        onSelect={() =>
+          browser.command({
+            id: item.id,
+            action: 'open-site-developer',
+            url: new URL(item.url).origin,
+          })
+        }
+      >
+        Manage hooks…
       </ContextMenu.Item>
       <ContextMenu.Item
         onSelect={() =>
@@ -2838,6 +2966,21 @@ export function Main() {
       );
       return !!current && lockedGroup(current) === wasLocked;
     }).catch((error) => setMoveMessage(String(error)));
+  };
+  const openPreviewPane = (pane: 'notes' | 'developer') => {
+    if (preview.target?.kind !== 'session') return;
+    const item = AppManager.getAll().find(
+      (tab) => tab.id === preview.target?.id && !tab.archived
+    );
+    if (!item || lockedGroup(item)) return;
+    selectGroup(item);
+    setAIMounted(true);
+    setAIOpen(true);
+    setMenuPaneRequest((previous) => ({
+      pane,
+      token: (previous?.token || 0) + 1,
+    }));
+    closePreview();
   };
   const renderTabStrip = (paneSelected: IApp, side?: SplitSide) => {
     if (lockedGroup(paneSelected)) return null;
@@ -3417,6 +3560,10 @@ export function Main() {
                   </span>
                   <span className="space-title-name">{active.name}</span>
                 </button>
+                <SpaceDownloadsButton
+                  records={downloadRecords}
+                  onOpen={() => activateSidebarPage(DOWNLOADS_PAGE)}
+                />
                 <Tooltip
                   collisionBoundary={sidebarBoundary}
                   collisionPadding={8}
@@ -3813,15 +3960,31 @@ export function Main() {
                     )}
                   </div>
                 )}
-                <button
-                  type="button"
-                  className="new-tab-button"
-                  aria-label="New tab"
-                  onClick={() => setPaletteOpen(true)}
-                >
-                  <Plus size={20} />
-                  <span>New Tab</span>
-                </button>
+                <div className="sidebar-create-actions">
+                  <button
+                    type="button"
+                    className="new-tab-button"
+                    aria-label="Add tab"
+                    title="Add tab"
+                    onClick={() => setPaletteOpen(true)}
+                  >
+                    <Plus size={16} />
+                    <span>Add tab</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="new-tab-button"
+                    aria-label="Add group"
+                    title="Add group"
+                    onClick={() => {
+                      closePreview();
+                      openNewGroup(active.id);
+                    }}
+                  >
+                    <FolderPlus size={16} />
+                    <span>Add group</span>
+                  </button>
+                </div>
                 {(showUnpinnedGroups ||
                   windowWorkspace.state()?.kind === 'temporary') && (
                   <div
@@ -3889,14 +4052,6 @@ export function Main() {
                 }}
               >
                 <Library size={18} />
-                {activeDownloadCount > 0 && (
-                  <span
-                    className="system-space-download-badge"
-                    aria-hidden="true"
-                  >
-                    {activeDownloadCount > 99 ? '99+' : activeDownloadCount}
-                  </span>
-                )}
               </IconButton>
             </Tooltip>
           </div>
@@ -4084,38 +4239,71 @@ export function Main() {
           </div>
         )}
         {findOpen && (
-          <form
-            className="find-bar"
-            onSubmit={(event) => {
-              event.preventDefault();
-              command('find', findValue);
+          <FindBar
+            value={findValue}
+            onChange={(value) => {
+              setFindValue(value);
+              command('find', value);
             }}
-          >
-            <TextField.Root
-              autoFocus
-              aria-label="Find in page"
-              placeholder="Find in page…"
-              value={findValue}
-              onChange={(event) => {
-                setFindValue(event.target.value);
-                command('find', event.target.value);
-              }}
-            />
-            <Button type="submit">Next</Button>
-            <IconButton
-              aria-label="Close find"
-              onClick={() => {
-                command('find', '');
-                setFindOpen(false);
-              }}
-            >
-              <X size={16} />
-            </IconButton>
-          </form>
+            onNext={() => command('find', findValue)}
+            onClose={() => {
+              command('find', '');
+              setFindOpen(false);
+            }}
+            onSearchAI={(text) => {
+              command('find', '');
+              setFindOpen(false);
+              setAIMounted(true);
+              setAIOpen(true);
+              setAIPromptRequest((previous) => ({
+                text,
+                token: (previous?.token || 0) + 1,
+              }));
+            }}
+          />
         )}
         <div className="browser-body" ref={body}>
           <div
             ref={viewport}
+            onDragEnter={(event) => {
+              if (
+                !event.dataTransfer.types.includes(
+                  'application/x-kudiumbrowser-project-file'
+                )
+              )
+                return;
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onDragOver={(event) => {
+              if (
+                !event.dataTransfer.types.includes(
+                  'application/x-kudiumbrowser-project-file'
+                )
+              )
+                return;
+              event.preventDefault();
+              // Keep the tree's HTML5 backend from replacing copy with none.
+              event.stopPropagation();
+              event.dataTransfer.dropEffect = 'copy';
+            }}
+            onDrop={(event) => {
+              const data = event.dataTransfer.getData(
+                'application/x-kudiumbrowser-project-file'
+              );
+              if (!data) return;
+              event.preventDefault();
+              event.stopPropagation();
+              try {
+                window.dispatchEvent(
+                  new CustomEvent('kudiumbrowser-open-project-file', {
+                    detail: JSON.parse(data),
+                  })
+                );
+              } catch {
+                setMoveMessage('Could not open the dropped file.');
+              }
+            }}
             id="browser-content"
             role={selected && !split ? 'tabpanel' : undefined}
             aria-labelledby={
@@ -4125,6 +4313,11 @@ export function Main() {
             className="browser-viewport"
             data-split-dragging={!!dragged || undefined}
           >
+            {projectFileDragging && (
+              <div className="project-file-drop-target">
+                Drop file to open in a tab
+              </div>
+            )}
             {!split && selected && !lockedGroup(selected) && (
               <PageStatus
                 state={state}
@@ -4197,8 +4390,13 @@ export function Main() {
               </div>
             )}
             {windowMirrors
-              .filter((frame) =>
-                appList.some((tab) => tab.id === frame.id && !lockedGroup(tab))
+              .filter(
+                (frame) =>
+                  appList.some(
+                    (tab) => tab.id === frame.id && !lockedGroup(tab)
+                  ) &&
+                  !!frame.image &&
+                  !states[frame.id]?.error
               )
               .map((frame) => (
                 <button
@@ -4218,7 +4416,7 @@ export function Main() {
                     height: frame.height,
                   }}
                 >
-                  <img src={frame.image} alt="" />
+                  <BrowserCaptureImage src={frame.image} alt="" />
                   <span>Continue here</span>
                 </button>
               ))}
@@ -4227,6 +4425,8 @@ export function Main() {
                 const item = appList.find((tab) => tab.id === frame.id);
                 return (
                   item &&
+                  !!frame.image &&
+                  !states[frame.id]?.error &&
                   !lockedGroup(item) &&
                   !frame.previewOnly &&
                   (split
@@ -4235,7 +4435,7 @@ export function Main() {
                 );
               })
               .map((frame) => (
-                <img
+                <BrowserCaptureImage
                   alt=""
                   key={frame.id}
                   className="browser-snapshot"
@@ -4287,6 +4487,7 @@ export function Main() {
                 activeTabId={aiActivityTab}
                 developerRequest={developerRequest}
                 menuPaneRequest={menuPaneRequest}
+                promptRequest={aiPromptRequest}
                 focusedTabId={selected?.id}
                 onFocusTab={(id) => {
                   const target = appList.find((item) => item.id === id);
@@ -4561,6 +4762,16 @@ export function Main() {
                   );
                   closePreview();
                 }
+              : undefined
+          }
+          onNotes={
+            preview.target.kind === 'session'
+              ? () => openPreviewPane('notes')
+              : undefined
+          }
+          onDeveloper={
+            preview.target.kind === 'session'
+              ? () => openPreviewPane('developer')
               : undefined
           }
           onEntryContextMenu={(id) => {

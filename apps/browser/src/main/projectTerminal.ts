@@ -346,14 +346,31 @@ export class ProjectTerminals {
   runCommand(
     group: string,
     name: string,
-    command: string
+    command: string,
+    directory?: string
   ): ProjectTerminalState {
     this.request(group, { action: 'list' });
     const workspace = this.groups.get(group)!;
     if (workspace.tabs.length >= 8)
       throw new Error('Each group can have up to eight terminals.');
+    let cwd: string | undefined;
+    if (directory !== undefined) {
+      if (path.isAbsolute(directory))
+        throw new Error('Choose a folder inside the project.');
+      const root = fs.realpathSync(workspace.folder);
+      cwd = fs.realpathSync(path.resolve(root, directory));
+      const relative = path.relative(root, cwd);
+      if (
+        relative === '..' ||
+        relative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relative) ||
+        !fs.statSync(cwd).isDirectory()
+      )
+        throw new Error('Choose a folder inside the project.');
+    }
     const session: Session = {
       id: randomUUID(),
+      cwd,
       name: name.slice(0, 60),
       folder: workspace.folder,
       data: '',

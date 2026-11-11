@@ -205,7 +205,7 @@ const electronHandler = {
     return invokeWhenReady('browser-migration', action, input);
   },
   activity(request: {
-    action: 'list' | 'read' | 'readAll' | 'delete';
+    action: 'list' | 'read' | 'readAll' | 'delete' | 'disableHook';
     id?: string;
   }): Promise<import('../browser/activity').BrowserActivity[] | undefined> {
     return invokeWhenReady('browser-activity', request);

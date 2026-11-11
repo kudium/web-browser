@@ -16,6 +16,7 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { aiThinking, thinkingOptions } from '../../browser/aiThinking';
+import { AIThinkingSlider } from './AIThinkingSlider';
 import { isOllamaEndpoint } from '../../browser/aiProviders';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { AIComposerSuggestions } from './AIComposerSuggestions';
@@ -82,12 +83,14 @@ export function AISidebar({
   contextRequest,
   developerRequest = 0,
   menuPaneRequest,
+  promptRequest,
   focusedTabId,
   onFocusTab,
   onTabContextMenu,
   onGroupContextMenu,
   onManageGroup,
 }: {
+  promptRequest?: { text: string; token: number };
   workingTabs?: AIWorkingTab[];
   activeTabId?: string;
   focusedTabId?: string;
@@ -689,6 +692,28 @@ export function AISidebar({
     input.style.height = 'auto';
     input.style.height = `${Math.min(160, Math.max(64, input.scrollHeight))}px`;
   }, [prompt, pane]);
+  const handledPromptRequest = useRef<number>();
+  useEffect(() => {
+    if (
+      !promptRequest ||
+      changingChat ||
+      handledPromptRequest.current === promptRequest.token
+    )
+      return undefined;
+    handledPromptRequest.current = promptRequest.token;
+    setPane('assistant');
+    focusAssistantPanel('assistant');
+    setPrompt(promptRequest.text);
+    setCursor(promptRequest.text.length);
+    const frame = requestAnimationFrame(() => {
+      taskInput.current?.focus();
+      taskInput.current?.setSelectionRange(
+        promptRequest.text.length,
+        promptRequest.text.length
+      );
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [promptRequest, changingChat, setPane]);
   const pickAttachments = async () => {
     if (attaching || busy) return;
     setAttaching(true);
@@ -2001,6 +2026,7 @@ export function AISidebar({
                 <GroupPicker
                   label="AI model"
                   triggerClassName="ai-model-picker"
+                  contentClassName="ai-model-popover"
                   optionIcon={noPickerIcon}
                   placeholder="Search models or enter ID…"
                   allowCustom
@@ -2011,7 +2037,10 @@ export function AISidebar({
                     unavailable
                   }
                   options={[...new Set([settings.model, ...models])].map(
-                    (model) => ({ id: model, name: model })
+                    (model) => ({
+                      id: model,
+                      name: model.replace(/^models\//, ''),
+                    })
                   )}
                   value={settings.model}
                   onChange={changeModel}
@@ -2022,35 +2051,18 @@ export function AISidebar({
                   }
                   footer={
                     thinkingChoices.length > 1 && (
-                      <div
-                        className="ai-model-thinking"
-                        role="group"
-                        aria-label="Thinking level"
-                      >
-                        <span className="ai-model-thinking-label">
-                          Thinking
-                        </span>
-                        <div className="ai-model-thinking-options">
-                          {thinkingChoices.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              aria-label={option.name}
-                              aria-pressed={selectedThinking.id === option.id}
-                              title={option.detail}
-                              disabled={
-                                changingChat ||
-                                busy ||
-                                !!queue.messages.length ||
-                                unavailable
-                              }
-                              onClick={() => changeThinking(option.id)}
-                            >
-                              {option.name.replace('Thinking: ', '')}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      <AIThinkingSlider
+                        key={`${settings.endpoint}:${settings.model}`}
+                        options={thinkingChoices}
+                        value={selectedThinking.id}
+                        disabled={
+                          changingChat ||
+                          busy ||
+                          !!queue.messages.length ||
+                          unavailable
+                        }
+                        onChange={changeThinking}
+                      />
                     )
                   }
                 />

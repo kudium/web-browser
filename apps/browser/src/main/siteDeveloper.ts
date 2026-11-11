@@ -1,5 +1,6 @@
 import { app, ipcMain, WebContents } from 'electron';
 import fs from 'fs';
+import { EventEmitter } from 'events';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import {
@@ -36,14 +37,14 @@ if (window === window.top) {
     const context = Object.freeze({url: location.href, document, notify, activity, notes,
       get content() { return document.documentElement?.outerHTML || ''; }, page, log});
     let failed = false;
-    const run = async (phase, source) => {
+    const run = async (phase, source, hookId) => {
       if (!source.trim()) return;
       send('running', phase);
       try {
         const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
         const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify, activity, notes} = context;\n' + source);
         let timer;
-        try { await Promise.race([callback(context), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Callback timed out after 10 seconds')), 10000); })]); }
+        try { await Promise.race([callback(Object.freeze({...context, activity:Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind:'activity', input, hookId})}), notes:Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind:'note', input, hookId})})})), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Callback timed out after 10 seconds')), 10000); })]); }
         finally { clearTimeout(timer); }
         log(phase + ' completed');
       } catch (error) {
@@ -54,7 +55,7 @@ if (window === window.top) {
     const hooks = config.hooks || [];
     const before = (async () => {
       await run('Before load', config.before);
-      for (const hook of hooks) await run(hook.name + ' · Before load', hook.before);
+      for (const hook of hooks) await run(hook.name + ' · Before load', hook.before, hook.id);
     })();
     if (config.css.trim()) {
       try { webFrame.insertCSS(config.css); log('CSS applied'); }
@@ -69,7 +70,7 @@ if (window === window.top) {
     addEventListener('load', async () => {
       await before;
       await run('After load', config.after);
-      for (const hook of hooks) await run(hook.name + ' · After load', hook.after);
+      for (const hook of hooks) await run(hook.name + ' · After load', hook.after, hook.id);
       if (!failed) send('success', 'Hooks completed');
     }, {once:true});
   }
@@ -97,9 +98,21 @@ interface ManagedPage {
   origin?: string;
   controls: number[];
   events: number[];
-  scope: () => { groupId: string; scope?: string } | undefined;
+  scope: () =>
+    | { groupId: string; scope?: string; sourceId?: string }
+    | undefined;
 }
 const pages = new Map<WebContents, ManagedPage>();
+const developerChanges = new EventEmitter();
+export function onDeveloperStateChanged(
+  listener: (contents: WebContents) => void
+) {
+  developerChanges.on('change', listener);
+  return () => {
+    developerChanges.removeListener('change', listener);
+  };
+}
+
 let listening = false;
 export function developerState(contents: WebContents, origin: string) {
   const page = pages.get(contents);
@@ -154,19 +167,25 @@ export function registerDeveloperPage(
   contents: WebContents,
   profile: string,
   publish: () => void,
-  scope: () => { groupId: string; scope?: string } | undefined = () => ({
+  scope: () =>
+    | { groupId: string; scope?: string; sourceId?: string }
+    | undefined = () => ({
     groupId: profile,
   })
 ) {
+  const publishState = () => {
+    publish();
+    developerChanges.emit('change', contents);
+  };
   const existing = pages.get(contents);
   if (existing) {
-    existing.publish = publish;
+    existing.publish = publishState;
     existing.scope = scope;
     return;
   }
   pages.set(contents, {
     profile,
-    publish,
+    publish: publishState,
     states: new Map(),
     controls: [],
     events: [],
@@ -181,6 +200,7 @@ export function registerDeveloperPage(
       token?: unknown;
       kind?: unknown;
       input?: unknown;
+      hookId?: unknown;
     };
     const identity = page?.scope();
     const origin = siteOrigin(event.senderFrame?.url || '');
@@ -208,7 +228,26 @@ export function registerDeveloperPage(
       throw new Error(
         'Hook output limit reached: ten items per minute per page.'
       );
-    const context = { source: 'hook' as const, ...identity };
+    const hook =
+      data.hookId === undefined
+        ? undefined
+        : config.hooks?.find(
+            (candidate) => candidate.id === data.hookId && candidate.enabled
+          );
+    if (data.hookId !== undefined && !hook)
+      throw new Error('Hook is no longer enabled.');
+    const context = {
+      source: 'hook' as const,
+      ...identity,
+      trigger: {
+        sourceId: identity.sourceId,
+        profile: page.profile,
+        origin,
+        pageURL: event.senderFrame.url,
+        hookId: hook?.id,
+        hookName: hook?.name || 'Default hook',
+      },
+    };
     if (data.kind === 'activity') {
       const input = validateActivity(data.input);
       // Hooks cannot link to arbitrary saved notes or read private data.
@@ -451,7 +490,17 @@ export function registerDeveloperPage(
                     : 'The hooks finished for this page.',
                 url: event.senderFrame.url,
               },
-              { source: 'hook', ...identity },
+              {
+                source: 'hook',
+                ...identity,
+                trigger: {
+                  sourceId: identity.sourceId,
+                  profile: page.profile,
+                  origin: page.origin!,
+                  pageURL: event.senderFrame.url,
+                  hookName: 'Page hooks',
+                },
+              },
               kind === 'success'
             );
           } catch {

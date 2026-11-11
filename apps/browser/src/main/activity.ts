@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { safeStorage } from './localStorage';
 import { ActivityStore } from './activityStore';
 import { getGroupLocks } from './groupLocks';
+import { getSiteSettings, updateSiteSettings } from './siteSettings';
 import type { BrowserActivity } from '../browser/activity';
 
 let store: ActivityStore | undefined;
@@ -71,6 +72,28 @@ export function registerActivity(
           (entry) => !entry.groupId || !getGroupLocks().locked(entry.groupId)
         );
       if (request?.action === 'list') return visible;
+      if (request?.action === 'disableHook') {
+        const entry = visible.find((item) => item.id === request.id);
+        if (!entry || entry.source !== 'hook' || !entry.trigger)
+          throw new Error('Hook source is unavailable.');
+        const { profile, origin, hookId } = entry.trigger;
+        const config = getSiteSettings(profile, origin).developer;
+        if (!config) throw new Error('This hook was removed.');
+        if (hookId && !config.hooks?.some((hook) => hook.id === hookId))
+          throw new Error('This hook was removed.');
+        updateSiteSettings(profile, origin, {
+          developer: hookId
+            ? {
+                ...config,
+                hooks: config.hooks?.map((hook) =>
+                  hook.id === hookId ? { ...hook, enabled: false } : hook
+                ),
+              }
+            : { ...config, enabled: false },
+        });
+        return undefined;
+      }
+
       if (request?.action === 'read' || request?.action === 'delete') {
         if (
           typeof request.id !== 'string' ||

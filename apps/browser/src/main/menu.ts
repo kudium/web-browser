@@ -5,6 +5,7 @@ import {
   BrowserWindow,
   MenuItemConstructorOptions,
 } from 'electron';
+import { onWindowClosed } from './windowLifecycle';
 import {
   showBrowserPreferences,
   getBrowserPreferences,
@@ -36,7 +37,7 @@ export default class MenuBuilder {
     const stop = onBrowserPreferencesChanged(() => {
       if (!this.mainWindow.isDestroyed()) this.buildMenu();
     });
-    this.mainWindow.once('closed', stop);
+    onWindowClosed(this.mainWindow, stop);
   }
 
   action(

@@ -22,6 +22,7 @@ import {
 } from 'electron';
 import log from 'electron-log';
 import fs from 'fs';
+import { onWindowClosed } from './windowLifecycle';
 import {
   initializeLocalStorage,
   localStorageStatus,
@@ -320,7 +321,7 @@ export const createNewWindow = async ({
       );
     nativeTheme.on('updated', updateMaterial);
     updateMaterial();
-    newWindow.on('closed', () =>
+    onWindowClosed(newWindow, () =>
       nativeTheme.removeListener('updated', updateMaterial)
     );
   }
@@ -351,7 +352,7 @@ export const createNewWindow = async ({
 
   newWindow.loadURL(initialURL);
 
-  newWindow.on('closed', () => {
+  onWindowClosed(newWindow, () => {
     activeWindows[windowKey] = null;
   });
 

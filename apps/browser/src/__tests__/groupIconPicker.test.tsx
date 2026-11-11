@@ -121,11 +121,12 @@ it('rejects non-web tab addresses without saving', async () => {
     </Theme>
   );
   fireEvent.change(screen.getByLabelText('Tab address: Work'), {
+    // eslint-disable-next-line no-script-url
     target: { value: 'javascript:alert(1)' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Use an HTTP or HTTPS tab address.'
+    'isn’t a website address. Try example.com or https://example.com.'
   );
   expect(close).not.toHaveBeenCalled();
   expect(AppManager.getAll()[0].url).toBe('https://example.com');

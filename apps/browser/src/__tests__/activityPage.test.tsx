@@ -8,6 +8,19 @@ import {
 } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { ActivityPage } from '../components/UI/ActivityPage';
+import { browser } from '../browser/client';
+jest.mock('../browser/client', () => ({ browser: { command: jest.fn() } }));
+jest.mock('../utils/AppManager', () => ({
+  AppManager: {
+    getAll: () => [
+      {
+        id: 'source',
+        sessionProfileId: 'profile',
+        url: 'https://example.com/prices',
+      },
+    ],
+  },
+}));
 
 const entry = {
   id: 'one',
@@ -149,4 +162,47 @@ it('deletes only the activity without opening its note', async () => {
   } finally {
     window.removeEventListener('kudiumbrowser-open-note', open);
   }
+});
+
+it('shows the triggering hook and website and disables it explicitly', async () => {
+  request.mockImplementation(async (input) =>
+    input.action === 'list'
+      ? [
+          {
+            ...entry,
+            source: 'hook',
+            trigger: {
+              profile: 'profile',
+              origin: 'https://example.com',
+              pageURL: 'https://example.com/prices',
+              hookId: 'price',
+              hookName: 'Price watcher',
+            },
+          },
+        ]
+      : undefined
+  );
+  render(
+    <Theme>
+      <ActivityPage active />
+    </Theme>
+  );
+  const reference = await screen.findByRole('button', {
+    name: 'Open hook: Price watcher',
+  });
+  expect(reference).toHaveTextContent('Page hook');
+  fireEvent.click(reference);
+  expect(browser.command).toHaveBeenCalledWith({
+    id: 'source',
+    action: 'open-site-developer',
+    url: 'https://example.com',
+    hookId: 'price',
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Disable hook' }));
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith({ action: 'disableHook', id: 'one' })
+  );
+  expect(
+    await screen.findByRole('button', { name: 'Hook disabled' })
+  ).toBeDisabled();
 });

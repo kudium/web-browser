@@ -482,3 +482,32 @@ it('opens a folder in a new inbuilt terminal tab and reveals the terminal', asyn
     path: 'src',
   });
 });
+
+it('keeps file drags out of the tree backend that cancels unregistered HTML5 sources', async () => {
+  files.mockResolvedValueOnce({
+    path: '',
+    entries: [{ name: 'buy.png', path: 'buy.png', kind: 'file' }],
+  });
+  render(
+    <Theme>
+      <DeveloperFiles sourceId="one" projectName="Project" />
+    </Theme>
+  );
+  const row = await screen.findByRole('button', { name: 'buy.png' });
+  const cancelUnknownSource = jest.fn((event: Event) => event.preventDefault());
+  window.addEventListener('dragstart', cancelUnknownSource);
+  const setData = jest.fn();
+  try {
+    expect(
+      fireEvent.dragStart(row, { dataTransfer: { setData, effectAllowed: '' } })
+    ).toBe(true);
+    expect(setData).toHaveBeenCalledWith(
+      'application/x-kudiumbrowser-project-file',
+      JSON.stringify({ sourceId: 'one', path: 'buy.png' })
+    );
+    expect(cancelUnknownSource).not.toHaveBeenCalled();
+    fireEvent.dragEnd(row);
+  } finally {
+    window.removeEventListener('dragstart', cancelUnknownSource);
+  }
+});

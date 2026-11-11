@@ -95,14 +95,15 @@ export type ProjectScriptRequest =
       command: string;
       scope: 'project' | 'global';
     }
-  | { action: 'delete' | 'run'; id: string };
+  | { action: 'delete'; id: string }
+  | { action: 'run'; id: string; cwd?: string };
 export interface ProjectScriptResult {
   scripts: ProjectScript[];
   terminal?: ProjectTerminalState;
 }
 
 export type ProjectFilesRequest =
-  | { action: 'list' | 'preview'; path: string; hidden?: boolean }
+  | { action: 'list' | 'preview' | 'open-tab'; path: string; hidden?: boolean }
   | {
       action: 'editor' | 'reveal' | 'trash' | 'terminal' | 'terminal-tab';
       path: string;
@@ -121,12 +122,15 @@ export interface ProjectFileEntry {
 export interface ProjectFilesResult {
   path: string;
   terminal?: ProjectTerminalState;
+  url?: string;
   entries?: ProjectFileEntry[];
   truncated?: boolean;
   file?: {
     name: string;
     path: string;
     size: number;
+    imageURL?: string;
+    media?: { type: string; url: string };
     text?: string;
     version?: string;
     notice?: string;

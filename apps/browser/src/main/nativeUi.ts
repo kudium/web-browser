@@ -9,6 +9,7 @@ import {
   IpcMainInvokeEvent,
 } from 'electron';
 import path from 'path';
+import { onWindowClosed } from './windowLifecycle';
 import { NativeTooltip, validateTooltip } from './nativeTooltip';
 import type { NativeTooltipRequest } from '../browser/nativeUi';
 import { parseNativeMenu } from './nativeMenu';
@@ -65,13 +66,13 @@ export function registerNativeUi(
     ) => {
       if (mainFrame && !inPage) invalidate();
     };
-    owner.once('closed', invalidate);
+    const stopClosed = onWindowClosed(owner, invalidate);
     event.sender.once('destroyed', invalidate);
     event.sender.on('did-start-navigation', navigating);
     return {
       active: () => live && stillTrusted(event, owner),
       dispose: () => {
-        owner.removeListener('closed', invalidate);
+        stopClosed();
         event.sender.removeListener('destroyed', invalidate);
         event.sender.removeListener('did-start-navigation', navigating);
       },
@@ -96,6 +97,7 @@ export function registerNativeUi(
     return new Promise<string | null>((resolve) => {
       const entries = parseNativeMenu(items);
       let settled = false;
+      let stopClosed: (() => void) | undefined;
       let cancel: () => void;
       let navigating: (
         _event: unknown,
@@ -106,7 +108,7 @@ export function registerNativeUi(
       const finish = (id: string | null) => {
         if (settled) return;
         settled = true;
-        owner.removeListener('closed', cancel);
+        stopClosed?.();
         event.sender.removeListener('destroyed', cancel);
         event.sender.removeListener('did-start-navigation', navigating);
         if (pendingMenus.get(event.sender) === cancel)
@@ -155,7 +157,7 @@ export function registerNativeUi(
       };
       pendingMenus.get(event.sender)?.();
       pendingMenus.set(event.sender, cancel);
-      owner.once('closed', cancel);
+      stopClosed = onWindowClosed(owner, cancel);
       event.sender.once('destroyed', cancel);
       event.sender.on('did-start-navigation', navigating);
       try {

@@ -366,3 +366,30 @@ it('waits for imported groups to reach layout sync before loading their project'
     project.mockRestore();
   }
 });
+
+it('tracks newly saved hooks before they have code or run', () => {
+  (getSiteSettings as jest.Mock).mockReturnValue({
+    developer: {
+      enabled: false,
+      before: '',
+      after: '',
+      css: '',
+      hooks: [
+        {
+          id: 'new',
+          name: 'New hook',
+          enabled: true,
+          path: '/*',
+          before: '',
+          after: '',
+          css: '',
+        },
+      ],
+    },
+  });
+  expect(developerPageSummaries(tabs, home, () => undefined)[0]).toMatchObject({
+    hasHooks: true,
+    enabled: false,
+    status: 'waiting',
+  });
+});

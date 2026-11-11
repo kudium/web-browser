@@ -21,6 +21,7 @@ import type {
   ProjectFilesResult,
 } from '../../browser/developerProject';
 import { DeveloperFileTree } from './DeveloperFileTree';
+import { DeveloperFormatPreview } from './DeveloperFormatPreview';
 import { DeveloperFileEditor } from './DeveloperFileEditor';
 import {
   readFilePosition,
@@ -378,7 +379,7 @@ export function DeveloperFiles({
       run: () => external('reveal', preview?.path || listing.path),
     },
   ];
-  const fileMenu = (entries: ProjectFileEntry[]) => {
+  const fileMenu = async (entries: ProjectFileEntry[]) => {
     if (busy || loading) return;
     const entry = entries[0];
     const single = entries.length === 1;
@@ -400,6 +401,42 @@ export function DeveloperFiles({
         disabled: true,
       },
     ];
+    if (single && entry.kind === 'file')
+      items.push({
+        label: 'Open in tab',
+        run: () => {
+          window.dispatchEvent(
+            new CustomEvent('kudiumbrowser-open-project-file', {
+              detail: { sourceId, path: entry.path },
+            })
+          );
+        },
+      });
+    if (!entry || (single && entry.kind === 'folder')) {
+      try {
+        const result = await window.electron.siteDeveloper.scripts(sourceId, {
+          action: 'list',
+        });
+        if (!mounted.current) return;
+        items.push({
+          label: 'Run as',
+          disabled: !result.scripts.length,
+          submenu: result.scripts.map((script) => ({
+            label: script.name,
+            run: async () => {
+              await window.electron.siteDeveloper.scripts(sourceId, {
+                action: 'run',
+                id: script.id,
+                cwd: folder,
+              });
+              if (mounted.current) onOpenTerminal();
+            },
+          })),
+        });
+      } catch (reason) {
+        setError(projectErrorMessage(reason));
+      }
+    }
     if (entry?.path === preview?.path && preview?.text !== undefined)
       items.push(...previewActions.slice(0, 4));
     if (entry)
@@ -557,11 +594,10 @@ export function DeveloperFiles({
       }}
     >
       <div className="developer-files-toolbar">
-        {preview && (
-          <IconButton
-            size="1"
-            color="gray"
-            variant="ghost"
+        {preview ? (
+          <button
+            type="button"
+            className="developer-files-back"
             aria-label="Back to folder"
             onClick={() =>
               guard(() => {
@@ -571,17 +607,15 @@ export function DeveloperFiles({
               })
             }
           >
-            <ArrowLeft size={14} />
-          </IconButton>
-        )}
-        <nav
-          className="developer-files-breadcrumbs"
-          aria-label="Browse project folders"
-        >
-          {preview ? (
-            <strong title={preview.name}>{preview.name}</strong>
-          ) : (
-            crumbs.map((crumb, index) => (
+            <ArrowLeft size={16} aria-hidden="true" />
+            <strong>{preview.name}</strong>
+          </button>
+        ) : (
+          <nav
+            className="developer-files-breadcrumbs"
+            aria-label="Browse project folders"
+          >
+            {crumbs.map((crumb, index) => (
               <span key={crumb.path}>
                 {index > 0 && <ChevronRight size={10} aria-hidden="true" />}
                 <button
@@ -593,9 +627,9 @@ export function DeveloperFiles({
                   {crumb.name}
                 </button>
               </span>
-            ))
-          )}
-        </nav>
+            ))}
+          </nav>
+        )}
         <IconButton
           size="1"
           color="gray"
@@ -738,28 +772,54 @@ export function DeveloperFiles({
                 Open in editor
               </Button>
             </div>
-            {preview.text !== undefined ? (
-              <DeveloperFileEditor
-                key={preview.path}
-                name={preview.name}
-                value={text}
-                disabled={busy || loading || !preview.version}
-                actions={previewActions}
-                onError={setError}
-                onChange={(value) => {
-                  setText(value);
-                  setSaved(false);
-                  if (value !== preview.text)
-                    drafts.set(draftKey(preview.path), {
-                      file: preview,
-                      text: value,
-                    });
-                  else drafts.delete(draftKey(preview.path));
-                }}
-              />
-            ) : (
-              <p className="developer-files-feedback">{preview.notice}</p>
-            )}
+            {preview.imageURL ? (
+              <div className="developer-image-preview" key={preview.imageURL}>
+                <img
+                  src={preview.imageURL}
+                  alt={preview.name}
+                  onError={(event) => {
+                    event.currentTarget.hidden = true;
+                    setError(
+                      'This image format could not be displayed. Open it in your editor.'
+                    );
+                  }}
+                />
+              </div>
+            ) : null}
+            {!preview.imageURL &&
+              (preview.text !== undefined || preview.media) && (
+                <DeveloperFormatPreview
+                  key={preview.path}
+                  file={preview}
+                  text={text}
+                >
+                  {preview.text !== undefined && (
+                    <DeveloperFileEditor
+                      key={preview.path}
+                      name={preview.name}
+                      value={text}
+                      disabled={busy || loading || !preview.version}
+                      actions={previewActions}
+                      onError={setError}
+                      onChange={(value) => {
+                        setText(value);
+                        setSaved(false);
+                        if (value !== preview.text)
+                          drafts.set(draftKey(preview.path), {
+                            file: preview,
+                            text: value,
+                          });
+                        else drafts.delete(draftKey(preview.path));
+                      }}
+                    />
+                  )}
+                </DeveloperFormatPreview>
+              )}
+            {!preview.imageURL &&
+              !preview.media &&
+              preview.text === undefined && (
+                <p className="developer-files-feedback">{preview.notice}</p>
+              )}
           </div>
         ) : null}
         <div

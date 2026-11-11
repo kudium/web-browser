@@ -1,5 +1,6 @@
 import fs from 'fs';
 import type { BrowserWindow } from 'electron';
+import { onWindowClosed } from './windowLifecycle';
 import { writePrivateFile } from './privateFile';
 
 interface WindowSize {
@@ -62,5 +63,5 @@ export function rememberWindowSize(window: BrowserWindow, file: string) {
     clearTimeout(timer);
     save();
   });
-  window.once('closed', () => clearTimeout(timer));
+  onWindowClosed(window, () => clearTimeout(timer));
 }

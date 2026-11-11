@@ -26,7 +26,7 @@ export class ActivityStore {
 
   create(
     input: ActivityInput,
-    context: Pick<BrowserActivity, 'source' | 'scope' | 'groupId'>,
+    context: Pick<BrowserActivity, 'source' | 'scope' | 'groupId' | 'trigger'>,
     asRead = false
   ) {
     const activity: BrowserActivity = {

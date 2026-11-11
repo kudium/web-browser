@@ -15,6 +15,8 @@ import {
   nativeImage,
   RestoreOptions,
 } from 'electron';
+import { projectFileNavigation } from './projectFileNavigation';
+import { onWindowClosed } from './windowLifecycle';
 import { presentSnapshots } from './snapshotPresentation';
 import {
   getGroupRemovalJournal,
@@ -507,7 +509,9 @@ export function registerElectronBrowser(
       }
       if (
         typeof item.id !== 'string' ||
-        (!validURL(item.url) && item.url !== 'about:blank')
+        (!validURL(item.url) &&
+          item.url !== 'about:blank' &&
+          !projectFileNavigation(item.url, item))
       )
         return;
       if (
@@ -574,6 +578,7 @@ export function registerElectronBrowser(
             return current && !isGroupLocked(current)
               ? {
                   groupId: groupKey(current),
+                  sourceId: current.id,
                   scope: personalDataScope(current),
                 }
               : undefined;
@@ -849,6 +854,7 @@ export function registerElectronBrowser(
                   return current && !isGroupLocked(current)
                     ? {
                         groupId: groupKey(current),
+                        sourceId: current.id,
                         scope: personalDataScope(current),
                       }
                     : undefined;
@@ -922,7 +928,11 @@ export function registerElectronBrowser(
           };
         });
         contents.on('will-navigate', (navigation, url) => {
-          if (!validURL(url) && url !== 'about:blank')
+          if (
+            !validURL(url) &&
+            url !== 'about:blank' &&
+            !projectFileNavigation(url, configurations.get(item.id) || item)
+          )
             navigation.preventDefault();
         });
         const pip = new PictureInPictureController(
@@ -1481,7 +1491,8 @@ export function registerElectronBrowser(
       return;
     }
     if (request.action === 'open-site-developer') {
-      if (request.url) developerWindows.open(event, request.id, request.url);
+      if (request.url)
+        developerWindows.open(event, request.id, request.url, request.hookId);
       return;
     }
     if (targetGroup && (!contents || contents.isDestroyed())) {
@@ -2200,7 +2211,7 @@ export function registerElectronBrowser(
     chrome: (host) => {
       const stopGestures = registerSpaceGestures(host);
       gestureCleanup.add(stopGestures);
-      host.once('closed', () => {
+      onWindowClosed(host, () => {
         stopGestures();
         gestureCleanup.delete(stopGestures);
       });
@@ -2217,7 +2228,7 @@ export function registerElectronBrowser(
         (id) =>
           windows.allows(host, id) ? views.get(id)?.webContents : undefined
       );
-      host.once('closed', () => {
+      onWindowClosed(host, () => {
         capture();
         library();
       });
@@ -2316,6 +2327,6 @@ export function registerElectronBrowser(
     popups.clear();
     views.clear();
   };
-  window.once('closed', dispose);
+  onWindowClosed(window, dispose);
   return dispose;
 }

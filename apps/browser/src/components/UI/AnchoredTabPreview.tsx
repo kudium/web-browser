@@ -1,12 +1,14 @@
 import { Button, Popover } from '@radix-ui/themes';
 import {
   ArrowLeft,
+  Code2,
   Layers,
   MessageCircle,
   Pin,
   PinOff,
   Plus,
   Search,
+  StickyNote,
   X,
 } from 'lucide-react';
 import {
@@ -49,6 +51,8 @@ export function AnchoredTabPreview({
   selectedId,
   onSelect,
   onSelectGroup,
+  onNotes,
+  onDeveloper,
   onToggleFavorite,
   onEntryContextMenu,
   onGroupContextMenu,
@@ -70,6 +74,8 @@ export function AnchoredTabPreview({
   selectedId: string;
   onSelect: (id: string) => void;
   onSelectGroup?: () => void;
+  onNotes?: () => void;
+  onDeveloper?: () => void;
   onToggleFavorite?: () => void;
   onEntryContextMenu?: (id: string) => void;
   onGroupContextMenu?: () => void;
@@ -326,19 +332,45 @@ export function AnchoredTabPreview({
               variant="ghost"
               onClick={onToggleFavorite}
               disabled={!onToggleFavorite}
+              aria-label={
+                group?.favorite ? 'Unpin from favorites' : 'Pin to favorites'
+              }
+              title={
+                group?.favorite ? 'Unpin from favorites' : 'Pin to favorites'
+              }
               aria-pressed={!!group?.favorite}
             >
               {group?.favorite ? <PinOff size={15} /> : <Pin size={15} />}
-              {group?.favorite ? 'Unpin from favorites' : 'Pin to favorites'}
             </Button>
             <Button
               size="1"
               variant="ghost"
+              aria-label="AI Chat"
+              title="AI Chat"
               onClick={onSelectGroup}
               disabled={!onSelectGroup}
             >
               <MessageCircle size={15} />
-              AI Chat
+            </Button>
+            <Button
+              size="1"
+              variant="ghost"
+              aria-label="Notes"
+              title="Notes"
+              onClick={onNotes}
+              disabled={!onNotes}
+            >
+              <StickyNote size={15} />
+            </Button>
+            <Button
+              size="1"
+              variant="ghost"
+              aria-label="Developer"
+              title="Developer"
+              onClick={onDeveloper}
+              disabled={!onDeveloper}
+            >
+              <Code2 size={15} />
             </Button>
           </div>
         )}

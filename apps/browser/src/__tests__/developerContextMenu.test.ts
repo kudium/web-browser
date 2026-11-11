@@ -43,3 +43,15 @@ it('reports command failures without offering unrelated browser actions', async 
     { id: '0', label: 'Save file', enabled: true },
   ]);
 });
+
+it('routes the configured Run as submenu action', async () => {
+  const run = jest.fn();
+  nativeMenu.mockResolvedValue('0.0');
+  await showDeveloperContextMenu(
+    [{ label: 'Run as', submenu: [{ label: 'Development', run }] }],
+    () => true,
+    jest.fn()
+  );
+  expect(nativeMenu.mock.calls[0][0][0].submenu[0].label).toBe('Development');
+  expect(run).toHaveBeenCalledTimes(1);
+});
