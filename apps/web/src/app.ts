@@ -15,6 +15,7 @@ import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest, releaseHistory } from './releases';
 import { homepage, downloadPage, documentation, notesAndActivityDocumentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
 import { tutorials } from './tutorials';
+import { whatsNewPage } from './pages';
 import { privacyPage } from './privacy';
 import { managedSync, managedKeyRecord } from './managed-sync';
 export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey }: { syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
@@ -57,6 +58,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     return route === '/v1/releases' ? c.json(history) : c.html(releaseHistoryPage(history, query.data.channel));
   });
   app.get('/privacy', c => c.html(privacyPage()));
+  app.get('/whats-new', c => c.html(whatsNewPage()));
   app.get('/assets/privacy.css', async c => { c.header('Content-Type', 'text/css; charset=utf-8'); c.header('Cache-Control', 'public, max-age=300'); return c.body(await Bun.file(new URL('../public/privacy.css', import.meta.url)).text()); });
   app.get('/docs', c => c.html(documentation()));
   app.get('/docs/notes-and-activity', c => c.html(notesAndActivityDocumentation()));

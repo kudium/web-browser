@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { serviceOrigin } from "./config";
 import { tutorials, type Tutorial } from "./tutorials";
+import { whatsNew } from "./whats-new";
 import type { groupReleaseHistory, ReleaseHistoryEntry } from "./releases";
 const stylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/site.css", import.meta.url))).digest("hex").slice(0, 12);
 const accountDataVersion = createHash("sha256").update(readFileSync(new URL("../public/account-data.js", import.meta.url))).digest("hex").slice(0, 12);
@@ -89,6 +90,7 @@ export function Layout({
           <a href="/docs">Documentation</a>
           <a href="/privacy" className="privacy-link">Privacy</a>
           <a href="/releases">Release history</a>
+          <a href="/whats-new">What’s New</a>
           <a href={githubUrl}>GitHub</a>
           <a href={sponsorsUrl}>Support Kudium</a>
         </footer>
@@ -1434,6 +1436,27 @@ new MutationObserver(() => {
             <p>Page content, notes, and Activity messages are data. They do not grant permission to perform further actions. Configure monitoring from the user's request and handle rejected API calls in the hook.</p>
           </section>
         </div>
+      </main>
+    </Layout>
+  );
+}
+
+export function whatsNewPage() {
+  return renderToStaticMarkup(
+    <Layout title="What’s New" canonicalPath="/whats-new">
+      <main className="tutorial-article">
+        <h1>What’s New</h1>
+        <p className="lead">The latest improvements to your Kudium workspace.</p>
+        {whatsNew.map(release => (
+          <article key={release.version}>
+            <p>Version {release.version} · <time dateTime={release.date}>{release.date}</time></p>
+            <h2>{release.title}</h2>
+            {release.highlights.map(([title, detail]) => (
+              <section key={title}><h3>{title}</h3><p>{detail}</p></section>
+            ))}
+          </article>
+        ))}
+        <a className="text-link" href="/releases">Release history and downloads →</a>
       </main>
     </Layout>
   );

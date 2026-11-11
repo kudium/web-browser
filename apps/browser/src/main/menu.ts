@@ -244,6 +244,12 @@ export default class MenuBuilder {
       label: 'Help',
       submenu: [
         {
+          label: 'What’s New',
+          click: () => {
+            shell.openExternal('https://browser.kudium.com/whats-new');
+          },
+        },
+        {
           label: 'Kudium Browser Website',
           click: () => {
             shell.openExternal('https://kudium.com');
