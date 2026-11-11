@@ -14,6 +14,9 @@ if (form) form.addEventListener('submit', async event => {
   event.preventDefault();
   const button = form.querySelector('button');
   if (button.disabled) return;
+  const alternatives = [...document.querySelectorAll('[data-google-sign-in],[data-passkey-sign-in]')];
+  const disabledStates = alternatives.map(button => button.disabled);
+  alternatives.forEach(button => { button.disabled = true; });
   button.disabled = true; showMessage('Working…');
   const fields = new FormData(form);
   const mode = form.dataset.authForm;
@@ -40,7 +43,7 @@ if (form) form.addEventListener('submit', async event => {
     }
     location.assign(destination);
   } catch (error) { showMessage(error instanceof Error ? error.message : 'Unable to complete this request.'); }
-  finally { button.disabled = false; }
+  finally { button.disabled = false; alternatives.forEach((button, index) => { button.disabled = disabledStates[index]; }); }
 });
 const signOut = document.querySelector('[data-sign-out]');
 if (signOut) signOut.addEventListener('click', async () => {

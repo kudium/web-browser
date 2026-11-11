@@ -63,3 +63,11 @@ export const authDeviceCode = pgTable('auth_device_codes', {
   userId: text('user_id').references(() => authUser.id, {onDelete: 'cascade'}), expiresAt: timestamp('expires_at', {withTimezone: true}).notNull(),
   status: text('status').notNull(), lastPolledAt: timestamp('last_polled_at', {withTimezone: true}), pollingInterval: integer('polling_interval'), clientId: text('client_id'), scope: text('scope'),
 });
+
+export const authPasskey = pgTable('auth_passkeys', {
+  id: text('id').primaryKey(), name: text('name'), publicKey: text('public_key').notNull(),
+  userId: text('user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
+  credentialID: text('credential_id').notNull().unique(), counter: bigint('counter', { mode: 'number' }).notNull(),
+  deviceType: text('device_type').notNull(), backedUp: boolean('backed_up').notNull(),
+  transports: text('transports'), createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(), aaguid: text('aaguid'),
+}, t => [index('auth_passkeys_user').on(t.userId)]);
