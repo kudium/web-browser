@@ -15,9 +15,12 @@ import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest, releaseHistory } from './releases';
 import { homepage, downloadPage, documentation, notesAndActivityDocumentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
 import { tutorials } from './tutorials';
-export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing }: { publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
+import { privacyPage } from './privacy';
+import { managedSync, managedKeyRecord } from './managed-sync';
+export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey }: { syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
   const app = new Hono<{ Variables: { account: string } }>();
   const store = syncStore(db);
+  const managed = syncMasterKey ? managedSync(store, syncMasterKey) : undefined;
   const authenticate = auth ? authenticateSession(auth) : testAuthenticate;
   app.use('*', (c, next) => secureHeaders({
     xFrameOptions: c.req.path === '/' ? false : 'SAMEORIGIN',
@@ -53,6 +56,8 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     c.header('Cache-Control', 'no-store');
     return route === '/v1/releases' ? c.json(history) : c.html(releaseHistoryPage(history, query.data.channel));
   });
+  app.get('/privacy', c => c.html(privacyPage()));
+  app.get('/assets/privacy.css', async c => { c.header('Content-Type', 'text/css; charset=utf-8'); c.header('Cache-Control', 'public, max-age=300'); return c.body(await Bun.file(new URL('../public/privacy.css', import.meta.url)).text()); });
   app.get('/docs', c => c.html(documentation()));
   app.get('/docs/notes-and-activity', c => c.html(notesAndActivityDocumentation()));
   app.get('/tutorials', c => c.html(tutorialIndex()));
@@ -97,10 +102,20 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     c.header('Cache-Control', 'public, max-age=300');
     return c.body(await Bun.file(new URL('../public/auth.js', import.meta.url)).text());
   });
+  let passkeyBundle: Promise<string> | undefined;
+  app.get('/assets/passkeys.js', async c => {
+    passkeyBundle ??= Bun.build({ entrypoints: [new URL('../public/passkeys.ts', import.meta.url).pathname], target: 'browser', minify: true }).then(async result => {
+      if (!result.success) throw new Error('Passkey client build failed');
+      return result.outputs[0].text();
+    }).catch(error => { passkeyBundle = undefined; throw error; });
+    c.header('Content-Type', 'text/javascript; charset=utf-8');
+    return c.body(await passkeyBundle);
+  });
+  app.get('/api/sign-in-options', c => { c.header('Cache-Control', 'no-store'); return c.json({ google: Boolean(auth?.options.socialProviders?.google) }); });
   for (const page of ['sign-in', 'sign-up', 'forgot-password', 'reset-password'] as const) {
     app.get(`/${page}`, c => {
       c.header('Cache-Control', 'no-store');
-      return c.html(authPage(page, Boolean(auth), Boolean(auth?.options.emailAndPassword?.sendResetPassword)));
+      return c.html(authPage(page, Boolean(auth), Boolean(auth?.options.emailAndPassword?.sendResetPassword), Boolean(auth?.options.socialProviders?.google)));
     });
   }
   app.get('/device', async c => {
@@ -120,6 +135,28 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     const session = await auth.api.getSession({ headers: c.req.raw.headers, query: { disableCookieCache: true } });
     if (!session) return c.redirect('/sign-in');
     return c.html(accountPage(session.user.name, session.user.email, await store.status(syncAccountId(session.user.id))));
+  });
+  app.get('/assets/account-data.js', async c => { c.header('Content-Type','text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/account-data.js',import.meta.url)).text()); });
+  app.use('/api/account-data/*', bodyLimit({ maxSize: 2 * 1024 * 1024, onError: c => c.json({error:'body_too_large'},413) }));
+  app.use('/api/account-data/*', async (c,next) => {
+    c.header('Cache-Control','no-store');
+    if (!auth) throw new HTTPException(401,{message:'unauthorized'});
+    if (!managed) throw new HTTPException(503,{message:'managed_sync_not_configured'});
+    if (c.req.method !== 'GET' && c.req.header('Origin') !== new URL(String(auth.options.baseURL)).origin) throw new HTTPException(403,{message:'untrusted_origin'});
+    const session=await auth.api.getSession({headers:c.req.raw.headers,query:{disableCookieCache:true}});
+    if(!session)throw new HTTPException(401,{message:'unauthorized'});
+    c.set('account',syncAccountId(session.user.id)); await next();
+  });
+  app.get('/api/account-data/records',async c=>c.json({records:await managed!.list(c.get('account'))}));
+  app.post('/api/account-data/enroll',async c=>{
+    const input=z.object({recoveryKey:z.string().max(64).optional()}).strict().safeParse(await c.req.json());
+    if(!input.success)throw new HTTPException(400,{message:'invalid_request'});
+    const key=await managed!.key(c.get('account'),input.data.recoveryKey);key.fill(0);return c.json({ready:true});
+  });
+  app.patch('/api/account-data/records/:id',async c=>{
+    const input=z.object({revision:z.number().int().positive(),itemId:opaqueId,title:z.string().max(256).optional(),notes:z.string().max(1000000).optional(),url:z.url().max(8192).optional(),remove:z.boolean().optional()}).strict().safeParse(await c.req.json());
+    if(!input.success)throw new HTTPException(400,{message:'invalid_update'});
+    return c.json(await managed!.edit(c.get('account'),c.req.param('id'),input.data.revision,input.data));
   });
   app.get('/download/:platform/:arch', async c => {
     const parsed = targetSchema.safeParse({ ...c.req.param(), channel: 'stable' });
@@ -171,14 +208,23 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   });
   app.use('/v1/sync/*', bodyLimit({ maxSize: 12 * 1024 * 1024, onError: c => c.json({ error: 'body_too_large' }, 413) }));
   app.get('/v1/sync/status', async c => c.json(await store.status(c.get('account'))));
+  app.post('/v1/sync/account-key',async c=>{
+    if(!managed)throw new HTTPException(503,{message:'managed_sync_not_configured'});
+    const input=z.object({recoveryKey:z.string().max(64).optional()}).strict().safeParse(await c.req.json());
+    if(!input.success)throw new HTTPException(400,{message:'invalid_request'});
+    const key=await managed.key(c.get('account'),input.data.recoveryKey);
+    try{return c.json({key:key.toString('base64url'),managed:true});}finally{key.fill(0);}
+  });
   app.get('/v1/sync/changes', async c => {
     const input = c.req.query('limit') ?? '10';
     if (!/^[0-9]+$/.test(input) || Number(input) < 1 || Number(input) > 20) throw new HTTPException(400, { message: 'invalid_limit' });
-    return c.json(await store.changes(c.get('account'), c.req.query('cursor'), Number(input)));
+    const page=await store.changes(c.get('account'), c.req.query('cursor'), Number(input));
+    return c.json({...page,changes:page.changes.filter(record=>record.recordId!==managedKeyRecord)});
   });
   app.get('/v1/sync/records/:id', async c => {
     const id = opaqueId.safeParse(c.req.param('id'));
     if (!id.success) throw new HTTPException(400, { message: 'invalid_record_id' });
+    if(id.data===managedKeyRecord)throw new HTTPException(403,{message:'reserved_record'});
     const row = await store.get(c.get('account'), id.data);
     c.header('ETag', `"${row.revision}"`);
     if (!row.envelope) return c.json({error:'record_not_found',revision:row.revision,deleted:true},404);
@@ -189,6 +235,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     let body: unknown;
     try { body = await c.req.json(); } catch { throw new HTTPException(400, { message: 'invalid_json' }); }
     const envelope = envelopeSchema.safeParse(body);
+    if(c.req.param('id')===managedKeyRecord)throw new HTTPException(403,{message:'reserved_record'});
     if (!envelope.success || envelope.data.recordId !== c.req.param('id')) throw new HTTPException(400, { message: 'invalid_envelope' });
     const expected = expectedRevision(c.req.header('If-Match'), c.req.header('If-None-Match'));
     const result = await store.write(c.get('account'), envelope.data.recordId, expected, envelope.data);
@@ -198,6 +245,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.delete('/v1/sync/records/:id', async c => {
     const id = opaqueId.safeParse(c.req.param('id'));
     if (!id.success) throw new HTTPException(400, { message: 'invalid_record_id' });
+    if(id.data===managedKeyRecord)throw new HTTPException(403,{message:'reserved_record'});
     const result = await store.write(c.get('account'), id.data, expectedRevision(c.req.header('If-Match')), null);
     c.header('ETag', `"${result.revision}"`); return c.json(result);
   });

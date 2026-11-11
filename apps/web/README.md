@@ -228,3 +228,64 @@ Versions sort by semantic version. Only valid manifests with trusted asset
 origins are returned. The response includes `releases`, `page`, `total` and
 `totalPages`. No database migration is required. Deploy the website to expose
 these routes publicly.
+
+### Account-managed sync and dashboard data
+
+Set `SYNC_MASTER_KEY` to a persistent, cryptographically random 32-byte base64url key in the backend's secret configuration to enable account-managed encryption. This key is independent of `BETTER_AUTH_SECRET`; changing account passwords or resetting a password does not change data keys. Back up the master key securely. Rotating or losing it without re-wrapping the stored account keys makes synced data inaccessible. No plaintext keys belong in Git or logs.
+
+Better Auth authenticates the dashboard session and signed desktop device credential. Account data keys are wrapped with the master key in the reserved `account_managed_key_v1` sync record, which generic sync APIs cannot retrieve or mutate. Existing recovery-key accounts must migrate once by proving their existing key. Their ciphertext is retained unchanged. New desktop sign-ins enroll without recovery-key prompts when the backend is configured; older/unconfigured services retain the legacy flow.
+
+The account dashboard can view, edit, and delete notes and app/tab information in encrypted per-device cloud backups. Writes use revision checks, retain note scope/sensitivity, and retain group-scoped hook/CSS sources. Restored customizations remain disabled until reviewed in Developer. Dashboard changes apply to the selected cloud backup, not every local browser automatically: users restore a backup through desktop Sync. A later desktop upload can replace that device's cloud snapshot. True bidirectional item-level merge and deletion propagation remain separate work.
+
+Server-managed data is encrypted in transit and at rest, but the service can decrypt it for authenticated account access; it is not end-to-end encryption. The master key is never sent to browsers or desktop clients. Desktop account keys are retained in existing OS-encrypted storage. Notes back up automatically without prompting; protected local notes are included once the local vault is unlocked. While protected notes are locked, the previous complete backup is retained instead of replacing it with an incomplete list.
+
+Workspace snapshots include group-scoped page customizations (before/after scripts, CSS, and named/path-filtered hooks). Source validation binds each entry to a backed-up group and origin. Restore remaps the group/profile and disables execution; notification grants, project permissions, cookies, and local project files are never restored by this payload. Older snapshots without customizations remain supported.
+
+The cloud workspace separates Notes, Apps & tabs, and read-only Page hooks into a searchable list and preview. Editing is explicit; unsaved changes are guarded before navigation, and deletion requires confirmation. Storage and Devices are separate views in the same sidebar, keeping account tools out of the document area. On phones, the same workspace switches between list and detail. Device labels currently use the source device ID suffix, since backups do not store a display name.
+
+For a local UI review with fictional data, run from the repository root:
+
+```sh
+apps/browser/node_modules/.bin/electron apps/web/scripts/verify-account-dashboard.cjs
+```
+
+The check uses the production markup, CSS, and client script with a mocked data API. It verifies previews, search, device filtering, open-tab deduplication, keyboard focus, draft protection, saves, conflict handling, deletion, and narrow layouts. It also checks the mobile view selector, focused tablet layout, invalid URLs, empty/error states, and the return to the list after deletion. Screenshots are written to a temporary folder; set `DASHBOARD_PREVIEW_DIR` to retain them elsewhere. It does not verify live authentication or deploy anything.
+
+### Google sign-in and passkeys
+
+Set runtime-only `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` together. Create a
+Google Auth Platform **Web application** client in the Kudium project with origin
+`https://browser.kudium.com` and redirect URI
+`https://browser.kudium.com/api/auth/callback/google`. Only basic OpenID, email,
+and profile scopes are used. Complete Google branding/public privacy information
+and move the consent app out of Testing before a public launch. Testing currently
+requires explicitly listed Google accounts. Never put the secret in frontend
+assets, Git, build arguments, or screenshots.
+
+Apply `0004_perfect_quicksilver.sql` on website deployment. Better Auth stores
+passkey public keys and counters; private keys and biometric data stay with the
+user's authenticator. The relying-party ID is the exact configured service host,
+with exact-origin verification and required user verification. Changing the
+service host requires users to create new passkeys. Passkeys are added after
+Google/email registration in **Devices & sessions → Sign-in methods**, and can
+then sign in without a password. Google can also be linked from that panel using
+the account's existing email. Unverified local identities are not implicitly
+linked on the basis of a matching email. Existing email sign-in remains available.
+Google OAuth tokens are encrypted by Better Auth; keep `BETTER_AUTH_SECRET` stable.
+
+The passkey frontend is bundled from `public/passkeys.ts` with Bun on the first
+asset request and served from the same origin. It contains no server configuration.
+To exercise the real PostgreSQL/WebAuthn flow with fictional users:
+
+```sh
+TEST_DATABASE_URL=postgres://localhost:5432/kudium_auth_test \
+  ../browser/node_modules/.bin/electron scripts/verify-passkeys.cjs
+```
+
+This runner requires a loopback database whose name contains `_test`. It clears
+that fixture database's rate-limit table, creates fictional accounts, and uses a
+virtual authenticator. Electron's virtual picker is given a known credential
+allow-list in the test only. Native signatures, server verification, session
+cookies, ownership, deletion, OAuth initiation and device-approval return paths
+are exercised. Discoverable passkey selection, actual Touch ID/Face ID, and live
+Google consent/callbacks still require real-browser verification after deployment.
