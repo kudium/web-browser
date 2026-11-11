@@ -56,6 +56,9 @@ test('dashboard escapes account details and exposes an accurate, bounded storage
   expect(markup).toContain('aria-valuenow="25"');
   expect(markup).toContain('128 stored records');
   expect(markup).toContain('data-sign-out');
+  expect(markup).toContain('data-account-data');
+  expect(markup).toContain('Your synced data');
+  expect(markup).toContain('/assets/account-data.js');
   expect(markup).not.toContain('class="auth-layout"');
   expect(accountPage('', '', { usedBytes: 200, recordCount: 0, quotas: { bytes: 100 } })).toContain('aria-valuenow="100"');
   expect(accountPage('', '', { usedBytes: 0, recordCount: 0, quotas: { bytes: 0 } })).toContain('aria-valuenow="0"');

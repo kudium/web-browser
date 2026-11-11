@@ -34,14 +34,14 @@ describe.skipIf(!url)('two desktop devices with real encrypted sync API',()=>{
   b.instance.snapshot({apps:[],spaces:[]});await b.instance.sync();expect(b.instance.status().remote).toHaveLength(1);
   const restored=b.instance.restore(b.instance.status().remote[0].recordId);expect(restored.apps[0].url).toBe('https://example.com/');expect(restored.apps[0].sessionId).not.toBe('group-a');expect(restored.spaces[0].name).toBe('Work · Synced');
   const logins=[{title:'Example login',origin:'https://example.com',username:'sync-user',password:'private-password-123'}];
-  await expect(a.instance.syncPasswords(logins)).rejects.toThrow('Enable password sync');
+  await expect(a.instance.syncPasswords(logins)).rejects.toThrow('Enable passwords sync');
   a.preferences.cloudSync.categories.passwords=true;b.preferences.cloudSync.categories.passwords=true;
   await a.instance.syncPasswords(logins);await b.instance.sync(true);
   const passwordId=b.instance.status().passwordDevices[0].recordId;
   expect(await b.instance.restorePasswords(passwordId)).toEqual(logins);
   expect(JSON.stringify(b.instance.status())).not.toContain('private-password-123');
   b.preferences.cloudSync.categories.passwords=false;b.instance.pause();
-  await expect(b.instance.restorePasswords(passwordId)).rejects.toThrow('Enable password sync');
+  await expect(b.instance.restorePasswords(passwordId)).rejects.toThrow('Enable passwords sync');
   const last=b.instance.status().lastSyncedAt;b.preferences.cloudSync.enabled=false;b.instance.pause();await b.instance.sync();expect(b.instance.status().lastSyncedAt).toBe(last);
   await b.instance.deleteData();
   const c=device();await c.instance.connect();await c.instance.poll();expect(c.instance.status().phase).toBe('key-required');expect(c.instance.status().recoveryKey).not.toBe(key);

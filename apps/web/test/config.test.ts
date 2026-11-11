@@ -11,3 +11,10 @@ test('Better Auth requires a secret, uses the chosen domain and validates local/
   expect(() => authConfig({ BETTER_AUTH_SECRET: secret, BETTER_AUTH_URL: 'https://browser.kudium.com/path' })).toThrow();
   expect(() => authConfig({ BETTER_AUTH_SECRET: secret, SMTP_URL: 'smtp://localhost' })).toThrow();
 });
+
+test('Google OAuth requires both server-side credentials', () => {
+  expect(() => authConfig({ BETTER_AUTH_SECRET: secret, GOOGLE_CLIENT_ID: 'client' })).toThrow('Configure both');
+  expect(() => authConfig({ BETTER_AUTH_SECRET: secret, GOOGLE_CLIENT_SECRET: 'secret' })).toThrow('Configure both');
+  expect(authConfig({ BETTER_AUTH_SECRET: secret }).google).toBeUndefined();
+  expect(authConfig({ BETTER_AUTH_SECRET: secret, GOOGLE_CLIENT_ID: 'client', GOOGLE_CLIENT_SECRET: 'secret' }).google).toEqual({ clientId: 'client', clientSecret: 'secret' });
+});
