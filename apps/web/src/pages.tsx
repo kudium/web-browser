@@ -8,18 +8,20 @@ import type { groupReleaseHistory, ReleaseHistoryEntry } from "./releases";
 const stylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/site.css", import.meta.url))).digest("hex").slice(0, 12);
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
-function Layout({
+export function Layout({
   children,
   docs = false,
   privatePage = false,
   title,
   canonicalPath,
+  stylesheet,
 }: {
   children: ReactNode;
   docs?: boolean;
   privatePage?: boolean;
   title?: string;
   canonicalPath?: string;
+  stylesheet?: string;
 }) {
   return (
     <html lang="en">
@@ -48,6 +50,7 @@ function Layout({
         )}
         <link rel="icon" href="/assets/product/origin-logo.png" />
         <link rel="stylesheet" href={`/assets/site.css?v=${stylesheetVersion}`} />
+        {stylesheet && <link rel="stylesheet" href={stylesheet} />}
       </head>
       <body className={privatePage ? "account-page" : undefined}>
         <header>
@@ -83,6 +86,7 @@ function Layout({
           <span>Free and open source.</span>
           <a href="/tutorials">Tutorials</a>
           <a href="/docs">Documentation</a>
+          <a href="/privacy" className="privacy-link">Privacy</a>
           <a href="/releases">Release history</a>
           <a href={githubUrl}>GitHub</a>
           <a href={sponsorsUrl}>Support Kudium</a>
@@ -781,13 +785,14 @@ export function documentation() {
               <p>
                 The envelope matches the desktop AES-256-GCM helper: version,
                 recordId, keyVersion, nonce, ciphertext and tag. Nonces and tags
-                use canonical base64. Encrypt on the device; never send
-                plaintext browsing data or encryption keys.
+                use canonical base64. The envelope API stores ciphertext.
+                Account-managed sync provisions account keys separately and
+                decrypts data for the authenticated dashboard.
               </p>
               <div className="callout">
                 Storage accepts encrypted envelopes, but cannot verify their
                 cryptographic authenticity. Clients must authenticate and
-                decrypt incoming records. Desktop sign-in uses Better Auth device authorization. The first device creates a random recovery key; another device must provide it to decrypt data. Account sessions can be revoked from the account page.
+                decrypt incoming records. Desktop sign-in uses Better Auth device authorization. A configured account-managed sync service makes data available after sign-in; legacy recovery-key backups require a one-time migration. Account sessions can be revoked from the account page.
               </div>
               <p>
                 Create records with <code>If-None-Match: *</code>. Update or
@@ -1064,7 +1069,8 @@ export function unavailablePage() {
 export function authPage(
   page: "sign-in" | "sign-up" | "forgot-password" | "reset-password",
   configured: boolean,
-  mailEnabled: boolean
+  mailEnabled: boolean,
+  googleEnabled = false
 ) {
   const signup = page === "sign-up",
     reset = page === "reset-password",
@@ -1101,7 +1107,11 @@ export function authPage(
                 : "Sign in"}
             </h2>
             {available ? (
-              <form data-auth-form={page}>
+              <><div className="auth-alternatives">
+                {!forgot && !reset && googleEnabled && <button type="button" className="account-button auth-provider" data-google-sign-in><svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.9h11a9.4 9.4 0 0 1-4.1 6.2v5.2h6.7c3.9-3.6 6-8.8 6-15.2Z"/><path fill="#34A853" d="M24 44c5.5 0 10.2-1.8 13.6-4.3l-6.7-5.2c-1.8 1.2-4.1 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.4H5.7v5.3A20.5 20.5 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.6 28a12.3 12.3 0 0 1 0-8V14.7H5.7a20 20 0 0 0 0 18.6Z"/><path fill="#EA4335" d="M24 11.6c3 0 5.6 1 7.7 3l5.8-5.8A19.3 19.3 0 0 0 24 4 20.5 20.5 0 0 0 5.7 14.7l6.9 5.3c1.6-4.8 6.1-8.4 11.4-8.4Z"/></svg> Continue with Google</button>}
+                {!forgot && !reset && <button type="button" className="account-button auth-provider" data-passkey-sign-in>Sign in with a passkey</button>}
+                {!forgot && !reset && <p className="auth-divider">or continue with email</p>}
+              </div><form data-auth-form={page}>
                 {signup && (
                   <label>
                     Your name
@@ -1119,7 +1129,7 @@ export function authPage(
                     <input
                       name="email"
                       type="email"
-                      autoComplete="email"
+                      autoComplete={signup ? "email" : "username webauthn"}
                       required
                       maxLength={254}
                     />
@@ -1158,7 +1168,7 @@ export function authPage(
                     : "Sign in →"}
                 </button>
                 <p data-auth-message role="status" aria-live="polite" />
-              </form>
+              </form></>
             ) : (
               <p role="status">
                 {!configured
@@ -1166,6 +1176,7 @@ export function authPage(
                   : "Email recovery is not available yet. Contact hello@kudium.com for help."}
               </p>
             )}
+            {!forgot && !reset && <p className="auth-privacy">Read how we handle your data in our <a href="/privacy">Privacy Policy</a>.</p>}
             {signup ? (
               <p>
                 Already have an account? <a href="/sign-in">Sign in</a>
@@ -1183,6 +1194,7 @@ export function authPage(
           </section>
         </main>
         <script src="/assets/auth.js" defer />
+        <script src="/assets/passkeys.js" type="module" />
       </Layout>
     )
   );
@@ -1205,46 +1217,79 @@ export function accountPage(
         <main className="account-dashboard">
           <div className="account-heading">
             <div>
-              <p className="account-eyebrow">Account</p>
-              <h1>{name ? `Hello, ${name}.` : "Your account."}</h1>
+              <p className="account-eyebrow">Kudium Cloud</p>
+              <h1>{name ? `Hello, ${name}.` : "Your workspace."}</h1>
               <p className="account-email">{email}</p>
             </div>
             <button className="account-button" type="button" data-sign-out>Sign out</button>
           </div>
           <p className="account-status" data-auth-message role="status" aria-live="polite" />
-          <div className="account-grid">
-            <div className="account-summary">
-              <section className="account-panel" aria-labelledby="storage-heading">
-                <div className="account-section-heading">
-                  <h2 id="storage-heading">Sync storage</h2>
-                  <span className="account-badge">Encrypted</span>
-                </div>
-                <div className="account-storage-value"><strong>{usedLabel}</strong><span>of {capacityLabel} used</span></div>
-                <div className="account-storage-track" role="meter" aria-label="Sync storage used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${usedLabel} of ${capacityLabel} used`}>
-                  <span style={{ width: `${percent}%` }} />
-                </div>
-                <div className="account-storage-details">
-                  <span>{percent === 0 ? "0" : percent < 1 ? "<1" : Math.round(percent)}% used</span>
-                  <span title="Includes records marked as deleted.">{usage.recordCount.toLocaleString()} stored {usage.recordCount === 1 ? "record" : "records"}</span>
-                </div>
-                <p className="account-caption">Your browsing data is encrypted before it leaves your device.</p>
-                <a className="account-text-link" href="/docs#sync">About encrypted sync <span aria-hidden="true">↗</span></a>
-              </section>
-              <aside className="account-sync-note">
-                <span className="account-note-icon" aria-hidden="true">↔</span>
-                <div><h2>Bring your devices together.</h2><p>Open Preferences → Sync in Kudium Browser to connect a device. Keep your recovery key somewhere safe.</p></div>
-              </aside>
-            </div>
-            <section className="account-panel account-devices" aria-labelledby="devices-heading">
-              <div className="account-section-heading"><h2 id="devices-heading">Devices &amp; sessions</h2><span className="account-device-count" data-account-session-count /></div>
+          <section className="cloud-workspace" data-account-data aria-label="Your synced data">
+            <aside className="cloud-sidebar">
+              <div className="cloud-sidebar-heading">Your workspace</div>
+              <label className="cloud-mobile-navigation"><span className="cloud-app-icon cloud-icon-notes" data-workspace-icon aria-hidden="true">≡</span><span className="sr-only">Workspace view</span><select data-workspace-navigation aria-label="Workspace view"><option value="notes">Notes</option><option value="workspace">Apps &amp; tabs</option><option value="hooks">Page hooks</option><option value="storage">Storage</option><option value="devices">Devices &amp; sessions</option></select></label>
+              <nav className="cloud-navigation" aria-label="Workspace collections">
+                <button type="button" data-data-category="notes" aria-current="page"><span className="cloud-app-icon cloud-icon-notes" aria-hidden="true">≡</span>Notes<span data-data-count="notes" /></button>
+                <button type="button" data-data-category="workspace"><span className="cloud-app-icon cloud-icon-tabs" aria-hidden="true">▣</span>Apps &amp; tabs<span data-data-count="workspace" /></button>
+                <button type="button" data-data-category="hooks"><span className="cloud-app-icon cloud-icon-hooks" aria-hidden="true">⌘</span>Page hooks<span data-data-count="hooks" /></button>
+                <button className="cloud-menu-settings" type="button" data-data-category="storage" aria-controls="cloud-storage"><span className="cloud-app-icon cloud-icon-settings" aria-hidden="true">▤</span>Storage</button>
+                <button type="button" data-data-category="devices" aria-controls="cloud-devices"><span className="cloud-app-icon cloud-icon-settings" aria-hidden="true">▱</span>Devices</button>
+              </nav>
+              <div className="cloud-sidebar-bottom"><span className="cloud-secure-dot" aria-hidden="true" />Encrypted storage<a href="/docs#sync">How sync works ↗</a></div>
+            </aside>
+            <div className="cloud-content">
+              <div className="cloud-toolbar">
+                <div><h2 data-data-heading>Notes</h2><p data-data-subtitle>Your ideas, always within reach.</p></div>
+                <button className="account-button cloud-refresh" type="button" data-data-refresh aria-label="Refresh synced data">↻<span>Refresh</span></button>
+              </div>
+              <div className="cloud-filters">
+                <label className="cloud-search"><span aria-hidden="true">⌕</span><input type="search" data-data-search placeholder="Search notes" aria-label="Search notes" maxLength={256} /></label>
+                <label className="cloud-source-filter"><span className="sr-only">Backup source</span><select data-data-source aria-label="Backup source"><option value="all">All devices</option></select></label>
+              </div>
+              <p className="cloud-status" data-data-status role="status" aria-live="polite">Loading your synced data…</p>
+              <form data-data-recovery hidden className="account-data-recovery">
+                <div><strong>Connect your existing backups</strong><p>Enter your recovery key once. Future sign-ins will give you access automatically.</p></div>
+                <label>Recovery key<input type="password" autoComplete="off" required maxLength={64} /></label>
+                <button className="account-button cloud-primary" type="submit">Connect backups</button>
+              </form>
+              <div className="cloud-browser">
+                <div className="cloud-list" data-data-list aria-label="Items" aria-busy="true" />
+                <section className="cloud-detail" data-data-detail aria-label="Item preview" tabIndex={-1}><div className="cloud-empty"><span className="cloud-empty-icon" aria-hidden="true">≡</span><h3>Your workspace is loading</h3><p>Your saved notes and browser data will appear here.</p></div></section>
+              </div>
+
+            <section id="cloud-storage" data-workspace-panel="storage" hidden className="cloud-settings-panel account-storage" aria-labelledby="storage-heading">
+              <div className="account-section-heading"><h2 id="storage-heading">Cloud storage</h2><span className="account-badge">Encrypted</span></div>
+              <div className="account-storage-value"><strong>{usedLabel}</strong><span>of {capacityLabel} used</span></div>
+              <div className="account-storage-track" role="meter" aria-label="Sync storage used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${usedLabel} of ${capacityLabel} used`}><span style={{ width: `${percent}%` }} /></div>
+              <div className="account-storage-details"><span>{percent === 0 ? "0" : percent < 1 ? "<1" : Math.round(percent)}% used</span><span title="Includes records marked as deleted.">{usage.recordCount.toLocaleString()} stored {usage.recordCount === 1 ? "record" : "records"}</span></div>
+              <p className="account-caption cloud-storage-explanation">Encrypted in transit and at rest. Your account gives you access across devices.</p>
+              <p className="cloud-storage-timestamp">Usage when this page was opened. Reload the page for the latest total.</p>
+              <a className="account-text-link" href="/docs#sync">Connect another device <span aria-hidden="true">↗</span></a>
+            </section>
+            <section id="cloud-devices" data-workspace-panel="devices" hidden className="cloud-settings-panel account-devices" aria-labelledby="devices-heading">
+              <div className="account-section-heading"><h2 id="devices-heading">Signed-in devices</h2><span className="account-device-count" data-account-session-count /></div>
               <p className="account-section-description">Manage where you're signed in.</p>
               <div className="account-session-list" data-account-sessions aria-busy="true"><p className="account-session-status" role="status">Loading your devices…</p></div>
+              <div className="account-sign-in-methods" data-sign-in-methods>
+                <div className="account-section-heading"><h2>Sign-in methods</h2></div>
+                <p className="account-section-description">Use a passkey to sign in with Touch ID, Face ID, or your device screen lock.</p>
+                <div className="account-session-list" data-passkey-list aria-busy="true" />
+                <div className="passkey-create"><label>Passkey name<input data-passkey-name maxLength={100} placeholder="e.g. My Mac" autoComplete="off" /></label><button type="button" className="account-button" data-passkey-add>Create a passkey</button></div>
+                <p data-passkey-message role="status" aria-live="polite" />
+                <div data-google-link-section hidden><button type="button" className="account-button" data-google-link>Connect Google</button><p className="account-caption">Use the same email as your Kudium account.</p></div>
+              </div>
               <p className="account-device-footnote">Signing out a device stops future sync access. Data already on that device stays there.</p>
             </section>
-          </div>
+
+              <div className="cloud-workspace-footnote">Changes here update a device’s cloud backup. Restore in Kudium Browser → Preferences → Sync to use them on your desktop.</div>
+            </div>
+          </section>
+
         </main>
         <script src="/assets/auth.js" defer />
+        <script src="/assets/passkeys.js" type="module" />
         <script src="/assets/sessions.js?v=2" defer />
+        <script src="/assets/account-data.js" defer />
       </Layout>
     )
   );
