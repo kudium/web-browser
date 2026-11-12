@@ -26,7 +26,12 @@ export function AIComposerSuggestions({
     if (!textarea || !container) return undefined;
     const position = () => {
       const rect = textarea.getBoundingClientRect();
-      const styles = getComputedStyle(textarea);
+      const styles = panelWindow.getComputedStyle(textarea);
+      const bounds = overlay?.getBoundingClientRect();
+      const originLeft = bounds?.left || 0;
+      const originTop = bounds?.top || 0;
+      const availableWidth = bounds?.width || panelWindow.innerWidth;
+      const availableHeight = bounds?.height || panelWindow.innerHeight;
       // Mirror textarea wrapping to find the caret on wrapped/scrolled lines.
       const mirror = panelDocument.createElement('div');
       [
@@ -67,26 +72,36 @@ export function AIComposerSuggestions({
           rect.top + textarea.clientTop + caret.top - textarea.scrollTop
         )
       );
-      const width = Math.min(360, Math.max(0, panelWindow.innerWidth - 16));
+      const width = Math.min(360, Math.max(0, availableWidth - 16));
       const left = Math.max(
         8,
         Math.min(
-          panelWindow.innerWidth - width - 8,
-          rect.left + textarea.clientLeft + caret.left - textarea.scrollLeft
+          availableWidth - width - 8,
+          rect.left +
+            textarea.clientLeft +
+            caret.left -
+            textarea.scrollLeft -
+            originLeft
         )
       );
       mirror.remove();
       const below = Math.max(
         0,
-        panelWindow.innerHeight - lineTop - lineHeight - 14
+        availableHeight - (lineTop - originTop) - lineHeight - 14
       );
-      const above = Math.max(0, lineTop - 14);
+      const above = Math.max(0, lineTop - originTop - 14);
       const opensBelow = below >= 100 || below >= above;
       Object.assign(container.style, {
+        position: overlay ? 'absolute' : 'fixed',
+        pointerEvents: 'auto',
         left: `${left}px`,
         width: `${width}px`,
         maxHeight: `${Math.min(220, opensBelow ? below : above)}px`,
-        top: `${opensBelow ? lineTop + lineHeight + 6 : lineTop - 6}px`,
+        top: `${
+          opensBelow
+            ? lineTop - originTop + lineHeight + 6
+            : lineTop - originTop - 6
+        }px`,
         transform: opensBelow ? 'none' : 'translateY(-100%)',
       });
     };
@@ -103,7 +118,7 @@ export function AIComposerSuggestions({
       panelWindow.removeEventListener('resize', position);
       panelWindow.removeEventListener('scroll', position, true);
     };
-  }, [input, cursor, value, children, panelDocument, panelWindow]);
+  }, [input, cursor, value, children, panelDocument, panelWindow, overlay]);
   useLayoutEffect(() => {
     popup.current
       ?.querySelector('[aria-selected="true"]')

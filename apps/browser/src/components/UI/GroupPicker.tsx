@@ -23,6 +23,7 @@ export interface GroupOption {
   id: string;
   name: string;
   detail?: string;
+  hint?: string;
   icon?: string;
   group?: IApp;
   leadingIcon?: ReactNode;
@@ -35,6 +36,7 @@ export function GroupPicker({
   disabled,
   placeholder = 'Search groups…',
   allowCustom = false,
+  searchable = true,
   optionIcon,
   triggerClassName = '',
   contentClassName = '',
@@ -43,6 +45,7 @@ export function GroupPicker({
   onOpenChange,
   footer,
   triggerDetail,
+  triggerContent,
 }: {
   options: GroupOption[];
   value: string;
@@ -51,6 +54,7 @@ export function GroupPicker({
   disabled: boolean;
   placeholder?: string;
   allowCustom?: boolean;
+  searchable?: boolean;
   optionIcon?: (option: GroupOption) => ReactNode;
   triggerClassName?: string;
   contentClassName?: string;
@@ -59,6 +63,7 @@ export function GroupPicker({
   onOpenChange?: (open: boolean) => void;
   footer?: ReactNode;
   triggerDetail?: string;
+  triggerContent?: ReactNode;
 }) {
   const tabs = AppManager.getAll();
   const renderIcon = (option: GroupOption) => {
@@ -157,54 +162,61 @@ export function GroupPicker({
           className={`group-picker-trigger ${triggerClassName}`}
           title={`${label}: ${selected?.name || value}`}
         >
-          {selected && showTriggerIcon && renderIcon(selected)}
-          <span className="group-picker-label">
-            {selected?.name || (allowCustom && value) || 'Choose a group'}
-          </span>
-          {triggerDetail && (
-            <span className="group-picker-detail">{triggerDetail}</span>
+          {triggerContent ||
+            (selected && showTriggerIcon && renderIcon(selected))}
+          {!triggerContent && (
+            <>
+              <span className="group-picker-label">
+                {selected?.name || (allowCustom && value) || 'Choose a group'}
+              </span>
+              {triggerDetail && (
+                <span className="group-picker-detail">{triggerDetail}</span>
+              )}
+              <ChevronDown size={14} />
+            </>
           )}
-          <ChevronDown size={14} />
         </Button>
       </Popover.Trigger>
       <PanelPopoverContent
         className={`group-picker ${contentClassName}`}
         sideOffset={6}
       >
-        <TextField.Root
-          aria-label={`Search ${label.toLowerCase()}`}
-          placeholder={placeholder}
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setActive(0);
-          }}
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={`${id}-list`}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            visible[active] ? `${id}-${active}` : undefined
-          }
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-              event.preventDefault();
-              const direction = event.key === 'ArrowDown' ? 1 : -1;
-              const index =
-                (active + direction + visible.length) %
-                Math.max(visible.length, 1);
-              setActive(index);
+        {searchable && (
+          <TextField.Root
+            aria-label={`Search ${label.toLowerCase()}`}
+            placeholder={placeholder}
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setActive(0);
+            }}
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={`${id}-list`}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              visible[active] ? `${id}-${active}` : undefined
             }
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              if (visible[active]) choose(visible[active].id);
-            }
-          }}
-        >
-          <TextField.Slot>
-            <Search size={15} />
-          </TextField.Slot>
-        </TextField.Root>
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                const index =
+                  (active + direction + visible.length) %
+                  Math.max(visible.length, 1);
+                setActive(index);
+              }
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                if (visible[active]) choose(visible[active].id);
+              }
+            }}
+          >
+            <TextField.Slot>
+              <Search size={15} />
+            </TextField.Slot>
+          </TextField.Root>
+        )}
         <div
           id={`${id}-list`}
           role="listbox"
@@ -217,9 +229,9 @@ export function GroupPicker({
               role="option"
               id={`${id}-${index}`}
               key={option.id}
-              tabIndex={-1}
+              tabIndex={searchable ? -1 : 0}
               aria-selected={option.id === value}
-              title={option.name}
+              title={option.hint || option.name}
               data-active={index === active || undefined}
               onMouseEnter={() => setActive(index)}
               onClick={() => choose(option.id)}

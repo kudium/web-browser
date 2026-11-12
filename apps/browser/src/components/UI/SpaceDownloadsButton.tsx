@@ -12,7 +12,9 @@ export function SpaceDownloadsButton({
   const active = records.filter((record) => record.active);
   if (!active.length && !records.some((record) => record.state === 'completed'))
     return null;
-  const unknown = active.some((record) => record.totalBytes <= 0);
+  const unknown = active.some(
+    (record) => record.totalBytes <= 0 || record.receivedBytes === 0
+  );
   const total = active.reduce((sum, record) => sum + record.totalBytes, 0);
   const received = active.reduce(
     (sum, record) => sum + Math.min(record.receivedBytes, record.totalBytes),

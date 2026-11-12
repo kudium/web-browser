@@ -82,7 +82,7 @@ export function Archive({ embedded = false }: { embedded?: boolean }) {
           }
         />
       )}
-      <div className={embedded ? 'archive-sidebar-list' : undefined}>
+      <div className={embedded ? 'archive-sidebar-list' : 'archive-settings-list'}>
         {[...groups.entries()].map(([key, tabs]) => {
           const group = tabs[0];
           const open = expanded.includes(key);

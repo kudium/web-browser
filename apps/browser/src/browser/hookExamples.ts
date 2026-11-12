@@ -18,6 +18,7 @@ export const hookExamples: HookExample[] = [
   style.id = id;
   style.textContent = \`html { background:#fff !important; filter:invert(1) hue-rotate(180deg) !important; }
 img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) hue-rotate(180deg) !important; }\`;
+  context.onCleanup(() => style.remove());
   (document.head || document.documentElement).append(style);
 })();`,
   },
@@ -32,6 +33,7 @@ img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) 
   const style = document.createElement('style');
   style.id = id;
   style.textContent = 'a[href] { color:' + accent + ' !important; } input, progress { accent-color:' + accent + ' !important; } ::selection { background:' + accent + '; color:white; }';
+  context.onCleanup(() => style.remove());
   (document.head || document.documentElement).append(style);
 })();`,
   },
@@ -67,6 +69,7 @@ img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) 
     window.removeEventListener('touchstart', pause);
     window.removeEventListener('keydown', pause);
   }, { once:true });
+  context.onCleanup(() => button.dispatchEvent(new Event('kudium-cleanup')));
   (document.body || document.documentElement).append(button);
 })();`,
   },
@@ -97,10 +100,14 @@ img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) 
   update();
   observer.observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['src', 'srcset'] });
   document.addEventListener('load', schedule, true);
-  document.addEventListener('kudium-image-label-cleanup', () => {
+  const cleanup = () => {
     observer.disconnect(); clearTimeout(timer);
     document.removeEventListener('load', schedule, true);
-  }, { once:true });
+    document.querySelectorAll('[data-kudium-image-url]').forEach(label => label.remove());
+    document.removeEventListener('kudium-image-label-cleanup', cleanup);
+  };
+  document.addEventListener('kudium-image-label-cleanup', cleanup, { once:true });
+  context.onCleanup(cleanup);
 })();`,
   },
   {
@@ -113,6 +120,7 @@ img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) 
   const style = document.createElement('style');
   style.id = id;
   style.textContent = '* { outline:1px solid rgba(59,130,246,.3) !important; }';
+  context.onCleanup(() => style.remove());
   (document.head || document.documentElement).append(style);
 })();`,
   },

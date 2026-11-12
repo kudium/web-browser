@@ -27,6 +27,201 @@ beforeAll(() => {
     disconnect: jest.fn(),
   }));
 });
+
+it('installs a preset without editing code and re-enables it without duplicating or overwriting it', () => {
+  const send = jest.fn();
+  const content = (config: any) => (
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{ config, status: 'waiting', logs: [] }}
+      />
+    </Theme>
+  );
+  const view = render(content(emptyDeveloperConfig));
+  fireEvent.click(screen.getByRole('button', { name: 'Examples' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable & run' }));
+  const installed = send.mock.calls.at(-1)![1].developer;
+  expect(send).toHaveBeenLastCalledWith(
+    'set-site-developer',
+    expect.objectContaining({ run: true })
+  );
+  expect(installed.enabled).toBe(true);
+  expect(installed.hooks).toHaveLength(1);
+  expect(installed.hooks[0].id).toBe('preset-dark-mode');
+  const modified = {
+    ...installed,
+    hooks: [{ ...installed.hooks[0], enabled: false, after: 'log("custom")' }],
+  };
+  view.rerender(content(modified));
+  fireEvent.click(screen.getByRole('button', { name: 'Examples' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable & run' }));
+  const reenabled = send.mock.calls.at(-1)![1].developer;
+  expect(reenabled.hooks).toHaveLength(1);
+  expect(reenabled.hooks[0]).toMatchObject({
+    enabled: true,
+    after: 'log("custom")',
+  });
+});
+
+it('restores only the selected hook and preserves its enabled state and other hooks', () => {
+  const send = jest.fn();
+  const hook = {
+    id: 'a',
+    name: 'A',
+    path: '/*',
+    enabled: false,
+    before: '',
+    after: 'broken()',
+    css: '',
+  };
+  const other = {
+    ...hook,
+    id: 'b',
+    name: 'B',
+    enabled: true,
+    after: 'log("new B")',
+  };
+  const config = {
+    ...emptyDeveloperConfig,
+    enabled: true,
+    hooks: [hook, other],
+  };
+  const previous = {
+    ...config,
+    hooks: [
+      { ...hook, enabled: true, after: 'log("working")' },
+      { ...other, after: 'log("old B")' },
+    ],
+  };
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        selectedHookId="a"
+        disabled={false}
+        send={send}
+        developer={{
+          config,
+          status: 'waiting',
+          logs: [],
+          revisions: [{ time: 1, config: previous, workingHooks: ['a'] }],
+        }}
+      />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'History' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: /Successfully executed/ })
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Restore version' }));
+  const restored = send.mock.calls.at(-1)![1].developer;
+  expect(restored.hooks[0]).toMatchObject({
+    enabled: false,
+    after: 'log("working")',
+  });
+  expect(restored.hooks[1]).toEqual(other);
+  expect(send.mock.calls.at(-1)![1].run).toBeUndefined();
+});
+
+it('opens AI setup with the requested outcome and site context without saving or running', () => {
+  const send = jest.fn();
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        origin="https://example.com"
+        send={send}
+        developer={{
+          config: emptyDeveloperConfig,
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Ask AI' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Hook outcome' }), {
+    target: { value: 'Notify me when this price changes' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue in AI' }));
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send).toHaveBeenCalledWith('ask-hook-ai', {
+    prompt: expect.stringContaining('Notify me when this price changes'),
+  });
+  expect(send.mock.calls[0][1].prompt).toContain('https://example.com');
+});
+
+it('offers AI setup from the preset picker and closes both dialogs', () => {
+  const send = jest.fn();
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{
+          config: emptyDeveloperConfig,
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Examples' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ask AI' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Hook outcome' }), {
+    target: { value: 'Highlight headings' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue in AI' }));
+  expect(send).toHaveBeenCalledWith('ask-hook-ai', {
+    prompt: expect.stringContaining('Highlight headings'),
+  });
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+it('repairs the hook that caused the error instead of an unrelated selected hook', () => {
+  const send = jest.fn();
+  const hook = {
+    id: 'prices',
+    name: 'Price watcher',
+    enabled: true,
+    path: '/*',
+    before: '',
+    after: 'priceSelector()',
+    css: '',
+  };
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{
+          config: {
+            ...emptyDeveloperConfig,
+            enabled: true,
+            after: 'unrelatedDefault()',
+            hooks: [hook],
+          },
+          status: 'error',
+          logs: [
+            {
+              time: 1,
+              level: 'error',
+              hookId: 'prices',
+              phase: 'after',
+              message: 'priceSelector failed',
+            },
+          ],
+        }}
+      />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Fix with AI' }));
+  const { prompt } = send.mock.calls[0][1];
+  expect(prompt).toContain('Price watcher (prices)');
+  expect(prompt).toContain('priceSelector()');
+  expect(prompt).not.toContain('unrelatedDefault()');
+});
 it('rejects malformed and oversized hook commands at the process boundary', () => {
   const request = {
     id: 'page',
@@ -84,7 +279,7 @@ it('keeps hook editing explicit, preserves unsaved code while switching stages, 
   fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
     target: { value: "log('URL', url);" },
   });
-  expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Save & Run' })).toBeEnabled();
   fireEvent.keyDown(screen.getByRole('tab', { name: /CSS/ }), { key: 'Enter' });
   fireEvent.change(screen.getByRole('textbox', { name: 'CSS code' }), {
     target: { value: 'body { color: blue; }' },
@@ -126,7 +321,9 @@ it('keeps hook editing explicit, preserves unsaved code while switching stages, 
   expect(command).toHaveBeenLastCalledWith({
     id: 'page',
     url: 'https://example.com',
-    action: 'reload',
+    action: 'set-site-developer',
+    developer: saved,
+    run: true,
   });
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Clear' }));

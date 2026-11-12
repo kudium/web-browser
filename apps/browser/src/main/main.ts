@@ -40,6 +40,8 @@ import { configureDNS, registerAdvancedLifecycle } from './advancedPreferences';
 import { getBrowserPreferences, registerPreferences } from './preferences';
 import { browserUserAgent } from './browserIdentity';
 import { registerPasswordManager } from './passwordManager';
+import { isSiteDeveloperEditor } from './siteDeveloperWindow';
+import { registerHookLanguage } from './hookLanguage';
 import { registerActivity } from './activity';
 import { registerBrowserMigration } from './browserMigration';
 import { registerAppUpdates, startAppUpdates } from './appUpdates';
@@ -482,6 +484,7 @@ registerBrowserMigration(
     isBrowserChrome(contents)
 );
 registerActivity((contents) => isBrowserChrome(contents));
+registerHookLanguage((contents) => isBrowserChrome(contents) || isSiteDeveloperEditor(contents));
 registerPasswordManager(
   (contents) =>
     activeWindows.settings?.webContents === contents ||

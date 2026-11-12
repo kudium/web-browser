@@ -118,7 +118,9 @@ export async function requestAIProvider(
           return payload;
         }
         error = new Error(
-          `Provider returned ${response.status}. Check your API key, model, and endpoint.`
+          response.status === 400
+            ? 'The AI provider rejected this request (400). This can be caused by conversation size or an unsupported message/tool format. Try a new chat; completed actions are not undone by this error.'
+            : `Provider returned ${response.status}. Check the provider configuration and availability.`
         );
         if (
           streaming &&

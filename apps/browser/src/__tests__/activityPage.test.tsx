@@ -9,7 +9,9 @@ import {
 import { Theme } from '@radix-ui/themes';
 import { ActivityPage } from '../components/UI/ActivityPage';
 import { browser } from '../browser/client';
-jest.mock('../browser/client', () => ({ browser: { command: jest.fn() } }));
+jest.mock('../browser/client', () => ({
+  browser: { command: jest.fn(), preferences: jest.fn() },
+}));
 jest.mock('../utils/AppManager', () => ({
   AppManager: {
     getAll: () => [
@@ -32,8 +34,22 @@ const entry = {
   noteId: 'note-one',
   url: 'https://example.com',
 };
+beforeAll(() => {
+  Object.defineProperty(global, 'ResizeObserver', {
+    configurable: true,
+    value: class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  });
+});
+
 let request: jest.Mock;
 beforeEach(() => {
+  (browser.preferences as jest.Mock).mockImplementation(
+    async (_action, patch) => ({ activitySound: patch?.activitySound ?? true })
+  );
   request = jest.fn(async (input) =>
     input.action === 'list' ? [entry] : undefined
   );
@@ -205,4 +221,86 @@ it('shows the triggering hook and website and disables it explicitly', async () 
   expect(
     await screen.findByRole('button', { name: 'Hook disabled' })
   ).toBeDisabled();
+});
+
+it('clears activity explicitly and disables Clear all when empty', async () => {
+  let cleared = false;
+  request.mockImplementation(async (input) => {
+    if (input.action === 'clearAll') cleared = true;
+    return input.action === 'list' ? (cleared ? [] : [entry]) : undefined;
+  });
+  render(
+    <Theme>
+      <ActivityPage active />
+    </Theme>
+  );
+  await screen.findByText(entry.title);
+  fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+  await screen.findByText('No activity yet');
+  expect(request).toHaveBeenCalledWith({ action: 'clearAll' });
+  expect(screen.getByRole('button', { name: 'Clear all' })).toBeDisabled();
+});
+
+it('explains hook activity and offers AI setup and documentation when empty', async () => {
+  request.mockResolvedValue([]);
+  const ask = jest.fn();
+  render(
+    <Theme>
+      <ActivityPage active onAskAI={ask} />
+    </Theme>
+  );
+  await screen.findByText('No activity yet');
+  expect(
+    screen.queryByLabelText('Hook activity example')
+  ).not.toBeInTheDocument();
+  const viewHow = screen.getByRole('button', { name: 'View how' });
+  expect(viewHow).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(viewHow);
+  expect(screen.getByLabelText('Hook activity example')).toHaveTextContent(
+    'context.activity.create'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Hide example' }));
+  expect(
+    screen.queryByLabelText('Hook activity example')
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Hook guide/ })).toHaveAttribute(
+    'href',
+    'https://browser.kudium.com/docs/notes-and-activity'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Ask AI to set up' }));
+  expect(ask).toHaveBeenCalledTimes(1);
+});
+
+it('offers a saved sound toggle and explicit preview in Activity settings', async () => {
+  render(
+    <Theme>
+      <ActivityPage active />
+    </Theme>
+  );
+  await screen.findByText(entry.title);
+  fireEvent.click(screen.getByRole('button', { name: 'Activity settings' }));
+  const toggle = await screen.findByRole('switch', {
+    name: 'Notification sound',
+  });
+  await waitFor(() => expect(toggle).toBeEnabled());
+  fireEvent.click(toggle);
+  await waitFor(() =>
+    expect(browser.preferences).toHaveBeenCalledWith('update', {
+      activitySound: false,
+    })
+  );
+  await waitFor(() => expect(toggle).not.toBeChecked());
+  const banners = screen.getByRole('switch', { name: 'System notifications' });
+  expect(banners).not.toBeChecked();
+  fireEvent.click(banners);
+  await waitFor(() =>
+    expect(browser.preferences).toHaveBeenCalledWith('update', {
+      activityNotifications: true,
+    })
+  );
+  await waitFor(() => expect(banners).toBeChecked());
+  fireEvent.click(screen.getByRole('button', { name: 'Preview sound' }));
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith({ action: 'testSound' })
+  );
 });

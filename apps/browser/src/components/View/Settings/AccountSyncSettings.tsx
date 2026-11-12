@@ -91,7 +91,10 @@ export function AccountSyncSettings({
   return (
     <div className="account-sync-settings">
       {!status?.connected ? (
-        <section className="preference-card" aria-label="Kudium account">
+        <section
+          className="preference-card sync-account-sign-in"
+          aria-label="Kudium account"
+        >
           <div className="preference-row">
             <div>
               <p>Sign in to start syncing.</p>

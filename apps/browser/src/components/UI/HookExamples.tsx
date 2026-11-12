@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import { Button, DropdownMenu, Dialog, TextField } from '@radix-ui/themes';
-import {
-  hookExamples,
-  readHookExamples,
-  saveHookExamples,
-} from '../../browser/hookExamples';
+import { readHookExamples, saveHookExamples } from '../../browser/hookExamples';
 import type { HookExample, HookStage } from '../../browser/hookExamples';
 
 export function HookExamples({
@@ -40,24 +36,11 @@ export function HookExamples({
       <DropdownMenu.Root>
         <DropdownMenu.Trigger>
           <Button size="1" variant="ghost" color="gray" disabled={disabled}>
-            Examples
+            Saved scripts
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content>
           <DropdownMenu.Label>Insert into current script</DropdownMenu.Label>
-          {hookExamples
-            .filter((example) => example.stage === stage)
-            .map((example) => (
-              <DropdownMenu.Item
-                key={example.id}
-                onSelect={() => onInsert(example.source)}
-              >
-                {example.name}
-              </DropdownMenu.Item>
-            ))}
-          {!!saved.filter((example) => example.stage === stage).length && (
-            <DropdownMenu.Separator />
-          )}
           {saved
             .filter((example) => example.stage === stage)
             .map((example) => (
@@ -93,13 +76,14 @@ export function HookExamples({
         >
           <Dialog.Title size="3">Manage examples</Dialog.Title>
           <Dialog.Description>
-            Edit your saved scripts for reuse on any page. Built-in examples are
-            available in the Examples menu.
+            Edit your saved scripts for reuse on any page. Built-in enhancements
+            are available in the Examples picker.
           </Dialog.Description>
           <div className="hook-examples-list">
             {!saved.length && (
               <p>
-                No saved examples yet. Use Save example in the Examples menu.
+                No saved examples yet. Use Save example in the Saved scripts
+                menu.
               </p>
             )}
             {saved.map((example) => (

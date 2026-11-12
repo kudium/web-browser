@@ -32,3 +32,5 @@ assets/native/kudiumbrowser-password-auth
 
 assets/native/kudium-space-gestures.node
 .erb/space-gesture-smoke-*/
+
+assets/hook-language/

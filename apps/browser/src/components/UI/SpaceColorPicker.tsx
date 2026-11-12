@@ -5,15 +5,9 @@ import {
   SpaceColor,
   spaceColors,
   spaceColorNames,
+  spaceColorValues,
 } from '../../utils/SpaceManager';
 
-const shades = {
-  iris: '#5aaca8',
-  blue: '#6c9bd2',
-  green: '#76ad91',
-  amber: '#d2a35f',
-  pink: '#cd83aa',
-};
 export function SpaceColorPicker({
   color,
   customColor,
@@ -36,7 +30,9 @@ export function SpaceColorPicker({
           aria-label={label}
           className="space-color-trigger"
         >
-          <span style={{ background: customColor || shades[color] }} />
+          <span
+            style={{ background: customColor || spaceColorValues[color] }}
+          />
         </Button>
       </Popover.Trigger>
       <Popover.Content
@@ -53,7 +49,7 @@ export function SpaceColorPicker({
                 key={value}
                 aria-label={`${spaceColorNames[value]} for ${label}`}
                 aria-pressed={!customColor && color === value}
-                style={{ background: shades[value] }}
+                style={{ background: spaceColorValues[value] }}
                 onClick={() =>
                   onChange({ color: value, customColor: undefined })
                 }
@@ -68,7 +64,7 @@ export function SpaceColorPicker({
                 value={
                   /^#[0-9a-f]{6}$/i.test(customColor)
                     ? customColor
-                    : shades[color]
+                    : spaceColorValues[color]
                 }
                 onChange={(event) =>
                   onChange({ customColor: event.target.value })

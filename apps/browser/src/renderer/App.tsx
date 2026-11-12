@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { CSSProperties, useEffect } from 'react';
 import { Theme } from '@radix-ui/themes';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SiteDeveloperPage } from '../components/View/SiteDeveloperPage';
@@ -9,6 +9,11 @@ import { BrowserWorkspace } from '../components/UI/BrowserWorkspace';
 import { Downloads } from '../components/View/Downloads/Downloads';
 import { Settings } from '../components/View/Settings/Settings';
 import { View } from '../types';
+import {
+  useSpaces,
+  spacePrimaryColor,
+  primaryContrast,
+} from '../utils/SpaceManager';
 import { installFocusModality } from '../utils/focusModality';
 
 export function AppSelectedView() {
@@ -39,10 +44,18 @@ export function AppSelectedView() {
 export default function App() {
   useEffect(installFocusModality, []);
   const { appearance } = useAppearance();
+  const { active } = useSpaces();
+  const primary = spacePrimaryColor(active);
   document.documentElement.dataset.platform =
     window.electron?.platform || 'unknown';
   return (
     <Theme
+      style={
+        {
+          '--kudium-primary': primary,
+          '--kudium-primary-contrast': primaryContrast(primary),
+        } as CSSProperties
+      }
       appearance={appearance}
       panelBackground="solid"
       accentColor="teal"

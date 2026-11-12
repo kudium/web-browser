@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { browser } from '../browser/client';
 
 export type Appearance = 'system' | 'light' | 'dark';
 const key = 'kudiumbrowser-appearance';
@@ -16,6 +17,11 @@ export function useAppearance() {
   const [dark, setDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches
   );
+  useEffect(() => {
+    browser.nativeAppearance?.(preference)?.catch(() => {
+      // Older development preloads may not have the native appearance bridge.
+    });
+  }, [preference]);
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const update = () => setPreference(getAppearance());

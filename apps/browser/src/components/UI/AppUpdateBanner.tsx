@@ -1,9 +1,11 @@
 import { useAppUpdates } from '../../utils/useAppUpdates';
+import { WhatsNewButton } from './WhatsNewButton';
 
 export function AppUpdateBanner({ compact = false }: { compact?: boolean }) {
   const { state, busy, error, run } = useAppUpdates();
+  if (state.status === 'unavailable') return null;
   if (!['available', 'downloading', 'ready'].includes(state.status))
-    return null;
+    return <WhatsNewButton version={state.currentVersion} compact={compact} />;
   const ready = state.status === 'ready';
   const downloading = state.status === 'downloading';
   const action = ready

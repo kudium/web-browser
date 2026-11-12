@@ -9,6 +9,7 @@ type AIPagePreferences = {
   preview: boolean;
   showStats: boolean;
   noteFontSize: number;
+  noteWrap: boolean;
   noteOrder: string[];
 };
 

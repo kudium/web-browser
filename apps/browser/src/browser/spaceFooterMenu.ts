@@ -28,17 +28,8 @@ export function spaceFooterMenu(
       ],
     },
     { id: 'create', label: 'New Space…' },
-    { id: 'manage', label: 'Manage Spaces…' },
-    {
-      label: 'Edit Space',
-      submenu: [
-        { id: 'icon', label: 'Change Icon…' },
-        { id: 'rename', label: 'Rename…' },
-        { id: 'color', label: 'Theme Color…' },
-        { type: 'separator' },
-        { id: 'delete', label: 'Delete Space…', enabled: spaces.length > 1 },
-      ],
-    },
+    { id: 'manage', label: 'Manage Space…' },
+    { id: 'delete', label: 'Delete Space…', enabled: spaces.length > 1 },
     { type: 'separator' },
     {
       id: 'sidebar-mode',

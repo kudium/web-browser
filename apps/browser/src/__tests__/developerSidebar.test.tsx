@@ -114,7 +114,10 @@ it('reuses the group picker, reports saved hooks, searches pages and opens the e
   await waitFor(() => expect(screen.getByText('Hooks active')).toBeTruthy());
   expect(pages).toHaveBeenCalledWith('home');
   expect(screen.getByRole('button', { name: 'Developer group' })).toBeTruthy();
-  expect(screen.getAllByText('No hooks')).toHaveLength(5);
+  expect(screen.queryByText('No hooks')).toBeNull();
+  expect(screen.getByText('example.com').getAttribute('title')).toBe(
+    'https://example.com/home'
+  );
   fireEvent.change(screen.getByLabelText('Search developer pages'), {
     target: { value: 'other' },
   });
@@ -224,7 +227,7 @@ it('follows browser focus and fetches saved hooks again when reopening Developer
         <DeveloperSidebar active focusedTabId="home" />
       </Theme>
     );
-    await screen.findByText('No hooks');
+    await screen.findByRole('button', { name: 'Manage hooks for Home' });
     view.rerender(
       <Theme>
         <DeveloperSidebar active={false} focusedTabId="home" />

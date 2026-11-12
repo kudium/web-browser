@@ -102,6 +102,7 @@ import {
 import {
   getSiteSettings,
   updateSiteSettings,
+  saveSiteHooks,
   siteOrigin,
   sitePermissions,
   PermissionChoice,
@@ -1503,10 +1504,31 @@ export function registerElectronBrowser(
         origin === request.url
       ) {
         try {
-          updateSiteSettings(loginProfileKey(targetGroup), origin, {
-            developer: request.developer,
-          });
-          savedDeveloperErrors.delete(request.id);
+          saveSiteHooks(
+            loginProfileKey(targetGroup),
+            origin,
+            request.developer!,
+            () => {
+              savedDeveloperErrors.delete(request.id);
+              views.forEach((view, id) => {
+                const item = configurations.get(id);
+                if (
+                  item &&
+                  loginProfileKey(item) === loginProfileKey(targetGroup) &&
+                  siteOrigin(view.webContents.getURL()) === origin
+                ) {
+                  resetDeveloperState(view.webContents, origin);
+                  publish(id, view);
+                }
+              });
+              window.webContents.send('site-developer-library-changed');
+              if (request.run && request.developer?.enabled)
+                window.webContents.send('browser-tab-request', {
+                  action: 'select',
+                  id: request.id,
+                });
+            }
+          );
         } catch (error) {
           savedDeveloperErrors.set(request.id, {
             time: Date.now(),
@@ -1514,18 +1536,12 @@ export function registerElectronBrowser(
           });
         }
         developerWindows.update();
-        window.webContents.send('site-developer-library-changed');
-        views.forEach((view, id) => {
-          const item = configurations.get(id);
-          if (
-            item &&
-            loginProfileKey(item) === loginProfileKey(targetGroup) &&
-            siteOrigin(view.webContents.getURL()) === origin
-          ) {
-            resetDeveloperState(view.webContents, origin);
-            publish(id, view);
-          }
-        });
+        return;
+      }
+      if (request.action === 'ask-hook-ai') {
+        window.show();
+        window.focus();
+        window.webContents.send('browser-hook-ai', request.prompt);
         return;
       }
       if (request.action === 'reload') {
@@ -1637,6 +1653,11 @@ export function registerElectronBrowser(
           publish(request.id, views.get(request.id)!);
         }
         break;
+      case 'ask-hook-ai':
+        window.show();
+        window.focus();
+        window.webContents.send('browser-hook-ai', request.prompt);
+        break;
       case 'set-site-developer':
       case 'clear-site-developer-logs': {
         const origin = siteOrigin(contents.getURL());
@@ -1645,23 +1666,22 @@ export function registerElectronBrowser(
           configurations.get(request.id) || ({} as IApp)
         );
         try {
-          if (request.action === 'set-site-developer')
-            updateSiteSettings(profile, origin, {
-              developer: request.developer,
-            });
-          window.webContents.send('site-developer-library-changed');
           if (request.action === 'clear-site-developer-logs') {
             clearDeveloperLogs(contents, origin);
             break;
           }
-          views.forEach((view, id) => {
-            if (
-              view.webContents.session === contents.session &&
-              siteOrigin(view.webContents.getURL()) === origin
-            ) {
-              resetDeveloperState(view.webContents, origin);
-              publish(id, view);
-            }
+          saveSiteHooks(profile, origin, request.developer!, () => {
+            window.webContents.send('site-developer-library-changed');
+            views.forEach((view, id) => {
+              if (
+                view.webContents.session === contents.session &&
+                siteOrigin(view.webContents.getURL()) === origin
+              ) {
+                resetDeveloperState(view.webContents, origin);
+                publish(id, view);
+              }
+            });
+            if (request.run && request.developer?.enabled) contents.reload();
           });
         } catch (error) {
           developerSaveError(
@@ -2121,6 +2141,8 @@ export function registerElectronBrowser(
                   after: '',
                   css: '',
                 },
+                revisions: getSiteSettings(loginProfileKey(config), origin)
+                  .hookRevisions,
                 notifications: hookNotifications().permissions({
                   groupId: groupKey(config),
                   profile: loginProfileKey(config),

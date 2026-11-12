@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Code2, Search, Settings2 } from 'lucide-react';
 import { TextField, IconButton } from '@radix-ui/themes';
+import { AppIcon } from './AppIcon/AppIcon';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { GroupPicker } from './GroupPicker';
 import { useAppList } from '../../utils/hooks/useAppList';
@@ -246,7 +247,13 @@ export function DeveloperSidebar({
               )}
               {matches.slice(0, 100).map((page) => {
                 const tab = tabsById.get(page.id);
-                let hookLabel = 'No hooks';
+                let domain = page.url;
+                try {
+                  domain = new URL(page.url).hostname || page.url;
+                } catch {
+                  /* Keep labels for internal pages. */
+                }
+                let hookLabel = '';
                 if (page.hasHooks)
                   hookLabel = page.enabled ? 'Hooks active' : 'Hooks disabled';
                 return (
@@ -287,31 +294,36 @@ export function DeveloperSidebar({
                       })
                     }
                   >
+                    <span className="developer-page-icon" aria-hidden="true">
+                      <AppIcon icon={tab?.icon || ''} title="" />
+                    </span>
                     <span className="developer-sidebar-page-copy">
                       <strong>{page.name}</strong>
-                      <small>{page.url}</small>
-                      <span
-                        data-state={
-                          !page.hasHooks
-                            ? 'none'
-                            : !page.enabled
-                            ? 'disabled'
-                            : page.status === 'error'
-                            ? 'error'
-                            : 'active'
-                        }
-                        className={`developer-hook-status ${
-                          page.hasHooks && page.enabled ? 'enabled' : ''
-                        }`}
-                      >
-                        {hookLabel}
-                        {page.enabled &&
-                        page.hasHooks &&
-                        page.status === 'error'
-                          ? ' · Error'
-                          : ''}
-                      </span>
-                      {page.origin && (
+                      <small title={page.url}>{domain}</small>
+                      {page.hasHooks && (
+                        <span
+                          data-state={
+                            !page.hasHooks
+                              ? 'none'
+                              : !page.enabled
+                              ? 'disabled'
+                              : page.status === 'error'
+                              ? 'error'
+                              : 'active'
+                          }
+                          className={`developer-hook-status ${
+                            page.hasHooks && page.enabled ? 'enabled' : ''
+                          }`}
+                        >
+                          {hookLabel}
+                          {page.enabled &&
+                          page.hasHooks &&
+                          page.status === 'error'
+                            ? ' · Error'
+                            : ''}
+                        </span>
+                      )}
+                      {page.origin && page.hasHooks && (
                         <span className="developer-hook-hint">
                           {page.hasHooks
                             ? 'Click to edit hooks'

@@ -80,9 +80,51 @@ test('deletion persists only the chosen removal and preserves entries on write f
   const { store, persistence } = fixture();
   const first = store.create({ title: 'First' }, { source: 'ai' });
   const second = store.create({ title: 'Second' }, { source: 'hook' });
-  persistence.save.mockImplementationOnce(() => { throw new Error('Disk full'); });
+  persistence.save.mockImplementationOnce(() => {
+    throw new Error('Disk full');
+  });
   expect(() => store.delete(first.id)).toThrow('Disk full');
   expect(store.list()).toHaveLength(2);
   store.delete(first.id);
-  expect(new ActivityStore(persistence).list().map(entry => entry.id)).toEqual([second.id]);
+  expect(
+    new ActivityStore(persistence).list().map((entry) => entry.id)
+  ).toEqual([second.id]);
+});
+
+test('bulk deletion is atomic and preserves entries outside the visible selection', () => {
+  const { store, persistence } = fixture();
+  const first = store.create({ title: 'First' }, { source: 'ai' });
+  const second = store.create({ title: 'Second' }, { source: 'hook' });
+  const locked = store.create(
+    { title: 'Locked' },
+    { source: 'ai', groupId: 'locked' }
+  );
+  persistence.save.mockImplementationOnce(() => {
+    throw new Error('Disk full');
+  });
+  expect(() => store.delete([first.id, second.id])).toThrow('Disk full');
+  expect(store.list()).toHaveLength(3);
+  store.delete([first.id, second.id]);
+  expect(new ActivityStore(persistence).list().map((item) => item.id)).toEqual([
+    locked.id,
+  ]);
+});
+
+test('notifies only after a new activity is saved, never on reads or deletions', () => {
+  const { persistence } = fixture();
+  const created = jest.fn();
+  const store = new ActivityStore({ ...persistence, created });
+  persistence.save.mockImplementationOnce(() => {
+    throw new Error('Disk full');
+  });
+  expect(() => store.create({ title: 'Failed' }, { source: 'ai' })).toThrow();
+  expect(created).not.toHaveBeenCalled();
+  const entry = store.create({ title: 'Saved' }, { source: 'ai' });
+  expect(created).toHaveBeenCalledTimes(1);
+  expect(created).toHaveBeenCalledWith(
+    expect.objectContaining({ id: entry.id, asRead: false })
+  );
+  store.read(entry.id);
+  store.delete(entry.id);
+  expect(created).toHaveBeenCalledTimes(1);
 });

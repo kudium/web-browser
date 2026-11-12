@@ -289,7 +289,9 @@ test('opens the landing list without a duplicate history header or reading conte
   expect(request.mock.calls.some(([input]) => input.action === 'edit')).toBe(
     false
   );
-  expect(screen.queryByRole('button', { name: 'Close note history' })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Close note history' })
+  ).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Plan' })).toBeInTheDocument();
   expect(
     screen.queryByText('Your notes, all in one place')
@@ -337,7 +339,9 @@ test('keeps the explicitly pinned list visible when selecting and editing a note
 
 test('renames from the list while preserving contents', async () => {
   renderNotes();
-  fireEvent.doubleClick(await screen.findByRole('button', { name: 'Plan' }));
+  fireEvent.keyDown(await screen.findByRole('button', { name: 'Plan' }), {
+    key: 'F2',
+  });
   fireEvent.change(screen.getByRole('textbox', { name: 'Note name' }), {
     target: { value: 'New plan' },
   });
@@ -525,12 +529,64 @@ test('history starts unpinned, closes on selection and dismisses on outside clic
     await screen.findByRole('button', { name: 'Pin note history' })
   ).toHaveAttribute('aria-pressed', 'false');
   await openPlan();
-  await waitFor(() => expect(
-    screen.queryByRole('button', { name: 'Close note history' })
-  ).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'Close note history' })
+    ).not.toBeInTheDocument()
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   fireEvent.pointerDown(screen.getByRole('textbox', { name: 'Note title' }));
   expect(
     screen.queryByRole('button', { name: 'Close note history' })
   ).not.toBeInTheDocument();
+});
+
+test('creates new notes in the currently selected group', async () => {
+  const view = render(
+    <Theme>
+      <NotesPage initialScope="first-group" />
+    </Theme>
+  );
+  view.rerender(
+    <Theme>
+      <NotesPage initialScope="selected-group" />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'New note' }));
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'save',
+        scope: 'selected-group',
+        item: expect.objectContaining({
+          kind: 'note',
+          scope: 'selected-group',
+        }),
+      })
+    )
+  );
+});
+
+test('reveals the selected note on a narrow panel without clearing its pin preference', async () => {
+  renderNotes();
+  await openPlan();
+  fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Pin note history' })
+  );
+  const page = screen.getByRole('region', { name: 'Notes' });
+  jest
+    .spyOn(page, 'getBoundingClientRect')
+    .mockReturnValue({ width: 400 } as DOMRect);
+  await openPlan();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'Unpin note history' })
+    ).toBeNull()
+  );
+  expect(screen.getByRole('textbox', { name: 'Note title' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
+  expect(
+    await screen.findByRole('button', { name: 'Unpin note history' })
+  ).toHaveAttribute('aria-pressed', 'true');
 });

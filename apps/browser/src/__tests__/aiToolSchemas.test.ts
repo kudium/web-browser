@@ -65,3 +65,11 @@ it('shares narrow hook setup tools with explicit configuration and opaque field 
     )
   );
 });
+
+it('exposes opening a project file in a browser tab', () => {
+  expect(
+    aiToolParameters('project_files').properties.fileRequest
+  ).toMatchObject({
+    properties: { action: { enum: expect.arrayContaining(['open-tab']) } },
+  });
+});

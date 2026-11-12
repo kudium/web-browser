@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import {
   SiteDeveloperConfig,
+  HookRevision,
   validDeveloperConfig,
 } from '../browser/siteDeveloper';
 
@@ -21,6 +22,7 @@ export interface SiteSettings {
   permissions: Record<string, PermissionChoice>;
   muted: boolean;
   developer?: SiteDeveloperConfig;
+  hookRevisions?: HookRevision[];
 }
 export const sitePermissions = [
   ['geolocation', 'Location'],
@@ -45,6 +47,27 @@ const keyFor = (profile: string, origin: string) =>
   JSON.stringify([profile, origin]);
 let cachedFile: string | undefined;
 let cachedSites: Record<string, SiteSettings> = {};
+// Keep ten recent saves and the latest working snapshot for each active hook.
+function retainHookRevisions(
+  revisions: HookRevision[],
+  active?: SiteDeveloperConfig
+) {
+  const activeIds = new Set([
+    '',
+    ...(active?.hooks || []).map((hook) => hook.id),
+  ]);
+  const working = new Map<string, number>();
+  revisions.forEach((entry, index) =>
+    entry.workingHooks?.forEach((id) => {
+      if (activeIds.has(id)) working.set(id, index);
+    })
+  );
+  const keep = new Set([
+    ...working.values(),
+    ...revisions.map((_, index) => index).slice(-10),
+  ]);
+  return revisions.filter((_, index) => keep.has(index)).slice(-31);
+}
 function normalize(value: unknown): SiteSettings {
   const site =
     value && typeof value === 'object' ? (value as Partial<SiteSettings>) : {};
@@ -62,6 +85,30 @@ function normalize(value: unknown): SiteSettings {
   return {
     permissions,
     muted: site.muted === true,
+    hookRevisions: Array.isArray(site.hookRevisions)
+      ? retainHookRevisions(
+          site.hookRevisions
+            .filter(
+              (entry) =>
+                entry &&
+                Number.isFinite(entry.time) &&
+                validDeveloperConfig(entry.config)
+            )
+            .map((entry) => ({
+              time: entry.time,
+              config: entry.config,
+              workingHooks: Array.isArray(entry.workingHooks)
+                ? entry.workingHooks.filter(
+                    (id) =>
+                      typeof id === 'string' &&
+                      (id === '' ||
+                        entry.config.hooks?.some((hook) => hook.id === id))
+                  )
+                : [],
+            })),
+          site.developer
+        )
+      : undefined,
     developer: validDeveloperConfig(site.developer)
       ? { ...site.developer }
       : undefined,
@@ -104,9 +151,23 @@ export function updateSiteSettings(
   const file = filename();
   const sites = read();
   const key = keyFor(profile, origin);
+  const previous = sites[key];
+  const revisions = [...(previous?.hookRevisions || [])];
+  if (
+    patch.developer &&
+    previous?.developer &&
+    JSON.stringify(patch.developer) !== JSON.stringify(previous.developer)
+  ) {
+    revisions.push({ time: Date.now(), config: previous.developer });
+  }
   const next = {
     ...sites,
-    [key]: normalize({ ...sites[key], ...patch }),
+    [key]: normalize({
+      ...previous,
+      ...patch,
+      hookRevisions:
+        patch.hookRevisions || (revisions.length ? revisions : undefined),
+    }),
   };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const temporary = `${file}.tmp`;
@@ -142,4 +203,39 @@ export function removeSiteProfile(profile: string) {
       /* Retain malformed keys for recovery. */
     }
   });
+}
+
+/** Preserve the exact successful source even before it has been replaced. */
+export function markHooksWorking(
+  profile: string,
+  origin: string,
+  config: SiteDeveloperConfig,
+  hookId: string
+) {
+  const site = getSiteSettings(profile, origin);
+  if (JSON.stringify(site.developer) !== JSON.stringify(config)) return;
+  const revisions = (site.hookRevisions || []).map((entry) => ({ ...entry }));
+  const matching = revisions
+    .slice()
+    .reverse()
+    .find((entry) => JSON.stringify(entry.config) === JSON.stringify(config));
+  if (matching)
+    matching.workingHooks = [
+      ...new Set([...(matching.workingHooks || []), hookId]),
+    ];
+  else revisions.push({ time: Date.now(), config, workingHooks: [hookId] });
+  updateSiteSettings(profile, origin, {
+    hookRevisions: retainHookRevisions(revisions, config),
+  });
+}
+
+/** Execution is downstream of the atomic settings write. */
+export function saveSiteHooks(
+  profile: string,
+  origin: string,
+  config: SiteDeveloperConfig,
+  afterSave: () => void
+) {
+  updateSiteSettings(profile, origin, { developer: config });
+  afterSave();
 }

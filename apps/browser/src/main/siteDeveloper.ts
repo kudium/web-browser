@@ -14,66 +14,118 @@ import { saveNoteWithActivity } from './noteActivity';
 import { getGroupLocks } from './groupLocks';
 import { validateActivity } from '../browser/activity';
 import type { HookContext } from './hookNotifications';
-import { getSiteSettings, siteOrigin } from './siteSettings';
+import {
+  getSiteSettings,
+  siteOrigin,
+  markHooksWorking,
+  onSiteSettingsChanged,
+} from './siteSettings';
 
 // No bridge is exposed to website scripts. Hooks run in the sandboxed preload's
 // isolated DOM world, with no Node.js or privileged Kudium Browser APIs.
 export const developerPreloadSource = String.raw`
 const { ipcRenderer, webFrame } = require('electron');
 if (window === window.top) {
-  const config = ipcRenderer.sendSync('site-developer-config');
-  if (config) {
+  let generation = 0;
+  const owned = new Set();
+  const stop = () => {
+    generation++;
+    for (const dispose of [...owned]) { try { dispose(); } catch (_) {} }
+    owned.clear();
+  };
+  ipcRenderer.on('site-developer-stop', stop);
+  addEventListener('pagehide', stop);
+  const start = async (route = false) => {
+    stop();
+    const current = generation;
+    const config = ipcRenderer.sendSync('site-developer-config');
+    if (!config) return;
     const token = config.token;
-    const send = (kind, value) => ipcRenderer.send('site-developer-event', {token, kind, value});
-    const format = value => {
-      try { return typeof value === 'string' ? value : JSON.stringify(value); }
-      catch (_) { return String(value); }
-    };
-    const log = (...values) => send('log', values.map(format).join(' ').slice(0, 2000));
-    const page = Object.freeze(Object.fromEntries(['reload','back','forward','stop'].map(action => [action, () => send('control', action)])));
-    const notify = (key, text) => ipcRenderer.invoke('site-developer-notify', {token, key, text});
-    const activity = Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind: 'activity', input})});
-    const notes = Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind: 'note', input})});
-    const context = Object.freeze({url: location.href, document, notify, activity, notes,
-      get content() { return document.documentElement?.outerHTML || ''; }, page, log});
+    const active = () => current === generation;
+    const send = (kind, value, detail = {}) => { if (active()) ipcRenderer.send('site-developer-event', { token, kind, value, ...detail }); };
+    const format = value => { try { return typeof value === 'string' ? value : JSON.stringify(value); } catch (_) { return String(value); } };
+    const hooks = [{...config, id: undefined, name: 'Default hook'}, ...(config.hooks || [])];
     let failed = false;
-    const run = async (phase, source, hookId) => {
-      if (!source.trim()) return;
-      send('running', phase);
+    const failedHooks = new Set();
+    const run = async (hook, phase) => {
+      if (!active() || !hook[phase].trim()) return;
+      const detail = {hookId: hook.id || '', phase, runId: token + ':' + (hook.id || 'default') + ':' + phase};
+      const controller = new AbortController();
+      const cleanups = new Set();
+      const dispose = () => {
+        controller.abort();
+        for (const cleanup of [...cleanups].reverse()) { try { cleanup(); } catch (_) {} }
+        cleanups.clear(); owned.delete(dispose);
+      };
+      owned.add(dispose);
+      const alive = () => active() && !controller.signal.aborted;
+      const report = error => {
+        if (alive()) { failed = true; failedHooks.add(hook.id); send('error', hook.name + ' · ' + phase + ': ' + String(error?.stack || error).slice(0, 1800), detail); }
+        dispose();
+      };
+      const guarded = (callback, ...args) => {
+        if (!alive()) return;
+        try { const result = callback(...args); if (result && typeof result.catch === 'function') result.catch(report); }
+        catch (error) { report(error); }
+      };
+      const onCleanup = cleanup => {
+        if (typeof cleanup !== 'function') throw new TypeError('onCleanup expects a function');
+        if (alive()) cleanups.add(cleanup); else cleanup();
+      };
+      const log = (...values) => { if (alive()) send('log', hook.name + ' · ' + phase + ': ' + values.map(format).join(' ').slice(0, 1800), detail); };
+      const page = Object.freeze(Object.fromEntries(['reload','back','forward','stop'].map(action => [action, () => { if (alive()) send('control', action); }])));
+      const output = (kind, input) => {
+        if (!alive()) return Promise.reject(new Error('This hook run has stopped'));
+        return ipcRenderer.invoke('site-developer-output', {token, kind, input, hookId: hook.id});
+      };
+      const notify = (key, text) => alive() ? ipcRenderer.invoke('site-developer-notify', {token, key, text}) : Promise.reject(new Error('This hook run has stopped'));
+      const activity = Object.freeze({create: input => output('activity', input)});
+      const notes = Object.freeze({create: input => output('note', input)});
+      const context = Object.freeze({url: location.href, document, notify, activity, notes,
+        runId: token + ':' + (hook.id || 'default') + ':' + phase,
+        signal: controller.signal, onCleanup,
+        setInterval: (callback, delay, ...args) => { const id = setInterval(() => { guarded(callback, ...args); }, delay); onCleanup(() => clearInterval(id)); return id; },
+        setTimeout: (callback, delay, ...args) => { let id; const cleanup = () => clearTimeout(id); id = setTimeout(() => { cleanups.delete(cleanup); guarded(callback, ...args); }, delay); onCleanup(cleanup); return id; },
+        listen: (target, type, callback, options) => { const listener = event => guarded(callback, event); target.addEventListener(type, listener, options); onCleanup(() => target.removeEventListener(type, listener, options)); },
+        get content() { return document.documentElement?.outerHTML || ''; }, page, log});
+      send('running', hook.name + ' · ' + phase);
+      let timer;
       try {
         const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-        const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify, activity, notes} = context;\n' + source);
-        let timer;
-        try { await Promise.race([callback(Object.freeze({...context, activity:Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind:'activity', input, hookId})}), notes:Object.freeze({create: input => ipcRenderer.invoke('site-developer-output', {token, kind:'note', input, hookId})})})), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Callback timed out after 10 seconds')), 10000); })]); }
-        finally { clearTimeout(timer); }
-        log(phase + ' completed');
+        const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify, activity, notes, setInterval, setTimeout, onCleanup, signal, listen, runId} = context;\n' + hook[phase] + '\n//# sourceURL=kudium-hook-' + encodeURIComponent(hook.id || 'default') + '-' + phase + '.js');
+        await Promise.race([callback(context), new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('Hook stopped')), {once:true})), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Callback timed out after 10 seconds')), 10000); })]);
+        if (alive()) log('completed');
       } catch (error) {
-        failed = true;
-        send('error', phase + ': ' + String(error?.stack || error).slice(0, 2000));
-      }
+        if (alive()) { failed = true; failedHooks.add(hook.id); send('error', hook.name + ' · ' + phase + ': ' + String(error?.stack || error).slice(0, 1800), detail); }
+        dispose();
+      } finally { clearTimeout(timer); }
     };
-    const hooks = config.hooks || [];
-    const before = (async () => {
-      await run('Before load', config.before);
-      for (const hook of hooks) await run(hook.name + ' · Before load', hook.before, hook.id);
+    // Start before-load callbacks synchronously, before CSS IPC can yield to the page.
+    const before = route ? Promise.resolve() : (async () => {
+      for (const hook of hooks) await run(hook, 'before');
     })();
-    if (config.css.trim()) {
-      try { webFrame.insertCSS(config.css); log('CSS applied'); }
-      catch (error) { failed = true; send('error', 'CSS: ' + String(error)); }
-    }
     for (const hook of hooks) {
+      if (!active()) return;
       if (hook.css.trim()) {
-        try { webFrame.insertCSS(hook.css); log(hook.name + ' · CSS applied'); }
-        catch (error) { failed = true; send('error', hook.name + ': ' + String(error)); }
+        try { const key = await webFrame.insertCSS(hook.css); if (active()) owned.add(() => webFrame.removeInsertedCSS(key).catch(() => {})); else webFrame.removeInsertedCSS(key).catch(() => {}); }
+        catch (error) { failed = true; failedHooks.add(hook.id); send('error', hook.name + ' · CSS: ' + String(error)); }
       }
     }
-    addEventListener('load', async () => {
-      await before;
-      await run('After load', config.after);
-      for (const hook of hooks) await run(hook.name + ' · After load', hook.after, hook.id);
-      if (!failed) send('success', 'Hooks completed');
-    }, {once:true});
-  }
+    await before;
+    if (!route && document.readyState !== 'complete') await new Promise(resolve => {
+      const loaded = () => { owned.delete(cancel); resolve(); };
+      const cancel = () => { removeEventListener('load', loaded); resolve(); };
+      owned.add(cancel); addEventListener('load', loaded, {once:true});
+    });
+    for (const hook of hooks) await run(hook, 'after');
+    for (const hook of hooks) {
+      if (active() && !failedHooks.has(hook.id) && (hook.css.trim() || hook.after.trim() || (!route && hook.before.trim()))) send('hook-success', hook.id || '');
+    }
+    const applicable = hooks.some(hook => hook.css.trim() || hook.after.trim() || (!route && hook.before.trim()));
+    if (active() && !failed) send(applicable ? 'success' : 'idle', applicable ? 'Hooks completed' : 'No hooks match this page and stage');
+  };
+  ipcRenderer.on('site-developer-route', () => { void start(true); });
+  void start();
 }
 `;
 let preloadPath: string | undefined;
@@ -122,6 +174,7 @@ export function developerState(contents: WebContents, origin: string) {
   const previous = page?.states.get(origin);
   return {
     config,
+    revisions: getSiteSettings(page?.profile || '', origin).hookRevisions,
     status: previous?.status || 'waiting',
     logs: previous?.logs || [],
     notifications: page?.scope()
@@ -137,6 +190,7 @@ export function developerState(contents: WebContents, origin: string) {
 export function resetDeveloperState(contents: WebContents, origin: string) {
   const page = pages.get(contents);
   if (!page) return;
+  contents.send('site-developer-stop');
   page.token = undefined;
   page.states.delete(origin);
   page.publish();
@@ -192,8 +246,24 @@ export function registerDeveloperPage(
     scope,
   });
   contents.once('destroyed', () => pages.delete(contents));
+  contents.on('did-navigate-in-page', (_event, _url, isMainFrame) => {
+    if (isMainFrame) contents.send('site-developer-route');
+  });
   if (listening) return;
   listening = true;
+  onSiteSettingsChanged((changedProfile, origin) => {
+    pages.forEach((page, ownedContents) => {
+      if (
+        page.profile !== changedProfile ||
+        page.origin !== origin ||
+        !page.token
+      )
+        return;
+      const config = getSiteSettings(changedProfile, origin).developer;
+      if (!config?.enabled || hookScriptHash(config) !== page.scriptHash)
+        resetDeveloperState(ownedContents, origin);
+    });
+  });
   ipcMain.handle('site-developer-output', (event, request: unknown) => {
     const page = pages.get(event.sender);
     const data = request as {
@@ -413,7 +483,10 @@ export function registerDeveloperPage(
       typeof message !== 'object'
     )
       return;
-    const { token, kind, value } = message as Record<string, unknown>;
+    const { token, kind, value, hookId, phase, runId } = message as Record<
+      string,
+      unknown
+    >;
     if (
       typeof token !== 'string' ||
       token !== page.token ||
@@ -473,7 +546,37 @@ export function registerDeveloperPage(
           event.sender.navigationHistory.goForward();
         if (value === 'stop') event.sender.stop();
       }
-    } else if (['log', 'error', 'running', 'success'].includes(String(kind))) {
+    } else if (
+      ['log', 'error', 'running', 'success', 'idle', 'hook-success'].includes(
+        String(kind)
+      )
+    ) {
+      if (kind === 'hook-success') {
+        try {
+          const hook = value
+            ? state.config.hooks?.find(
+                (entry) =>
+                  entry.id === value &&
+                  entry.enabled &&
+                  hookMatchesPath(entry.path, event.senderFrame!.url)
+              )
+            : undefined;
+          if (!value || hook)
+            markHooksWorking(page.profile, page.origin, state.config, value);
+        } catch {
+          /* Execution succeeded; history persistence must not hide its result. */
+        }
+      }
+      if (kind === 'hook-success') {
+        page.publish();
+        return;
+      }
+      const triggeringHook =
+        typeof hookId === 'string'
+          ? state.config.hooks?.find(
+              (entry) => entry.id === hookId && entry.enabled
+            )
+          : undefined;
       if (kind === 'error' || kind === 'success') {
         const identity = page.scope();
         if (identity && !getGroupLocks().locked(identity.groupId)) {
@@ -498,7 +601,10 @@ export function registerDeveloperPage(
                   profile: page.profile,
                   origin: page.origin!,
                   pageURL: event.senderFrame.url,
-                  hookName: 'Page hooks',
+                  hookId: triggeringHook?.id,
+                  hookName:
+                    triggeringHook?.name ||
+                    (kind === 'error' ? 'Default hook' : 'Page hooks'),
                 },
               },
               kind === 'success'
@@ -508,6 +614,7 @@ export function registerDeveloperPage(
           }
         }
       }
+      if (kind === 'idle') state.status = 'waiting';
       if (kind === 'error') state.status = 'error';
       if (kind === 'running' && state.status !== 'error')
         state.status = 'running';
@@ -517,6 +624,11 @@ export function registerDeveloperPage(
         time: Date.now(),
         level: kind === 'error' ? 'error' : 'info',
         message: value.slice(0, 2000),
+        hookId: triggeringHook?.id,
+        phase: ['before', 'after', 'css'].includes(String(phase))
+          ? (phase as 'before' | 'after' | 'css')
+          : undefined,
+        runId: typeof runId === 'string' ? runId.slice(0, 200) : undefined,
       });
     } else return;
     state.logs = state.logs.slice(-100);

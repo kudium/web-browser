@@ -1,6 +1,10 @@
 /* global globalThis */
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@radix-ui/themes';
+import {
+  usePreviewZoom,
+  clampPreviewZoom,
+} from '../../utils/hooks/usePreviewZoom';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 export function DeveloperPDFPreview({ url }: { url: string }) {
@@ -9,12 +13,14 @@ export function DeveloperPDFPreview({ url }: { url: string }) {
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [error, setError] = useState('');
+  const container = usePreviewZoom(zoom, setZoom);
   useEffect(() => {
     let active = true;
     let task: { destroy: () => Promise<void> } | undefined;
     setError('');
     setDocument(undefined);
     setPage(1);
+    setZoom(1);
     const load = async () => {
       try {
         const pdf = await import(
@@ -115,8 +121,8 @@ export function DeveloperPDFPreview({ url }: { url: string }) {
           size="1"
           variant="ghost"
           aria-label="Zoom out"
-          disabled={zoom <= 0.5}
-          onClick={() => setZoom(zoom - 0.25)}
+          disabled={zoom <= 0.25}
+          onClick={() => setZoom(clampPreviewZoom(zoom - 0.25))}
         >
           −
         </Button>
@@ -125,19 +131,16 @@ export function DeveloperPDFPreview({ url }: { url: string }) {
           size="1"
           variant="ghost"
           aria-label="Zoom in"
-          disabled={zoom >= 2}
-          onClick={() => setZoom(zoom + 0.25)}
+          disabled={zoom >= 4}
+          onClick={() => setZoom(clampPreviewZoom(zoom + 0.25))}
         >
           +
         </Button>
       </div>
-      {error ? (
-        <p role="alert">{error}</p>
-      ) : (
-        <div className="developer-pdf-page">
-          <canvas ref={canvas} aria-label={`PDF page ${page}`} />
-        </div>
-      )}
+      {error && <p role="alert">{error}</p>}
+      <div ref={container} className="developer-pdf-page">
+        <canvas ref={canvas} aria-label={`PDF page ${page}`} />
+      </div>
     </div>
   );
 }

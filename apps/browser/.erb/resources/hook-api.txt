@@ -1,0 +1,67 @@
+/** Globals injected into Kudium's asynchronous page hook callbacks. */
+interface KudiumActivityInput {
+  /** Required title, up to 120 characters. */
+  title: string;
+  /** Optional details, up to 2,000 characters. */
+  message?: string;
+  /** Optional HTTP(S) action link. */
+  url?: string;
+}
+interface KudiumNoteInput {
+  title: string;
+  /** Markdown content. */
+  body: string;
+}
+interface KudiumHookContext {
+  /** Unique identity for this hook stage execution. */
+  readonly runId: string;
+  /** Aborted when disabled, replaced, navigated away, or timed out. */
+  readonly signal: AbortSignal;
+  /** Register cleanup for DOM changes, observers and other resources. */
+  onCleanup(cleanup: () => void): void;
+  setInterval(callback: (...args: any[]) => void, delay: number, ...args: any[]): number;
+  setTimeout(callback: (...args: any[]) => void, delay: number, ...args: any[]): number;
+  listen(target: EventTarget, type: string, callback: (event: Event) => void, options?: boolean | AddEventListenerOptions): void;
+  readonly url: string;
+  readonly document: Document;
+  readonly content: string;
+  readonly activity: {
+    create(
+      input: KudiumActivityInput
+    ): Promise<{ id: string; deepLink: string }>;
+  };
+  readonly notes: {
+    create(
+      input: KudiumNoteInput
+    ): Promise<{
+      recordId: string;
+      title: string;
+      deepLink: string;
+      activityId?: string;
+      warning?: string;
+    }>;
+  };
+  readonly page: {
+    reload(): void;
+    back(): void;
+    forward(): void;
+    stop(): void;
+  };
+  /** Write to the hook log. */
+  log(...values: unknown[]): void;
+  /** Requires a configured, approved notification binding. */
+  notify(key: string, text: string): Promise<unknown>;
+}
+declare const context: KudiumHookContext;
+declare const url: KudiumHookContext['url'];
+declare const content: KudiumHookContext['content'];
+declare const activity: KudiumHookContext['activity'];
+declare const notes: KudiumHookContext['notes'];
+declare const page: KudiumHookContext['page'];
+declare const log: KudiumHookContext['log'];
+declare const notify: KudiumHookContext['notify'];
+
+declare const onCleanup: KudiumHookContext['onCleanup'];
+declare const signal: KudiumHookContext['signal'];
+declare const listen: KudiumHookContext['listen'];
+declare const runId: KudiumHookContext['runId'];

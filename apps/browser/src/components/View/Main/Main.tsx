@@ -160,6 +160,7 @@ import { InlineTabName } from '../../UI/InlineTabName';
 import { CommandPalette } from '../../UI/CommandPalette';
 import {
   SpaceManager,
+  spaceFrameColor,
   useSpaces,
   SpaceColor,
 } from '../../../utils/SpaceManager';
@@ -358,6 +359,7 @@ export function Main() {
   const [spaceIconImage, setSpaceIconImage] = useState('');
   const [spaceEmoji, setSpaceEmoji] = useState('');
   const [spaceCustomColor, setSpaceCustomColor] = useState('');
+  const [spaceFrameTint, setSpaceFrameTint] = useState('');
   const [spaceColor, setSpaceColor] = useState<SpaceColor>('iris');
   const openCreateSpace = () => {
     setEditingSpace(undefined);
@@ -367,6 +369,7 @@ export function Main() {
     setSpaceEmoji('');
     setSpaceColor('iris');
     setSpaceCustomColor('');
+    setSpaceFrameTint('');
     setSpaceDialog(true);
   };
   const [favoriteRename, setFavoriteRename] = useState<IApp>();
@@ -500,6 +503,53 @@ export function Main() {
     text: string;
     token: number;
   }>();
+  useEffect(
+    () =>
+      window.electron.siteDeveloper?.onAskAI?.((text) => {
+        setAIMounted(true);
+        setAIOpen(true);
+        setAIPromptRequest((previous) => ({
+          text,
+          token: (previous?.token || 0) + 1,
+        }));
+      }),
+    [setAIOpen]
+  );
+  useEffect(() => {
+    const reference = (event: Event) => {
+      const { detail } = event as CustomEvent;
+      if (
+        !detail ||
+        typeof detail.sourceId !== 'string' ||
+        typeof detail.path !== 'string' ||
+        !detail.path ||
+        detail.path.length > 4000
+      )
+        return;
+      const source = AppManager.getAll().find(
+        (tab) => tab.id === detail.sourceId && !tab.archived
+      );
+      if (!source || lockedGroup(source)) return;
+      setAIMounted(true);
+      setAIOpen(true);
+      setAIContextRequest((previous) => ({
+        reference: { kind: 'tab', id: source.id },
+        token: (previous?.token || 0) + 1,
+      }));
+      setAIPromptRequest((previous) => ({
+        text: `Help me edit the project file ${JSON.stringify(
+          detail.path
+        )} in the attached group’s linked folder. Read its current contents using project_files before making changes.\n\nMy changes: `,
+        token: (previous?.token || 0) + 1,
+      }));
+    };
+    window.addEventListener('kudiumbrowser-reference-project-file', reference);
+    return () =>
+      window.removeEventListener(
+        'kudiumbrowser-reference-project-file',
+        reference
+      );
+  }, [setAIOpen]);
   const [findValue, setFindValue] = useState('');
   const [libraryTab, setLibraryTab] = useState<
     'downloads' | 'history' | 'archive'
@@ -827,7 +877,7 @@ export function Main() {
     }
   }, [appList, selected, selectedId, select]);
   const applySpaceMenuChoice = async (choice: string, target = active) => {
-    if (choice && ['icon', 'rename', 'color'].includes(choice)) {
+    if (choice && ['icon', 'rename', 'color', 'manage'].includes(choice)) {
       setEditingSpace(target.id);
       setSpaceName(target.name);
       setSpaceIcon(target.icon || 'layers');
@@ -835,6 +885,7 @@ export function Main() {
       setSpaceEmoji(target.iconEmoji || '');
       setSpaceColor(target.color);
       setSpaceCustomColor(target.customColor || '');
+      setSpaceFrameTint(target.frameColor || '');
       setSpaceDialog(true);
     }
     if (choice === 'import-group') {
@@ -879,7 +930,6 @@ export function Main() {
       setFolderDialog(true);
     }
     if (choice === 'create') openCreateSpace();
-    if (choice === 'manage') browser.preferences('open', { section: 'spaces' });
     if (choice === 'delete' && spaces.length > 1) {
       if (
         await browser.confirm({
@@ -894,10 +944,6 @@ export function Main() {
   };
   const showSpaceMenu = async () => {
     const choice = await browser.nativeMenu([
-      { id: 'icon', label: 'Change Space Icon…' },
-      { id: 'rename', label: 'Rename Space…' },
-      { id: 'color', label: 'Edit Theme Color…' },
-      { type: 'separator' },
       { id: 'new-tab', label: 'New Tab…' },
       { id: 'new-group', label: 'Create Group…' },
       { id: 'import-group', label: 'Import Group…' },
@@ -918,7 +964,7 @@ export function Main() {
           ),
       },
       { id: 'create', label: 'New Space…' },
-      { id: 'manage', label: 'Manage Spaces…' },
+      { id: 'manage', label: 'Manage Space…' },
       { type: 'separator' },
       { id: 'delete', label: 'Delete Space…', enabled: spaces.length > 1 },
     ]);
@@ -2799,19 +2845,6 @@ export function Main() {
           <ContextMenu.Separator />
         </>
       )}
-      <ContextMenu.Item
-        disabled={!/^https?:\/\//i.test(item.url)}
-        onSelect={() =>
-          browser.command({
-            id: item.id,
-            action: 'open-site-developer',
-            url: new URL(item.url).origin,
-          })
-        }
-      >
-        Manage hooks…
-      </ContextMenu.Item>
-      <ContextMenu.Separator />
       <ContextMenu.Item onSelect={() => addToAI({ kind: 'tab', id: item.id })}>
         Add to AI
       </ContextMenu.Item>
@@ -3289,11 +3322,7 @@ export function Main() {
         {
           '--sidebar-width': `${sidebarWidth}px`,
           '--ai-sidebar-width': `${effectiveAIWidth}px`,
-          ...(/^#[0-9a-f]{6}$/i.test(active.customColor || '')
-            ? {
-                '--sidebar-material': `color-mix(in srgb, ${active.customColor} 18%, var(--color-background))`,
-              }
-            : {}),
+          '--space-tint': spaceFrameColor(active),
         } as CSSProperties
       }
     >
@@ -3560,10 +3589,6 @@ export function Main() {
                   </span>
                   <span className="space-title-name">{active.name}</span>
                 </button>
-                <SpaceDownloadsButton
-                  records={downloadRecords}
-                  onOpen={() => activateSidebarPage(DOWNLOADS_PAGE)}
-                />
                 <Tooltip
                   collisionBoundary={sidebarBoundary}
                   collisionPadding={8}
@@ -4054,6 +4079,12 @@ export function Main() {
                 <Library size={18} />
               </IconButton>
             </Tooltip>
+            {!downloadsOpen && (
+              <SpaceDownloadsButton
+                records={downloadRecords}
+                onOpen={() => activateSidebarPage(DOWNLOADS_PAGE)}
+              />
+            )}
           </div>
           <div
             className="space-switcher"
@@ -4651,6 +4682,15 @@ export function Main() {
           </Dialog.Description>
           <SpaceSettingsForm
             creating={!editingSpace}
+            onPreferences={
+              editingSpace
+                ? () => {
+                    browser
+                      .preferences('open', { section: 'spaces' })
+                      .catch((error) => setMoveMessage(String(error)));
+                  }
+                : undefined
+            }
             value={{
               name: spaceName,
               icon: spaceIcon,
@@ -4658,6 +4698,7 @@ export function Main() {
               iconImage: spaceIconImage,
               iconEmoji: spaceEmoji,
               customColor: spaceCustomColor,
+              frameColor: spaceFrameTint,
             }}
             onChange={(patch) => {
               if (patch.name !== undefined) setSpaceName(patch.name);
@@ -4666,6 +4707,8 @@ export function Main() {
               if ('iconImage' in patch)
                 setSpaceIconImage(patch.iconImage || '');
               if ('iconEmoji' in patch) setSpaceEmoji(patch.iconEmoji || '');
+              if ('frameColor' in patch)
+                setSpaceFrameTint(patch.frameColor || '');
               if ('customColor' in patch)
                 setSpaceCustomColor(patch.customColor || '');
             }}
@@ -4682,6 +4725,7 @@ export function Main() {
                   iconImage: spaceIconImage || undefined,
                   iconEmoji: spaceEmoji || undefined,
                   customColor: spaceCustomColor || undefined,
+                  frameColor: spaceFrameTint || undefined,
                 });
                 setSpaceName('');
                 setSpaceDialog(false);

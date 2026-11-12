@@ -27,13 +27,23 @@ export interface SiteDeveloperConfig {
 export interface SiteDeveloperLog {
   time: number;
   level: 'info' | 'error';
+  hookId?: string;
+  phase?: 'before' | 'after' | 'css';
+  runId?: string;
   message: string;
+}
+export interface HookRevision {
+  time: number;
+  config: SiteDeveloperConfig;
+  working?: boolean;
+  workingHooks?: string[];
 }
 export interface SiteDeveloperState {
   config: SiteDeveloperConfig;
   status: 'waiting' | 'running' | 'success' | 'error';
   logs: SiteDeveloperLog[];
   notifications?: HookNotificationPermission[];
+  revisions?: HookRevision[];
 }
 export const emptyDeveloperConfig: SiteDeveloperConfig = {
   enabled: false,

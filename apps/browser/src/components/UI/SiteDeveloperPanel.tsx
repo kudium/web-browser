@@ -3,6 +3,7 @@
 /* Native controls are associated through htmlFor and unique IDs. */
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertDialog,
   Button,
@@ -13,7 +14,9 @@ import {
   TextField,
 } from '@radix-ui/themes';
 import { RotateCw, Plus, Settings2, Trash2 } from 'lucide-react';
-import { HookExamples } from './HookExamples';
+import { HookPresets } from './HookPresets';
+import { HookHistory } from './HookHistory';
+import { HookAISetup } from './HookAISetup';
 import { HookPageTarget } from './HookPageTarget';
 import { SiteDeveloperWorkspace } from './SiteDeveloperWorkspace';
 import { CodeEditor } from './CodeEditor';
@@ -38,11 +41,13 @@ export function SiteDeveloperPanel({
   send,
   origin = '',
   selectedHookId = '',
+  toolbarTarget,
 }: {
   developer: SiteDeveloperState | undefined;
   disabled: boolean;
   origin?: string;
   selectedHookId?: string;
+  toolbarTarget?: HTMLElement | null;
   send: (
     action: BrowserCommand['action'],
     patch?: Partial<BrowserCommand>
@@ -55,6 +60,7 @@ export function SiteDeveloperPanel({
   const [enablePrompt, setEnablePrompt] = useState<{
     config: SiteDeveloperConfig;
     hookId: string;
+    run?: boolean;
   }>();
   useEffect(() => {
     setHookId(selectedHookId);
@@ -78,6 +84,7 @@ export function SiteDeveloperPanel({
     if (hasDeveloper) setDraft(JSON.parse(serialized));
   }, [serialized, hasDeveloper]);
   const importInput = useRef<HTMLInputElement>(null);
+  const [jumpLine, setJumpLine] = useState<{ line: number; token: number }>();
   const [importError, setImportError] = useState('');
   const dirty = JSON.stringify(draft) !== serialized;
   const stageLabels = {
@@ -86,88 +93,127 @@ export function SiteDeveloperPanel({
     css: 'CSS',
   };
   const stageHints = {
-    before: 'Before website scripts run. The document is still being created.',
-    after: 'After the document and its resources finish loading.',
-    css: 'Injected at document start. Browser CSS rules still apply.',
+    before:
+      'At document creation. Asynchronous work does not pause website scripts.',
+    after:
+      'After resources finish loading, and on navigation within this page.',
+    css: 'Applied at document start and on route changes. Browser CSS rules still apply.',
   };
+  const askAI = (repair = false, outcome = 'Ask me what outcome I want.') => {
+    const error = repair
+      ? developer?.logs.filter((entry) => entry.level === 'error').at(-1)
+      : undefined;
+    const targetId = repair ? error?.hookId || '' : hookId;
+    const target = targetId
+      ? draft.hooks?.find((hook) => hook.id === targetId)
+      : undefined;
+    const stage = error?.phase || editor;
+    const errors = developer?.logs
+      .filter(
+        (entry) => entry.level === 'error' && (entry.hookId || '') === targetId
+      )
+      .slice(-3)
+      .map((entry) => entry.message)
+      .join('\n');
+    send('ask-hook-ai', {
+      prompt: `Use site_customization to ${
+        repair ? 'repair' : 'set up'
+      } a page hook for ${origin}. Selected hook: ${
+        target?.name || 'Default hook'
+      } (${
+        targetId || 'default'
+      }). Read existing hooks first and preserve unrelated hooks. Use context.onCleanup, context.signal and managed timers/listeners. Explain the target, trigger and how to disable it. Show the proposed changes for local review; do not run code automatically. ${
+        repair ? `Relevant errors: ${errors}` : `Requested outcome: ${outcome}`
+      }\nSelected stage: ${stage}\nSelected source (first 20,000 characters):\n${(target ||
+        draft)[stage].slice(0, 20000)}`,
+    });
+  };
+  const toolbar = (
+    <div className="site-developer-toolbar">
+      <span id="site-developer-enable-label">Enable site hooks</span>
+      <Switch
+        id="site-developer-enabled"
+        aria-labelledby="site-developer-enable-label"
+        checked={draft.enabled}
+        disabled={disabled}
+        onCheckedChange={(enabled) => setDraft({ ...draft, enabled })}
+      />
+      <PreferenceHint label="Hook API & examples">
+        <div className="site-hook-help-content">
+          <p>
+            For saved webhook alerts, ask the Assistant to configure a
+            notification permission. Use{' '}
+            <code>
+              context.notify(&quot;approved-key&quot;, &quot;Alert text&quot;)
+            </code>
+            ; credentials stay in Personal Data. Permissions can be allowed or
+            revoked below. Page hooks monitor only while this page is loaded.
+          </p>
+          <p>
+            Hooks run on this website for this group. Groups sharing its login
+            also share these hooks.
+          </p>
+          <p>
+            Write a JavaScript callback body with <code>url</code>,{' '}
+            <code>document</code>, <code>content</code> (HTML snapshot),{' '}
+            <code>log(...values)</code> and <code>await</code>.
+          </p>
+          <p>
+            Add an Activity update with{' '}
+            <code>
+              await context.activity.create({'{ title, message, url }'})
+            </code>
+            . Save Markdown to Notes with{' '}
+            <code>await context.notes.create({'{ title, body }'})</code>; this
+            also creates a linked Activity entry. Hooks can create entries, but
+            cannot read or edit existing notes. Outputs are limited to ten per
+            minute per page.
+          </p>
+          <p>
+            Examples lets you enable an enhancement or insert it into the
+            current stage. Save and Run to apply inserted code. Dark mode and
+            layout effects vary by website. Save example to keep your own
+            version.
+          </p>
+          <p>
+            Route changes clean up previous effects and rerun matching CSS and
+            After load code. Use <code>context.onCleanup</code> for DOM changes
+            and observers, and <code>context.listen</code> for event listeners.
+            Hook timers stop automatically.
+          </p>
+          <p>
+            Navigate with <code>page.reload()</code>, <code>page.back()</code>,{' '}
+            <code>page.forward()</code> and <code>page.stop()</code>. Rapid
+            loops are paused.
+          </p>
+          <p>
+            Code runs in an isolated world, with access to the DOM but no
+            website globals or Node.js. Only enable trusted code. Logs stay in
+            memory; avoid logging secrets.
+          </p>
+        </div>
+      </PreferenceHint>
+      <div
+        className="site-developer-status"
+        role="status"
+        data-status={
+          saved.enabled ? developer?.status || 'waiting' : 'disabled'
+        }
+      >
+        <span className="site-developer-dot" />
+        <span>
+          {saved.enabled
+            ? labels[developer?.status || 'waiting']
+            : 'Hooks are off'}
+        </span>
+        {dirty && <span className="site-developer-unsaved">Unsaved</span>}
+      </div>
+    </div>
+  );
   return (
     <>
       <div className="site-settings-scroll site-developer-scroll">
-        <div className="site-developer-toolbar">
-          <span id="site-developer-enable-label">Enable site hooks</span>
-          <Switch
-            id="site-developer-enabled"
-            aria-labelledby="site-developer-enable-label"
-            checked={draft.enabled}
-            disabled={disabled}
-            onCheckedChange={(enabled) => setDraft({ ...draft, enabled })}
-          />
-          <PreferenceHint label="Hook API & examples">
-            <div className="site-hook-help-content">
-              <p>
-                For saved webhook alerts, ask the Assistant to configure a
-                notification permission. Use{' '}
-                <code>
-                  context.notify(&quot;approved-key&quot;, &quot;Alert
-                  text&quot;)
-                </code>
-                ; credentials stay in Personal Data. Permissions can be allowed
-                or revoked below. Page hooks monitor only while this page is
-                loaded.
-              </p>
-              <p>
-                Hooks run on this website for this group. Groups sharing its
-                login also share these hooks.
-              </p>
-              <p>
-                Write a JavaScript callback body with <code>url</code>,{' '}
-                <code>document</code>, <code>content</code> (HTML snapshot),{' '}
-                <code>log(...values)</code> and <code>await</code>.
-              </p>
-              <p>
-                Add an Activity update with{' '}
-                <code>
-                  await context.activity.create({'{ title, message, url }'})
-                </code>
-                . Save Markdown to Notes with{' '}
-                <code>await context.notes.create({'{ title, body }'})</code>;
-                this also creates a linked Activity entry. Hooks can create
-                entries, but cannot read or edit existing notes. Outputs are
-                limited to ten per minute per page.
-              </p>
-              <p>
-                Examples inserts ready-to-use enhancements into the current
-                stage. Save and Run to apply them. Dark mode and layout effects
-                vary by website. Save example to keep your own version.
-              </p>
-              <p>
-                Navigate with <code>page.reload()</code>,{' '}
-                <code>page.back()</code>, <code>page.forward()</code> and{' '}
-                <code>page.stop()</code>. Rapid loops are paused.
-              </p>
-              <p>
-                Code runs in an isolated world, with access to the DOM but no
-                website globals or Node.js. Only enable trusted code. Logs stay
-                in memory; avoid logging secrets.
-              </p>
-            </div>
-          </PreferenceHint>
-          <div
-            className="site-developer-status"
-            role="status"
-            data-status={
-              saved.enabled ? developer?.status || 'waiting' : 'disabled'
-            }
-          >
-            <span className="site-developer-dot" />
-            <span>
-              {saved.enabled
-                ? labels[developer?.status || 'waiting']
-                : 'Hooks are off'}
-            </span>
-            {dirty && <span className="site-developer-unsaved">Unsaved</span>}
-          </div>
-        </div>
+        {toolbarTarget ? createPortal(toolbar, toolbarTarget) : toolbar}
         <div className="site-hooks-layout">
           <aside className="site-hooks-sidebar" aria-label="Site hooks">
             <div className="site-hooks-sidebar-heading">
@@ -232,6 +278,115 @@ export function SiteDeveloperPanel({
           <div className="site-hook-detail">
             <div className="site-hook-selection">
               <h2>{selectedHook?.name || 'Default hook'}</h2>
+              <div className="site-hook-editor-actions">
+                <HookAISetup
+                  disabled={disabled || dirty}
+                  onAsk={(outcome) => askAI(false, outcome)}
+                />
+                <HookHistory
+                  revisions={developer?.revisions || []}
+                  hookId={hookId}
+                  disabled={disabled || dirty}
+                  onRestore={(previous) => {
+                    const historical = previous.hooks?.find(
+                      (hook) => hook.id === hookId
+                    );
+                    const config =
+                      selectedHook && historical
+                        ? {
+                            ...draft,
+                            hooks: draft.hooks?.map((hook) =>
+                              hook.id === hookId
+                                ? {
+                                    ...hook,
+                                    before: historical.before,
+                                    after: historical.after,
+                                    css: historical.css,
+                                    name: historical.name,
+                                    path: historical.path,
+                                  }
+                                : hook
+                            ),
+                          }
+                        : {
+                            ...draft,
+                            before: previous.before,
+                            after: previous.after,
+                            css: previous.css,
+                          };
+                    setDraft(config);
+                    send('set-site-developer', { developer: config });
+                  }}
+                />
+                <HookPresets
+                  stage={editor}
+                  source={code[editor]}
+                  canRun={!dirty}
+                  onInsert={(source, targetStage = editor) => {
+                    updateCode({
+                      [targetStage]: code[targetStage].trim()
+                        ? `${code[targetStage]}\n\n${
+                            targetStage === 'css'
+                              ? source
+                              : `;\n{\n${source}\n}`
+                          }`
+                        : source,
+                    });
+                    setEditor(targetStage);
+                  }}
+                  onAsk={(outcome) => askAI(false, outcome)}
+                  disabled={disabled}
+                  onEnable={(example) => {
+                    const id = `preset-${example.id}`;
+                    const existing = draft.hooks?.find(
+                      (hook) => hook.id === id
+                    );
+                    if (!existing && (draft.hooks?.length || 0) >= 20) {
+                      setImportError(
+                        'This site already has 20 hooks. Remove one before adding another.'
+                      );
+                      return;
+                    }
+                    const config = {
+                      ...draft,
+                      enabled: true,
+                      hooks: existing
+                        ? draft.hooks?.map((hook) =>
+                            hook.id === id ? { ...hook, enabled: true } : hook
+                          )
+                        : [
+                            ...(draft.hooks || []),
+                            {
+                              id,
+                              name: example.name,
+                              path: '/*',
+                              enabled: true,
+                              before: '',
+                              after: '',
+                              css: '',
+                              [example.stage]: example.source,
+                            },
+                          ],
+                    };
+                    setDraft(config);
+                    setHookId(id);
+                    setEditor(example.stage);
+                    send('set-site-developer', {
+                      developer: config,
+                      run: true,
+                    });
+                  }}
+                />
+                <Button
+                  size="1"
+                  variant="ghost"
+                  color="gray"
+                  disabled={disabled}
+                  onClick={() => importInput.current?.click()}
+                >
+                  Import
+                </Button>
+              </div>
               <div className="site-hook-options">
                 {selectedHook ? (
                   <>
@@ -316,49 +471,24 @@ export function SiteDeveloperPanel({
                   onValueChange={(value) => setEditor(value as typeof editor)}
                   className="site-hook-editor"
                 >
-                  <Tabs.List aria-label="Hook stage">
-                    <Tabs.Trigger value="before">Before load</Tabs.Trigger>
-                    <Tabs.Trigger value="after">After load</Tabs.Trigger>
-                    <Tabs.Trigger value="css">CSS</Tabs.Trigger>
-                  </Tabs.List>
+                  <div className="site-hook-editor-toolbar">
+                    <Tabs.List aria-label="Hook stage">
+                      {(['before', 'after', 'css'] as const).map((stage) => (
+                        <div className="site-hook-stage-tab" key={stage}>
+                          <Tabs.Trigger value={stage}>
+                            {stageLabels[stage]}
+                          </Tabs.Trigger>
+                          <PreferenceHint label={stageLabels[stage]}>
+                            {stageHints[stage]}
+                          </PreferenceHint>
+                        </div>
+                      ))}
+                    </Tabs.List>
+                  </div>
                   <Tabs.Content
                     value={editor}
                     className="site-hook-editor-body"
                   >
-                    <div className="site-section-heading">
-                      <span className="site-hook-editor-label">
-                        {editor === 'css'
-                          ? 'Stylesheet'
-                          : 'JavaScript callback'}
-                      </span>
-                      <div className="site-hook-editor-actions">
-                        <HookExamples
-                          stage={editor}
-                          source={code[editor]}
-                          disabled={disabled}
-                          onInsert={(source) =>
-                            updateCode({
-                              [editor]: code[editor].trim()
-                                ? `${code[editor]}\n\n${
-                                    editor === 'css'
-                                      ? source
-                                      : `;\n{\n${source}\n}`
-                                  }`
-                                : source,
-                            })
-                          }
-                        />
-                        <Button
-                          size="1"
-                          variant="ghost"
-                          color="gray"
-                          disabled={disabled}
-                          onClick={() => importInput.current?.click()}
-                        >
-                          Import
-                        </Button>
-                      </div>
-                    </div>
                     <input
                       ref={importInput}
                       type="file"
@@ -394,12 +524,12 @@ export function SiteDeveloperPanel({
                     <CodeEditor
                       key={editor}
                       label={`${stageLabels[editor]} code`}
+                      jumpLine={jumpLine}
                       language={editor === 'css' ? 'css' : 'javascript'}
                       value={code[editor]}
                       disabled={disabled}
                       onChange={(value) => updateCode({ [editor]: value })}
                     />
-                    <p className="site-hook-stage-hint">{stageHints[editor]}</p>
                   </Tabs.Content>
                 </Tabs.Root>
               }
@@ -407,6 +537,19 @@ export function SiteDeveloperPanel({
                 <section aria-labelledby="site-developer-activity">
                   <div className="site-section-heading">
                     <h2 id="site-developer-activity">Run output</h2>
+                    {developer?.logs.some(
+                      (entry) => entry.level === 'error'
+                    ) && (
+                      <Button
+                        size="1"
+                        color="gray"
+                        variant="ghost"
+                        disabled={disabled || dirty}
+                        onClick={() => askAI(true)}
+                      >
+                        Fix with AI
+                      </Button>
+                    )}
                     <Button
                       size="1"
                       variant="ghost"
@@ -434,6 +577,41 @@ export function SiteDeveloperPanel({
                             {new Date(entry.time).toLocaleTimeString()}
                           </time>
                           <span>{entry.message}</span>
+                          {entry.level === 'error' &&
+                            /kudium-hook-(.+)-(before|after)\.js:(\d+)/.test(
+                              entry.message
+                            ) && (
+                              <button
+                                type="button"
+                                className="hook-error-line"
+                                onClick={() => {
+                                  const match = entry.message.match(
+                                    /kudium-hook-(.+)-(before|after)\.js:(\d+)/
+                                  )!;
+                                  let id: string;
+                                  try {
+                                    id = decodeURIComponent(match[1]);
+                                  } catch {
+                                    return;
+                                  }
+                                  if (
+                                    id !== 'default' &&
+                                    !draft.hooks?.some((hook) => hook.id === id)
+                                  )
+                                    return;
+                                  setHookId(
+                                    entry.hookId || (id === 'default' ? '' : id)
+                                  );
+                                  setEditor(match[2] as 'before' | 'after');
+                                  setJumpLine((previous) => ({
+                                    line: Math.max(1, Number(match[3]) - 3),
+                                    token: (previous?.token || 0) + 1,
+                                  }));
+                                }}
+                              >
+                                Go to line
+                              </button>
+                            )}
                         </div>
                       ))
                     ) : (
@@ -495,9 +673,7 @@ export function SiteDeveloperPanel({
       )}
       <footer className="site-settings-footer site-developer-footer">
         <span>
-          {dirty
-            ? 'Save changes before running.'
-            : 'Saved hooks run on the next page load.'}
+          {dirty ? 'Unsaved changes' : 'Saved · Run reloads this page'}
         </span>
         <Button
           variant="soft"
@@ -515,11 +691,25 @@ export function SiteDeveloperPanel({
           Save hooks
         </Button>
         <Button
-          disabled={disabled || dirty || !saved.enabled}
-          onClick={() => send('reload')}
+          disabled={
+            disabled ||
+            !validDeveloperConfig(draft) ||
+            developer?.status === 'running'
+          }
+          onClick={() => {
+            if (!draft.enabled || (selectedHook && !selectedHook.enabled)) {
+              setEnablePrompt({
+                config: draft,
+                hookId: selectedHook?.id || '',
+                run: true,
+              });
+              return;
+            }
+            send('set-site-developer', { developer: draft, run: true });
+          }}
         >
           <RotateCw size={14} />
-          Run
+          {dirty ? 'Save & Run' : 'Run'}
         </Button>
       </footer>
       <AlertDialog.Root
@@ -554,11 +744,14 @@ export function SiteDeveloperPanel({
                     ),
                   };
                   setDraft(config);
-                  send('set-site-developer', { developer: config });
+                  send('set-site-developer', {
+                    developer: config,
+                    run: enablePrompt.run,
+                  });
                   setEnablePrompt(undefined);
                 }}
               >
-                Enable hook
+                {enablePrompt?.run ? 'Enable & Run' : 'Enable hook'}
               </Button>
             </AlertDialog.Action>
           </div>

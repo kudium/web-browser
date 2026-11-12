@@ -9,9 +9,11 @@ import {
   Session,
   session,
   shell,
+  nativeTheme,
 } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { validActivitySound } from '../browser/activitySound';
 import { version as projectVersion } from '../../package.json';
 import { watchIPCRequest } from './ipcRequestBinding';
 import { validateAdvanced } from '../browser/advancedPreferences';
@@ -90,6 +92,18 @@ export function validatePreferences(
     throw new Error('Invalid preferences');
   const validated: Partial<BrowserPreferences> = {};
   Object.entries(patch).forEach(([key, value]) => {
+    if (key === 'activityNotifications' && typeof value === 'boolean') {
+      validated.activityNotifications = value;
+      return;
+    }
+    if (key === 'activitySoundName' && validActivitySound(value)) {
+      validated.activitySoundName = value;
+      return;
+    }
+    if (key === 'activitySound' && typeof value === 'boolean') {
+      validated.activitySound = value;
+      return;
+    }
     if (key === 'setupCompleted' && typeof value === 'boolean') {
       validated.setupCompleted = value;
       return;
@@ -291,6 +305,12 @@ export function registerPreferences(
   ipcMain.handle('ai-open-preferences', (event) => {
     ownerOf(event);
     openPage?.('ai');
+  });
+  ipcMain.handle('browser-native-appearance', (event, appearance: unknown) => {
+    ownerOf(event);
+    if (appearance !== 'system' && appearance !== 'light' && appearance !== 'dark')
+      throw new Error('Unknown appearance.');
+    nativeTheme.themeSource = appearance;
   });
   ipcMain.handle(
     'browser-preferences',

@@ -16,6 +16,13 @@ export const spaceColorNames = {
   amber: 'Gold',
   pink: 'Pink',
 };
+export const spaceColorValues = {
+  iris: '#5aaca8',
+  blue: '#6c9bd2',
+  green: '#76ad91',
+  amber: '#d2a35f',
+  pink: '#cd83aa',
+};
 export type SpaceColor = (typeof spaceColors)[number];
 export type SpaceIconName =
   | 'home'
@@ -45,11 +52,34 @@ export interface Space {
   iconImage?: string;
   iconEmoji?: string;
   customColor?: string;
+  frameColor?: string;
   id: string;
   name: string;
   color: SpaceColor;
   folders: { id: string; name: string }[];
   selectedAppId?: string;
+}
+export function spacePrimaryColor(space: Pick<Space, 'color' | 'customColor'>) {
+  return /^#[0-9a-f]{6}$/i.test(space.customColor || '')
+    ? space.customColor!
+    : spaceColorValues[space.color] || spaceColorValues.iris;
+}
+export function spaceFrameColor(
+  space: Pick<Space, 'color' | 'customColor' | 'frameColor'>
+) {
+  return /^#[0-9a-f]{6}$/i.test(space.frameColor || '')
+    ? space.frameColor!
+    : spacePrimaryColor(space);
+}
+export function primaryContrast(color: string) {
+  const channels = [1, 3, 5].map((offset) => {
+    const value = parseInt(color.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 >
+    0.179
+    ? '#102b29'
+    : '#ffffff';
 }
 export const SpaceManager = {
   getAll(): Space[] {
@@ -80,7 +110,13 @@ export const SpaceManager = {
             : [],
         };
         (
-          ['iconEmoji', 'iconImage', 'customColor', 'selectedAppId'] as const
+          [
+            'iconEmoji',
+            'iconImage',
+            'customColor',
+            'frameColor',
+            'selectedAppId',
+          ] as const
         ).forEach((key) => {
           if (typeof next[key] !== 'string') delete next[key];
         });
@@ -122,7 +158,7 @@ export const SpaceManager = {
     let selection: Record<string, string | undefined> = {};
     try {
       selection = JSON.parse(
-        sessionStorage.getItem('kudium-window-selected-tabs') || '{}'
+        LocalStorage.get('kudium-window-selected-tabs') || '{}'
       );
     } catch {
       /* First window selection. */
@@ -161,13 +197,13 @@ export const SpaceManager = {
       let selection: Record<string, string | undefined> = {};
       try {
         selection = JSON.parse(
-          sessionStorage.getItem('kudium-window-selected-tabs') || '{}'
+          LocalStorage.get('kudium-window-selected-tabs') || '{}'
         );
       } catch {
         /* First selection. */
       }
       selection[id] = changes.selectedAppId;
-      sessionStorage.setItem(
+      LocalStorage.set(
         'kudium-window-selected-tabs',
         JSON.stringify(selection)
       );

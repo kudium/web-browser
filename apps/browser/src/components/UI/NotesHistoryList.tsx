@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { TextField } from '@radix-ui/themes';
 import { Check, X, Pencil, Trash2, LockKeyhole } from 'lucide-react';
 import type { VaultSummary } from '../../browser/passwordManager';
@@ -25,16 +25,10 @@ export function NotesHistoryList({
   onDelete: (note: VaultSummary) => void;
   onReorder: (id: string, beforeId: string | null) => void;
 }) {
-  const selectionTimer = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(() => () => clearTimeout(selectionTimer.current), []);
-  useEffect(() => {
-    if (busy) clearTimeout(selectionTimer.current);
-  }, [busy]);
   const [editing, setEditing] = useState<string>();
   const [name, setName] = useState('');
   const [dragging, setDragging] = useState<string>();
   const rename = (note: VaultSummary) => {
-    clearTimeout(selectionTimer.current);
     setName(note.title);
     setEditing(note.id);
   };
@@ -67,7 +61,6 @@ export function NotesHistoryList({
               }`}
               draggable={!busy && !searching && editing !== note.id}
               onDragStart={(event) => {
-                clearTimeout(selectionTimer.current);
                 setDragging(note.id);
                 event.dataTransfer.setData(
                   'application/x-kudiumbrowser-note',
@@ -150,16 +143,7 @@ export function NotesHistoryList({
                     aria-label={note.title || 'Untitled note'}
                     aria-pressed={selectedId === note.id}
                     disabled={busy}
-                    onClick={(event) => {
-                      clearTimeout(selectionTimer.current);
-                      if (event.detail === 0) onSelect(note);
-                      else if (event.detail === 1)
-                        selectionTimer.current = setTimeout(
-                          () => onSelect(note),
-                          350
-                        );
-                    }}
-                    onDoubleClick={() => rename(note)}
+                    onClick={() => onSelect(note)}
                     onKeyDown={(event) => {
                       if (event.key === 'F2') {
                         event.preventDefault();
@@ -182,8 +166,8 @@ export function NotesHistoryList({
                         {note.scope
                           ? groupNames[note.scope] || 'Unavailable group'
                           : note.sensitive
-                            ? 'Locked note'
-                            : note.preview?.trim() || 'Personal note'}
+                          ? 'Locked note'
+                          : note.preview?.trim() || 'Personal note'}
                       </span>
                     </span>
                     {note.asRead === false && (
@@ -212,7 +196,6 @@ export function NotesHistoryList({
                       title="Delete note"
                       disabled={busy}
                       onClick={() => {
-                        clearTimeout(selectionTimer.current);
                         onDelete(note);
                       }}
                     >
@@ -246,7 +229,6 @@ export function NotesHistoryList({
             <ContextMenu.Item
               disabled={busy}
               onSelect={() => {
-                clearTimeout(selectionTimer.current);
                 onDelete(note);
               }}
             >

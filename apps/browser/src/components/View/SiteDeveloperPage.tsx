@@ -5,6 +5,9 @@ import type { SiteDeveloperWindowState } from '../../browser/siteDeveloper';
 import { SiteDeveloperPanel } from '../UI/SiteDeveloperPanel';
 
 export function SiteDeveloperPage() {
+  const [toolbarTarget, setToolbarTarget] = useState<HTMLDivElement | null>(
+    null
+  );
   const [state, setState] = useState<SiteDeveloperWindowState>();
   useEffect(() => {
     const unsubscribe = window.electron.siteDeveloper.onState(setState);
@@ -47,6 +50,10 @@ export function SiteDeveloperPage() {
             <p>Loading site…</p>
           )}
         </div>
+        <div
+          className="site-developer-header-controls"
+          ref={setToolbarTarget}
+        />
         <IconButton
           variant="ghost"
           color="gray"
@@ -63,6 +70,7 @@ export function SiteDeveloperPage() {
         </p>
       )}
       <SiteDeveloperPanel
+        toolbarTarget={toolbarTarget}
         selectedHookId={state?.selectedHookId}
         origin={state?.pageURL || state?.origin}
         developer={state?.developer}

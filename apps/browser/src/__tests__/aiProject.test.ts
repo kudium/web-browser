@@ -295,3 +295,25 @@ it('allows ordinary project reads in Standard and file edits in Full while prese
   expect(requiresAIProjectApproval('full', false, false)).toBe(false);
   expect(requiresAIProjectApproval('ask', false, true)).toBe(true);
 });
+
+it('resolves reviewed file previews inside the linked project for opening in a tab', async () => {
+  await fs.writeFile(path.join(folder, 'home.html'), '<h1>Hello World</h1>');
+  const { options } = fixture();
+  const result = await aiProjectTool({
+    ...options,
+    name: 'project_files',
+    args: { fileRequest: { action: 'open-tab', path: 'home.html' } },
+  });
+  expect(result).toMatchObject({
+    path: 'home.html',
+    url: expect.stringMatching(/^file:/),
+  });
+  expect(options.review).toHaveBeenCalled();
+  await expect(
+    aiProjectTool({
+      ...options,
+      name: 'project_files',
+      args: { fileRequest: { action: 'open-tab', path: '../outside.html' } },
+    })
+  ).rejects.toThrow();
+});

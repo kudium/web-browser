@@ -119,11 +119,14 @@ export interface BrowserCommand {
     | 'unload-tab'
     | 'open-site-developer'
     | 'set-site-developer'
+    | 'ask-hook-ai'
     | 'clear-site-developer-logs'
     | 'activate-hook-notification'
     | 'revoke-hook-notification';
   url?: string;
   developer?: SiteDeveloperConfig;
+  run?: boolean;
+  prompt?: string;
   grantId?: string;
   hookId?: string;
   permission?: string;
@@ -195,6 +198,7 @@ export interface BrowserClient {
     action: AccountSyncAction,
     input?: AccountSyncInput
   ): Promise<AccountSyncStatus | RestoredWorkspace>;
+  nativeAppearance?: (appearance: 'system' | 'light' | 'dark') => Promise<void>;
   preferences(
     action: 'get' | 'open' | 'update',
     patch?: Partial<BrowserPreferences> & {

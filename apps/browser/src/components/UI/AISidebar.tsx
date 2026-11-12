@@ -2,6 +2,7 @@ import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sparkles,
   Settings2,
+  Code2,
   Square,
   ArrowUp,
   Hand,
@@ -20,6 +21,7 @@ import { AIThinkingSlider } from './AIThinkingSlider';
 import { isOllamaEndpoint } from '../../browser/aiProviders';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { AIComposerSuggestions } from './AIComposerSuggestions';
+import { useProjectFileSuggestions } from '../../utils/hooks/useProjectFileSuggestions';
 import { AISkill, skillCommands } from '../../browser/aiSkills';
 import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { AIStarterActions } from './AIStarterActions';
@@ -317,19 +319,68 @@ export function AISidebar({
       mounted = false;
     };
   }, [settings.endpoint, aiConnected]);
-  const slash = /(?:^|\s)\/([\p{L}\p{N}_-]*)$/u.exec(prompt.slice(0, cursor));
+  const [slashDismissed, setSlashDismissed] = useState(false);
+  const slash = slashDismissed
+    ? null
+    : /(?:^|\s)\/([^\s]*)$/u.exec(prompt.slice(0, cursor));
+  const referencedProjectGroup =
+    contexts.length > 0
+      ? groups.find((group) => group.id === contexts[0].groupId)
+      : undefined;
+  const projectGroup =
+    groupId !== null
+      ? groups.find((group) => group.id === groupId)
+      : groups.find((group) =>
+          group.tabs.some((tab) => tab.id === (focusedTabId || activeTabId))
+        ) || referencedProjectGroup;
+  const projectSourceId =
+    projectGroup?.tabs.find((tab) => tab.id === (focusedTabId || activeTabId))
+      ?.id || projectGroup?.tabs[0]?.id;
+  let projectQuery = slash?.[1];
+  try {
+    if (projectQuery !== undefined) projectQuery = decodeURI(projectQuery);
+  } catch {
+    /* Incomplete path escape while typing. */
+  }
+  const projectFiles = useProjectFileSuggestions(projectSourceId, projectQuery);
   const skillSuggestions = slash
-    ? skillCommands(chatSkills).filter(
-        (skill) =>
-          skill.enabled &&
-          skill.command.toLowerCase().includes(slash[1].toLowerCase())
-      )
+    ? [
+        ...skillCommands(chatSkills)
+          .filter(
+            (skill) =>
+              skill.enabled &&
+              skill.command.toLowerCase().includes(slash[1].toLowerCase())
+          )
+          .slice(0, 8)
+          .map((skill) => ({ ...skill, kind: 'skill' as const })),
+        ...projectFiles.entries.map((file) => ({
+          id: `project:${file.path}`,
+          command: `/${encodeURI(file.path)}${
+            file.kind === 'folder' ? '/' : ''
+          }`,
+          name: file.name,
+          description: `${file.kind === 'folder' ? 'Folder' : 'File'} · ${
+            projectGroup?.name || 'Project'
+          }`,
+          kind: file.kind,
+          path: file.path,
+        })),
+      ]
     : [];
   const insertSkill = (command: string) => {
     if (!slash) return;
     const start = cursor - slash[1].length - 1;
-    setPrompt(`${prompt.slice(0, start)}${command} ${prompt.slice(cursor)}`);
-    const position = start + command.length + 1;
+    const item = skillSuggestions.find((entry) => entry.command === command);
+    const folder = item?.kind === 'folder';
+    const insertion =
+      item?.kind === 'file' && projectGroup
+        ? `project file ${JSON.stringify(item.path)} in @${projectGroup.slug}`
+        : command;
+    const suffix = folder ? '' : ' ';
+    setPrompt(
+      `${prompt.slice(0, start)}${insertion}${suffix}${prompt.slice(cursor)}`
+    );
+    const position = start + insertion.length + suffix.length;
     setCursor(position);
     setMentionIndex(0);
     requestAnimationFrame(() => {
@@ -1148,6 +1199,14 @@ export function AISidebar({
       )}
       <button
         type="button"
+        aria-label="Open Developer"
+        title="Developer"
+        onClick={() => setPane('developer')}
+      >
+        <Code2 size={17} />
+      </button>
+      <button
+        type="button"
         aria-label="AI settings"
         title="Connection settings"
         onClick={openSettings}
@@ -1237,7 +1296,18 @@ export function AISidebar({
           id="ai-activity-panel"
           aria-label="Activity"
         >
-          <ActivityPage active />
+          <ActivityPage
+            active
+            onAskAI={() => {
+              const text =
+                'Help me set up a page hook that creates an Activity alert when something changes. Ask which website and change I want to monitor, then help me configure and enable the hook.';
+              setPane('assistant');
+              focusAssistantPanel('assistant');
+              setPrompt(text);
+              setCursor(text.length);
+              requestAnimationFrame(() => taskInput.current?.focus());
+            }}
+          />
         </div>
       </AssistantPanelHost>
       <AssistantPanelHost panel="notes" active={pane === 'notes'}>
@@ -1783,12 +1853,13 @@ export function AISidebar({
               placeholder={
                 (feedbackId && 'Reply to the question…') ||
                 (busy && 'Write a message to queue…') ||
-                'Ask anything, / for skills, @ for tabs…'
+                'Ask anything, / for skills or files, @ for tabs…'
               }
               value={prompt}
               maxLength={12000}
               disabled={changingChat}
               onChange={(event) => {
+                setSlashDismissed(false);
                 setPrompt(event.target.value);
                 setCursor(event.target.selectionStart);
                 setMentionIndex(0);
@@ -1809,6 +1880,16 @@ export function AISidebar({
               }
               onKeyDown={(event) => {
                 if (event.nativeEvent.isComposing) return;
+                if (
+                  slash &&
+                  projectFiles.loading &&
+                  !skillSuggestions.length &&
+                  !event.shiftKey &&
+                  ['Enter', 'Tab'].includes(event.key)
+                ) {
+                  event.preventDefault();
+                  return;
+                }
                 if (
                   skillSuggestions.length &&
                   !event.shiftKey &&
@@ -1856,6 +1937,7 @@ export function AISidebar({
                   return;
                 }
                 if (event.key === 'Escape') {
+                  setSlashDismissed(true);
                   setCursor(0);
                   return;
                 }
@@ -1883,19 +1965,31 @@ export function AISidebar({
                 ))}
               </div>
             )}
-            {!!(skillSuggestions.length || suggestions.length) && (
+            {!!(skillSuggestions.length || suggestions.length || slash) && (
               <AIComposerSuggestions
                 input={taskInput}
                 cursor={cursor}
                 value={prompt}
                 selectedIndex={mentionIndex}
               >
+                {slash && projectFiles.loading && (
+                  <small className="ai-context-notice">
+                    Finding project files…
+                  </small>
+                )}
+                {slash && !projectFiles.loading && !skillSuggestions.length && (
+                  <small className="ai-context-notice" role="status">
+                    {slash[1]
+                      ? 'No matching skills or project files. Try a name or folder path.'
+                      : 'No skills or project files available. Enable a skill in AI settings, or choose a group with a linked project folder.'}
+                  </small>
+                )}
                 {!!skillSuggestions.length && (
                   <div
                     className="ai-mentions"
                     id="ai-skill-commands"
                     role="listbox"
-                    aria-label="Skills"
+                    aria-label="Skills and project files"
                   >
                     {skillSuggestions.map((skill, index) => (
                       <button
@@ -1907,6 +2001,11 @@ export function AISidebar({
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => insertSkill(skill.command)}
                       >
+                        {skill.kind === 'skill' ? (
+                          <Sparkles size={14} />
+                        ) : (
+                          <FileText size={14} />
+                        )}
                         <span>
                           <strong>{skill.command}</strong>
                           <small>{skill.description || skill.name}</small>
@@ -1971,6 +2070,9 @@ export function AISidebar({
                 <GroupPicker
                   label="AI permissions"
                   triggerClassName="ai-access-picker"
+                  contentClassName="ai-access-popover"
+                  searchable={false}
+                  triggerContent={<ShieldCheck size={15} />}
                   optionIcon={accessIcon}
                   placeholder="Search access modes…"
                   disabled={
@@ -1987,7 +2089,12 @@ export function AISidebar({
                         ? ' · Task'
                         : ''
                     }`,
-                    detail: mode.detail,
+                    detail: {
+                      ask: 'Review every action',
+                      standard: 'Read freely, review interactions',
+                      full: 'Approve supported actions in scope',
+                    }[mode.id],
+                    hint: mode.detail,
                   }))}
                   value={permissions.effectiveMode}
                   onChange={changePermissions}

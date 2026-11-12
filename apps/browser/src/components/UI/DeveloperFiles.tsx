@@ -1,3 +1,4 @@
+import { DeveloperImagePreview } from './DeveloperImagePreview';
 /* Scrollable read-only previews need keyboard focus for scrolling. */
 /* eslint-disable jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-noninteractive-element-interactions, react/require-default-props, no-restricted-syntax, no-await-in-loop */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -70,6 +71,13 @@ export function DeveloperFiles({
     title: string;
   }>();
   const [itemName, setItemName] = useState('');
+  const [wrap, setWrap] = useState(
+    () => localStorage.getItem('kudium-developer-file-wrap') === 'true'
+  );
+  const toggleWrap = () => {
+    setWrap(!wrap);
+    localStorage.setItem('kudium-developer-file-wrap', String(!wrap));
+  };
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState<(() => void) | null>(null);
   const dirty = preview?.text !== undefined && text !== preview.text;
@@ -77,6 +85,7 @@ export function DeveloperFiles({
     `${sourceId}:${projectPath || projectName}:${path}`;
   const [hidden, setHidden] = useState(position.current.hidden);
   const [loading, setLoading] = useState(false);
+  const [listingLoading, setListingLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const guard = (action: () => void) => {
     if (busy || loading) return;
@@ -100,11 +109,13 @@ export function DeveloperFiles({
     if (preview) {
       const target =
         root.current?.querySelector<HTMLElement>('.cm-content') ||
-        root.current?.querySelector<HTMLElement>('.developer-file-preview') ||
+        root.current?.querySelector<HTMLElement>(
+          '.developer-file-editor-pane'
+        ) ||
         root.current?.querySelector<HTMLElement>(
           '[aria-label="Back to folder"]'
         );
-      target?.focus();
+      target?.focus({ preventScroll: true });
     } else if (hadPreview.current) {
       root.current?.querySelector<HTMLElement>('[role="tree"]')?.focus();
     }
@@ -114,6 +125,7 @@ export function DeveloperFiles({
     revision.current += 1;
     const { current } = revision;
     setLoading(true);
+    setListingLoading(action === 'list');
     setError('');
     setSaved(false);
     try {
@@ -140,7 +152,10 @@ export function DeveloperFiles({
         setError(projectErrorMessage(reason));
       return false;
     } finally {
-      if (mounted.current && current === revision.current) setLoading(false);
+      if (mounted.current && current === revision.current) {
+        setLoading(false);
+        setListingLoading(false);
+      }
     }
   };
   const loadRef = useRef(load);
@@ -194,7 +209,10 @@ export function DeveloperFiles({
     })),
   ];
   const open = (entry: ProjectFileEntry) => {
-    guard(() => load(entry.path, 'preview'));
+    if (busy || listingLoading) return;
+    const action = () => load(entry.path, 'preview');
+    if (dirty) setPending(() => action);
+    else action();
   };
   const save = async () => {
     if (!preview?.version || !dirty || busy || loading) return false;
@@ -401,7 +419,17 @@ export function DeveloperFiles({
         disabled: true,
       },
     ];
-    if (single && entry.kind === 'file')
+    if (single && entry.kind === 'file') {
+      items.push({
+        label: 'Reference in AI',
+        run: () => {
+          window.dispatchEvent(
+            new CustomEvent('kudiumbrowser-reference-project-file', {
+              detail: { sourceId, path: entry.path },
+            })
+          );
+        },
+      });
       items.push({
         label: 'Open in tab',
         run: () => {
@@ -412,6 +440,7 @@ export function DeveloperFiles({
           );
         },
       });
+    }
     if (!entry || (single && entry.kind === 'folder')) {
       try {
         const result = await window.electron.siteDeveloper.scripts(sourceId, {
@@ -668,7 +697,7 @@ export function DeveloperFiles({
           {error}
         </p>
       )}
-      {loading && (
+      {listingLoading && (
         <p role="status" className="developer-files-feedback">
           Loading files…
         </p>
@@ -735,12 +764,25 @@ export function DeveloperFiles({
               );
             }}
             className="developer-file-editor-pane"
+            tabIndex={-1}
             aria-label={`Preview of ${preview.name}`}
           >
             <div className="developer-file-preview-actions">
               <span title={preview.path}>
                 {preview.name} · {fileStatus}
               </span>
+              {preview.text !== undefined && (
+                <Button
+                  size="1"
+                  variant="ghost"
+                  color="gray"
+                  aria-pressed={wrap}
+                  onClick={toggleWrap}
+                  title="Wrap long lines"
+                >
+                  Wrap
+                </Button>
+              )}
               {preview.version && (
                 <>
                   <Button
@@ -773,18 +815,16 @@ export function DeveloperFiles({
               </Button>
             </div>
             {preview.imageURL ? (
-              <div className="developer-image-preview" key={preview.imageURL}>
-                <img
-                  src={preview.imageURL}
-                  alt={preview.name}
-                  onError={(event) => {
-                    event.currentTarget.hidden = true;
-                    setError(
-                      'This image format could not be displayed. Open it in your editor.'
-                    );
-                  }}
-                />
-              </div>
+              <DeveloperImagePreview
+                key={preview.path}
+                url={preview.imageURL}
+                name={preview.name}
+                onError={() =>
+                  setError(
+                    'This image format could not be displayed. Open it in your editor.'
+                  )
+                }
+              />
             ) : null}
             {!preview.imageURL &&
               (preview.text !== undefined || preview.media) && (
@@ -796,6 +836,8 @@ export function DeveloperFiles({
                   {preview.text !== undefined && (
                     <DeveloperFileEditor
                       key={preview.path}
+                      wrap={wrap}
+                      toggleWrap={toggleWrap}
                       name={preview.name}
                       value={text}
                       disabled={busy || loading || !preview.version}
@@ -852,7 +894,7 @@ export function DeveloperFiles({
               entries={listing.entries || []}
               hidden={hidden}
               query={query}
-              disabled={loading || busy}
+              disabled={listingLoading || busy}
               refreshKey={refreshKey}
               onOpen={open}
               onError={setError}

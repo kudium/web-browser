@@ -8,6 +8,11 @@ import { isBrowserCommand } from './browserRequests';
 import { resolveHtmlPath } from './util';
 import { protectWindowNavigation } from './windowNavigation';
 
+const editorContents = new WeakSet<WebContents>();
+export function isSiteDeveloperEditor(contents: WebContents) {
+  return editorContents.has(contents) && !contents.isDestroyed();
+}
+
 function editorSize() {
   const fallback = { width: 820, height: 740 };
   try {
@@ -98,6 +103,7 @@ export function registerSiteDeveloperWindows(
           : path.join(__dirname, '../../.erb/dll/preload.js'),
       },
     });
+    editorContents.add(editor.webContents);
     let resizeTimer: ReturnType<typeof setTimeout> | undefined;
     editor.on('resize', () => {
       clearTimeout(resizeTimer);
@@ -160,6 +166,7 @@ export function registerSiteDeveloperWindows(
         !isBrowserCommand(request) ||
         ![
           'set-site-developer',
+          'ask-hook-ai',
           'clear-site-developer-logs',
           'reload',
           'activate-hook-notification',
@@ -167,14 +174,16 @@ export function registerSiteDeveloperWindows(
         ].includes(request.action)
       )
         return;
+      if (request.action === 'ask-hook-ai') focus(id, target.groupId, 'page');
       // Ignore caller-supplied tab and URL, always use the main-owned binding.
       execute(event, {
         id,
         url: origin,
         action: request.action,
+        ...(request.action === 'ask-hook-ai' ? { prompt: request.prompt } : {}),
         ...(request.grantId ? { grantId: request.grantId } : {}),
         ...(request.action === 'set-site-developer'
-          ? { developer: request.developer }
+          ? { developer: request.developer, run: request.run }
           : {}),
       });
       update(true);

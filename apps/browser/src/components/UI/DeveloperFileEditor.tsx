@@ -5,6 +5,7 @@ import CodeMirror, {
 } from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { css } from '@codemirror/lang-css';
+import { html } from '@codemirror/lang-html';
 import {
   undo,
   redo,
@@ -22,6 +23,20 @@ import {
 } from './developerContextMenu';
 import { useAppearance } from '../../utils/appearance';
 
+export function developerFileLanguage(name: string) {
+  const language = [];
+  if (/\.(html?|xhtml)$/i.test(name)) language.push(html());
+  else if (/\.(css|scss)$/i.test(name)) language.push(css());
+  else if (/\.(js|jsx|ts|tsx|mjs|cjs|json)$/i.test(name))
+    language.push(
+      javascript({
+        typescript: /\.tsx?$/i.test(name),
+        jsx: /\.[jt]sx$/i.test(name),
+      })
+    );
+  return language;
+}
+
 export function DeveloperFileEditor({
   name,
   value,
@@ -29,7 +44,11 @@ export function DeveloperFileEditor({
   disabled,
   actions,
   onError,
+  wrap,
+  toggleWrap,
 }: {
+  wrap: boolean;
+  toggleWrap: () => void;
   name: string;
   value: string;
   onChange: (source: string) => void;
@@ -40,20 +59,12 @@ export function DeveloperFileEditor({
   const editor = useRef<ReactCodeMirrorRef>(null);
   const { appearance } = useAppearance();
   const extensions = useMemo(() => {
-    const language = [];
-    if (/\.(css|scss)$/i.test(name)) language.push(css());
-    else if (/\.(js|jsx|ts|tsx|mjs|cjs|json)$/i.test(name))
-      language.push(
-        javascript({
-          typescript: /\.tsx?$/i.test(name),
-          jsx: /\.[jt]sx$/i.test(name),
-        })
-      );
     return [
-      ...language,
+      ...developerFileLanguage(name),
+      ...(wrap ? [EditorView.lineWrapping] : []),
       EditorView.contentAttributes.of({ 'aria-label': `Editor for ${name}` }),
     ];
-  }, [name]);
+  }, [name, wrap]);
   const menu = () => {
     const view = editor.current?.view;
     if (!view) return;
@@ -116,11 +127,16 @@ export function DeveloperFileEditor({
           label: disabled ? 'Find…' : 'Find / Replace…',
           run: run(openSearchPanel),
         },
+        {
+          label: wrap ? 'Disable line wrapping' : 'Enable line wrapping',
+          run: toggleWrap,
+        },
         { label: 'Go to line…', run: run(gotoLine) },
         {
           label: 'Toggle comment',
           disabled:
-            disabled || !/\.(js|jsx|ts|tsx|mjs|cjs|css|scss)$/i.test(name),
+            disabled ||
+            !/\.(js|jsx|ts|tsx|mjs|cjs|css|scss|html?|xhtml)$/i.test(name),
           run: run(toggleComment),
         },
         { label: 'Indent selection', disabled, run: run(indentSelection) },

@@ -107,7 +107,12 @@ it('selects scope and model in the composer and expands scope explicitly for men
       tabCount: 1,
     }),
   };
-  Object.assign(window, { electron: { ai } });
+  const projectFiles = jest.fn().mockResolvedValue({
+    entries: [{ kind: 'file', name: 'home.html', path: 'src/home.html' }],
+  });
+  Object.assign(window, {
+    electron: { ai, siteDeveloper: { files: projectFiles } },
+  });
   const { rerender } = render(<AISidebar />);
   await screen.findByRole('button', { name: 'AI model' });
   rerender(
@@ -151,11 +156,19 @@ it('selects scope and model in the composer and expands scope explicitly for men
   ).not.toBeInTheDocument();
   fireEvent.keyDown(input, { key: 'Enter' });
   expect(input).toHaveValue('/Reply ');
+  fireEvent.change(input, { target: { value: '/home', selectionStart: 5 } });
+  fireEvent.click(
+    await screen.findByRole('option', { name: /src\/home.html/ })
+  );
+  expect(input).toHaveValue('project file "src/home.html" in @work ');
+  expect(
+    projectFiles.mock.calls.every(([, request]) => request.action === 'list')
+  ).toBe(true);
   expect(ai.run).not.toHaveBeenCalled();
   fireEvent.change(input, { target: { value: '/', selectionStart: 1 } });
   fireEvent.keyDown(input, { key: 'Escape' });
   expect(
-    screen.queryByRole('listbox', { name: 'Skills' })
+    screen.queryByRole('listbox', { name: 'Skills and project files' })
   ).not.toBeInTheDocument();
   fireEvent.change(input, {
     target: { value: 'Read @home/m', selectionStart: 12 },
@@ -210,6 +223,14 @@ it('offers thinking controls for Ollama and saves the selected setting', async (
   Object.assign(window, { electron: { ai } });
   render(<AISidebar />);
   const control = await screen.findByRole('button', { name: 'AI model' });
+  const input = screen.getByRole('textbox', { name: 'Task for AI' });
+  fireEvent.change(input, { target: { value: '/', selectionStart: 1 } });
+  expect(
+    await screen.findByText(/No skills or project files available/)
+  ).toBeVisible();
+  fireEvent.keyDown(input, { key: 'Escape' });
+  expect(screen.queryByText(/No skills or project files available/)).toBeNull();
+
   expect(
     screen.queryByRole('button', { name: 'Thinking level' })
   ).not.toBeInTheDocument();
@@ -224,10 +245,9 @@ it('offers thinking controls for Ollama and saves the selected setting', async (
       thinking: 'on',
     })
   );
-  expect(screen.getByRole('slider', { name: 'Thinking level' })).toHaveAttribute(
-    'aria-valuetext',
-    'On'
-  );
+  expect(
+    screen.getByRole('slider', { name: 'Thinking level' })
+  ).toHaveAttribute('aria-valuetext', 'On');
   expect(screen.getByRole('button', { name: 'AI model' })).toHaveTextContent(
     'On'
   );

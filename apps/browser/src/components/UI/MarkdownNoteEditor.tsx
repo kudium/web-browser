@@ -7,6 +7,7 @@ import { Markdown } from '@tiptap/markdown';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 import { browser } from '../../browser/client';
+import { useAIPagePreference } from '../../utils/useAIPagePreference';
 import { useAssistantPanelDocument } from './AssistantPanelContext';
 import type { NativeMenuItem } from '../../browser/nativeUi';
 
@@ -35,6 +36,7 @@ export const MarkdownNoteEditor = forwardRef<
   }
 >(({ markdown, onChange, onSelectionChange, onFocusTitle }, ref) => {
   const panelDocument = useAssistantPanelDocument();
+  const [wrap, setWrap] = useAIPagePreference('noteWrap', true);
   const editor = useEditor({
     shouldRerenderOnTransaction: false,
     extensions: [
@@ -101,6 +103,8 @@ export const MarkdownNoteEditor = forwardRef<
       enabled: hasSelection,
     });
     const items: NativeMenuItem[] = [
+      { id: 'wrap', label: 'Wrap text', type: 'checkbox', checked: wrap },
+      { type: 'separator' },
       { id: 'undo', label: 'Undo', enabled: editor.can().undo() },
       { id: 'redo', label: 'Redo', enabled: editor.can().redo() },
       { type: 'separator' },
@@ -130,6 +134,10 @@ export const MarkdownNoteEditor = forwardRef<
     ];
     editor.view.focus();
     const action = await browser.nativeMenu(items);
+    if (action === 'wrap') {
+      setWrap(!wrap);
+      return;
+    }
     if (!action || editor.isDestroyed || !editor.state.doc.eq(doc)) return;
     const chain = editor
       .chain()
@@ -231,6 +239,7 @@ export const MarkdownNoteEditor = forwardRef<
       editor={editor}
       className="notes-rich-surface"
       data-empty={empty}
+      data-wrap={wrap}
       onContextMenu={(event) => {
         event.preventDefault();
         event.stopPropagation();

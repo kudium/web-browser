@@ -20,6 +20,7 @@ import {
   Dialog,
 } from '@radix-ui/themes';
 import {
+  ListFilter,
   Trash2,
   Minus,
   Plus,
@@ -34,6 +35,7 @@ import {
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useAIPagePreference } from '../../utils/useAIPagePreference';
+import { browser } from '../../browser/client';
 import type { IApp } from '../../types';
 import type { VaultItem, VaultSummary } from '../../browser/passwordManager';
 import { personalDataScope } from '../../utils/groups';
@@ -64,14 +66,24 @@ export function NotesPage({
   const currentDraft = useRef<VaultItem>();
   currentDraft.current = draft;
   const [query, setQuery] = useState('');
-  const [scope] = useState(initialScope || 'all');
+  const [scope, setScope] = useState(initialScope || 'all');
+  useEffect(() => {
+    setScope(initialScope || 'all');
+  }, [initialScope]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyPinned, setHistoryPinned] = useState(false);
   const [fontSize, setFontSize] = useAIPagePreference('noteFontSize', 16);
+  const [wrap, setWrap] = useAIPagePreference('noteWrap', true);
   const [formatOpen, setFormatOpen] = useState(false);
   const [markdownMode, setMarkdownMode] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const pageElement = useRef<HTMLElement>(null);
   const history = useRef<HTMLDivElement>(null);
+  const revealEditor = () => {
+    // Match the CSS breakpoint where the list covers the editor.
+    const width = pageElement.current?.getBoundingClientRect().width || 0;
+    if (!historyPinned || (width > 0 && width < 540)) setHistoryOpen(false);
+  };
   const historyToggle = useRef<HTMLButtonElement>(null);
   const [textSelected, setTextSelected] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -209,11 +221,13 @@ export function NotesPage({
       const target = event.target as Element;
       if (
         !history.current?.contains(target) &&
+        !target.closest('.notes-group-filter-popover') &&
         !target.closest('[aria-controls="notes-history-panel"]')
       )
         setHistoryOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
+      if (panelDocument.querySelector('.notes-group-filter-popover')) return;
       if (event.key === 'Escape') setHistoryOpen(false);
     };
     panelDocument.addEventListener('pointerdown', outside, true);
@@ -247,7 +261,7 @@ export function NotesPage({
       setDraft(item);
       setDirty(false);
       await refresh();
-      if (!historyPinned) setHistoryOpen(false);
+      revealEditor();
     });
   const select = (note: VaultSummary) =>
     run(async () => {
@@ -260,6 +274,9 @@ export function NotesPage({
       });
       if (epoch !== privacyEpoch.current) return;
       const opened = item as VaultItem;
+      setDraft(opened);
+      setDirty(false);
+      revealEditor();
       if (opened.asRead === false) {
         opened.asRead = true;
         await window.electron.passwordManager({
@@ -269,9 +286,6 @@ export function NotesPage({
         });
         await refresh();
       }
-      setDraft(opened);
-      setDirty(false);
-      if (!historyPinned) setHistoryOpen(false);
     });
   useEffect(() => {
     const timer = setInterval(() => {
@@ -346,6 +360,32 @@ export function NotesPage({
     });
     return renamed;
   };
+  const groupFilter = (
+    <GroupPicker
+      label="Filter notes by group"
+      triggerClassName={`notes-filter-button ${
+        scope !== 'all' ? 'notes-filter-active' : ''
+      }`}
+      triggerContent={<ListFilter size={16} />}
+      contentClassName="notes-group-filter-popover"
+      disabled={busy}
+      value={scope}
+      onChange={setScope}
+      options={[
+        { id: 'all', name: 'All notes' },
+        ...(notes.some((note) => !note.scope)
+          ? [{ id: 'browser', name: 'Personal notes' }]
+          : []),
+        ...groups
+          .filter(([id]) => notes.some((note) => note.scope === id))
+          .map(([id, tab]) => ({
+            id,
+            name: tab.sessionName || tab.name,
+            group: tab,
+          })),
+      ]}
+    />
+  );
   const visible = orderedNotes
     .filter(
       (note) =>
@@ -356,6 +396,7 @@ export function NotesPage({
     .slice(0, 100);
   return (
     <section
+      ref={pageElement}
       className={`notes-page ${historyOpen ? 'ai-history-open' : ''} ${
         historyPinned ? 'ai-history-pinned' : ''
       } ${draft ? 'notes-has-draft' : 'notes-library-only'}`}
@@ -379,12 +420,15 @@ export function NotesPage({
             }}
             onNew={create}
           >
-            <HistorySearchInput
-              label="Search note titles"
-              placeholder="Search notes"
-              value={query}
-              onChange={setQuery}
-            />
+            <div className="notes-search-controls">
+              <HistorySearchInput
+                label="Search note titles"
+                placeholder="Search notes"
+                value={query}
+                onChange={setQuery}
+              />
+              {groupFilter}
+            </div>
             <NotesHistoryList
               notes={visible}
               groupNames={Object.fromEntries(
@@ -399,7 +443,7 @@ export function NotesPage({
               onReorder={reorder}
             />
             {notes.length > visible.length && (
-              <small>Search to find more notes.</small>
+              <small>{visible.length} matching notes</small>
             )}
           </HistorySidebarFrame>
         </div>
@@ -699,7 +743,7 @@ export function NotesPage({
       </AssistantPageHeader>
       <div
         className="notes-editor"
-        hidden={!draft && historyOpen}
+        hidden={!draft && historyOpen && !historyPinned}
         style={{ '--note-font-size': `${fontSize}px` } as CSSProperties}
       >
         {draft ? (
@@ -740,6 +784,29 @@ export function NotesPage({
                 key={draft.id}
                 ref={sourceInput}
                 className="notes-markdown-source"
+                wrap={wrap ? 'soft' : 'off'}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  browser
+                    .nativeMenu([
+                      {
+                        id: 'wrap',
+                        label: 'Wrap text',
+                        type: 'checkbox',
+                        checked: wrap,
+                      },
+                      { type: 'separator' },
+                      { label: 'Cut', role: 'cut' },
+                      { label: 'Copy', role: 'copy' },
+                      { label: 'Paste', role: 'paste' },
+                      { label: 'Select All', role: 'selectAll' },
+                    ])
+                    .then((action) => {
+                      if (action === 'wrap') setWrap(!wrap);
+                    })
+                    .catch(() => {});
+                }}
                 aria-label="Note Markdown source"
                 placeholder="Write Markdown…"
                 value={draft.notes || ''}
@@ -778,6 +845,8 @@ export function NotesPage({
               </Suspense>
             )}
           </>
+        ) : historyOpen && historyPinned ? (
+          <p className="notes-sidebar-empty">Select a note to start reading.</p>
         ) : (
           !historyOpen &&
           (notes.some(
@@ -786,12 +855,15 @@ export function NotesPage({
               (scope === 'browser' ? !note.scope : note.scope === scope)
           ) ? (
             <div className="notes-landing-list">
-              <HistorySearchInput
-                label="Search note titles"
-                placeholder="Search notes"
-                value={query}
-                onChange={setQuery}
-              />
+              <div className="notes-search-controls">
+                <HistorySearchInput
+                  label="Search note titles"
+                  placeholder="Search notes"
+                  value={query}
+                  onChange={setQuery}
+                />
+                {groupFilter}
+              </div>
               <NotesHistoryList
                 notes={visible}
                 groupNames={Object.fromEntries(

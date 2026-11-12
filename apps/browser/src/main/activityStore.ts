@@ -9,6 +9,7 @@ export class ActivityStore {
 
   constructor(
     private persistence: {
+      created?: (entry: BrowserActivity) => void;
       load: () => BrowserActivity[];
       save: (entries: BrowserActivity[]) => void;
     },
@@ -39,11 +40,17 @@ export class ActivityStore {
     const next = [activity, ...this.all()].slice(0, 1000);
     this.persistence.save(next);
     this.entries = next;
+    try {
+      this.persistence.created?.(activity);
+    } catch {
+      /* Notification failures must not undo a saved activity. */
+    }
     return { ...activity, deepLink: activityLink(activity.id) };
   }
 
-  delete(id: string) {
-    const next = this.all().filter((entry) => entry.id !== id);
+  delete(id: string | string[]) {
+    const ids = new Set(Array.isArray(id) ? id : [id]);
+    const next = this.all().filter((entry) => !ids.has(entry.id));
     this.persistence.save(next);
     this.entries = next;
   }

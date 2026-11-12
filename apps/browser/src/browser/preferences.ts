@@ -1,3 +1,4 @@
+import type { ActivitySoundName } from './activitySound';
 import { AdvancedPreferences, defaultAdvanced } from './advancedPreferences';
 import { defaultSyncSettings, SyncSettings } from './cloudSync';
 import { defaultShortcuts, ShortcutBindings } from './shortcuts';
@@ -37,6 +38,9 @@ export interface BrowserPreferences {
   defaultFontSize: number;
   permissions: 'ask' | 'block';
   allowPopups: boolean;
+  activityNotifications: boolean;
+  activitySoundName: ActivitySoundName;
+  activitySound: boolean;
   askDownloadLocation: boolean;
   downloadDirectory: string;
 }
@@ -73,6 +77,9 @@ export const defaultPreferences: BrowserPreferences = {
   defaultFontSize: 16,
   permissions: 'ask',
   allowPopups: true,
+  activityNotifications: false,
+  activitySoundName: 'chime',
+  activitySound: true,
   askDownloadLocation: true,
   downloadDirectory: '',
 };

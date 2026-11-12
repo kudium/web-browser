@@ -205,16 +205,22 @@ const electronHandler = {
     return invokeWhenReady('browser-migration', action, input);
   },
   activity(request: {
-    action: 'list' | 'read' | 'readAll' | 'delete' | 'disableHook';
+    action: 'list' | 'read' | 'readAll' | 'clearAll' | 'testSound' | 'delete' | 'disableHook';
     id?: string;
   }): Promise<import('../browser/activity').BrowserActivity[] | undefined> {
     return invokeWhenReady('browser-activity', request);
   },
   onActivityChanged(callback: () => void) {
     const listener = () => callback();
+    const open = (_event: Electron.IpcRendererEvent, id: string) => {
+      if (typeof id === 'string') window.dispatchEvent(new CustomEvent('kudiumbrowser-open-activity', { detail: id }));
+    };
     ipcRenderer.on('browser-activity-changed', listener);
-    return () =>
+    ipcRenderer.on('browser-open-activity', open);
+    return () => {
       ipcRenderer.removeListener('browser-activity-changed', listener);
+      ipcRenderer.removeListener('browser-open-activity', open);
+    };
   },
   onPasswordManagerLock(callback: () => void) {
     const listener = () => callback();
@@ -454,6 +460,16 @@ const electronHandler = {
     },
   },
   siteDeveloper: {
+    onAskAI(callback: (prompt: string) => void) {
+      const listener = (_event: Electron.IpcRendererEvent, prompt: unknown) => {
+        if (typeof prompt === 'string' && prompt.length <= 30000) callback(prompt);
+      };
+      ipcRenderer.on('browser-hook-ai', listener);
+      return () => { ipcRenderer.removeListener('browser-hook-ai', listener); };
+    },
+    language(request: import('../browser/hookLanguage').HookLanguageRequest): Promise<import('../browser/hookLanguage').HookLanguageResult> {
+      return invokeWhenReady('hook-language', request);
+    },
     drop(
       file: File,
       spaceId: string
@@ -691,6 +707,9 @@ const electronHandler = {
       input?: AccountSyncInput
     ): Promise<AccountSyncStatus | RestoredWorkspace> {
       return invokeWhenReady('account-sync', action, input);
+    },
+    nativeAppearance(appearance: 'system' | 'light' | 'dark'): Promise<void> {
+      return ipcRenderer.invoke('browser-native-appearance', appearance);
     },
     preferences(
       action: 'get' | 'open' | 'update',

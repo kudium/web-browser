@@ -3,7 +3,11 @@
     "incremental": true,
     "target": "es2021",
     "module": "commonjs",
-    "lib": ["dom", "es2021", "es2022.intl"],
+    "lib": [
+      "dom",
+      "es2021",
+      "es2022.intl"
+    ],
     "jsx": "react-jsx",
     "strict": true,
     "sourceMap": true,
@@ -16,5 +20,12 @@
     "allowJs": true,
     "outDir": ".erb/dll"
   },
-  "exclude": ["demo", "test", "release/build", "release/app/dist", ".erb/dll"]
+  "exclude": [
+    "demo",
+    "test",
+    "release/build",
+    "release/app/dist",
+    ".erb/dll",
+    "assets/hook-language"
+  ]
 }

@@ -101,6 +101,7 @@ export async function aiProjectTool(options: {
       ![
         'list',
         'preview',
+        'open-tab',
         'save',
         'create-file',
         'create-folder',

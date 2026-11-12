@@ -65,6 +65,11 @@ it('navigates folders, previews escaped text and returns to its folder', async (
     ((await screen.findByLabelText('Editor for app.ts')) as HTMLTextAreaElement)
       .value
   ).toBe('<script>hello</script>');
+  const wrap = screen.getByRole('button', { name: 'Wrap' });
+  expect(wrap.getAttribute('aria-pressed')).toBe('false');
+  fireEvent.click(wrap);
+  expect(wrap.getAttribute('aria-pressed')).toBe('true');
+  expect(localStorage.getItem('kudium-developer-file-wrap')).toBe('true');
   expect(document.querySelector('.developer-file-preview script')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Back to folder' }));
   expect(screen.getByRole('button', { name: 'app.ts' })).toBeTruthy();
@@ -429,12 +434,29 @@ it('offers contextual file actions, copies the clicked path and creates files fr
   const labels = nativeMenu.mock.calls[0][0].map((item: any) => item.label);
   expect(labels).toEqual(
     expect.arrayContaining([
+      'Reference in AI',
       'Open in sidebar',
       'Rename…',
       'Duplicate file…',
       'Move to Trash',
       'Open system terminal here',
     ])
+  );
+  const referenced = jest.fn();
+  window.addEventListener('kudiumbrowser-reference-project-file', referenced);
+  nativeMenu.mockImplementationOnce(
+    async (items) =>
+      items.find((item: any) => item.label === 'Reference in AI').id
+  );
+  fireEvent.contextMenu(file);
+  await waitFor(() => expect(referenced).toHaveBeenCalledTimes(1));
+  expect(referenced.mock.calls[0][0].detail).toEqual({
+    sourceId: 'context',
+    path: 'app.ts',
+  });
+  window.removeEventListener(
+    'kudiumbrowser-reference-project-file',
+    referenced
   );
   expect(labels).not.toContain('Cut');
   expect(screen.queryByRole('button', { name: 'Close files' })).toBeNull();
@@ -510,4 +532,48 @@ it('keeps file drags out of the tree backend that cancels unregistered HTML5 sou
   } finally {
     window.removeEventListener('dragstart', cancelUnknownSource);
   }
+});
+
+it('keeps the tree enabled and cached while loading a file preview', async () => {
+  files.mockResolvedValueOnce({
+    path: '',
+    entries: [{ name: 'image.png', path: 'image.png', kind: 'file' }],
+  });
+  render(
+    <Theme>
+      <DeveloperFiles sourceId="one" projectName="Project" />
+    </Theme>
+  );
+  const file = await screen.findByRole('button', { name: 'image.png' });
+  let finish!: (value: any) => void;
+  files.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  fireEvent.click(file);
+  expect((file as HTMLButtonElement).disabled).toBe(false);
+  expect(screen.queryByText('Loading files…')).toBeNull();
+  await act(async () =>
+    finish({
+      path: 'image.png',
+      file: {
+        name: 'image.png',
+        path: 'image.png',
+        size: 10,
+        imageURL: 'data:image/png;base64,AA==',
+      },
+    })
+  );
+  expect(screen.getByRole('button', { name: 'image.png' })).toBe(file);
+  expect(document.activeElement).toBe(
+    screen.getByLabelText('Preview of image.png')
+  );
+  expect(document.activeElement).not.toBe(
+    screen.getByRole('button', { name: 'Back to folder' })
+  );
+  expect(
+    files.mock.calls.filter(([, request]) => request.action === 'list')
+  ).toHaveLength(1);
 });

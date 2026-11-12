@@ -71,6 +71,7 @@ import {
   siteOrigin,
 } from './siteSettings';
 import { developerState, resetDeveloperState } from './siteDeveloper';
+import { hookConfigDiff } from './hookReview';
 import { showBrowserDialog } from './dialogs';
 import { aiDisclosureDetail } from './aiDisclosurePresentation';
 import { aiProjectTool, requiresAIProjectApproval } from './aiProject';
@@ -1934,8 +1935,8 @@ export function registerAI(
           'Project tools are available only in the in-app AI chat.'
         );
       if (!tab) throw new Error('Choose a group tab with a linked project.');
-      return bindAction(tab, signal, (check) =>
-        aiProjectTool({
+      return bindAction(tab, signal, async (check) => {
+        const result = await aiProjectTool({
           host,
           sourceId: tab.id,
           name: name as AIProjectTool,
@@ -1966,8 +1967,42 @@ export function registerAI(
                 'User declined project access. Do not retry this action.'
               );
           },
-        })
-      );
+        });
+        if (
+          name === 'project_files' &&
+          (args.fileRequest as { action?: string } | undefined)?.action ===
+            'open-tab'
+        ) {
+          const file = result as { url?: string; path: string };
+          if (!file.url || !access.createTab)
+            throw new Error(
+              'File preview tabs are unavailable in this window.'
+            );
+          const item: IApp = {
+            ...tab,
+            id: randomUUID(),
+            url: file.url,
+            name: file.path.split(/[\\/]/).pop() || 'File',
+            icon: '',
+            archived: false,
+            favorite: false,
+            pinned: false,
+            customName: undefined,
+            openerTabId: undefined,
+            restorationId: undefined,
+          };
+          await access.createTab(item, signal);
+          check();
+          if (
+            !access
+              .tabs()
+              .some((entry) => entry.id === item.id && !entry.archived)
+          )
+            throw new Error('The file preview tab was not confirmed.');
+          return { ...file, tabId: item.id, opened: true };
+        }
+        return result;
+      });
     }
     const creatingGroup = name === 'create_group';
     const groupName = creatingGroup ? aiNewGroupName(args.name) : undefined;
@@ -2287,19 +2322,8 @@ export function registerAI(
                 }. Credentials stay local. This permission lasts for this browser session and can be revoked in Developer.\n`
               : ''
           }Monitor only while the page is loaded. No test message is sent during setup.`,
-          technicalDetailLabel: 'Review script',
-          technicalDetail: `Before load:\n${config.before}\n\nAfter load:\n${
-            config.after
-          }\n\nCSS:\n${config.css}\n\n${(config.hooks || [])
-            .map(
-              (hook) =>
-                `${hook.name} · ${hook.enabled ? 'Enabled' : 'Disabled'} · ${
-                  hook.path
-                }\nBefore load:\n${hook.before}\nAfter load:\n${
-                  hook.after
-                }\nCSS:\n${hook.css}`
-            )
-            .join('\n\n')}`,
+          technicalDetailLabel: 'Review changes',
+          technicalDetail: hookConfigDiff(currentConfig, config),
           buttons: ['Cancel', 'Save and allow setup'],
           defaultId: 0,
           cancelId: 0,
@@ -4612,7 +4636,13 @@ export function registerAI(
         inferencePending = true;
         compactAIToolContext(messages);
         const runtimeGuide = catalog.guidance();
-        if (runtimeGuide && !messages.some((message) => message.role === 'system' && message.content === runtimeGuide))
+        if (
+          runtimeGuide &&
+          !messages.some(
+            (message) =>
+              message.role === 'system' && message.content === runtimeGuide
+          )
+        )
           messages.push({ role: 'system', content: runtimeGuide });
         catalog.recordRequest();
         const payload = await requestAIProvider(
@@ -4686,7 +4716,10 @@ export function registerAI(
               ? { contextNotice: historyContext.notice }
               : {}),
             ...(!message.tool_calls?.length
-              ? { usage: { ...usage.snapshot(), ...catalog.diagnostics() }, execution: execution.snapshot() }
+              ? {
+                  usage: { ...usage.snapshot(), ...catalog.diagnostics() },
+                  execution: execution.snapshot(),
+                }
               : {}),
           });
         if (!message.tool_calls?.length) {

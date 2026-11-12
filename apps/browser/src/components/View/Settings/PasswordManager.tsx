@@ -8,6 +8,7 @@ import {
   TextArea,
   Switch,
   Dialog,
+  SegmentedControl,
 } from '@radix-ui/themes';
 import {
   KeyRound,
@@ -1047,23 +1048,19 @@ export function PersonalData({ group, tabs }: { group?: IApp; tabs?: IApp[] }) {
   return (
     <>
       <div className="personal-page-tabs">
-        <Button
-          size="1"
-          variant={page === 'data' ? 'soft' : 'ghost'}
-          onClick={() => setPage('data')}
-        >
-          Personal Data
-        </Button>
-        <Button
-          size="1"
-          variant={page === 'notes' ? 'soft' : 'ghost'}
-          onClick={() => {
-            setNotesMounted(true);
-            setPage('notes');
+        <SegmentedControl.Root
+          value={page}
+          onValueChange={(value) => {
+            if (value === 'notes') setNotesMounted(true);
+            setPage(value);
           }}
+          aria-label="Personal data navigation"
         >
-          Notes
-        </Button>
+          <SegmentedControl.Item value="data">
+            Personal Data
+          </SegmentedControl.Item>
+          <SegmentedControl.Item value="notes">Notes</SegmentedControl.Item>
+        </SegmentedControl.Root>
       </div>
       <div hidden={page !== 'data'}>
         <PersonalDataRecords group={group} tabs={tabs} />

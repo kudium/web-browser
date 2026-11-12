@@ -10,10 +10,14 @@ import {
   MenuItemConstructorOptions,
   Session,
   session,
+  screen,
   shell,
   WebContents,
 } from 'electron';
-import { expiredRecord, retentionCutoff } from '../browser/systemSpaceRetention';
+import {
+  expiredRecord,
+  retentionCutoff,
+} from '../browser/systemSpaceRetention';
 import { nativeMenuLabels } from '../browser/menuLabels';
 import {
   DownloadAction,
@@ -26,6 +30,7 @@ import { ThumbnailCache } from './thumbnailCache';
 import { parseDownloadRecords } from './downloadRecords';
 import { loadDownloadImage } from './localImage';
 import { watchIPCRequest } from './ipcRequestBinding';
+import { animateDownload } from './downloadAnimation';
 
 const sessions = new Set<Session>();
 const items = new Map<string, DownloadItem>();
@@ -176,7 +181,11 @@ export function pruneDownloadHistory(days: number, now = Date.now()) {
   if (cutoff === undefined) return 0;
   const current = history();
   if (recoveryBlocked) return 0;
-  const next = current.filter(record => items.has(record.id) || !expiredRecord(record.endedAt ?? record.startedAt, cutoff));
+  const next = current.filter(
+    (record) =>
+      items.has(record.id) ||
+      !expiredRecord(record.endedAt ?? record.startedAt, cutoff)
+  );
   if (next.length === current.length) return 0;
   commitRecords(next);
   return current.length - next.length;
@@ -218,6 +227,20 @@ export function trackDownloads(browserSession: Session) {
   if (sessions.has(browserSession)) return;
   sessions.add(browserSession);
   browserSession.on('will-download', (_, item, contents) => {
+    const downloadPointer = screen.getCursorScreenPoint();
+    let animated = false;
+    const animate = () => {
+      if (
+        animated ||
+        !contents ||
+        !item.getSavePath() ||
+        item.getState() === 'cancelled'
+      )
+        return;
+      animated = true;
+      changed(true);
+      animateDownload(contents, downloadPointer).catch(() => {});
+    };
     const id = randomUUID();
     if (contents) sourceContents.set(id, contents.id);
     const preferences = getBrowserPreferences();
@@ -265,6 +288,9 @@ export function trackDownloads(browserSession: Session) {
     items.set(id, item);
     owners.set(item, browserSession);
     const update = () => {
+      // A suggested path alone does not mean the Save dialog was accepted.
+      if (item.getReceivedBytes() > 0 || item.getState() === 'completed')
+        animate();
       record.path = item.getSavePath() || record.path;
       record.name = path.basename(record.path);
       record.receivedBytes = item.getReceivedBytes();
@@ -285,6 +311,7 @@ export function trackDownloads(browserSession: Session) {
       changed(true);
     });
     changed(true);
+    if (!preferences.askDownloadLocation) animate();
   });
 }
 // Register before browser views load so downloads from native viewers and

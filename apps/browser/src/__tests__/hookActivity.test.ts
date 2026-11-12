@@ -7,6 +7,7 @@ import {
 import { browserActivity } from '../main/activity';
 import { saveNoteWithActivity } from '../main/noteActivity';
 import { getGroupLocks } from '../main/groupLocks';
+import { onSiteSettingsChanged } from '../main/siteSettings';
 
 const mockConfig = {
   enabled: true,
@@ -31,6 +32,7 @@ jest.mock('electron', () => ({
 }));
 jest.mock('../main/siteSettings', () => ({
   getSiteSettings: () => ({ developer: mockConfig }),
+  onSiteSettingsChanged: jest.fn(),
   siteOrigin: (url: string) => new URL(url).origin,
 }));
 jest.mock('../main/hookNotifications', () => ({
@@ -57,6 +59,8 @@ beforeEach(() => {
   const contents = {
     mainFrame: frame,
     once: jest.fn(),
+    on: jest.fn(),
+    send: jest.fn(),
     isDestroyed: () => false,
   };
   registerDeveloperPage(contents as any, 'profile', jest.fn(), () => ({
@@ -74,6 +78,42 @@ beforeEach(() => {
   )!;
   create.mockClear();
   (saveNoteWithActivity as jest.Mock).mockClear();
+});
+
+it('attributes runtime errors to the exact custom hook', () => {
+  const receive = (ipcMain.on as jest.Mock).mock.calls.find(
+    ([name]) => name === 'site-developer-event'
+  )![1];
+  receive(event, {
+    token,
+    kind: 'error',
+    value: 'Price watcher failed',
+    hookId: 'prices',
+    phase: 'after',
+    runId: `${token}:prices:after`,
+  });
+  expect(create).toHaveBeenLastCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      trigger: expect.objectContaining({
+        hookId: 'prices',
+        hookName: 'Price watcher',
+      }),
+    }),
+    false
+  );
+});
+
+it('stops loaded executions when hooks change through another surface', () => {
+  const changed = (onSiteSettingsChanged as jest.Mock).mock.calls[0][0];
+  const previous = mockConfig.after;
+  try {
+    mockConfig.after = 'log("replacement")';
+    changed('profile', 'https://example.com');
+    expect(event.sender.send).toHaveBeenCalledWith('site-developer-stop');
+  } finally {
+    mockConfig.after = previous;
+  }
 });
 test('hook alerts inherit host scope and default to the current page URL', () => {
   output(event, {
@@ -160,8 +200,8 @@ test('limits output volume across note and activity calls', () => {
   ).toThrow('limit');
 });
 test('isolated hook context exposes only the standard create APIs', () => {
-  expect(developerPreloadSource).toContain("kind: 'activity'");
-  expect(developerPreloadSource).toContain("kind: 'note'");
+  expect(developerPreloadSource).toContain("output('activity', input)");
+  expect(developerPreloadSource).toContain("output('note', input)");
   expect(developerPreloadSource).toContain('document, notify, activity, notes');
 });
 
