@@ -505,7 +505,7 @@ it('opens a folder in a new inbuilt terminal tab and reveals the terminal', asyn
   });
 });
 
-it('keeps file drags out of the tree backend that cancels unregistered HTML5 sources', async () => {
+it('cancels HTML dragging and hands the file to the native drag bridge', async () => {
   files.mockResolvedValueOnce({
     path: '',
     entries: [{ name: 'buy.png', path: 'buy.png', kind: 'file' }],
@@ -519,14 +519,16 @@ it('keeps file drags out of the tree backend that cancels unregistered HTML5 sou
   const cancelUnknownSource = jest.fn((event: Event) => event.preventDefault());
   window.addEventListener('dragstart', cancelUnknownSource);
   const setData = jest.fn();
+  files.mockResolvedValueOnce({ path: 'buy.png' });
   try {
     expect(
       fireEvent.dragStart(row, { dataTransfer: { setData, effectAllowed: '' } })
-    ).toBe(true);
-    expect(setData).toHaveBeenCalledWith(
-      'application/x-kudiumbrowser-project-file',
-      JSON.stringify({ sourceId: 'one', path: 'buy.png' })
-    );
+    ).toBe(false);
+    expect(setData).not.toHaveBeenCalled();
+    expect(files).toHaveBeenCalledWith('one', {
+      action: 'drag',
+      path: 'buy.png',
+    });
     expect(cancelUnknownSource).not.toHaveBeenCalled();
     fireEvent.dragEnd(row);
   } finally {
