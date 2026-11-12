@@ -475,23 +475,26 @@ it('bounds image previews separately and renders SVG as image data', async () =>
   expect(svg.file?.imageURL).toMatch(/^data:image\/svg\+xml;base64,/);
 });
 
-it('opens an encoded local file URL and refuses folders and outside project links', async () => {
-  fs.writeFileSync(path.join(root, 'a # b.png'), 'image');
-  const result = await projectFiles(
-    root,
-    { action: 'open-tab', path: 'a # b.png' },
-    access
-  );
-  expect(result.url).toContain('/a%20%23%20b.png');
-  await expect(
-    projectFiles(root, { action: 'open-tab', path: '' }, access)
-  ).rejects.toThrow('regular file');
-  fs.writeFileSync(path.join(fixture, 'outside'), 'private');
-  fs.symlinkSync(path.join(fixture, 'outside'), path.join(root, 'link'));
-  await expect(
-    projectFiles(root, { action: 'open-tab', path: 'link' }, access)
-  ).rejects.toThrow('outside');
-});
+it.each(['open-tab', 'drag'] as const)(
+  '%s resolves an encoded local file URL and refuses folders and outside project links',
+  async (action) => {
+    fs.writeFileSync(path.join(root, 'a # b.png'), 'image');
+    const result = await projectFiles(
+      root,
+      { action, path: 'a # b.png' },
+      access
+    );
+    expect(result.url).toContain('/a%20%23%20b.png');
+    await expect(
+      projectFiles(root, { action, path: '' }, access)
+    ).rejects.toThrow('regular file');
+    fs.writeFileSync(path.join(fixture, 'outside'), 'private');
+    fs.symlinkSync(path.join(fixture, 'outside'), path.join(root, 'link'));
+    await expect(
+      projectFiles(root, { action, path: 'link' }, access)
+    ).rejects.toThrow('outside');
+  }
+);
 
 it('loads PDF, video and audio bytes independently of text limits', async () => {
   const bytes = Buffer.alloc(300000, 1);

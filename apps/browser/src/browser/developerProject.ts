@@ -103,7 +103,11 @@ export interface ProjectScriptResult {
 }
 
 export type ProjectFilesRequest =
-  | { action: 'list' | 'preview' | 'open-tab'; path: string; hidden?: boolean }
+  | {
+      action: 'list' | 'preview' | 'open-tab' | 'drag';
+      path: string;
+      hidden?: boolean;
+    }
   | {
       action: 'editor' | 'reveal' | 'trash' | 'terminal' | 'terminal-tab';
       path: string;

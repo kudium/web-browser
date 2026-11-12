@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { ipcMain } from 'electron';
+import { app, ipcMain } from 'electron';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -34,7 +34,11 @@ jest.mock('node-pty', () => ({
   })),
 }));
 jest.mock('electron', () => ({
-  app: { getPath: () => jest.requireActual('os').tmpdir(), on: jest.fn() },
+  app: {
+    getPath: () => jest.requireActual('os').tmpdir(),
+    on: jest.fn(),
+    getFileIcon: jest.fn(),
+  },
   ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
 }));
 jest.mock('../main/siteSettings', () => ({
@@ -392,4 +396,53 @@ it('tracks newly saved hooks before they have code or run', () => {
     enabled: false,
     status: 'waiting',
   });
+});
+
+it('starts a native file drag and rechecks group access after loading the icon', async () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'project-drag-'));
+  const file = path.join(folder, 'resume #1.pdf');
+  fs.writeFileSync(file, 'resume');
+  const linked = jest
+    .spyOn(projects, 'linkedProjectFolder')
+    .mockReturnValue(folder);
+  const mainFrame = {};
+  const sender = {
+    id: 91,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+    startDrag: jest.fn(),
+  };
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender, isDestroyed: () => false } as any,
+    () => tabs,
+    () => undefined
+  );
+  const handler = (ipcMain.handle as jest.Mock).mock.calls
+    .slice()
+    .reverse()
+    .find(([channel]) => channel === 'site-developer-files')[1];
+  const event = { sender, senderFrame: mainFrame };
+  const icon = {};
+  try {
+    (app.getFileIcon as jest.Mock).mockResolvedValue(icon);
+    await handler(event, 'home', { action: 'drag', path: 'resume #1.pdf' });
+    expect(sender.startDrag).toHaveBeenCalledWith({
+      file: fs.realpathSync(file),
+      icon,
+    });
+    sender.startDrag.mockClear();
+    (app.getFileIcon as jest.Mock).mockImplementation(async () => {
+      (isGroupLocked as jest.Mock).mockReturnValue(true);
+      return icon;
+    });
+    await expect(
+      handler(event, 'home', { action: 'drag', path: 'resume #1.pdf' })
+    ).rejects.toThrow('Unlock');
+    expect(sender.startDrag).not.toHaveBeenCalled();
+  } finally {
+    dispose();
+    linked.mockRestore();
+    fs.rmSync(folder, { recursive: true, force: true });
+  }
 });

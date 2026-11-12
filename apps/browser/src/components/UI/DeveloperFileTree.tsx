@@ -35,12 +35,14 @@ type Branch = {
 
 const emptyMenu = () => {};
 const DragSource = createContext('');
+const DragError = createContext<(message: string) => void>(() => {});
 const FileMenu =
   createContext<(entries: ProjectFileEntry[]) => void>(emptyMenu);
 
 function FileRow({ node, style }: NodeRendererProps<FileNode>) {
   const showMenu = useContext(FileMenu);
   const sourceId = useContext(DragSource);
+  const onDragError = useContext(DragError);
   let Icon = File;
   if (node.data.kind === 'folder') Icon = node.isOpen ? FolderOpen : Folder;
   else if (node.data.kind === 'link') Icon = LinkIcon;
@@ -49,22 +51,13 @@ function FileRow({ node, style }: NodeRendererProps<FileNode>) {
       type="button"
       draggable={node.data.kind === 'file' && !node.data.status}
       onDragStart={(event) => {
-        // Arborist's HTML5 backend cancels unknown sources at the window.
+        // Cancel HTML dragging and hand the real file to the operating system.
+        event.preventDefault();
         event.stopPropagation();
-        event.dataTransfer.setData(
-          'application/x-kudiumbrowser-project-file',
-          JSON.stringify({ sourceId, path: node.data.path })
-        );
-        event.dataTransfer.effectAllowed = 'copy';
-        window.dispatchEvent(
-          new CustomEvent('kudiumbrowser-project-file-drag', { detail: true })
-        );
+        window.electron.siteDeveloper
+          .files(sourceId, { action: 'drag', path: node.data.path })
+          .catch((reason) => onDragError(projectErrorMessage(reason)));
       }}
-      onDragEnd={() =>
-        window.dispatchEvent(
-          new CustomEvent('kudiumbrowser-project-file-drag', { detail: false })
-        )
-      }
       style={style}
       tabIndex={-1}
       className={`developer-file-row${node.isSelected ? ' selected' : ''}${
@@ -292,93 +285,95 @@ export function DeveloperFileTree({
         (node.children && hasMatches(node.children))
     );
   return (
-    <DragSource.Provider value={sourceId}>
-      <FileMenu.Provider value={onFileMenu || emptyMenu}>
-        <div
-          className="developer-files-tree"
-          ref={root}
-          onKeyDown={(event) => {
-            if (
-              event.key === 'ContextMenu' ||
-              (event.shiftKey && event.key === 'F10')
-            ) {
-              event.preventDefault();
-              event.stopPropagation();
-              onFileMenu?.(
-                tree.current?.selectedNodes
-                  .filter((node) => !node.data.status)
-                  .map((node) => node.data) || []
-              );
-            }
-          }}
-        >
-          <Tree<FileNode>
-            key={`${sourceId}:${hidden}:${refreshKey}`}
-            ref={tree}
-            data={data}
-            height={size.height}
-            width={size.width}
-            rowHeight={32}
-            indent={16}
-            overscanCount={5}
-            openByDefault={false}
-            selectionFollowsFocus
-            disableEdit
-            disableDrag
-            disableDrop
-            disableSelect={(dataNode) =>
-              disabled || (dataNode.kind === 'other' && !dataNode.retry)
-            }
-            searchTerm={query}
-            searchMatch={(node, term) =>
-              node.data.name
-                .toLocaleLowerCase()
-                .includes(term.toLocaleLowerCase())
-            }
-            aria-label="Project file tree"
-            onSelect={(nodes) => {
-              if (restored.current && !restoring.current)
-                onPositionChange?.({
-                  selected: nodes
+    <DragError.Provider value={onError}>
+      <DragSource.Provider value={sourceId}>
+        <FileMenu.Provider value={onFileMenu || emptyMenu}>
+          <div
+            className="developer-files-tree"
+            ref={root}
+            onKeyDown={(event) => {
+              if (
+                event.key === 'ContextMenu' ||
+                (event.shiftKey && event.key === 'F10')
+              ) {
+                event.preventDefault();
+                event.stopPropagation();
+                onFileMenu?.(
+                  tree.current?.selectedNodes
                     .filter((node) => !node.data.status)
-                    .map((node) => node.data.path),
-                });
-            }}
-            onScroll={({ scrollOffset }) => {
-              if (restored.current)
-                onPositionChange?.({ scroll: scrollOffset });
-            }}
-            onToggle={(id) => {
-              const node = tree.current?.get(id);
-              if (node && !restoring.current) {
-                const expanded = new Set(snapshot.current?.expanded || []);
-                if (node.isOpen) expanded.add(node.data.path);
-                else expanded.delete(node.data.path);
-                if (snapshot.current)
-                  snapshot.current = {
-                    ...snapshot.current,
-                    expanded: [...expanded],
-                  };
-                onPositionChange?.({ expanded: [...expanded] });
+                    .map((node) => node.data) || []
+                );
               }
-              if (node?.isOpen && !branchRef.current[node.data.path])
-                loadBranch(node.data.path);
-            }}
-            onActivate={(node) => {
-              if (disabled) return;
-              if (node.data.retry) loadBranch(node.data.retry);
-              else if (node.isInternal) node.toggle();
-              else if (!node.data.status && node.data.kind !== 'other')
-                onOpen(node.data);
             }}
           >
-            {FileRow}
-          </Tree>
-          {query && !hasMatches(data) && (
-            <p className="developer-tree-empty">No matching files.</p>
-          )}
-        </div>
-      </FileMenu.Provider>
-    </DragSource.Provider>
+            <Tree<FileNode>
+              key={`${sourceId}:${hidden}:${refreshKey}`}
+              ref={tree}
+              data={data}
+              height={size.height}
+              width={size.width}
+              rowHeight={32}
+              indent={16}
+              overscanCount={5}
+              openByDefault={false}
+              selectionFollowsFocus
+              disableEdit
+              disableDrag
+              disableDrop
+              disableSelect={(dataNode) =>
+                disabled || (dataNode.kind === 'other' && !dataNode.retry)
+              }
+              searchTerm={query}
+              searchMatch={(node, term) =>
+                node.data.name
+                  .toLocaleLowerCase()
+                  .includes(term.toLocaleLowerCase())
+              }
+              aria-label="Project file tree"
+              onSelect={(nodes) => {
+                if (restored.current && !restoring.current)
+                  onPositionChange?.({
+                    selected: nodes
+                      .filter((node) => !node.data.status)
+                      .map((node) => node.data.path),
+                  });
+              }}
+              onScroll={({ scrollOffset }) => {
+                if (restored.current)
+                  onPositionChange?.({ scroll: scrollOffset });
+              }}
+              onToggle={(id) => {
+                const node = tree.current?.get(id);
+                if (node && !restoring.current) {
+                  const expanded = new Set(snapshot.current?.expanded || []);
+                  if (node.isOpen) expanded.add(node.data.path);
+                  else expanded.delete(node.data.path);
+                  if (snapshot.current)
+                    snapshot.current = {
+                      ...snapshot.current,
+                      expanded: [...expanded],
+                    };
+                  onPositionChange?.({ expanded: [...expanded] });
+                }
+                if (node?.isOpen && !branchRef.current[node.data.path])
+                  loadBranch(node.data.path);
+              }}
+              onActivate={(node) => {
+                if (disabled) return;
+                if (node.data.retry) loadBranch(node.data.retry);
+                else if (node.isInternal) node.toggle();
+                else if (!node.data.status && node.data.kind !== 'other')
+                  onOpen(node.data);
+              }}
+            >
+              {FileRow}
+            </Tree>
+            {query && !hasMatches(data) && (
+              <p className="developer-tree-empty">No matching files.</p>
+            )}
+          </div>
+        </FileMenu.Provider>
+      </DragSource.Provider>
+    </DragError.Provider>
   );
 }

@@ -59,7 +59,6 @@ import { BrowserImportSuggestion } from '../../UI/BrowserImportSuggestion';
 import { FirstGroupSyncSuggestion } from '../../UI/FirstGroupSyncSuggestion';
 import { TabSwitcher } from '../../UI/TabSwitcher';
 import { useTabSwitcher } from '../../../utils/hooks/useTabSwitcher';
-import { useProjectFileDrag } from '../../../utils/hooks/useProjectFileDrag';
 import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
 import {
   groupAccessAction,
@@ -1054,7 +1053,6 @@ export function Main() {
   useEffect(() => {
     if (tabSwitcherOpen) browser.command({ id: '', action: 'focus-chrome' });
   }, [tabSwitcherOpen]);
-  const projectFileDragging = useProjectFileDrag();
   useEffect(() => {
     const open = async (event: Event) => {
       const { detail } = event as CustomEvent;
@@ -1107,7 +1105,6 @@ export function Main() {
   const overlayOpen =
     !!tabSwitcher.shown ||
     nativeOverlayOpen ||
-    projectFileDragging ||
     !!editingGroup ||
     !!droppedProject ||
     !!newGroupSpace ||
@@ -4296,45 +4293,6 @@ export function Main() {
         <div className="browser-body" ref={body}>
           <div
             ref={viewport}
-            onDragEnter={(event) => {
-              if (
-                !event.dataTransfer.types.includes(
-                  'application/x-kudiumbrowser-project-file'
-                )
-              )
-                return;
-              event.preventDefault();
-              event.stopPropagation();
-            }}
-            onDragOver={(event) => {
-              if (
-                !event.dataTransfer.types.includes(
-                  'application/x-kudiumbrowser-project-file'
-                )
-              )
-                return;
-              event.preventDefault();
-              // Keep the tree's HTML5 backend from replacing copy with none.
-              event.stopPropagation();
-              event.dataTransfer.dropEffect = 'copy';
-            }}
-            onDrop={(event) => {
-              const data = event.dataTransfer.getData(
-                'application/x-kudiumbrowser-project-file'
-              );
-              if (!data) return;
-              event.preventDefault();
-              event.stopPropagation();
-              try {
-                window.dispatchEvent(
-                  new CustomEvent('kudiumbrowser-open-project-file', {
-                    detail: JSON.parse(data),
-                  })
-                );
-              } catch {
-                setMoveMessage('Could not open the dropped file.');
-              }
-            }}
             id="browser-content"
             role={selected && !split ? 'tabpanel' : undefined}
             aria-labelledby={
@@ -4344,11 +4302,6 @@ export function Main() {
             className="browser-viewport"
             data-split-dragging={!!dragged || undefined}
           >
-            {projectFileDragging && (
-              <div className="project-file-drop-target">
-                Drop file to open in a tab
-              </div>
-            )}
             {!split && selected && !lockedGroup(selected) && (
               <PageStatus
                 state={state}

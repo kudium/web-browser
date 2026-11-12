@@ -1,9 +1,11 @@
 import {
+  app,
   BrowserWindow,
   ipcMain,
   WebContents,
   IpcMainInvokeEvent,
 } from 'electron';
+import { fileURLToPath } from 'url';
 import { registerSidebarDrop } from './sidebarDrop';
 import { transferGroup } from './groupTransfer';
 import type { IApp } from '../types';
@@ -155,6 +157,18 @@ export function registerSiteDeveloperLibrary(
             throw new Error('This project changed. Reopen Files.');
         };
         const result = await projectFiles(folder, request, ensureAccess);
+        if (request.action === 'drag') {
+          if (!result.url) throw new Error('Could not drag this file.');
+          const file = fileURLToPath(result.url);
+          const icon = await app.getFileIcon(file, { size: 'normal' });
+          // Revalidate the file and project after the asynchronous icon lookup.
+          const checked = await projectFiles(folder, request, ensureAccess);
+          if (checked.url !== result.url)
+            throw new Error('This file changed. Refresh the folder.');
+          ensureAccess();
+          event.sender.startDrag({ file, icon });
+          return { path: result.path };
+        }
         if (request.action === 'terminal-tab') {
           ensureAccess();
           return {
