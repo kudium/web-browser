@@ -12,6 +12,12 @@ jest.mock('../components/UI/BrowserWorkspace', () => ({
 
 describe('App', () => {
   it('should render', () => {
+    Object.assign(window, {
+      electron: {
+        browser: { nativeAppearance: jest.fn().mockResolvedValue(undefined) },
+        ipcRenderer: { on: jest.fn(() => () => {}) },
+      },
+    });
     window.history.replaceState({}, '', '/?view=main');
     render(<App />);
 

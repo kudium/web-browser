@@ -40,7 +40,7 @@ it('saves the current script without executing or inserting it', () => {
       />
     </Theme>
   );
-  fireEvent.keyDown(screen.getByRole('button', { name: 'Examples' }), {
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Saved scripts' }), {
     key: 'ArrowDown',
   });
   fireEvent.click(screen.getByRole('menuitem', { name: 'Save example…' }));
@@ -95,7 +95,7 @@ it('edits and deletes saved examples without modifying the page script', () => {
       />
     </Theme>
   );
-  fireEvent.keyDown(screen.getByRole('button', { name: 'Examples' }), {
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Saved scripts' }), {
     key: 'ArrowDown',
   });
   fireEvent.click(screen.getByRole('menuitem', { name: 'Manage examples…' }));
@@ -123,6 +123,10 @@ it('applies visual helpers without duplicating styles, image labels or scroll co
   const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
   document.body.innerHTML =
     '<main><img src="https://example.com/photo.jpg"></main>';
+  const cleanups: (() => void)[] = [];
+  const context = {
+    onCleanup: (cleanup: () => void) => cleanups.push(cleanup),
+  };
   for (const id of [
     'dark-mode',
     'accent-colors',
@@ -138,8 +142,8 @@ it('applies visual helpers without duplicating styles, image labels or scroll co
       'log',
       example.source
     );
-    await run({}, 'https://example.com', document, jest.fn());
-    await run({}, 'https://example.com', document, jest.fn());
+    await run(context, 'https://example.com', document, jest.fn());
+    await run(context, 'https://example.com', document, jest.fn());
   }
   expect(document.querySelectorAll('#kudium-dark-mode')).toHaveLength(1);
   expect(document.querySelectorAll('#kudium-accent-colors')).toHaveLength(1);
@@ -154,6 +158,9 @@ it('applies visual helpers without duplicating styles, image labels or scroll co
   expect(button).toHaveTextContent('Pause auto-scroll');
   fireEvent.keyDown(window, { key: 'Escape' });
   expect(button).toHaveTextContent('Start auto-scroll');
+  cleanups.reverse().forEach((cleanup) => cleanup());
+  expect(document.querySelectorAll('[data-kudium-image-url]')).toHaveLength(0);
+  expect(document.getElementById('kudium-auto-scroll')).toBeNull();
   button.dispatchEvent(new Event('kudium-cleanup'));
   document.dispatchEvent(new Event('kudium-image-label-cleanup'));
   [

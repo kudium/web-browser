@@ -24,6 +24,7 @@ jest.mock('electron', () => ({
   shell: { openPath: jest.fn(async () => ''), showItemInFolder: jest.fn() },
   ipcMain: { handle: jest.fn() },
   nativeImage: {},
+  screen: { getCursorScreenPoint: () => ({ x: 0, y: 0 }) },
 }));
 jest.mock('../main/preferences', () => ({
   getBrowserPreferences: jest.fn(() => ({ askDownloadLocation: false })),
@@ -89,7 +90,9 @@ it('persists completed history and clears records without deleting files or acti
       await expect(performDownloadAction('remove', record.id)).rejects.toThrow(
         'Disk unavailable'
       );
-      expect(() => pruneDownloadHistory(7, record.endedAt! + 8 * 86400000)).toThrow('Disk unavailable');
+      expect(() =>
+        pruneDownloadHistory(7, record.endedAt! + 8 * 86400000)
+      ).toThrow('Disk unavailable');
       expect(getDownloadHistory()).toEqual(history);
       expect(
         fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8')
@@ -100,7 +103,11 @@ it('persists completed history and clears records without deleting files or acti
     expect(pruneDownloadHistory(0, record.endedAt! + 8 * 86400000)).toBe(0);
     expect(pruneDownloadHistory(7, record.endedAt! + 7 * 86400000)).toBe(0);
     expect(pruneDownloadHistory(7, record.endedAt! + 8 * 86400000)).toBe(1);
-    expect(JSON.parse(fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8')).map((entry: { id: string }) => entry.id)).toEqual(getDownloadHistory().map(entry => entry.id));
+    expect(
+      JSON.parse(
+        fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8')
+      ).map((entry: { id: string }) => entry.id)
+    ).toEqual(getDownloadHistory().map((entry) => entry.id));
     await performDownloadAction('clear');
     expect(getDownloadHistory()).toHaveLength(1);
     expect(fs.readFileSync(record.path, 'utf8')).toBe('download');

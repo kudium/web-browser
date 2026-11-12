@@ -3,7 +3,8 @@ import type { BrowserClient } from './contracts';
 // The renderer uses this contract; transport selection belongs to this adapter.
 export const browser: BrowserClient = {
   nativeAppearance: (appearance) =>
-    window.electron.browser.nativeAppearance?.(appearance) ?? Promise.resolve(),
+    window.electron?.browser?.nativeAppearance?.(appearance) ??
+    Promise.resolve(),
   removeGroup: (id, allowArchive) =>
     window.electron.browser.removeGroup(id, allowArchive),
   capture: (request) => window.electron.browser.capture(request),
