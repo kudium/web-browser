@@ -1,3 +1,4 @@
+import { EditorWindowHeader } from '../UI/EditorWindowChrome';
 import { useEffect, useState } from 'react';
 import { IconButton } from '@radix-ui/themes';
 import { Maximize2 } from 'lucide-react';
@@ -16,10 +17,10 @@ export function SiteDeveloperPage() {
   }, []);
   return (
     <main className="site-developer-page">
-      <header className="site-developer-page-heading">
-        <div>
-          <h1>Developer</h1>
-          {state ? (
+      <EditorWindowHeader
+        title="Developer"
+        subtitle={
+          state ? (
             <nav className="site-developer-breadcrumb" aria-label="Breadcrumb">
               <a
                 href="#group"
@@ -48,8 +49,9 @@ export function SiteDeveloperPage() {
             </nav>
           ) : (
             <p>Loading site…</p>
-          )}
-        </div>
+          )
+        }
+      >
         <div
           className="site-developer-header-controls"
           ref={setToolbarTarget}
@@ -62,7 +64,7 @@ export function SiteDeveloperPage() {
         >
           <Maximize2 size={17} />
         </IconButton>
-      </header>
+      </EditorWindowHeader>
       {state && !state.available && (
         <p className="site-developer-unavailable" role="status">
           This tab is closed or has moved to another site. Return to the

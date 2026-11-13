@@ -1,3 +1,5 @@
+import { Facet } from '@codemirror/state';
+export const hookLanguageMode = Facet.define<'lifecycle' | 'action', 'lifecycle' | 'action'>({ combine: values => values[0] || 'lifecycle' });
 import { Completion, CompletionContext } from '@codemirror/autocomplete';
 import { hoverTooltip } from '@codemirror/view';
 import { linter } from '@codemirror/lint';
@@ -5,7 +7,8 @@ import { localCompletionSource, snippets } from '@codemirror/lang-javascript';
 import { hookCompletions } from './hookCompletions';
 
 export async function intelligentHookCompletions(context: CompletionContext) {
-  const hook = hookCompletions(context);
+  const mode = context.state.facet(hookLanguageMode);
+  const hook = mode === 'action' ? null : hookCompletions(context);
   const local = localCompletionSource(context);
   const token = context.matchBefore(/[\w$]*/);
   if (
@@ -20,6 +23,7 @@ export async function intelligentHookCompletions(context: CompletionContext) {
     if (window.electron?.siteDeveloper?.language) {
       const result = await window.electron.siteDeveloper.language({
         action: 'completions',
+        mode,
         source: context.state.doc.toString(),
         position: context.pos,
       });
@@ -50,6 +54,7 @@ export const hookDiagnostics = linter(
     try {
       const result = await window.electron.siteDeveloper.language({
         action: 'diagnostics',
+        mode: view.state.facet(hookLanguageMode),
         source,
         position: 0,
       });
@@ -68,6 +73,7 @@ export const hookTypeInfo = hoverTooltip(async (view, position) => {
   try {
     const result = await window.electron.siteDeveloper.language({
       action: 'hover',
+      mode: view.state.facet(hookLanguageMode),
       source,
       position,
     });

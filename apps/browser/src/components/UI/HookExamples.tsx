@@ -1,5 +1,12 @@
+import { FileCode2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Button, DropdownMenu, Dialog, TextField } from '@radix-ui/themes';
+import {
+  Button,
+  DropdownMenu,
+  Dialog,
+  IconButton,
+  TextField,
+} from '@radix-ui/themes';
 import { readHookExamples, saveHookExamples } from '../../browser/hookExamples';
 import type { HookExample, HookStage } from '../../browser/hookExamples';
 
@@ -72,19 +79,37 @@ export function HookExamples({
       <Dialog.Root open={managing} onOpenChange={setManaging}>
         <Dialog.Content
           className="hook-examples-manager"
-          style={{ maxWidth: 640 }}
+          maxWidth="520px"
+          size="2"
         >
-          <Dialog.Title size="3">Manage examples</Dialog.Title>
-          <Dialog.Description>
-            Edit your saved scripts for reuse on any page. Built-in enhancements
-            are available in the Examples picker.
+          <Dialog.Title size="3" mb="1">
+            Saved scripts
+          </Dialog.Title>
+          <Dialog.Description size="2">
+            Reusable scripts for your hooks.
           </Dialog.Description>
           <div className="hook-examples-list">
             {!saved.length && (
-              <p>
-                No saved examples yet. Use Save example in the Saved scripts
-                menu.
-              </p>
+              <div className="hook-saved-empty">
+                <FileCode2 size={28} aria-hidden="true" />
+                <strong>No saved scripts</strong>
+                <p>Save code from a hook to reuse it here.</p>
+                {source.trim() && (
+                  <Button
+                    size="1"
+                    variant="soft"
+                    color="gray"
+                    onClick={() => {
+                      setManaging(false);
+                      setName('');
+                      setError('');
+                      setOpen(true);
+                    }}
+                  >
+                    Save current script
+                  </Button>
+                )}
+              </div>
             )}
             {saved.map((example) => (
               <div className="hook-examples-row" key={example.id}>
@@ -105,10 +130,12 @@ export function HookExamples({
                     }
                   </small>
                 </button>
-                <Button
+                <IconButton
+                  className="hook-saved-delete"
                   size="1"
                   variant="ghost"
                   color="red"
+                  title="Delete script"
                   aria-label={`Delete ${example.name}`}
                   onClick={() => {
                     if (
@@ -118,8 +145,8 @@ export function HookExamples({
                       setEditing(undefined);
                   }}
                 >
-                  Delete
-                </Button>
+                  <Trash2 size={15} />
+                </IconButton>
               </div>
             ))}
           </div>
@@ -204,11 +231,13 @@ export function HookExamples({
             </div>
           )}
           {error && <p role="alert">{error}</p>}
-          <Dialog.Close>
-            <Button size="1" variant="soft" color="gray">
-              Done
-            </Button>
-          </Dialog.Close>
+          <div className="hook-saved-footer">
+            <Dialog.Close>
+              <Button size="2" variant="soft" color="gray">
+                Done
+              </Button>
+            </Dialog.Close>
+          </div>
         </Dialog.Content>
       </Dialog.Root>
       <Dialog.Root open={open} onOpenChange={setOpen}>

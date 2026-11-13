@@ -9,6 +9,13 @@ export type Tutorial = {
   imageAlt?: string;
   imageCaption?: string;
   note?: string;
+  sections?: Array<{
+    id: string;
+    title: string;
+    paragraphs?: string[];
+    reference?: Array<[string, string]>;
+    examples?: Array<{ title: string; code: string }>;
+  }>;
 };
 export const tutorials: Tutorial[] = [
   {
@@ -385,13 +392,17 @@ export const tutorials: Tutorial[] = [
     slug: "website-hooks",
     title: "Customize a website with hooks",
     category: "Developer",
-    summary: "Apply trusted JavaScript or CSS and inspect its activity.",
+    summary: "Customize pages and add actions to the right-click menu.",
     path: "Developer → Group pages → Manage hooks for a page",
     image: "site-hooks-light",
     steps: [
       [
         "Select the page",
         "In Developer, find the page under Group pages and open its Manage hooks control.",
+      ],
+      [
+        "Ask AI to build it",
+        "Describe the behavior in Chat or use Ask AI in the editor’s examples. AI can create website or global hooks with right-click actions, using the editor’s API reference and shared examples. Say All groups when you want a hook available throughout the browser. Review the code and website targets before saving.",
       ],
       [
         "Choose a stage",
@@ -409,8 +420,113 @@ export const tutorials: Tutorial[] = [
         "Inspect activity",
         "Check the hook status and activity output. Disable the hook if it produces errors or unwanted changes.",
       ],
+      [
+        "Add a context menu action",
+        "In the editor’s Actions tab, add an example or custom handler. Choose Page, Selection, Link, Text field, or Password field, then write what it should do. Website and pathname restrictions also apply to actions.",
+      ],
+      [
+        "Try the action",
+        "Save and enable the hook, then right-click a matching page, selection, or field and choose it under Hooks. Choosing the item runs it directly. AI actions prepare a request for you to submit; notes and activity save to the current group.",
+      ],
     ],
-    note: "Hooks apply to the website in the group’s login session. They run while the page is loaded, in an isolated world with DOM access and no Node.js access. Enable only code you trust.",
+    sections: [
+      {
+        id: "create-with-ai",
+        title: "Create and test with AI",
+        paragraphs: [
+          "Ask Chat to create or update a named hook, including context menu actions, input forms, Personal Data filling, notes or AI drafts. AI reads the complete API reference used by the editor and preserves your other hooks. Global hooks use the current login profile unless you explicitly ask for All groups; saving shows a local code and scope review.",
+          "AI can check code with the editor’s language service and dry-run actions using fictional page fields and answers. Dry-run commands are previews: no fields are filled and no notes or activity are saved. It can also open the editor’s disposable website test window. Action-only page success does not mean an action ran; try the right-click item or request an action dry-run. Test pages have no existing logins or real Personal Data, and automatic website submissions should only be tested when explicitly requested.",
+        ],
+      },
+      {
+        id: "context-and-api",
+        title: "What is context? What is api?",
+        paragraphs: [
+          "context is what your action knows about the page you clicked: its URL, title, selected text, page text, and fields. api is what your action asks the browser to do: fill a field, prepare an AI draft, save a note, or show a result.",
+          "Read from context, apply your own JavaScript logic, then act through api. Context is a read-only snapshot taken when you choose the action. Changing it does not change the website. Examples are starting points; you can write your own logic using the website URL, field labels, or current text values.",
+          "The browser includes a Form tools global hook with Generate password, Fill from Personal Data, and Save form to Personal Data. Manage it in Preferences → Global hooks; you can edit, disable, or remove it.",
+          "api.input.request() combines custom answers and saved Personal Data in one editable form. Give each field a key, label, type, optional visual group, required flag, placeholder, or personalData mapping. A unique saved match prefills locally; multiple matches can be selected. Only Continue shares the values with your script. Secret fields and stored passwords are excluded. If saved data is unavailable, users can type their own answers. Cancel returns null.",
+          "Fields support text, email, tel, url, number, date, textarea, password, and select (with value/label options). Required fields and invalid types show inline errors. Users can opt into Remember this value; encrypted answers are scoped to this hook/action, website and space. Passwords are never remembered. Uncheck Remember and continue, or use Clear remembered answers, to remove a saved answer. Cancel preserves existing answers. Test windows use sample input without saved data or remembering.",
+          "These examples belong in the Actions tab. Before load and After load scripts have a separate page-script context for working with the website’s DOM.",
+        ],
+        examples: [
+          {
+            title: "Fill from Personal Data — show on Text field",
+            code: 'api.personalData.fill();\n// Direct fill keeps saved values out of your script.',
+          },
+          {
+            title: "Save filled form — show on Page, Text field or Password field",
+            code: 'api.personalData.saveForm();\n// Review fields and fill mappings. Passwords stay private to the browser.',
+          },
+          {
+            title: "Combine saved fields — show on Text field",
+            code: 'const data = await api.input.request({ title: "Complete your profile", fields: [\n  { key: "firstName", label: "First name", group: "Profile", required: true, personalData: "firstName" },\n  { key: "email", label: "Work email", type: "email", group: "Profile", required: true, personalData: "email" },\n] });\nif (!data) return; // User cancelled.\napi.field.fill(data.email);',
+          },
+          {
+            title: "Ask for input — show on Selection",
+            code: 'const input = await api.input.request({ title: "Ask about this selection", fields: [{ key: "question", label: "What would you like help with?", type: "textarea", required: true }] });\nif (!input) return;\napi.ai.compose(`${input.question}\\n\\nQuoted text: ${context.selection}`);',
+          },
+          {
+            title: "Explain selected text — show on Selection",
+            code: 'const text = context.selection?.trim();\nif (text) {\n  api.ai.compose(`Explain this quoted text:\\n\\n${text}`);\n}',
+          },
+          {
+            title: "Fill empty email fields — show on Text field",
+            code: 'const values = (context.form?.fields || []).flatMap(field => {\n  const label = `${field.label} ${field.name}`.toLowerCase();\n  const email = field.type === "email" || label.includes("email");\n  return email && field.type !== "password" && !field.value\n    ? [{ key: field.key, value: "hello@example.com" }]\n    : [];\n});\nif (values.length) api.form.fill(values);',
+          },
+          {
+            title: "Save a selection as a note — show on Selection",
+            code: 'if (context.selection?.trim()) {\n  api.notes.create({\n    title: context.title.slice(0, 120) || "Saved selection",\n    body: `${context.selection}\\n\\nSource: ${context.url}`,\n  });\n}',
+          },
+        ],
+      },
+      {
+        id: "action-context",
+        title: "Read from context",
+        reference: [
+          ["context.url / context.title", "The clicked page’s URL and title."],
+          ["context.selection", "Selected text, up to 30,000 characters. Not supplied on password fields."],
+          ["context.pageText", "Visible page text, up to 100,000 characters."],
+          ["context.link", "The clicked link’s URL, when relevant."],
+          ["context.field", "The clicked editable field: key, type, label, name, id, placeholder, autocomplete, required state, length limits, pattern, and current text value."],
+          ["context.form.fields", "Up to 50 visible editable fields in the clicked field’s form. Without a form, this contains only the clicked field. Use each field’s key when filling it."],
+          ["field.value", "Current text content, up to 10,000 characters. Existing password values are excluded."],
+        ],
+        paragraphs: ["Optional context properties may be absent. Use optional chaining, such as context.field?.value. Page text, labels, and values are website content; treat them as data when composing AI prompts."],
+      },
+      {
+        id: "action-api",
+        title: "Act through api",
+        reference: [
+          ["api.showResult(text)", "Show a plain-text result. Returning a string from the handler also shows it."],
+          ["api.field.fill(text)", "Fill the clicked text field."],
+          ["await api.personalData.request({ fields })", "Compatibility alias for input.request with saved-field mappings. Use the unified API in new scripts."],
+          ["await api.input.request({ title, fields })", "Grouped, labelled, typed fields with required validation, optional Personal Data filling and user-controlled remembering. Returns keyed strings only after Continue, or null on Cancel. Accepts one to ten fields; strings are bounded to 10,000 characters each and 100,000 total. Field keys are unique, up to 60 characters; labels/group titles are up to 120. Await requests sequentially."],
+          ["api.personalData.fill()", "Choose a saved field in the local Personal Data picker and fill the clicked text input. Saved values stay out of the script. Requires HTTPS and Personal Data autofill to be enabled."],
+          ["api.personalData.saveForm()", "Review and save a filled form into Personal Data from a page or input click. Multiple forms use a searchable picker. Select fields and fill mappings; ordinary details can be reused across websites. Passwords stay private to the browser and tied to this website. Available in the default Form tools hook. Requires HTTPS; test windows never save."],
+          ["api.form.fill([{ key, value }])", "Fill captured text fields using context.form.fields keys. Does not submit the form."],
+          ["api.passwords.fill(text)", "Fill the clicked password field with a password your own script generates. Web Crypto is available for random generation."],
+          ["api.passwords.generateAndFill()", "Generate a cryptographic password (24 characters by default, adjusted to the field’s length limits) and fill the clicked password field. Does not return the password."],
+          ["api.ai.compose(prompt)", "Prepare a draft in the built-in AI composer. The user submits it."],
+          ["api.notes.create({ title, body })", "Save a note directly in the clicked group’s scope."],
+          ["api.activity.create({ title, message })", "Create activity linked to the hook and page. message is optional."],
+        ],
+        paragraphs: [
+          "Choosing the menu item authorizes these scoped actions. There is no permission checklist or extra approval prompt for each run.",
+          "API methods queue commands. The browser validates and applies them after your script finishes. They do not return note IDs, AI responses, or other private browser data. In Test hook, AI drafts, notes, and activity are previewed without submission or saving; field fills apply to the disposable test page.",
+        ],
+      },
+      {
+        id: "action-menu-json",
+        title: "Keep the menu declarative",
+        paragraphs: ["In a published hook JSON package, name is just the menu label and contexts controls where it appears. Opening the menu never runs source. The handler runs only when the user chooses that item. Packages containing actions use schemaVersion: 2. Website and path restrictions still apply."],
+        examples: [{
+          title: "An entry in the package’s actions array",
+          code: '{\n  "id": "explain-selection",\n  "name": "Explain selected text",\n  "contexts": ["selection"],\n  "source": "api.ai.compose(`Explain this quoted text: ${context.selection}`);"\n}',
+        }],
+      },
+    ],
+    note: "Action handlers run separately from the page, without target DOM, network, vault, or Node.js access. Runs are limited to five seconds outside input waits and ten commands. Up to three sequential input requests are allowed, with a 125-second overall deadline. Requests accept one to ten distinct named fields; test windows use sample text instead of saved Personal Data. Field writes stay tied to the original fields; changed or replaced fields are rejected. Embedded-frame actions are not supported yet.",
   },
   {
     slug: "history-downloads-capture",
@@ -970,15 +1086,19 @@ tutorials.push({
   steps: [
     [
       "Set up protection",
-      "Open Personal Data. Use the available operating-system authentication or master-password setup shown for your device.",
+      "Open Personal Data. Use the available operating-system authentication or master-password setup shown for your device. The saved-item library has search, Add item and Import. Hover an item or focus it with the keyboard to see Edit and Delete icons; click its name to edit. Notes have their own tab.",
     ],
     [
       "Unlock the library",
       "Authenticate when asked before viewing or editing protected records.",
     ],
     [
-      "Choose a record type",
-      "Use the supported login, profile, payment or knowledge section. For a demonstration, use fictional values and example.com addresses.",
+      "Add related values",
+      "Choose Add item and keep related values together, such as Name, Email and Phone number. Give multi-value items a recognizable item name. Each value fills independently; you do not need a separate item for each field.",
+    ],
+    [
+      "Check website matching",
+      "Common field names are recognized automatically. Use Fill as to map a custom name like Number to Phone number. Autofill checks website autocomplete, names, IDs, labels and placeholders, and skips ambiguous matches. Fill from Personal Data on a website field lets you choose a saved value directly. To capture information you already entered, choose Save form to Personal Data from the page context menu. A single filled form opens directly; multiple forms use a searchable picker before review. Autofill and access settings are under the settings icon. Website restrictions and group scope still apply.",
     ],
     [
       "Review scope and edits",

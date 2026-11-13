@@ -1,0 +1,274 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertDialog,
+  Button,
+  DropdownMenu,
+  IconButton,
+  Switch,
+} from '@radix-ui/themes';
+import { MoreHorizontal } from 'lucide-react';
+import type {
+  GlobalHook,
+  HookMarketplaceState,
+} from '../../browser/hookMarketplace';
+import {
+  hookMatchesPath,
+  hookMatchesWebsite,
+} from '../../browser/siteDeveloper';
+/* eslint-disable react/require-default-props */
+export function SiteGlobalHookList({
+  url,
+  disabled,
+}: {
+  url?: string;
+  disabled: boolean;
+}) {
+  const [scopes, setScopes] = useState<
+    Array<{ allGroups: boolean; state: HookMarketplaceState }>
+  >([]);
+  const [error, setError] = useState('');
+  const requestVersion = useRef(0);
+  const saving = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [opening, setOpening] = useState('');
+  const [deletion, setDeletion] = useState<{
+    allGroups: boolean;
+    hook: GlobalHook;
+  }>();
+  useEffect(() => {
+    let live = true;
+    let refreshing = false;
+    const refresh = async () => {
+      if (
+        !url ||
+        !window.electron?.hookMarketplace ||
+        refreshing ||
+        saving.current
+      )
+        return;
+      refreshing = true;
+      const version = requestVersion.current;
+      try {
+        const results = await Promise.all(
+          [true, false].map(async (allGroups) => ({
+            allGroups,
+            state: (await window.electron.hookMarketplace.request({
+              action: 'state',
+              allGroups,
+            })) as HookMarketplaceState,
+          }))
+        );
+        if (live && version === requestVersion.current) {
+          setScopes((previous) =>
+            previous.length === results.length &&
+            previous.every(
+              (scope, index) =>
+                scope.allGroups === results[index].allGroups &&
+                scope.state.globalHash === results[index].state.globalHash
+            )
+              ? previous
+              : results
+          );
+        }
+      } catch (reason) {
+        if (live && version === requestVersion.current)
+          setError(String(reason).replace(/^Error: /, ''));
+      } finally {
+        refreshing = false;
+      }
+    };
+    void refresh();
+    window.addEventListener('focus', refresh);
+    return () => {
+      live = false;
+      window.removeEventListener('focus', refresh);
+    };
+  }, [url]);
+  const save = async (
+    allGroups: boolean,
+    hook: GlobalHook,
+    enabled?: boolean
+  ) => {
+    const scope = scopes.find((item) => item.allGroups === allGroups);
+    if (!scope || saving.current) return;
+    saving.current = true;
+    requestVersion.current += 1;
+    setBusy(true);
+    setError('');
+    try {
+      const state = (await window.electron.hookMarketplace.request({
+        action: 'global-save',
+        allGroups,
+        expectedHash: scope.state.globalHash,
+        config: {
+          ...scope.state.global,
+          hooks:
+            enabled === undefined
+              ? scope.state.global.hooks.filter((item) => item.id !== hook.id)
+              : scope.state.global.hooks.map((item) =>
+                  item.id === hook.id ? { ...item, enabled } : item
+                ),
+        },
+      })) as HookMarketplaceState;
+      setScopes((previous) =>
+        previous.map((item) =>
+          item.allGroups === allGroups ? { ...item, state } : item
+        )
+      );
+    } catch (reason) {
+      setError(String(reason).replace(/^Error: /, ''));
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
+  };
+  const matching = useMemo(
+    () =>
+      scopes.flatMap((scope) =>
+        (scope.state?.global?.hooks || [])
+          .filter((hook) => {
+            if (!url) return false;
+            try {
+              const host = new URL(url).hostname;
+              return (
+                hookMatchesPath(hook.path, url) &&
+                hookMatchesWebsite(hook, url) &&
+                !hook.exclusions.some((rule) =>
+                  rule.startsWith('*.')
+                    ? host === rule.slice(2) ||
+                      host.endsWith(`.${rule.slice(2)}`)
+                    : host === rule
+                )
+              );
+            } catch {
+              return false;
+            }
+          })
+          .map((hook) => ({ ...scope, hook }))
+      ),
+    [scopes, url]
+  );
+  return (
+    <>
+      {matching.length > 0 && (
+        <span className="site-hook-list-section">Global hooks</span>
+      )}
+      {matching.map(({ allGroups, state, hook }) => (
+        <div className="site-hook-list-row" key={`${allGroups}:${hook.id}`}>
+          <button
+            type="button"
+            className="site-hooks-list-item"
+            title={hook.name || 'Untitled hook'}
+            disabled={disabled || busy}
+            onClick={() => {
+              if (opening) return;
+              setOpening(`${allGroups}:${hook.id}`);
+              setError('');
+              void window.electron.hookMarketplace
+                .request({
+                  action: 'global-editor-open',
+                  allGroups,
+                  hookId: hook.id,
+                })
+                .catch((reason) => setError(String(reason)))
+                .finally(() => setOpening(''));
+            }}
+          >
+            <strong>{hook.name || 'Untitled hook'}</strong>
+            {opening === `${allGroups}:${hook.id}` && (
+              <small role="status">Opening editor…</small>
+            )}
+          </button>
+          <div className="site-hook-list-controls">
+            <span className="site-hook-list-meta">
+              {allGroups ? 'All groups' : 'This session'}
+            </span>
+            <span className="site-hook-list-status">
+              {state.global.enabled && hook.enabled ? 'Active' : 'Paused'}
+            </span>
+            <Switch
+              size="1"
+              aria-label={`Enable global hook ${hook.name}`}
+              checked={hook.enabled}
+              disabled={disabled || busy}
+              onCheckedChange={(enabled) => {
+                void save(allGroups, hook, enabled);
+              }}
+            />
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger>
+                <IconButton
+                  size="1"
+                  variant="ghost"
+                  color="gray"
+                  disabled={disabled || busy}
+                  aria-label={`Global options for ${hook.name}`}
+                >
+                  <MoreHorizontal size={15} />
+                </IconButton>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content>
+                <DropdownMenu.Item
+                  onSelect={() => {
+                    void window.electron.hookMarketplace
+                      .request({
+                        action: 'global-editor-open',
+                        allGroups,
+                        hookId: hook.id,
+                      })
+                      .catch((reason) => setError(String(reason)));
+                  }}
+                >
+                  Edit / Rename
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  color="red"
+                  onSelect={() => setDeletion({ allGroups, hook })}
+                >
+                  Delete
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+          </div>
+        </div>
+      ))}
+      {matching.some((item) => !item.state.global.enabled) && (
+        <small className="site-hook-list-note">
+          Global hooks are paused in Preferences.
+        </small>
+      )}
+      {error && <p role="alert">{error}</p>}
+      <AlertDialog.Root
+        open={!!deletion}
+        onOpenChange={(open) => {
+          if (!open) setDeletion(undefined);
+        }}
+      >
+        <AlertDialog.Content size="2" maxWidth="360px">
+          <AlertDialog.Title>Delete global hook?</AlertDialog.Title>
+          <AlertDialog.Description>
+            Remove {deletion?.hook.name} from every website where it applies?
+          </AlertDialog.Description>
+          <div className="site-hook-enable-actions">
+            <AlertDialog.Cancel>
+              <Button variant="soft" color="gray">
+                Cancel
+              </Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action>
+              <Button
+                color="red"
+                onClick={() => {
+                  if (deletion) void save(deletion.allGroups, deletion.hook);
+                  setDeletion(undefined);
+                }}
+              >
+                Delete
+              </Button>
+            </AlertDialog.Action>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
+    </>
+  );
+}

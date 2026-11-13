@@ -1,3 +1,4 @@
+import { personalDataMatching } from '../../../browser/personalDataMatching';
 /* Radix TextField and Switch render native labeled controls. */
 /* eslint-disable jsx-a11y/label-has-associated-control, react/require-default-props */
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -9,6 +10,7 @@ import {
   Switch,
   Dialog,
   SegmentedControl,
+  Popover,
 } from '@radix-ui/themes';
 import {
   KeyRound,
@@ -17,12 +19,20 @@ import {
   Plus,
   Search,
   Settings2,
+  Pencil,
+  EyeOff,
+  RotateCcw,
+  UserRound,
+  FileText,
+  CreditCard,
+  Globe,
+  Download,
   Trash2,
   X,
 } from 'lucide-react';
 import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 import { isStorageRecoveryError } from '../../../browser/storageRecovery';
-import { PanelDialogHeader } from '../../UI/PanelDialog';
+import { PanelPopoverContent, PanelDialogHeader } from '../../UI/PanelDialog';
 import { NotesPage } from '../../UI/NotesPage';
 import { GroupIcon } from '../../UI/GroupIcon';
 import type { IApp } from '../../../types';
@@ -72,13 +82,9 @@ function PersonalDataRecords({
   const [visibleFields, setVisibleFields] = useState<number[]>([]);
   const editorOpener = useRef<HTMLElement | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
+  const editorRevision = useRef(0);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
-  const [pages, setPages] = useState<
-    Array<{ id: number; title: string; url: string }>
-  >([]);
-  const [pageId, setPageId] = useState('');
   const [query, setQuery] = useState('');
   const closeEditor = () => {
     setEditing(false);
@@ -99,13 +105,8 @@ function PersonalDataRecords({
     const timer = setInterval(() => {
       refresh().catch(() => undefined);
     }, 10000);
-    requestData({ action: 'pages' })
-      .then((result) => {
-        setPages(result as typeof pages);
-        return undefined;
-      })
-      .catch(() => undefined);
     const stopLockListener = window.electron.onPasswordManagerLock?.(() => {
+      editorRevision.current += 1;
       setVisibleFields([]);
       setItem(empty());
       setEditing(false);
@@ -116,9 +117,9 @@ function PersonalDataRecords({
       );
     });
     return () => {
+      editorRevision.current += 1;
       clearInterval(timer);
       stopLockListener?.();
-      if (scope) requestData({ action: 'lock' }).catch(() => undefined);
     };
   }, [refresh, requestData, scope]);
   const openNew = (opener: HTMLElement) => {
@@ -131,15 +132,8 @@ function PersonalDataRecords({
   const run = async (request: VaultRequest) => {
     setBusy(true);
     setError('');
-    setNotice('');
     try {
-      const result = await requestData(request);
-      if (request.action === 'fill')
-        setNotice(
-          (result as { filled: number }).filled
-            ? 'Information filled. Review the page before submitting.'
-            : 'No unambiguous matching fields were found.'
-        );
+      await requestData(request);
       if (request.action === 'save') {
         setItem(empty());
         setEditing(false);
@@ -203,9 +197,44 @@ function PersonalDataRecords({
       action: 'settings',
       enabled: status.enabled,
       autofill: status.autofill,
-      ai: true,
+      ai: status.ai,
       [key]: value,
     });
+  const savedItems = status.items.filter((saved) => saved.kind !== 'note');
+  const matchingItems = savedItems.filter((saved) =>
+    `${saved.title} ${saved.origin} ${saved.username} ${saved.preview || ''}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase())
+  );
+  const websiteLabel = (origin: string) => {
+    try {
+      return new URL(origin).host;
+    } catch {
+      return origin || 'All websites';
+    }
+  };
+  const openSaved = async (
+    saved: VaultStatus['items'][number],
+    opener: HTMLElement
+  ) => {
+    editorOpener.current = opener;
+    if (!requireAuthentication()) return;
+    setBusy(true);
+    setError('');
+    const revision = editorRevision.current;
+    try {
+      const editable = await requestData({ action: 'edit', id: saved.id });
+      await refresh();
+      if (revision !== editorRevision.current) return;
+      setItem(entryForEditor(editable as VaultItem));
+      setVisibleFields([]);
+      setEditing(true);
+    } catch {
+      setError('Authentication was cancelled.');
+    } finally {
+      setBusy(false);
+    }
+  };
   const unlockLabel = status.initialized ? 'Unlock' : 'Create Personal Data';
   const busyUnlockLabel = status.initialized ? 'Unlocking…' : 'Creating…';
   if (
@@ -323,7 +352,7 @@ function PersonalDataRecords({
             <ShieldCheck size={16} />
             <span>
               {status.initialized
-                ? 'Access lasts until you close Preferences or lock your computer.'
+                ? 'Locks when you lock your computer.'
                 : 'Only you can unlock it. Keep your master password safe—it can’t be recovered.'}
             </span>
           </div>
@@ -342,11 +371,6 @@ function PersonalDataRecords({
           <StorageRecoveryAction message={error} />
         </p>
       )}
-      {notice && (
-        <p className="vault-notice" role="status">
-          {notice}
-        </p>
-      )}
       <div className="vault-library-header">
         <div>
           <h2>
@@ -354,30 +378,81 @@ function PersonalDataRecords({
             {group ? `${group.sessionName || group.name}` : 'Personal Data'}
           </h2>
           <span>
-            {status.items.length} {status.items.length === 1 ? 'item' : 'items'}{' '}
-            ·{' '}
-            {status.locked
-              ? 'Private values locked'
-              : 'Private values unlocked'}
+            {savedItems.length} {savedItems.length === 1 ? 'item' : 'items'} ·{' '}
+            {status.locked ? 'Locked' : 'Unlocked'}
           </span>
         </div>
-        <Button
-          variant="soft"
-          color="gray"
-          size="1"
-          disabled={busy}
-          onClick={() => {
-            if (!status.locked) {
-              run({ action: 'lock' });
-              return;
+        <div className="vault-header-actions">
+          <Popover.Root>
+            <Popover.Trigger>
+              <IconButton
+                variant="ghost"
+                color="gray"
+                size="1"
+                aria-label="Autofill and access settings"
+                title="Autofill and access"
+              >
+                <Settings2 size={16} />
+              </IconButton>
+            </Popover.Trigger>
+            <PanelPopoverContent
+              className="vault-access-popover"
+              align="end"
+              size="2"
+            >
+              <h3>Autofill & access</h3>
+              <div className="password-manager-controls">
+                <label>
+                  <span>Personal Data</span>
+                  <Switch
+                    checked={status.enabled}
+                    onCheckedChange={(value) => toggle('enabled', value)}
+                    disabled={busy}
+                  />
+                </label>
+                <label>
+                  <span>Manual autofill</span>
+                  <Switch
+                    checked={status.autofill}
+                    onCheckedChange={(value) => toggle('autofill', value)}
+                    disabled={busy || !status.enabled}
+                  />
+                </label>
+                <label>
+                  <span>AI access</span>
+                  <Switch
+                    checked={status.ai}
+                    onCheckedChange={(value) => toggle('ai', value)}
+                    disabled={busy || !status.enabled}
+                  />
+                </label>
+              </div>
+            </PanelPopoverContent>
+          </Popover.Root>
+          <IconButton
+            variant="soft"
+            color="gray"
+            size="1"
+            disabled={busy}
+            aria-label={
+              status.locked ? 'Unlock Personal Data' : 'Lock Personal Data'
             }
-            if (status.authentication === 'os') run({ action: 'authenticate' });
-            else setAuthPrompt(true);
-          }}
-        >
-          <LockKeyhole size={14} />
-          {status.locked ? 'Unlock' : 'Lock'}
-        </Button>
+            title={
+              status.locked ? 'Unlock Personal Data' : 'Lock Personal Data'
+            }
+            onClick={() => {
+              if (!status.locked) {
+                run({ action: 'lock' });
+                return;
+              }
+              if (status.authentication === 'os')
+                run({ action: 'authenticate' });
+              else setAuthPrompt(true);
+            }}
+          >
+            <LockKeyhole size={14} />
+          </IconButton>
+        </div>
       </div>
       {status.locked && status.authentication !== 'os' && (
         <p className="vault-hint">
@@ -414,34 +489,6 @@ function PersonalDataRecords({
           </form>
         </details>
       )}
-      <details className="vault-options">
-        <summary>
-          <Settings2 size={15} />
-          Autofill & access
-        </summary>
-        <div className="password-manager-controls">
-          <label>
-            <Switch
-              checked={status.enabled}
-              onCheckedChange={(value) => toggle('enabled', value)}
-              disabled={busy}
-            />{' '}
-            Personal Data
-          </label>
-          <label>
-            <Switch
-              checked={status.autofill}
-              onCheckedChange={(value) => toggle('autofill', value)}
-              disabled={busy || !status.enabled}
-            />{' '}
-            Manual autofill
-          </label>
-        </div>
-        <p className="vault-hint">
-          AI can find this information when needed. Private values are filled
-          locally after approval.
-        </p>
-      </details>
       <div className="vault-toolbar">
         <TextField.Root
           aria-label="Search saved items"
@@ -466,165 +513,131 @@ function PersonalDataRecords({
           disabled={busy}
           onClick={() => run({ action: 'import', allowAI: false })}
         >
-          Import…
+          <Download size={15} />
+          Import
         </Button>
       </div>
-      {status.items.length > 0 && (
-        <div className="vault-fill-target">
-          <label htmlFor="vault-page">Fill into</label>
-          <select
-            id="vault-page"
-            value={pageId}
-            onChange={(event) => setPageId(event.target.value)}
-          >
-            <option value="">Choose a tab</option>
-            {pages.map((page) => (
-              <option key={page.id} value={page.id}>
-                {page.title || page.url} · {new URL(page.url).origin}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      {status.items.length > 0 && (
-        <div className="vault-item-list">
-          <table className="vault-table">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Value</th>
-                <th scope="col">Website</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {status.items
-                .filter((saved) =>
-                  `${saved.title} ${saved.origin} ${saved.username}`
-                    .toLowerCase()
-                    .includes(query.toLowerCase())
-                )
-                .map((saved) => (
-                  <tr key={saved.id}>
-                    <td data-label="Name">
-                      <strong>{saved.title}</strong>
-                      <span className="vault-table-website">
-                        {`${
-                          saved.fieldCount + (saved.kind === 'login' ? 2 : 0)
-                        } values`}
-                      </span>
-                      <span className="personal-data-source">
-                        {recordSource(saved)}
-                      </span>
-                    </td>
-                    <td data-label="Value">
-                      {saved.preview ||
-                        (saved.privateCount ? 'Private values' : '—')}
-                    </td>
-                    <td data-label="Website">
-                      {saved.origin || 'All websites'}
-                    </td>
-                    <td data-label="Actions">
-                      <div className="vault-row-actions">
-                        <Button
-                          variant="soft"
-                          size="1"
-                          disabled={
-                            busy ||
-                            !pageId ||
-                            !status.enabled ||
-                            !status.autofill
-                          }
-                          onClick={() =>
-                            requireAuthentication() &&
-                            run({
-                              action: 'fill',
-                              id: saved.id,
-                              pageId: Number(pageId),
-                            })
-                          }
-                        >
-                          Fill
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="1"
-                          disabled={busy}
-                          onClick={async (event) => {
-                            editorOpener.current = event.currentTarget;
-                            if (!requireAuthentication()) return;
-                            try {
-                              const editable = await requestData({
-                                action: 'edit',
-                                id: saved.id,
-                              });
-                              await refresh();
-                              setItem(entryForEditor(editable as VaultItem));
-                              setVisibleFields([]);
-                              setError('');
-                              setEditing(true);
-                            } catch {
-                              setError('Authentication was cancelled.');
-                            }
-                          }}
-                        >
-                          {saved.inherited
-                            ? 'Customize for this group'
-                            : 'Edit'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="1"
-                          color="red"
-                          disabled={busy}
-                          onClick={async (event) => {
-                            editorOpener.current = event.currentTarget;
-                            if (!requireAuthentication()) return;
-                            if (
-                              await window.electron.browser.confirm({
-                                message: saved.inherited
-                                  ? `Hide “${saved.title}” in this group?`
-                                  : `Delete “${saved.title}”?`,
-                                detail: saved.inherited
-                                  ? 'The browser-wide original stays available to other groups.'
-                                  : 'This permanently removes the saved item.',
-                                confirm: saved.inherited ? 'Hide' : 'Delete',
-                              })
-                            )
-                              await run({
-                                action: saved.inherited ? 'hide' : 'delete',
-                                id: saved.id,
-                              });
-                          }}
-                        >
-                          {saved.inherited ? 'Hide in this group' : 'Delete'}
-                        </Button>
-                        {saved.overridden && (
-                          <Button
-                            variant="ghost"
-                            size="1"
-                            disabled={busy}
-                            onClick={() =>
-                              run({ action: 'reset', id: saved.id })
-                            }
-                          >
-                            Reset override
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-          {status.items.length > 0 &&
-            !status.items.some((saved) =>
-              `${saved.title} ${saved.origin} ${saved.username}`
-                .toLowerCase()
-                .includes(query.toLowerCase())
-            ) && <p className="vault-hint">No matching saved items.</p>}
-        </div>
-      )}
+      <div
+        className="vault-record-list"
+        role="list"
+        aria-label="Saved Personal Data"
+      >
+        {matchingItems.map((saved) => (
+          <div key={saved.id} className="vault-record" role="listitem">
+            <div className="vault-record-icon" aria-hidden="true">
+              {saved.kind === 'login' ? (
+                <KeyRound size={18} />
+              ) : saved.kind === 'knowledge' ? (
+                <FileText size={18} />
+              ) : saved.kind === 'payment' ? (
+                <CreditCard size={18} />
+              ) : (
+                <UserRound size={18} />
+              )}
+            </div>
+            <div className="vault-record-body">
+              <button
+                className="vault-record-name"
+                disabled={busy}
+                onClick={(event) => openSaved(saved, event.currentTarget)}
+              >
+                {saved.title}
+              </button>
+              {saved.preview && (
+                <p className="vault-record-preview" title={saved.preview}>
+                  {saved.preview}
+                </p>
+              )}
+              <div className="vault-record-meta">
+                <span>
+                  {saved.kind === 'login'
+                    ? 'Login'
+                    : saved.kind === 'knowledge'
+                    ? 'Document'
+                    : saved.fieldCount
+                    ? `${saved.fieldCount} ${
+                        saved.fieldCount === 1 ? 'value' : 'values'
+                      }`
+                    : 'Saved details'}
+                </span>
+                <span className="vault-record-site">
+                  <Globe size={11} aria-hidden="true" />
+                  {websiteLabel(saved.origin)}
+                </span>
+                {group && <span>{recordSource(saved)}</span>}
+              </div>
+            </div>
+            <div className="vault-record-actions">
+              <IconButton
+                variant="ghost"
+                color="gray"
+                size="1"
+                disabled={busy}
+                aria-label={
+                  saved.inherited ? 'Customize for this group' : 'Edit'
+                }
+                title={saved.inherited ? 'Customize for this group' : 'Edit'}
+                onClick={(event) => openSaved(saved, event.currentTarget)}
+              >
+                <Pencil size={15} />
+              </IconButton>
+              {saved.overridden && (
+                <IconButton
+                  variant="ghost"
+                  color="gray"
+                  size="1"
+                  disabled={busy}
+                  aria-label="Reset override"
+                  title="Reset override"
+                  onClick={() => run({ action: 'reset', id: saved.id })}
+                >
+                  <RotateCcw size={15} />
+                </IconButton>
+              )}
+              <IconButton
+                variant="ghost"
+                color="gray"
+                size="1"
+                disabled={busy}
+                aria-label={saved.inherited ? 'Hide in this group' : 'Delete'}
+                title={saved.inherited ? 'Hide in this group' : 'Delete'}
+                onClick={async (event) => {
+                  editorOpener.current = event.currentTarget;
+                  if (!requireAuthentication()) return;
+                  if (
+                    await window.electron.browser.confirm({
+                      message: saved.inherited
+                        ? `Hide “${saved.title}” in this group?`
+                        : `Delete “${saved.title}”?`,
+                      detail: saved.inherited
+                        ? 'The browser-wide original stays available to other groups.'
+                        : 'This permanently removes the saved item.',
+                      confirm: saved.inherited ? 'Hide' : 'Delete',
+                    })
+                  )
+                    await run({
+                      action: saved.inherited ? 'hide' : 'delete',
+                      id: saved.id,
+                    });
+                }}
+              >
+                {saved.inherited ? <EyeOff size={15} /> : <Trash2 size={15} />}
+              </IconButton>
+            </div>
+          </div>
+        ))}
+        {!matchingItems.length && (
+          <div className="vault-empty">
+            <UserRound size={28} />
+            <h3>{query.trim() ? 'No matching items' : 'No saved items yet'}</h3>
+            <p>
+              {query.trim()
+                ? 'Try another search.'
+                : 'Add an item or save a filled form from a website.'}
+            </p>
+          </div>
+        )}
+      </div>
 
       {!!status.hidden?.length && (
         <details className="vault-options">
@@ -711,7 +724,8 @@ function PersonalDataRecords({
               }
             />
             <Dialog.Description size="2" color="gray">
-              Add details you want to reuse on websites.
+              Keep related values together. Each fills its matching website
+              field.
             </Dialog.Description>
             <form
               className="password-manager-editor"
@@ -747,6 +761,15 @@ function PersonalDataRecords({
               )}
               <div className="vault-editor-scroll">
                 <fieldset className="vault-editor-fields" disabled={busy}>
+                  <label htmlFor="vault-item-name">Item name (optional)</label>
+                  <TextField.Root
+                    id="vault-item-name"
+                    placeholder="e.g. Personal profile"
+                    value={item.title}
+                    onChange={(event) =>
+                      setItem({ ...item, title: event.target.value })
+                    }
+                  />
                   <div className="personal-entry-values">
                     <div className="personal-entry-labels">
                       <span>Field</span>
@@ -852,15 +875,108 @@ function PersonalDataRecords({
                         >
                           <Trash2 size={14} />
                         </Button>
-                        <details className="personal-entry-field-options">
-                          <summary>Value options</summary>
-                          <div className="personal-entry-options-content">
-                            {/password/i.test(field.name) && (
-                              <Button
-                                type="button"
-                                size="1"
-                                variant="soft"
-                                onClick={() =>
+                        <div className="personal-entry-matching">
+                          <label>
+                            <span>Fill as</span>
+                            <select
+                              aria-label={`Fill as for value ${index + 1}`}
+                              value={
+                                personalDataMatching.types.find((type) =>
+                                  (field.aliases || []).includes(type.value)
+                                )?.value || ''
+                              }
+                              onChange={(event) => {
+                                const mapping = event.target.value;
+                                setItem({
+                                  ...item,
+                                  fields: item.fields.map((current, position) =>
+                                    position === index
+                                      ? {
+                                          ...current,
+                                          aliases: [
+                                            ...(current.aliases || []).filter(
+                                              (alias) =>
+                                                !personalDataMatching.types.some(
+                                                  (type) => type.value === alias
+                                                )
+                                            ),
+                                            ...(mapping ? [mapping] : []),
+                                          ],
+                                        }
+                                      : current
+                                  ),
+                                });
+                              }}
+                            >
+                              <option value="">
+                                {personalDataMatching.types.find(
+                                  (type) =>
+                                    type.value ===
+                                    personalDataMatching.aliases(field.name)[0]
+                                )?.label || 'Field name'}{' '}
+                                (auto)
+                              </option>
+                              {personalDataMatching.types.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                  {type.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <details className="personal-entry-field-options">
+                            <summary>Value options</summary>
+                            <div className="personal-entry-options-content">
+                              {/password/i.test(field.name) && (
+                                <Button
+                                  type="button"
+                                  size="1"
+                                  variant="soft"
+                                  onClick={() =>
+                                    setItem({
+                                      ...item,
+                                      fields: item.fields.map(
+                                        (current, position) =>
+                                          position === index
+                                            ? {
+                                                ...current,
+                                                value: generatePassword(
+                                                  window.crypto
+                                                ),
+                                              }
+                                            : current
+                                      ),
+                                    })
+                                  }
+                                >
+                                  Generate password
+                                </Button>
+                              )}
+                              <label>
+                                <Switch
+                                  checked={isProtectedField(field)}
+                                  disabled={isProtectedField({
+                                    ...field,
+                                    secret: false,
+                                  })}
+                                  onCheckedChange={(secret) =>
+                                    setItem({
+                                      ...item,
+                                      fields: item.fields.map(
+                                        (current, position) =>
+                                          position === index
+                                            ? { ...current, secret }
+                                            : current
+                                      ),
+                                    })
+                                  }
+                                />
+                                <span>Private value</span>
+                              </label>
+                              <TextField.Root
+                                aria-label={`Other names for key ${index + 1}`}
+                                placeholder="Other names, comma separated"
+                                value={(field.aliases || []).join(', ')}
+                                onChange={(event) =>
                                   setItem({
                                     ...item,
                                     fields: item.fields.map(
@@ -868,62 +984,19 @@ function PersonalDataRecords({
                                         position === index
                                           ? {
                                               ...current,
-                                              value: generatePassword(
-                                                window.crypto
-                                              ),
+                                              aliases: event.target.value
+                                                .split(',')
+                                                .map((value) => value.trim())
+                                                .filter(Boolean),
                                             }
                                           : current
                                     ),
                                   })
                                 }
-                              >
-                                Generate password
-                              </Button>
-                            )}
-                            <label>
-                              <Switch
-                                checked={isProtectedField(field)}
-                                disabled={isProtectedField({
-                                  ...field,
-                                  secret: false,
-                                })}
-                                onCheckedChange={(secret) =>
-                                  setItem({
-                                    ...item,
-                                    fields: item.fields.map(
-                                      (current, position) =>
-                                        position === index
-                                          ? { ...current, secret }
-                                          : current
-                                    ),
-                                  })
-                                }
                               />
-                              <span>Private value</span>
-                            </label>
-                            <TextField.Root
-                              aria-label={`Other names for key ${index + 1}`}
-                              placeholder="Other names, comma separated"
-                              value={(field.aliases || []).join(', ')}
-                              onChange={(event) =>
-                                setItem({
-                                  ...item,
-                                  fields: item.fields.map((current, position) =>
-                                    position === index
-                                      ? {
-                                          ...current,
-                                          aliases: event.target.value
-                                            .split(',')
-                                            .map((value) => value.trim())
-                                            .filter(Boolean),
-                                        }
-                                      : current
-                                  ),
-                                })
-                              }
-                            />
-                          </div>
-                        </details>
+                            </div>
+                          </details>
+                        </div>
                       </div>
                     ))}
                     <Button
@@ -971,18 +1044,7 @@ function PersonalDataRecords({
                     before use.
                   </p>
                   <details className="personal-entry-notes">
-                    <summary>
-                      Extra details {item.document && '& document'}
-                    </summary>
-                    <label htmlFor="vault-title">Label (optional)</label>
-                    <TextField.Root
-                      id="vault-title"
-                      placeholder="For example, Work details"
-                      value={item.title}
-                      onChange={(event) =>
-                        setItem({ ...item, title: event.target.value })
-                      }
-                    />
+                    <summary>Notes {item.document && '& document'}</summary>
                     <textarea
                       id="personal-notes"
                       aria-label="Notes"

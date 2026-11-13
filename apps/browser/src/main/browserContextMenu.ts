@@ -23,7 +23,8 @@ export function showBrowserContextMenu(
   params: ContextMenuParams,
   openTab: (url: string, newSession?: boolean) => void,
   extensions: MenuItem[] = [],
-  pictureInPicture: (() => void) | undefined = undefined
+  pictureInPicture: (() => void) | undefined = undefined,
+  hookActions: MenuItemConstructorOptions[] = []
 ) {
   const items: (MenuItemConstructorOptions | MenuItem)[] = [];
   const group = (entries: (MenuItemConstructorOptions | MenuItem)[]) => {
@@ -171,12 +172,26 @@ export function showBrowserContextMenu(
       {
         label: 'Search With',
         submenu: [
-          engine,
-          ...engines.filter((entry) => entry.id !== engine.id),
-        ].map((entry) => ({
-          label: entry.name,
-          click: () => openTab(searchUrl(entry, params.selectionText.trim())),
-        })),
+          {
+            label: 'Kudium AI',
+            enabled: params.selectionText.trim().length <= 30000,
+            click: () => {
+              if (!window.isDestroyed())
+                window.webContents.send(
+                  'browser-ai-selection',
+                  params.selectionText.trim()
+                );
+            },
+          },
+          { type: 'separator' },
+          ...[engine, ...engines.filter((entry) => entry.id !== engine.id)].map(
+            (entry) => ({
+              label: entry.name,
+              click: () =>
+                openTab(searchUrl(entry, params.selectionText.trim())),
+            })
+          ),
+        ],
       },
     ]);
   }
@@ -225,6 +240,7 @@ export function showBrowserContextMenu(
     },
     { label: nativeMenuLabels.print, click: () => contents.print() },
   ]);
+  group(hookActions);
   group(extensions);
   group([
     {

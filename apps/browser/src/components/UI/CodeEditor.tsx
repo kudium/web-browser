@@ -6,6 +6,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { autocompletion } from '@codemirror/autocomplete';
 import { css } from '@codemirror/lang-css';
 import {
+  hookLanguageMode,
   intelligentHookCompletions,
   hookDiagnostics,
   hookTypeInfo,
@@ -19,6 +20,8 @@ export function CodeEditor({
   label,
   disabled,
   jumpLine,
+  maxLength = 100000,
+  mode = 'lifecycle',
 }: {
   value: string;
   onChange: (source: string) => void;
@@ -26,6 +29,8 @@ export function CodeEditor({
   label: string;
   disabled: boolean;
   jumpLine?: { line: number; token: number };
+  maxLength?: number;
+  mode?: 'lifecycle' | 'action';
 }) {
   const [view, setView] = useState<EditorView>();
   useEffect(() => {
@@ -42,6 +47,7 @@ export function CodeEditor({
   const { appearance } = useAppearance();
   const extensions = useMemo(
     () => [
+      hookLanguageMode.of(mode),
       language === 'css' ? css() : javascript(),
       ...(language === 'javascript'
         ? [
@@ -52,11 +58,11 @@ export function CodeEditor({
         : []),
       EditorView.lineWrapping,
       EditorState.transactionFilter.of((transaction) =>
-        transaction.newDoc.length > 100000 ? [] : transaction
+        transaction.newDoc.length > maxLength ? [] : transaction
       ),
       EditorView.contentAttributes.of({ 'aria-label': label }),
     ],
-    [language, label]
+    [language, label, maxLength, mode]
   );
   return (
     <CodeMirror
@@ -64,7 +70,7 @@ export function CodeEditor({
       onCreateEditor={setView}
       value={value}
       onChange={(next) => {
-        if (next.length <= 100000) onChange(next);
+        if (next.length <= maxLength) onChange(next);
       }}
       extensions={extensions}
       theme={appearance}

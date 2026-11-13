@@ -124,6 +124,7 @@ const commands = new Set<BrowserCommand['action']>([
   'close-group',
   'unload-tab',
   'open-site-developer',
+  'toggle-site-hook',
   'set-site-developer',
   'ask-hook-ai',
   'clear-site-developer-logs',
@@ -140,6 +141,8 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
     (value.action !== 'set-site-developer' ||
       (validDeveloperConfig(value.developer) &&
         (value.run === undefined || typeof value.run === 'boolean'))) &&
+    (value.action !== 'toggle-site-hook' ||
+      (typeof value.hookId === 'string' && typeof value.url === 'string')) &&
     (value.action !== 'ask-hook-ai' || text(value.prompt, 30000)) &&
     optionalText(value.permission) &&
     (value.grantId === undefined || text(value.grantId, 100)) &&

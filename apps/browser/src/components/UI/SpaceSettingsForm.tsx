@@ -1,5 +1,6 @@
+import { FormTextField } from './FormTextField';
 import { useId } from 'react';
-import { Button, Checkbox, Text, TextField } from '@radix-ui/themes';
+import { Button, Switch, Text } from '@radix-ui/themes';
 import {
   Space,
   spaceColorNames,
@@ -7,6 +8,7 @@ import {
   spaceColorValues,
 } from '../../utils/SpaceManager';
 import { SpaceIconPicker } from './SpaceIcon';
+import { PreferenceHint } from './PreferenceHint';
 import { SpaceColorPicker } from './SpaceColorPicker';
 
 type SpaceDraft = Pick<
@@ -18,6 +20,7 @@ type SpaceDraft = Pick<
   | 'iconEmoji'
   | 'customColor'
   | 'frameColor'
+  | 'useWebsiteColors'
 >;
 export function SpaceSettingsForm({
   value,
@@ -36,6 +39,7 @@ export function SpaceSettingsForm({
   onPreferences?: () => void;
 }) {
   const frameLinkId = useId();
+  const websiteColorsId = useId();
   return (
     <form
       className="space-settings-form"
@@ -53,7 +57,7 @@ export function SpaceSettingsForm({
           label="Space icon"
           onChange={onChange}
         />
-        <TextField.Root
+        <FormTextField
           aria-label="Space name"
           required
           autoFocus
@@ -62,57 +66,81 @@ export function SpaceSettingsForm({
           onChange={(event) => onChange({ name: event.target.value })}
         />
       </div>
-      <div className="space-settings-color">
-        <div>
-          <strong>Primary color</strong>
-          <small>
-            {value.customColor ? 'Custom color' : spaceColorNames[value.color]}
-          </small>
+      <div className="space-settings-appearance">
+        <div className="space-settings-toggle-row">
+          <div className="space-settings-toggle-label">
+            <Text as="label" htmlFor={websiteColorsId}>
+              Match website color
+            </Text>
+            <PreferenceHint label="Match website color">
+              Uses the active site’s color, or your fallback. In split view,
+              follows the focused pane.
+            </PreferenceHint>
+          </div>
+          <Switch
+            id={websiteColorsId}
+            size="1"
+            checked={value.useWebsiteColors === true}
+            onCheckedChange={(checked) =>
+              onChange({ useWebsiteColors: checked })
+            }
+          />
         </div>
-        <SpaceColorPicker
-          color={value.color}
-          customColor={value.customColor || ''}
-          label="Space primary color"
-          onChange={onChange}
-        />
-      </div>
-      <Text
-        as="label"
-        className="space-settings-frame-link"
-        htmlFor={frameLinkId}
-      >
-        <Checkbox
-          id={frameLinkId}
-          checked={!value.frameColor}
-          onCheckedChange={(checked) =>
-            onChange({
-              frameColor:
-                checked === true ? undefined : spacePrimaryColor(value),
-            })
-          }
-        />
-        Use primary color for frame
-      </Text>
-      {value.frameColor && (
-        <div className="space-settings-color space-settings-frame-color">
+        <div className="space-settings-color">
           <div>
-            <strong>Frame tint</strong>
-            <small>Only the browser frame</small>
+            <strong>
+              {value.useWebsiteColors ? 'Fallback color' : 'Primary color'}
+            </strong>
+            <small>
+              {value.customColor
+                ? 'Custom color'
+                : spaceColorNames[value.color]}
+            </small>
           </div>
           <SpaceColorPicker
             color={value.color}
-            customColor={value.frameColor}
-            label="Frame tint"
-            onChange={(patch) =>
+            customColor={value.customColor || ''}
+            label={
+              value.useWebsiteColors
+                ? 'Space fallback color'
+                : 'Space primary color'
+            }
+            onChange={onChange}
+          />
+        </div>
+        <div className="space-settings-toggle-row">
+          <Text as="label" htmlFor={frameLinkId}>
+            Use primary color for frame
+          </Text>
+          <Switch
+            id={frameLinkId}
+            size="1"
+            checked={!value.frameColor}
+            onCheckedChange={(checked) =>
               onChange({
-                frameColor:
-                  patch.customColor ||
-                  spaceColorValues[patch.color || value.color],
+                frameColor: checked ? undefined : spacePrimaryColor(value),
               })
             }
           />
         </div>
-      )}
+        {value.frameColor && (
+          <div className="space-settings-color space-settings-frame-color">
+            <strong>Frame color</strong>
+            <SpaceColorPicker
+              color={value.color}
+              customColor={value.frameColor}
+              label="Frame color"
+              onChange={(patch) =>
+                onChange({
+                  frameColor:
+                    patch.customColor ||
+                    spaceColorValues[patch.color || value.color],
+                })
+              }
+            />
+          </div>
+        )}
+      </div>
       <div className="space-settings-footer">
         {onPreferences && (
           <Button

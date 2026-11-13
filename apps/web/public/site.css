@@ -982,6 +982,40 @@ th {
 .tutorial-related {
   margin-top: 64px;
 }
+.tutorial-reference-section {
+  margin-top: 48px;
+}
+.tutorial-reference-section h2 {
+  font-size: 25px;
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+  scroll-margin-top: 24px;
+}
+.tutorial-reference-section h3 {
+  font-size: 17px;
+  line-height: 1.5;
+  margin-top: 28px;
+}
+.tutorial-reference-section p {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+.tutorial-reference-table {
+  overflow-x: auto;
+  margin-top: 24px;
+}
+.tutorial-reference-table th {
+  text-align: left;
+  font-weight: 500;
+}
+.tutorial-reference-table th,
+.tutorial-reference-table td {
+  vertical-align: top;
+}
+.tutorial-reference-table th[scope="row"] {
+  width: 38%;
+}
 .tutorial-related h2 {
   font-size: 32px;
   letter-spacing: -0.04em;

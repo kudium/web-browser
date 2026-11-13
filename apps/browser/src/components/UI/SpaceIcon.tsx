@@ -1,55 +1,8 @@
-import {
-  Music,
-  Camera,
-  Gamepad2,
-  Rocket,
-  FlaskConical,
-  Plane,
-  ShoppingBag,
-  Wallet,
-  Dumbbell,
-  Sun,
-  Moon,
-  Palette,
-  Home,
-  Briefcase,
-  Compass,
-  Code2,
-  BookOpen,
-  Heart,
-  Coffee,
-  Layers,
-  Star,
-  Globe,
-} from 'lucide-react';
-import { Select } from '@radix-ui/themes';
+import { Layers } from 'lucide-react';
 import { Space, SpaceIconName } from '../../utils/SpaceManager';
 import { IconPicker } from './IconPicker';
+import { iconSymbols as symbols, imageSymbol } from './iconSymbols';
 
-const symbols = {
-  home: Home,
-  work: Briefcase,
-  explore: Compass,
-  code: Code2,
-  reading: BookOpen,
-  heart: Heart,
-  coffee: Coffee,
-  layers: Layers,
-  star: Star,
-  globe: Globe,
-  music: Music,
-  camera: Camera,
-  game: Gamepad2,
-  rocket: Rocket,
-  science: FlaskConical,
-  travel: Plane,
-  shopping: ShoppingBag,
-  finance: Wallet,
-  fitness: Dumbbell,
-  sun: Sun,
-  moon: Moon,
-  palette: Palette,
-};
 export function SpaceIcon({
   space,
 }: {
@@ -96,42 +49,15 @@ export function SpaceIconPicker({
       preview={
         <SpaceIcon space={{ icon, iconImage: image, iconEmoji: emoji }} />
       }
-      onChange={(value) =>
+      symbol={!emoji && !image ? icon : undefined}
+      onChange={(value) => {
+        const selectedSymbol = imageSymbol(value.image);
         onChange({
+          ...(selectedSymbol ? { icon: selectedSymbol } : {}),
           iconEmoji: value.emoji || undefined,
-          iconImage: value.image || undefined,
-        })
-      }
-      renderDefaultChoice={(done) => (
-        <Select.Root
-          value={emoji || image ? '' : icon}
-          onValueChange={(value) => {
-            onChange({
-              icon: value as SpaceIconName,
-              iconImage: undefined,
-              iconEmoji: undefined,
-            });
-            done();
-          }}
-        >
-          <Select.Trigger
-            aria-label="Default space icon"
-            className="icon-picker-symbol-select"
-          >
-            <SpaceIcon space={{ icon }} /> Choose a symbol
-          </Select.Trigger>
-          <Select.Content>
-            {Object.entries(symbols).map(([name, Symbol]) => (
-              <Select.Item key={name} value={name}>
-                <span className="space-icon-option">
-                  <Symbol size={16} />
-                  {name[0].toUpperCase() + name.slice(1)}
-                </span>
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-      )}
+          iconImage: selectedSymbol ? undefined : value.image || undefined,
+        });
+      }}
     />
   );
 }

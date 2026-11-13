@@ -56,6 +56,7 @@ export interface BrowserState {
   id: string;
   url: string;
   title: string;
+  themeColor?: string;
   icon?: string;
   muted?: boolean;
   audible?: boolean;
@@ -63,6 +64,7 @@ export interface BrowserState {
   pictureInPicture?: PictureInPictureState;
   siteSettings?: {
     origin: string;
+    certificateError?: string;
     permissions: Record<string, 'ask' | 'allow' | 'block'>;
     blocked: boolean;
     developer?: SiteDeveloperState;
@@ -118,6 +120,7 @@ export interface BrowserCommand {
     | 'close-group'
     | 'unload-tab'
     | 'open-site-developer'
+    | 'toggle-site-hook'
     | 'set-site-developer'
     | 'ask-hook-ai'
     | 'clear-site-developer-logs'
@@ -185,6 +188,7 @@ export interface BrowserClient {
   confirm(prompt: NativePrompt): Promise<boolean>;
   showEmojiPicker(): Promise<void>;
   chooseSpaceIcon(): Promise<string | null>;
+  onAISelection?(callback: (text: string) => void): () => void;
   onTabRequest(callback: (request: BrowserTabRequest) => void): () => void;
   history(action: HistoryAction, id?: string): Promise<HistoryRecord[]>;
   onHistory(callback: (records: HistoryRecord[]) => void): () => void;
@@ -202,7 +206,13 @@ export interface BrowserClient {
   preferences(
     action: 'get' | 'open' | 'update',
     patch?: Partial<BrowserPreferences> & {
-      section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces';
+      section?:
+        | 'archive'
+        | 'sync'
+        | 'import'
+        | 'passwords'
+        | 'spaces'
+        | 'hooks';
     }
   ): Promise<BrowserPreferences>;
   appUpdates(action: AppUpdateAction): Promise<AppUpdateState>;

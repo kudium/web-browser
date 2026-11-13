@@ -1,3 +1,5 @@
+import { ALL_GROUPS_HOOK_SCOPE } from '../browser/hookMarketplace';
+import { getGlobalHooks, saveGlobalHooks, globalHookHash } from './globalHooks';
 import {
   app,
   BrowserWindow,
@@ -128,6 +130,15 @@ export function registerActivity(
         if (!entry || entry.source !== 'hook' || !entry.trigger)
           throw new Error('Hook source is unavailable.');
         const { profile, origin, hookId } = entry.trigger;
+        if (hookId?.startsWith('global:')) {
+          const all = hookId.startsWith('global:all:');
+          const hookScope = all ? ALL_GROUPS_HOOK_SCOPE : profile;
+          const id = hookId.slice(all ? 'global:all:'.length : 'global:'.length);
+          const global = getGlobalHooks(hookScope);
+          if (!global.hooks.some(hook => hook.id === id)) throw new Error('This hook was removed.');
+          saveGlobalHooks(hookScope, { ...global, hooks: global.hooks.map(hook => hook.id === id ? { ...hook, enabled: false } : hook) }, globalHookHash(global));
+          return undefined;
+        }
         const config = getSiteSettings(profile, origin).developer;
         if (!config) throw new Error('This hook was removed.');
         if (hookId && !config.hooks?.some((hook) => hook.id === hookId))

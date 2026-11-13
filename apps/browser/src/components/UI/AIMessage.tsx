@@ -134,6 +134,7 @@ export function AIMessage({
   onGroupContextMenu,
   followUps = false,
   onSuggestion,
+  onReuse,
 }: {
   text: string;
   groups?: AIGroup[];
@@ -142,6 +143,7 @@ export function AIMessage({
   onGroupContextMenu?: (id: string) => void;
   followUps?: boolean;
   onSuggestion?: (prompt: string) => void;
+  onReuse?: (text: string) => void;
 }) {
   const reply = useMemo(
     () => (followUps ? parseAISuggestions(text) : { text, suggestions: [] }),
@@ -253,9 +255,16 @@ export function AIMessage({
                 : []),
               ...(code ? [{ id: 'code', label: 'Copy code' }] : []),
               { id: 'message', label: 'Copy message' },
+              ...(onReuse
+                ? [
+                    { type: 'separator' as const },
+                    { id: 'reuse', label: 'Add to input' },
+                  ]
+                : []),
             ])
             .then(async (choice) => {
-              if (choice === 'open' && safeLink) link?.click();
+              if (choice === 'reuse') onReuse?.(text);
+              else if (choice === 'open' && safeLink) link?.click();
               else if (choice === 'link' && safeLink)
                 await navigator.clipboard.writeText(href);
               else if (choice === 'selection')

@@ -86,6 +86,9 @@ it('lists only the chosen group and space, including saved hooks on unloaded pag
     origin: 'https://example.com',
   });
   expect(getSiteSettings).toHaveBeenCalledWith('shared', 'https://example.com');
+  expect(pages[0].hooks).toEqual([
+    { id: '', name: 'Default hook', path: '/*', enabled: true },
+  ]);
   expect(JSON.stringify(pages)).not.toContain('log(url)');
   (getSiteSettings as jest.Mock).mockReturnValue({
     developer: { enabled: false, before: '', after: 'log(url)', css: '' },

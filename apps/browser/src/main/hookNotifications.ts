@@ -33,6 +33,7 @@ export const hookScriptHash = (config: SiteDeveloperConfig) =>
         config.before,
         config.after,
         config.css,
+        ...(config.actions ? [config.actions] : []),
         ...(config.hooks ? [config.hooks] : []),
       ])
     )

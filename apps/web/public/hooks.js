@@ -286,12 +286,43 @@
     applicability.addEventListener("change", updateTargets);
     updateTargets();
 
+    const actionsSection = publish.querySelector('[data-hook-actions]');
+    const actionList = actionsSection.querySelector('[data-action-list]');
+    const templates = JSON.parse(actionsSection.dataset.actionTemplates);
+    const addAction = (action) => {
+      if (actionList.children.length >= 20) throw new Error('Maximum twenty actions.');
+      const fragment = actionsSection.querySelector('template').content.cloneNode(true);
+      const card = fragment.querySelector('[data-hook-action]');
+      card.querySelector('[data-action-id]').value = action?.id || crypto.randomUUID();
+      if (action) {
+        card.querySelector('[data-action-name]').value = action.name;
+        card.querySelector('[data-action-title]').textContent = action.name;
+        card.querySelector('[data-action-source]').value = action.source;
+        card.querySelectorAll('[data-action-context]').forEach(input => { input.checked = action.contexts.includes(input.value); });
+      }
+      actionList.append(fragment);
+    };
+    actionsSection.querySelector('[data-add-action]').addEventListener('click', () => {
+      try { const choice = actionsSection.querySelector('[data-action-example]').value; addAction(choice === 'custom' ? undefined : templates[Number(choice)]); }
+      catch (e) { feedback(e.message); }
+    });
+    actionList.addEventListener('click', event => { if (event.target.closest('[data-remove-action]')) event.target.closest('[data-hook-action]').remove(); });
+    actionList.addEventListener('input', event => { if (event.target.matches('[data-action-name]')) event.target.closest('[data-hook-action]').querySelector('[data-action-title]').textContent = event.target.value || 'Untitled action'; });
+    const collectActions = () => [...actionList.querySelectorAll('[data-hook-action]')].map(card => ({
+      id: card.querySelector('[data-action-id]').value || crypto.randomUUID(),
+      name: card.querySelector('[data-action-name]').value,
+      contexts: [...card.querySelectorAll('[data-action-context]:checked')].map(input => input.value),
+      source: card.querySelector('[data-action-source]').value,
+    }));
+
     publish.addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(publish));
       const pkg = {
-        schemaVersion: 1,
+        schemaVersion: actionList.children.length ? 2 : 1,
+        ...(actionList.children.length ? { actions: collectActions() } : {}),
         minimumBrowserVersion: data.minimumBrowserVersion,
+        ...(data.testUrl?.trim() ? { testUrl: data.testUrl.trim() } : {}),
         name: data.name,
         description: data.description,
         license: data.license,
@@ -338,7 +369,7 @@
           if (file.size > 256 * 1024) throw new Error("Package is too large.");
           const raw = JSON.parse(await file.text());
           const pkg = raw.package || raw;
-          if (pkg.schemaVersion !== 1 || !pkg.lifecycle)
+          if (![1, 2].includes(pkg.schemaVersion) || !pkg.lifecycle)
             throw new Error("Unsupported hook package.");
           for (const key of [
             "name",
@@ -347,6 +378,7 @@
             "applicability",
             "path",
             "minimumBrowserVersion",
+            "testUrl",
           ])
             if (publish.elements.namedItem(key))
               publish.elements.namedItem(key).value = pkg[key] || "";
@@ -358,6 +390,8 @@
             field.value = pkg.lifecycle[phase] || "";
             field.closest("details").open = !!field.value.trim();
           }
+          actionList.replaceChildren();
+          (pkg.actions || []).forEach(addAction);
           updateTargets();
           feedback("Package loaded. Review it before publishing.");
         } catch (e) {

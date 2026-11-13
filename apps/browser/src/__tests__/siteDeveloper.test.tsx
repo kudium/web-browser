@@ -479,15 +479,15 @@ it('keeps all hooks visible and preserves drafts while switching, adding and rem
   expect(
     screen.queryByRole('combobox', { name: 'Selected hook' })
   ).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /Research updates/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^Research updates/ }));
   fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
     target: { value: 'research draft' },
   });
-  fireEvent.click(screen.getByRole('button', { name: /Price alerts/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^Price alerts/ }));
   expect(screen.getByRole('textbox', { name: 'After load code' })).toHaveValue(
     'prices'
   );
-  fireEvent.click(screen.getByRole('button', { name: /Research updates/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^Research updates/ }));
   expect(screen.getByRole('textbox', { name: 'After load code' })).toHaveValue(
     'research draft'
   );
@@ -496,15 +496,16 @@ it('keeps all hooks visible and preserves drafts while switching, adding and rem
     target: { value: 'Renamed research' },
   });
   expect(
-    screen.getByRole('button', { name: /Renamed research/ })
+    screen.getByRole('button', { name: /^Renamed research/ })
   ).toHaveAttribute('aria-pressed', 'true');
   fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape' });
   fireEvent.click(screen.getByRole('button', { name: 'Delete hook' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   expect(
-    screen.queryByRole('button', { name: /Renamed research/ })
+    screen.queryByRole('button', { name: /^Renamed research/ })
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Add hook' }));
-  expect(screen.getByRole('button', { name: /New hook/ })).toHaveAttribute(
+  expect(screen.getByRole('button', { name: /^New hook/ })).toHaveAttribute(
     'aria-pressed',
     'true'
   );
@@ -554,10 +555,11 @@ it('lets users delete a custom hook directly and save the removal', () => {
   expect(
     screen.queryByRole('button', { name: 'Delete hook' })
   ).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /Dark mode/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dark mode/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete hook' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   expect(
-    screen.queryByRole('button', { name: /Dark mode/ })
+    screen.queryByRole('button', { name: /^Dark mode/ })
   ).not.toBeInTheDocument();
   expect(send).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Save hooks' }));
@@ -624,7 +626,7 @@ it('lets users keep a custom hook disabled while the site is enabled', () => {
       />
     </Theme>
   );
-  fireEvent.click(screen.getByRole('button', { name: /Paused hook/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^Paused hook/ }));
   fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
     target: { value: 'log(url);' },
   });
@@ -666,4 +668,68 @@ it('offers publishing beside save and run for saved default code and blocks unsa
   expect(publish).toBeDisabled();
   view.unmount();
   window.removeEventListener('kudium-hooks-dialog', listener);
+});
+
+it('renames a hook from its list menu without changing its code or enabled state', async () => {
+  const send = jest.fn();
+  const hook = {
+    id: 'rename-test',
+    name: 'Reader',
+    path: '/*',
+    enabled: false,
+    before: '',
+    after: 'log("kept")',
+    css: '',
+  };
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        developer={{
+          config: { ...emptyDeveloperConfig, hooks: [hook] },
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  fireEvent.keyDown(
+    screen.getByRole('button', { name: 'Options for Reader' }),
+    { key: 'ArrowDown' }
+  );
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }));
+  fireEvent.change(screen.getByLabelText('Hook name'), {
+    target: { value: 'Renamed reader' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+  expect(
+    screen.getByRole('button', { name: /^Renamed reader/ })
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Save hooks' }));
+  expect(send).toHaveBeenLastCalledWith('set-site-developer', {
+    developer: expect.objectContaining({
+      hooks: [{ ...hook, name: 'Renamed reader' }],
+    }),
+  });
+});
+
+it('opens a new hook draft from the page tree without saving until requested', () => {
+  const send = jest.fn();
+  render(
+    <Theme>
+      <SiteDeveloperPanel
+        disabled={false}
+        send={send}
+        selectedHookId="__new__"
+        developer={{
+          config: emptyDeveloperConfig,
+          status: 'waiting',
+          logs: [],
+        }}
+      />
+    </Theme>
+  );
+  expect(screen.getAllByText('New hook').length).toBeGreaterThan(0);
+  expect(send).not.toHaveBeenCalled();
 });

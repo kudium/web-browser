@@ -1,4 +1,5 @@
 /** @jest-environment-options {"url":"https://example.com"} */
+import { createPersonalDataMatching } from '../browser/personalDataMatching';
 import { fillDocument } from '../main/passwordManager/fill';
 import type { VaultItem } from '../browser/passwordManager';
 
@@ -137,4 +138,133 @@ it('masks sensitive payment values and skips ambiguous matches', () => {
   expect(
     document.querySelector<HTMLInputElement>('[name="cc-number"]')!.type
   ).toBe('password');
+});
+
+it('fills all four values from one item using website metadata and an explicit phone mapping', () => {
+  document.body.innerHTML =
+    '<form><input autocomplete="section-contact shipping email"><label for="user">Username</label><input id="user"><input autocomplete="name"><span id="phone-label">Phone number</span><input aria-labelledby="phone-label"></form>';
+  jest
+    .spyOn(HTMLInputElement.prototype, 'getClientRects')
+    .mockReturnValue([{}] as any);
+  const result = fillDocument(
+    {
+      ...item,
+      kind: 'profile',
+      fields: [
+        { name: 'Email', value: 'alex@example.com', secret: false },
+        { name: 'Username', value: 'alex01', secret: false },
+        { name: 'Name', value: 'Alex Example', secret: false },
+        {
+          name: 'Number',
+          value: '+15555550100',
+          aliases: ['tel'],
+          secret: false,
+        },
+      ],
+    },
+    false
+  );
+  expect(result).toEqual({ filled: 4 });
+  expect(
+    Array.from(document.querySelectorAll('input')).map((input) => input.value)
+  ).toEqual(['alex@example.com', 'alex01', 'Alex Example', '+15555550100']);
+  jest.restoreAllMocks();
+});
+
+it('prefers exact field metadata, skips collisions and never treats full name as first name', () => {
+  document.body.innerHTML =
+    '<input autocomplete="given-name"><input placeholder="Work email"><input autocomplete="email"><input name="age" type="number">';
+  jest
+    .spyOn(HTMLInputElement.prototype, 'getClientRects')
+    .mockReturnValue([{}] as any);
+  expect(
+    fillDocument(
+      {
+        ...item,
+        kind: 'profile',
+        fields: [
+          { name: 'Name', value: 'Alex Example', secret: false },
+          { name: 'Email', value: 'alex@example.com', secret: false },
+          { name: 'Number', value: '+15555550100', secret: false },
+        ],
+      },
+      false
+    )
+  ).toEqual({ filled: 1 });
+  expect(
+    Array.from(document.querySelectorAll('input')).map((input) => input.value)
+  ).toEqual(['', '', 'alex@example.com', '']);
+  document.body.innerHTML = '<input autocomplete="email">';
+  expect(
+    fillDocument(
+      {
+        ...item,
+        kind: 'profile',
+        fields: [
+          { name: 'Email', value: 'first@example.com', secret: false },
+          {
+            name: 'Work email',
+            aliases: ['email'],
+            value: 'second@example.com',
+            secret: false,
+          },
+        ],
+      },
+      false
+    )
+  ).toEqual({ filled: 0 });
+  jest.restoreAllMocks();
+});
+
+it('fills additional login values on pages without a password field', () => {
+  document.body.innerHTML = '<input autocomplete="given-name">';
+  jest
+    .spyOn(HTMLInputElement.prototype, 'getClientRects')
+    .mockReturnValue([{}] as any);
+  expect(
+    fillDocument(
+      {
+        ...item,
+        fields: [{ name: 'First name', value: 'Alex', secret: false }],
+      },
+      false
+    )
+  ).toEqual({ filled: 1 });
+  jest.restoreAllMocks();
+});
+
+it('runs the shared matcher in the serialized main-frame fill without module access', () => {
+  document.body.innerHTML = '<input autocomplete="name">';
+  jest
+    .spyOn(HTMLInputElement.prototype, 'getClientRects')
+    .mockReturnValue([{}] as any);
+  const payload = {
+    ...item,
+    kind: 'profile',
+    fields: [{ name: 'Name', value: 'Alex Example', secret: false }],
+  };
+  // Mirrors executeJavaScript: the frame has no imported application modules.
+  // eslint-disable-next-line no-new-func
+  const run = new Function(
+    'window',
+    'document',
+    'HTMLInputElement',
+    'HTMLTextAreaElement',
+    'HTMLSelectElement',
+    'Event',
+    `return (${fillDocument.toString()})(${JSON.stringify(
+      payload
+    )}, false, (${createPersonalDataMatching.toString()})().score)`
+  );
+  expect(
+    run(
+      window,
+      document,
+      HTMLInputElement,
+      HTMLTextAreaElement,
+      HTMLSelectElement,
+      Event
+    )
+  ).toEqual({ filled: 1 });
+  jest.restoreAllMocks();
 });

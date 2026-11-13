@@ -1,6 +1,8 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 import { AI_ACTIVITY_HTML } from './aiActivityPresentation';
 import type { AIPointerActivity } from './aiProtocol';
+import { getAppTheme } from './appTheme';
+import { spaceColorValues } from '../utils/appTheme';
 
 /** Human input hits this view; AI CDP input still targets the underlying page. */
 export class AIActivityLayer {
@@ -11,6 +13,8 @@ export class AIActivityLayer {
   private timer?: ReturnType<typeof setInterval>;
 
   private disposed: boolean;
+
+  private primary?: string;
 
   constructor(
     private host: BrowserWindow,
@@ -33,6 +37,7 @@ export class AIActivityLayer {
       },
     });
     this.view = view;
+    this.primary = undefined;
     view.setBackgroundColor('#00000000');
     view.setVisible(false);
     this.host.contentView.addChildView(view);
@@ -46,6 +51,11 @@ export class AIActivityLayer {
         event.message === 'kudiumbrowser-ai-explicit-takeover'
       )
         this.takeover();
+    });
+    view.webContents.on('did-finish-load', () => {
+      if (this.view !== view) return;
+      this.primary = undefined;
+      this.refresh();
     });
     view.webContents
       .loadURL(
@@ -104,6 +114,17 @@ export class AIActivityLayer {
     const bounds = this.tabId && this.bounds(this.tabId);
     this.view.setVisible(!!bounds);
     if (!bounds) return;
+    const primary = getAppTheme(this.host)?.primary || spaceColorValues.iris;
+    if (primary !== this.primary) {
+      this.primary = primary;
+      this.view.webContents
+        .executeJavaScript(
+          `document.documentElement.style.setProperty('--primary',${JSON.stringify(primary)})`
+        )
+        .catch(() => {
+          this.primary = undefined;
+        });
+    }
     this.view.setBounds(bounds);
     if (this.host.contentView.children.at(-1) !== this.view) {
       this.host.contentView.removeChildView(this.view);

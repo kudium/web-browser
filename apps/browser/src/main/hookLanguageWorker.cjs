@@ -6,7 +6,8 @@ const ts = require('./typescript.js');
 const dir = workerData.libDir;
 const file = path.join(dir, 'hook.js');
 const api = path.join(dir, 'hook-api.d.ts');
-const prefix = 'async function __kudiumHook() {\n';
+let prefix = 'async function __kudiumHook() {\n';
+let mode = 'lifecycle';
 let source = '';
 let version = 0;
 const cache = new Map();
@@ -31,7 +32,10 @@ const host = {
 };
 const service = ts.createLanguageService(host);
 function query(request) {
-  if (source !== request.source) { source = request.source; version += 1; }
+  if (source !== request.source || mode !== (request.mode || 'lifecycle')) {
+    source = request.source; mode = request.mode || 'lifecycle'; version += 1;
+    prefix = mode === 'action' ? '/** @param {KudiumActionContext} context @param {KudiumActionApi} api */\nasync function __kudiumHook(context, api) {\n' : 'async function __kudiumHook() {\n';
+  }
   const position = prefix.length + request.position;
   if (request.action === 'diagnostics') {
     const diagnostics = [...service.getSyntacticDiagnostics(file), ...service.getSemanticDiagnostics(file)];

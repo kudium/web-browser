@@ -1,3 +1,4 @@
+import { createPersonalDataMatching } from '../../browser/personalDataMatching';
 import {
   app,
   ipcMain,
@@ -41,6 +42,7 @@ let authenticationAdapter = nativeAuthentication;
 export const personalDataRevision = () => authEpoch;
 function revokeAuthorizations() {
   authEpoch += 1;
+  authenticationAdapter.revokeOSAuthentication();
   revocations.emit('revoke');
   authorized.clear();
   store?.lock();
@@ -158,7 +160,7 @@ export async function fillSavedItem(
       `(${fillDocument.toString()})(${JSON.stringify({
         ...item,
         fields: item.fields,
-      })},${ai})`,
+      })},${ai},(${createPersonalDataMatching.toString()})().score)`,
       true
     );
   } catch {

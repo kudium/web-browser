@@ -1,3 +1,4 @@
+import { aiContextManagement } from '../../browser/aiContextManagement';
 import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sparkles,
@@ -15,10 +16,11 @@ import {
   Save,
   Trash2,
   ListTodo,
+  RotateCcw,
 } from 'lucide-react';
 import { aiThinking, thinkingOptions } from '../../browser/aiThinking';
 import { AIThinkingSlider } from './AIThinkingSlider';
-import { isOllamaEndpoint } from '../../browser/aiProviders';
+import { isLocalAIEndpoint } from '../../browser/aiProviders';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { AIComposerSuggestions } from './AIComposerSuggestions';
 import { useProjectFileSuggestions } from '../../utils/hooks/useProjectFileSuggestions';
@@ -92,7 +94,7 @@ export function AISidebar({
   onGroupContextMenu,
   onManageGroup,
 }: {
-  promptRequest?: { text: string; token: number };
+  promptRequest?: { text: string; token: number; append?: boolean };
   workingTabs?: AIWorkingTab[];
   activeTabId?: string;
   focusedTabId?: string;
@@ -179,7 +181,7 @@ export function AISidebar({
     hasKey: false,
     remembered: false,
   });
-  const aiConnected = settings.hasKey || isOllamaEndpoint(settings.endpoint);
+  const aiConnected = settings.hasKey || isLocalAIEndpoint(settings.endpoint);
   const [external, setExternal] = useState<MCPStatus>();
   const [chatSkills, setChatSkills] = useState<AISkill[]>([]);
   const refreshSkills = () => {
@@ -192,6 +194,8 @@ export function AISidebar({
     refreshSkills();
   }, []);
   const [prompt, setPrompt] = useState('');
+  const promptValue = useRef(prompt);
+  promptValue.current = prompt;
   const [streamingText, setStreamingText] = useState('');
   const [attachments, setAttachments] = useState<AIComposerAttachment[]>([]);
   const [sentFiles, setSentFiles] = useState<AIComposerAttachment[]>([]);
@@ -472,6 +476,20 @@ export function AISidebar({
       showError(reason as Error);
     }
   };
+  const changeContextManagement = async (enabled: boolean) => {
+    try {
+      setSettings(
+        await window.electron.ai.settings({
+          endpoint: settings.endpoint,
+          model: settings.model,
+          remember: settings.remembered,
+          contextManagement: enabled,
+        })
+      );
+    } catch (reason) {
+      showError(reason as Error);
+    }
+  };
   const changeModel = async (model: string) => {
     try {
       setSettings(
@@ -703,6 +721,45 @@ export function AISidebar({
   const latestAction = [...events]
     .reverse()
     .find((event) => event.type === 'status');
+  const latestRunError = [...events]
+    .reverse()
+    .find((event) => event.type === 'error' || event.type === 'user');
+  const retryTask = async () => {
+    if (
+      busy ||
+      changingChat ||
+      attaching ||
+      !aiConnected ||
+      unavailable ||
+      submitting.current
+    )
+      return;
+    if (resumable) {
+      await continueTask();
+      return;
+    }
+    const request = [...events]
+      .reverse()
+      .find((event) => event.type === 'user');
+    if (!request || request.type !== 'user') return;
+    submitting.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      const accepted = await window.electron.ai.run({
+        prompt: request.text,
+        attachmentIds: request.attachments?.map((file) => file.id) || [],
+        contextReferences:
+          request.contexts?.map(({ kind, id }) => ({ kind, id })) || [],
+      });
+      if (accepted === false) setBusy(false);
+    } catch (reason) {
+      setBusy(false);
+      showError(reason as Error);
+    } finally {
+      submitting.current = false;
+    }
+  };
   const openSettings = () =>
     window.electron.ai.openPreferences().catch(showError);
   const continueTask = async () => {
@@ -754,13 +811,17 @@ export function AISidebar({
     handledPromptRequest.current = promptRequest.token;
     setPane('assistant');
     focusAssistantPanel('assistant');
-    setPrompt(promptRequest.text);
-    setCursor(promptRequest.text.length);
+    const nextPrompt =
+      promptRequest.append && promptValue.current
+        ? `${promptValue.current}\n\n${promptRequest.text}`
+        : promptRequest.text;
+    setPrompt(nextPrompt);
+    setCursor(nextPrompt.length);
     const frame = requestAnimationFrame(() => {
       taskInput.current?.focus();
       taskInput.current?.setSelectionRange(
-        promptRequest.text.length,
-        promptRequest.text.length
+        nextPrompt.length,
+        nextPrompt.length
       );
     });
     return () => cancelAnimationFrame(frame);
@@ -1475,10 +1536,36 @@ export function AISidebar({
             {events
               .filter((event) => event.type !== 'status')
               .map((event, index) => (
-                <div key={index} className={`ai-message ai-${event.type}`}>
+                <div
+                  key={index}
+                  className={`ai-message ai-${event.type}${
+                    event.type === 'error' &&
+                    /^(Run stopped\.|Task paused\.)/.test(event.text)
+                      ? ' ai-error-neutral'
+                      : ''
+                  }`}
+                  role={event.type === 'error' ? 'alert' : undefined}
+                >
                   <AIMessage
                     text={event.text}
                     followUps={event.type === 'message'}
+                    onReuse={
+                      event.type === 'user' && !changingChat
+                        ? (text) => {
+                            const draft = promptValue.current;
+                            const prefix = draft.trim() ? `${draft}\n\n` : '';
+                            setPrompt(`${prefix}${text}`);
+                            setCursor(prefix.length + text.length);
+                            requestAnimationFrame(() => {
+                              taskInput.current?.focus();
+                              taskInput.current?.setSelectionRange(
+                                prefix.length,
+                                prefix.length + text.length
+                              );
+                            });
+                          }
+                        : undefined
+                    }
                     onSuggestion={
                       event === latestReply &&
                       event.type === 'message' &&
@@ -1503,6 +1590,23 @@ export function AISidebar({
                     onTabContextMenu={onTabContextMenu}
                     onGroupContextMenu={onGroupContextMenu}
                   />
+                  {event.type === 'error' && event === latestRunError && (
+                    <button
+                      type="button"
+                      className="ai-error-retry"
+                      disabled={
+                        busy ||
+                        changingChat ||
+                        attaching ||
+                        !aiConnected ||
+                        unavailable
+                      }
+                      onClick={retryTask}
+                    >
+                      <RotateCcw size={13} aria-hidden="true" />
+                      Retry
+                    </button>
+                  )}
                   {event.type === 'message' && event.suggestions?.length ? (
                     <div className="ai-feedback-suggestions">
                       {event.suggestions.map((suggestion, optionIndex) => (
@@ -1585,10 +1689,22 @@ export function AISidebar({
               </p>
             )}
             {error && !unavailable && (
-              <p className="ai-error" role="alert">
-                {error}
+              <div className="ai-error" role="alert">
+                <span>{error}</span>
                 <StorageRecoveryAction message={error} />
-              </p>
+                {resumable && (
+                  <button
+                    type="button"
+                    className="ai-error-retry"
+                    disabled={
+                      busy || changingChat || !aiConnected || unavailable
+                    }
+                    onClick={retryTask}
+                  >
+                    <RotateCcw size={13} aria-hidden="true" /> Retry
+                  </button>
+                )}
+              </div>
             )}
           </div>
           {busy && latestAction && (
@@ -1596,7 +1712,7 @@ export function AISidebar({
               {latestAction.text}
             </div>
           )}
-          {resumable && !busy && (
+          {resumable && !busy && latestRunError?.type !== 'error' && (
             <button
               type="button"
               className="ai-retry"
@@ -2157,20 +2273,23 @@ export function AISidebar({
                       : undefined
                   }
                   footer={
-                    thinkingChoices.length > 1 && (
-                      <AIThinkingSlider
-                        key={`${settings.endpoint}:${settings.model}`}
-                        options={thinkingChoices}
-                        value={selectedThinking.id}
-                        disabled={
-                          changingChat ||
-                          busy ||
-                          !!queue.messages.length ||
-                          unavailable
-                        }
-                        onChange={changeThinking}
-                      />
-                    )
+                    <AIThinkingSlider
+                      key={`${settings.endpoint}:${settings.model}`}
+                      options={thinkingChoices}
+                      value={selectedThinking.id}
+                      disabled={
+                        changingChat ||
+                        busy ||
+                        !!queue.messages.length ||
+                        unavailable
+                      }
+                      onChange={changeThinking}
+                      contextManagement={aiContextManagement(
+                        settings.endpoint,
+                        settings.contextManagement
+                      )}
+                      onContextManagementChange={changeContextManagement}
+                    />
                   }
                 />
               )}

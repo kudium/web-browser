@@ -21,7 +21,8 @@ afterAll(async () => {
 function query(
   action: string,
   source: string,
-  position = source.length
+  position = source.length,
+  mode?: string
 ): Promise<HookLanguageResult> {
   const id = ++sequence;
   return new Promise((resolve, reject) => {
@@ -36,7 +37,7 @@ function query(
       else resolve(message.result);
     };
     worker.on('message', listener);
-    worker.postMessage({ id, request: { action, source, position } });
+    worker.postMessage({ id, request: { action, source, position, mode } });
   });
 }
 
@@ -104,3 +105,48 @@ test('types lifecycle helpers and validates cleanup callbacks', async () => {
     true
   );
 }, 15000);
+
+test('action handlers offer the action API and keep lifecycle context separate', async () => {
+  const result = await query('completions', 'api.', 4, 'action');
+  expect(result.completions?.map((item) => item.label)).toEqual(
+    expect.arrayContaining(['field', 'passwords', 'notes', 'ai', 'showResult'])
+  );
+  const context = await query('completions', 'context.', 8, 'action');
+  expect(context.completions?.map((item) => item.label)).toContain('selection');
+  expect(context.completions?.map((item) => item.label)).not.toContain(
+    'document'
+  );
+  const valid = await query(
+    'diagnostics',
+    'api.passwords.generateAndFill();',
+    0,
+    'action'
+  );
+  expect(valid.diagnostics).toEqual([]);
+}, 15000);
+
+test('action typings support awaited saved data and user input requests', async () => {
+  const result = await query(
+    'diagnostics',
+    'const data = await api.input.request({title:"Profile",fields:[{key:"firstName",label:"First name",group:"Profile",required:true,personalData:"firstName"}]}); if (data) api.field.fill(data.firstName); const input = await api.input.request({fields:[{key:"question",type:"textarea",required:true}]}); if (input) api.ai.compose(input.question);',
+    undefined,
+    'action'
+  );
+  expect(result.diagnostics).toEqual([]);
+});
+
+test('the action editor documents and completes browser-owned form saving', async () => {
+  const result = await query('diagnostics', 'api.personalData.saveForm();', undefined, 'action');
+  expect(result.diagnostics).toEqual([]);
+  const completions = await query('completions', 'api.personalData.', undefined, 'action');
+  expect(completions.completions?.map(item => item.label)).toContain('saveForm');
+});
+
+// AI and the Action builder use this exact shared example set.
+test('all shared action examples compile against the editor API reference', async () => {
+  const { actionTemplates } = await import('../../../../packages/hooks/actions');
+  for (const action of actionTemplates) {
+    const result = await query('diagnostics', action.source, action.source.length, 'action');
+    expect({ name: action.name, diagnostics: result.diagnostics }).toEqual({ name: action.name, diagnostics: [] });
+  }
+}, 30000);

@@ -64,9 +64,33 @@ export function developerPageSummaries(
       name: tab.customName || tab.name,
       url,
       origin,
+      hooks: config
+        ? [
+            ...(config.actions?.length ||
+            [config.before, config.after, config.css].some((code) =>
+              code.trim()
+            )
+              ? [
+                  {
+                    id: '',
+                    name: config.name || 'Default hook',
+                    path: '/*',
+                    enabled: config.enabled && config.defaultEnabled !== false,
+                  },
+                ]
+              : []),
+            ...(config.hooks || []).map((hook) => ({
+              id: hook.id,
+              name: hook.name || 'Untitled hook',
+              path: hook.path,
+              enabled: config.enabled && hook.enabled,
+            })),
+          ]
+        : [],
       hasHooks:
         !!config &&
-        (!!config.hooks?.length ||
+        (!!config.actions?.length ||
+          !!config.hooks?.length ||
           [
             config.before,
             config.after,

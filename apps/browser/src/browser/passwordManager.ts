@@ -1,3 +1,5 @@
+import { personalDataMatching } from './personalDataMatching';
+
 export interface VaultField {
   name: string;
   value: string;
@@ -93,32 +95,7 @@ export function recordSource(
 }
 
 export function inferredFieldAliases(name: string): string[] {
-  const key = name.toLowerCase().trim().replace(/[_-]+/g, ' ');
-  const aliases: Record<string, string[]> = {
-    'full name': ['name'],
-    'first name': ['given-name'],
-    'last name': ['family-name'],
-    phone: ['tel'],
-    'phone number': ['tel'],
-    address: ['street-address'],
-    city: ['address-level2'],
-    state: ['address-level1'],
-    province: ['address-level1'],
-    'zip code': ['postal-code'],
-    'postal code': ['postal-code'],
-    company: ['organization'],
-    password: ['current-password'],
-    'card number': ['cc-number'],
-    'name on card': ['cc-name'],
-    'cardholder name': ['cc-name'],
-    expiry: ['cc-exp'],
-    'expiry date': ['cc-exp'],
-    expiration: ['cc-exp'],
-    cvv: ['cc-csc'],
-    cvc: ['cc-csc'],
-    'security code': ['cc-csc'],
-  };
-  return aliases[key] || [];
+  return personalDataMatching.aliases(name);
 }
 
 export function isProtectedField(field: VaultField) {

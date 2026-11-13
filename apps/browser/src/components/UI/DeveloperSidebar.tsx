@@ -1,8 +1,16 @@
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Code2, Search, Settings2 } from 'lucide-react';
-import { TextField, IconButton } from '@radix-ui/themes';
+import {
+  Search,
+  Settings2,
+  ChevronRight,
+  ChevronDown,
+  Plus,
+  Pencil,
+} from 'lucide-react';
+import { TextField, IconButton, Switch } from '@radix-ui/themes';
+import { HookIcon } from './HookIcon';
 import { AppIcon } from './AppIcon/AppIcon';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { GroupPicker } from './GroupPicker';
@@ -106,6 +114,9 @@ export function DeveloperSidebar({
     ? projectErrorMessage(pageSnapshot.error)
     : '';
   const [query, setQuery] = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const selectedPageId = focusedTabId ?? ScreenManager.getLastAppId();
+  const [shortcutError, setShortcutError] = useState('');
   const [terminalRequest, setTerminalRequest] = useState({
     group: '',
     count: 0,
@@ -120,7 +131,7 @@ export function DeveloperSidebar({
     setTerminalRequest({ group: '', count: 0 });
   };
   useEffect(() => {
-    if (!source) return undefined;
+    if (!source || !active || view !== 'pages') return undefined;
     let timer: ReturnType<typeof setTimeout>;
     const refresh = () => {
       developerPagesStore.refresh(source.id);
@@ -146,14 +157,16 @@ export function DeveloperSidebar({
       offChanges();
       window.removeEventListener('focus', schedule);
     };
-  }, [source, appList]);
+  }, [source, appList, active, view]);
   useEffect(() => setQuery(''), [selectedGroup]);
   const showSearch = pages.length > 5;
   useEffect(() => {
     if (!showSearch) setQuery('');
   }, [showSearch]);
   const matches = pages.filter((page) =>
-    `${page.name} ${page.url}`
+    `${page.name} ${page.url} ${(page.hooks || [])
+      .map((hook) => `${hook.name} ${hook.path}`)
+      .join(' ')}`
       .toLocaleLowerCase()
       .includes(showSearch ? query.toLocaleLowerCase() : '')
   );
@@ -189,11 +202,29 @@ export function DeveloperSidebar({
         >
           <Settings2 size={16} />
         </IconButton>
+        <IconButton
+          size="1"
+          variant="ghost"
+          color="gray"
+          aria-label="Global hooks"
+          title="Global hooks"
+          onClick={() => {
+            setShortcutError('');
+            browser
+              .preferences('open', { section: 'hooks' })
+              .catch((reason) =>
+                setShortcutError(String(reason).replace(/^Error: /, ''))
+              );
+          }}
+        >
+          <HookIcon size={16} aria-hidden="true" />
+        </IconButton>
       </AssistantPageHeader>
+      {shortcutError && <p role="alert">{shortcutError}</p>}
       <div className="developer-sidebar-pages" aria-busy={loading && !!source}>
         {!source ? (
           <div className="developer-sidebar-empty">
-            <Code2 size={24} />
+            <HookIcon size={24} />
             <h3>Manage site hooks</h3>
             <p>
               {options.length
@@ -253,85 +284,167 @@ export function DeveloperSidebar({
                 } catch {
                   /* Keep labels for internal pages. */
                 }
-                let hookLabel = '';
-                if (page.hasHooks)
-                  hookLabel = page.enabled ? 'Hooks active' : 'Hooks disabled';
+                const hasHookItems = !!page.hooks?.length;
+                const open =
+                  !hasHookItems ||
+                  (expanded[page.id] ?? page.id === selectedPageId);
+                const editHook = (hookId: string) =>
+                  browser.command({
+                    id: page.id,
+                    action: 'open-site-developer',
+                    url: page.origin,
+                    hookId,
+                  });
                 return (
-                  <button
-                    key={page.id}
-                    type="button"
-                    className="developer-sidebar-page"
-                    onContextMenu={(event) => {
-                      if (!tab || !onTabContextMenu) return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onTabContextMenu(tab.id);
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        tab &&
-                        onTabContextMenu &&
-                        (event.key === 'ContextMenu' ||
-                          (event.shiftKey && event.key === 'F10'))
-                      ) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onTabContextMenu(tab.id);
-                      }
-                    }}
-                    disabled={!page.origin}
-                    aria-label={`Manage hooks for ${page.name}`}
-                    title={
-                      page.origin
-                        ? `Edit hooks for ${page.url}`
-                        : 'Open a website in this tab to add hooks'
-                    }
-                    onClick={() =>
-                      browser.command({
-                        id: page.id,
-                        action: 'open-site-developer',
-                        url: page.origin,
-                      })
-                    }
-                  >
-                    <span className="developer-page-icon" aria-hidden="true">
-                      <AppIcon icon={tab?.icon || ''} title="" />
-                    </span>
-                    <span className="developer-sidebar-page-copy">
-                      <strong>{page.name}</strong>
-                      <small title={page.url}>{domain}</small>
-                      {page.hasHooks && (
-                        <span
-                          data-state={
-                            !page.hasHooks
-                              ? 'none'
-                              : !page.enabled
-                              ? 'disabled'
-                              : page.status === 'error'
-                              ? 'error'
-                              : 'active'
+                  <div key={page.id} className="developer-page-card">
+                    <div className="developer-page-heading">
+                      <button
+                        type="button"
+                        className="developer-sidebar-page"
+                        onContextMenu={(event) => {
+                          if (!tab || !onTabContextMenu) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onTabContextMenu(tab.id);
+                        }}
+                        onKeyDown={(event) => {
+                          if (
+                            tab &&
+                            onTabContextMenu &&
+                            (event.key === 'ContextMenu' ||
+                              (event.shiftKey && event.key === 'F10'))
+                          ) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onTabContextMenu(tab.id);
                           }
-                          className={`developer-hook-status ${
-                            page.hasHooks && page.enabled ? 'enabled' : ''
-                          }`}
+                        }}
+                        disabled={!page.origin}
+                        aria-label={`Manage hooks for ${page.name}`}
+                        title={
+                          page.origin
+                            ? `Edit hooks for ${page.url}`
+                            : 'Open a website in this tab to add hooks'
+                        }
+                        aria-expanded={hasHookItems ? open : undefined}
+                        onClick={() => {
+                          if (hasHookItems)
+                            setExpanded((previous) => ({
+                              ...previous,
+                              [page.id]: !open,
+                            }));
+                        }}
+                      >
+                        <span
+                          className="developer-page-icon"
+                          aria-hidden="true"
                         >
-                          {hookLabel}
-                          {page.enabled &&
-                          page.hasHooks &&
-                          page.status === 'error'
-                            ? ' · Error'
-                            : ''}
+                          <AppIcon icon={tab?.icon || ''} title="" />
                         </span>
-                      )}
-                      {page.origin && page.hasHooks && (
-                        <span className="developer-hook-hint">
-                          {page.hasHooks
-                            ? 'Click to edit hooks'
-                            : 'Click to add hook'}
+                        <span className="developer-sidebar-page-copy">
+                          <strong>{page.name}</strong>
+                          <span className="developer-page-details">
+                            <span
+                              className="developer-page-hook-count"
+                              data-state={hasHookItems ? 'success' : 'empty'}
+                              title={
+                                page.status === 'error'
+                                  ? 'Hook error: open the editor for details'
+                                  : 'Saved hooks'
+                              }
+                            >
+                              <HookIcon size={10} aria-hidden="true" />
+                              {page.hooks?.length || 0}{' '}
+                              {page.hooks?.length === 1 ? 'hook' : 'hooks'}
+                              {page.status === 'error' ? ' · Error' : ''}
+                            </span>
+                            <small title={page.url}>{domain}</small>
+                          </span>
                         </span>
-                      )}
-                    </span>
-                  </button>
+                        {hasHookItems &&
+                          (open ? (
+                            <ChevronDown size={13} aria-hidden="true" />
+                          ) : (
+                            <ChevronRight size={13} aria-hidden="true" />
+                          ))}
+                      </button>
+                      <button
+                        type="button"
+                        className="developer-page-add-hook"
+                        title="Add hook"
+                        disabled={
+                          !page.origin ||
+                          (page.hooks?.filter((hook) => hook.id).length || 0) >=
+                            20
+                        }
+                        onClick={() => editHook('__new__')}
+                        aria-label={`Add hook for ${page.name}`}
+                      >
+                        <Plus size={13} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="developer-page-manage"
+                        disabled={!page.origin}
+                        aria-label={`Open hook developer for ${page.name}`}
+                        title="Manage site hooks"
+                        onClick={() =>
+                          browser.command({
+                            id: page.id,
+                            action: 'open-site-developer',
+                            url: page.origin,
+                          })
+                        }
+                      >
+                        <Settings2 size={13} aria-hidden="true" />
+                      </button>
+                    </div>
+                    {open && hasHookItems && page.origin && (
+                      <ul
+                        className="developer-page-hooks"
+                        aria-label={`Hooks for ${page.name}`}
+                      >
+                        {(page.hooks || []).map((hook) => (
+                          <li key={hook.id} className="developer-page-hook-row">
+                            <button
+                              type="button"
+                              className="developer-page-hook-link"
+                              title={`${hook.name} · ${hook.path}`}
+                              aria-label={`Edit ${hook.name} for ${page.name}`}
+                              onClick={() => editHook(hook.id)}
+                            >
+                              <HookIcon size={12} aria-hidden="true" />
+                              <span className="developer-page-hook-name">
+                                {hook.name.trim() || 'Untitled hook'}
+                              </span>
+                            </button>
+                            <Switch
+                              size="1"
+                              checked={hook.enabled}
+                              aria-label={`Enable ${hook.name} for ${page.name}`}
+                              onCheckedChange={() =>
+                                browser.command({
+                                  id: page.id,
+                                  action: 'toggle-site-hook',
+                                  url: page.origin,
+                                  hookId: hook.id,
+                                })
+                              }
+                            />
+                            <IconButton
+                              size="1"
+                              variant="ghost"
+                              color="gray"
+                              aria-label={`Open editor for ${hook.name}`}
+                              onClick={() => editHook(hook.id)}
+                            >
+                              <Pencil size={12} />
+                            </IconButton>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 );
               })}
               {!loading && !error && !matches.length && (

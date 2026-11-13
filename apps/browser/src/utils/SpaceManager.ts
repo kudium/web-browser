@@ -5,6 +5,9 @@ import { EVENT_KEY } from './constant';
 import { LocalStorage } from './LocalStorage';
 import { readSavedList, writeSavedList } from './storageRecovery';
 
+import { resolveAppTheme } from './appTheme';
+export { spaceColorValues, primaryContrast } from './appTheme';
+
 export const DEFAULT_SPACE = 'default';
 export const SPACE_KEY = 'kudiumbrowser-spaces';
 export const ACTIVE_SPACE_KEY = 'kudiumbrowser-active-space';
@@ -23,14 +26,6 @@ export const spaceColorNames = {
   green: 'Green',
   amber: 'Yellow',
   pink: 'Pink',
-};
-export const spaceColorValues = {
-  iris: '#5aaca8',
-  red: '#df6363',
-  blue: '#568fe0',
-  green: '#4ca87a',
-  amber: '#e9b949',
-  pink: '#df6ca4',
 };
 export type SpaceColor = (typeof spaceColors)[number];
 export type SpaceIconName =
@@ -62,33 +57,27 @@ export interface Space {
   iconEmoji?: string;
   customColor?: string;
   frameColor?: string;
+  useWebsiteColors?: boolean;
   id: string;
   name: string;
   color: SpaceColor;
   folders: { id: string; name: string }[];
   selectedAppId?: string;
 }
-export function spacePrimaryColor(space: Pick<Space, 'color' | 'customColor'>) {
-  return /^#[0-9a-f]{6}$/i.test(space.customColor || '')
-    ? space.customColor!
-    : spaceColorValues[space.color] || spaceColorValues.iris;
+export function spacePrimaryColor(
+  space: Pick<Space, 'color' | 'customColor' | 'useWebsiteColors'>,
+  themeColor?: string
+) {
+  return resolveAppTheme(space, themeColor).primary;
 }
 export function spaceFrameColor(
-  space: Pick<Space, 'color' | 'customColor' | 'frameColor'>
+  space: Pick<
+    Space,
+    'color' | 'customColor' | 'frameColor' | 'useWebsiteColors'
+  >,
+  themeColor?: string
 ) {
-  return /^#[0-9a-f]{6}$/i.test(space.frameColor || '')
-    ? space.frameColor!
-    : spacePrimaryColor(space);
-}
-export function primaryContrast(color: string) {
-  const channels = [1, 3, 5].map((offset) => {
-    const value = parseInt(color.slice(offset, offset + 2), 16) / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 >
-    0.179
-    ? '#102b29'
-    : '#ffffff';
+  return resolveAppTheme(space, themeColor).frame;
 }
 export const SpaceManager = {
   getAll(): Space[] {
@@ -129,6 +118,8 @@ export const SpaceManager = {
         ).forEach((key) => {
           if (typeof next[key] !== 'string') delete next[key];
         });
+        if (typeof next.useWebsiteColors !== 'boolean')
+          delete next.useWebsiteColors;
         return next;
       })
       .filter((space) => {

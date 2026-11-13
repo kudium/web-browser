@@ -9,7 +9,8 @@ import {
   AI_PROVIDERS,
   AI_MODEL_EXAMPLES,
   providerFor,
-  isOllamaEndpoint,
+  isLocalAIEndpoint,
+  isAppleAIEndpoint,
 } from '../../../browser/aiProviders';
 import { AI_DEFAULTS, AISettings } from '../../../browser/ai';
 import { useAIPagePreference } from '../../../utils/useAIPagePreference';
@@ -29,7 +30,7 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
     hasKey: false,
     remembered: false,
   });
-  const [provider, setProvider] = useState('openai');
+  const [provider, setProvider] = useState(providerFor(AI_DEFAULTS.endpoint));
   const [endpoint, setEndpoint] = useState(AI_DEFAULTS.endpoint);
   const [model, setModel] = useState(AI_DEFAULTS.model);
   const [key, setKey] = useState('');
@@ -66,7 +67,8 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
       alive = false;
     };
   }, [retry]);
-  const local = isOllamaEndpoint(endpoint);
+  const local = isLocalAIEndpoint(endpoint);
+  const apple = isAppleAIEndpoint(endpoint);
   useEffect(() => {
     if (!ready || !local) return undefined;
     let alive = true;
@@ -84,10 +86,12 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
           );
         return undefined;
       })
-      .catch(() => {
+      .catch((error) => {
         if (alive)
           setModelError(
-            'Unable to connect to Ollama. Start Ollama, then refresh models.'
+            apple
+              ? String(error?.message || error)
+              : 'Unable to connect to Ollama. Start Ollama, then refresh models.'
           );
       })
       .finally(() => {
@@ -98,7 +102,7 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
       alive = false;
       setLoadingModels(false);
     };
-  }, [endpoint, local, ready]);
+  }, [endpoint, local, apple, ready]);
   const save = async (clear = false) => {
     setBusy(true);
     setError('');
@@ -135,7 +139,9 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
     } catch (reason) {
       setModelError(
         local
-          ? 'Unable to connect to Ollama. Start Ollama, then refresh models.'
+          ? apple
+            ? errorText(reason as Error)
+            : 'Unable to connect to Ollama. Start Ollama, then refresh models.'
           : errorText(reason as Error)
       );
     } finally {
@@ -283,9 +289,12 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
                 </select>
               </div>
               <div className="preference-row">
-                <label htmlFor="ai-endpoint">API endpoint</label>
+                <label htmlFor="ai-endpoint">
+                  {apple ? 'Local provider' : 'API endpoint'}
+                </label>
                 <input
                   id="ai-endpoint"
+                  readOnly={apple}
                   required
                   type="url"
                   value={endpoint}
@@ -321,8 +330,9 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
                   <label htmlFor="ai-model">Model</label>
                   {local && (
                     <p id="ai-ollama-model-help">
-                      Installed in Ollama. Choose a model with tool support for
-                      browser actions and vision for screenshots.
+                      {apple
+                        ? 'Runs on this Mac. Requires macOS 26 or later and Apple Intelligence enabled. No API key. Browser actions use the existing permissions. Screenshot attachments are not supported.'
+                        : 'Installed in Ollama. Choose a model with tool support for browser actions and vision for screenshots.'}
                     </p>
                   )}
                 </div>
@@ -352,7 +362,11 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
                           {id}
                         </option>
                       ))}
-                    <option value="__custom__">Enter model ID manually…</option>
+                    {!apple && (
+                      <option value="__custom__">
+                        Enter model ID manually…
+                      </option>
+                    )}
                   </select>
                   {customModel && (
                     <input

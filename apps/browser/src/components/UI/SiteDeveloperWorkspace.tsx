@@ -26,6 +26,12 @@ export function SiteDeveloperWorkspace({
   }, []);
   const direction = wide ? 'horizontal' : 'vertical';
   const defaultSize = wide ? 68 : 65;
+  if (!activity)
+    return (
+      <div className="site-developer-workspace site-developer-workspace-code-only">
+        <div className="site-developer-code-pane">{code}</div>
+      </div>
+    );
   return (
     <PanelGroup
       key={direction}

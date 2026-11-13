@@ -3,11 +3,13 @@ import { imageSize } from 'image-size';
 
 const maximumBytes = 1024 * 1024;
 
-/** Preflight the PNG/JPEG/ICO buffer formats supported by nativeImage decoding. */
+/** Bound image dimensions before handing bytes to Chromium’s image decoder. */
 export function validateFaviconDimensions(bytes: Buffer) {
   const size = imageSize(bytes);
   if (
-    !['png', 'jpg', 'ico'].includes(size.type || '') ||
+    !['png', 'jpg', 'ico', 'svg', 'webp', 'gif', 'avif', 'bmp'].includes(
+      size.type || ''
+    ) ||
     !Number.isInteger(size.width) ||
     !Number.isInteger(size.height) ||
     size.width < 1 ||
@@ -16,6 +18,7 @@ export function validateFaviconDimensions(bytes: Buffer) {
     size.height > 2048
   )
     throw new Error('Favicon format or dimensions exceed supported limits.');
+  return size.type!;
 }
 
 /** Enforce the decoded body limit while reading, independent of HTTP headers. */
@@ -60,6 +63,60 @@ export async function readFaviconBody(
     if (!completed) await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
+}
+
+/** A saved favicon belongs to a hostname, never a different website. */
+export function faviconSiteChanged(previous: string, next: string): boolean {
+  const hostname = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      return ['http:', 'https:'].includes(parsed.protocol)
+        ? parsed.hostname
+        : '';
+    } catch {
+      return '';
+    }
+  };
+  return hostname(previous) !== hostname(next);
+}
+
+/** Prefer declared candidates, then the conventional site favicon. */
+export function faviconCandidates(urls: string[], pageURL: string): string[] {
+  const candidates = urls.slice(0, 15).filter((url) => {
+    try {
+      const parsed = new URL(url);
+      return (
+        ['http:', 'https:'].includes(parsed.protocol) ||
+        (parsed.protocol === 'data:' && /^data:image\//i.test(url))
+      );
+    } catch {
+      return false;
+    }
+  });
+  try {
+    const page = new URL(pageURL);
+    if (['http:', 'https:'].includes(page.protocol))
+      candidates.push(new URL('/favicon.ico', page).href);
+  } catch {
+    /* Internal pages have no site fallback. */
+  }
+  return [...new Set(candidates)].slice(0, 16);
+}
+
+function embeddedFavicon(url: string): Buffer {
+  if (url.length > maximumBytes * 3 + 256)
+    throw new Error('Embedded favicon is too large.');
+  const separator = url.indexOf(',');
+  if (separator < 0 || !/^data:image\//i.test(url))
+    throw new Error('Invalid embedded favicon.');
+  const metadata = url.slice(0, separator);
+  const content = url.slice(separator + 1);
+  const bytes = /;base64$/i.test(metadata)
+    ? Buffer.from(decodeURIComponent(content), 'base64')
+    : Buffer.from(decodeURIComponent(content));
+  if (bytes.length > maximumBytes)
+    throw new Error('Embedded favicon is too large.');
+  return bytes;
 }
 
 interface Pending {
@@ -111,26 +168,56 @@ export class FaviconLoader {
 
   async load(
     id: string,
-    url: string,
+    url: string | string[],
     fetch: (
       address: string,
       options: { signal: AbortSignal }
     ) => Promise<Response>,
-    accept: (bytes: Buffer) => void
+    accept: (bytes: Buffer, signal: AbortSignal) => void | Promise<void>
   ): Promise<void> {
     this.cancel(id);
     const controller = new AbortController();
     this.requests.set(id, controller);
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(
+      () => controller.abort(),
+      Array.isArray(url) ? 30000 : 10000
+    );
     timer.unref?.();
     let release: (() => void) | undefined;
     try {
       release = await this.slot(controller.signal);
       controller.signal.throwIfAborted();
-      const response = await fetch(url, { signal: controller.signal });
-      const bytes = await readFaviconBody(response, controller.signal);
-      controller.signal.throwIfAborted();
-      if (this.requests.get(id) === controller) accept(bytes);
+      let lastError: unknown = new Error('No favicon candidates.');
+      for (const address of typeof url === 'string' ? [url] : url) {
+        controller.signal.throwIfAborted();
+        const attempt = new AbortController();
+        const cancelAttempt = () => attempt.abort(controller.signal.reason);
+        controller.signal.addEventListener('abort', cancelAttempt, {
+          once: true,
+        });
+        const attemptTimer = setTimeout(() => attempt.abort(), 10000);
+        attemptTimer.unref?.();
+        try {
+          const bytes = /^data:/i.test(address)
+            ? embeddedFavicon(address)
+            : await readFaviconBody(
+                await fetch(address, { signal: attempt.signal }),
+                attempt.signal
+              );
+          attempt.signal.throwIfAborted();
+          if (this.requests.get(id) !== controller) return;
+          await accept(bytes, attempt.signal);
+          return;
+        } catch (error) {
+          controller.signal.throwIfAborted();
+          lastError = error;
+        } finally {
+          clearTimeout(attemptTimer);
+          controller.signal.removeEventListener('abort', cancelAttempt);
+          attempt.abort();
+        }
+      }
+      throw lastError;
     } finally {
       // Cancel the underlying transport too: cancelling the reader alone does
       // not necessarily stop Electron from downloading the remaining body.

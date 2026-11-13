@@ -48,9 +48,10 @@ it('keeps group icon choices on demand and saves the shared identity', async () 
     screen.queryByLabelText('Emoji for Choose group icon')
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Choose group icon' }));
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Use 💼 for Choose group icon' })
-  );
+  fireEvent.change(screen.getByLabelText('Emoji for Choose group icon'), {
+    target: { value: '💼' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Use emoji' }));
   expect(close).not.toHaveBeenCalled();
   expect(
     screen.getByRole('button', { name: 'Choose group icon' })
@@ -149,4 +150,33 @@ it('opens Developer for this group without saving the group settings form', asyn
   } finally {
     window.removeEventListener('kudiumbrowser-open-group-developer', opened);
   }
+});
+
+it('reuses the neutral symbol picker and saves the selected group icon', async () => {
+  const close = jest.fn();
+  render(
+    <Theme>
+      <GroupEditor item={AppManager.getAll()[0]} close={close} />
+    </Theme>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Choose group icon' }));
+  expect(
+    screen.getByRole('group', { name: 'Suggested icons' })
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('group', { name: 'Suggested emojis' })
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Use work icon for Choose group icon' })
+  );
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(
+    screen
+      .getByRole('button', { name: 'Choose group icon' })
+      .querySelector('svg.lucide-briefcase')
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+  expect(AppManager.getAll()[0].sessionIconImage).toBe('kudium-symbol:work');
+  expect(AppManager.getAll()[0].sessionIconEmoji).toBeUndefined();
 });

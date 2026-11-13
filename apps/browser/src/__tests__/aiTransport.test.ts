@@ -13,7 +13,7 @@ it('uses compatible transport without leaking provider-specific reasoning', () =
         { role: 'assistant', reasoning_content: 'reasoning', tool_calls: [] },
       ];
       expect(providerHeaders(provider.endpoint, 'key').Authorization).toBe(
-        provider.id === 'ollama' ? undefined : 'Bearer key'
+        ['ollama', 'apple'].includes(provider.id) ? undefined : 'Bearer key'
       );
       expect(
         providerRequest(provider.endpoint, provider.model, messages, [])

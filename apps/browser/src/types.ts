@@ -6,6 +6,7 @@ export type View =
   | 'settings'
   | 'add-app'
   | 'downloads'
+  | 'global-hook-editor'
   | 'site-developer';
 
 export interface IApp {

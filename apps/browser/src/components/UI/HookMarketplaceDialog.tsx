@@ -13,6 +13,7 @@ import {
   Globe2,
   RefreshCw,
 } from 'lucide-react';
+import { HookTestWebsiteField } from './HookTestWebsiteField';
 import { GroupPicker, type GroupOption } from './GroupPicker';
 import { useAppList } from '../../utils/hooks/useAppList';
 import { hookLicenses } from '../../../../../packages/hooks/package';
@@ -39,6 +40,7 @@ const modeDescriptions: Record<Mode, string> = {
   updates: 'Review changes before updating your installed hooks.',
 };
 export const OPEN_HOOK_MARKETPLACE = 'kudium-hooks-dialog';
+export const HOOKS_CHANGED = 'kudium-hooks-changed';
 export function HookMarketplaceDialog() {
   const { appList } = useAppList();
   const [open, setOpen] = useState(false);
@@ -55,7 +57,12 @@ export function HookMarketplaceDialog() {
   const [updatesChecked, setUpdatesChecked] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState<HookUpdate>();
   const [hookId, setHookId] = useState('');
+  const [fixedPublishHook, setFixedPublishHook] = useState(false);
+  const editorWindow =
+    new URL(window.location.href).searchParams.get('view') ===
+    'global-hook-editor';
   const [publishName, setPublishName] = useState('');
+  const [publishTestURL, setPublishTestURL] = useState('');
   const [account, setAccount] = useState<{
     signedIn: boolean;
     email?: string;
@@ -69,7 +76,6 @@ export function HookMarketplaceDialog() {
   const [general, setGeneral] = useState(false);
   const [listingId, setListingId] = useState('');
   const [expectedVersion, setExpectedVersion] = useState('');
-  const [editingGlobal, setEditingGlobal] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const generation = useRef(0);
@@ -105,6 +111,7 @@ export function HookMarketplaceDialog() {
         origin?: string;
         hookId?: string;
         url?: string;
+        allGroups?: boolean;
       } = {}
     ) => {
       generation.current += 1;
@@ -121,14 +128,14 @@ export function HookMarketplaceDialog() {
       setState(undefined);
       setMessage('');
       setHookId(detail.hookId || '');
+      setFixedPublishHook(detail.mode === 'publish' && !!detail.hookId);
       setDescription('');
       setPublishName('');
       setAccount(undefined);
       setPublication(undefined);
       setListingId('');
       setExpectedVersion('');
-      setEditingGlobal(undefined);
-      setAllGroups(false);
+      setAllGroups(detail.allGroups === true);
       setBusy(true);
       try {
         const targets: HookDestination[] = await invoke({
@@ -143,7 +150,7 @@ export function HookMarketplaceDialog() {
               detail.origin &&
               new URL(item.url).origin === new URL(detail.origin).origin
           ) || targets[0];
-        setId(target?.id || '');
+        setId(detail.allGroups ? '@all-groups' : target?.id || '');
         setState(undefined);
         if (detail.url) {
           const loaded = await invoke({ action: 'preview', url: detail.url });
@@ -234,7 +241,6 @@ export function HookMarketplaceDialog() {
       const loaded = await invoke({ action: 'preview', url: value });
       setPreview(loaded);
       setSelectedUpdate(undefined);
-      setAllGroups(false);
     });
   const saveGlobals = () =>
     run(async () => {
@@ -250,6 +256,24 @@ export function HookMarketplaceDialog() {
       setMessage(
         'Global hook settings saved. Reload affected pages to start enabled hooks.'
       );
+    });
+  const openGlobalEditor = (selectedId?: string) =>
+    run(async () => {
+      if (!state) return;
+      const result = await invoke({
+        action: 'global-save',
+        id,
+        config: state.global,
+        expectedHash: state.globalHash,
+      });
+      setState(result);
+      setSavedGlobals(result.global.hooks);
+      await invoke({
+        action: 'global-editor-open',
+        id,
+        ...(selectedId ? { hookId: selectedId } : {}),
+      });
+      setOpen(false);
     });
   const patchGlobal = (hook: GlobalHook, patch: Partial<GlobalHook>) =>
     setState((previous) =>
@@ -282,6 +306,7 @@ export function HookMarketplaceDialog() {
       });
       setState(result);
       setSavedGlobals(result.global.hooks);
+      window.dispatchEvent(new Event(HOOKS_CHANGED));
       setPreview(undefined);
       setSelectedUpdate(undefined);
       setUpdates([]);
@@ -305,9 +330,23 @@ export function HookMarketplaceDialog() {
     : state?.defaultHook;
   useEffect(() => {
     setPublishName(savedHook?.name || '');
+    setPublishTestURL(savedHook?.testUrl || '');
+    setDescription(savedHook?.publication?.description || '');
+    setListingId(savedHook?.publication?.id || '');
+    setExpectedVersion(
+      savedHook?.publication ? String(savedHook.publication.version) : ''
+    );
+    if (savedHook?.publication) setLicense(savedHook.publication.license);
+    if (hookId.startsWith('global:')) setGeneral(true);
     setPublication(undefined);
     setMessage('');
-  }, [savedHook?.id, savedHook?.name]);
+  }, [
+    savedHook?.id,
+    savedHook?.name,
+    savedHook?.testUrl,
+    savedHook?.publication,
+    hookId,
+  ]);
   const changeMode = (value: Mode) => {
     setMode(value);
     setPreview(undefined);
@@ -328,15 +367,12 @@ export function HookMarketplaceDialog() {
       group: appList.find((tab) => tab.id === target.id),
     });
   });
-  const canChooseAllGroups =
-    mode !== 'import' || preview?.package.applicability === 'general';
-  if (canChooseAllGroups)
-    groupOptions.unshift({
-      id: '@all-groups',
-      name: 'All groups',
-      detail: 'Every group in the app',
-      leadingIcon: <Globe2 size={16} />,
-    });
+  groupOptions.unshift({
+    id: '@all-groups',
+    name: 'All groups',
+    detail: 'Every group in the app',
+    leadingIcon: <Globe2 size={16} />,
+  });
   const websiteTargets = new Map<string, HookDestination>();
   destinations
     .filter((target) => target.groupId === currentTarget?.groupId)
@@ -424,34 +460,44 @@ export function HookMarketplaceDialog() {
       >
         <div className="hook-marketplace-header">
           <div>
-            <Dialog.Title mb="1">{modeTitles[mode]}</Dialog.Title>
+            <Dialog.Title mb="1">
+              {mode === 'publish' && listingId
+                ? 'Republish hook'
+                : modeTitles[mode]}
+            </Dialog.Title>
             <Dialog.Description size="2">
-              {modeDescriptions[mode]}
+              {mode === 'publish'
+                ? listingId
+                  ? `Update ${publishName || 'your hook'} with a new version.`
+                  : 'Share your hook with the community.'
+                : modeDescriptions[mode]}
             </Dialog.Description>
           </div>
           <div className="hook-header-actions">
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger>
-                <Button
-                  variant="ghost"
-                  color="gray"
-                  disabled={busy}
-                  aria-label="More hook actions"
-                >
-                  <MoreHorizontal size={18} />
-                </Button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Content>
-                {(Object.keys(modeTitles) as Mode[]).map((value) => (
-                  <DropdownMenu.Item
-                    key={value}
-                    onSelect={() => changeMode(value)}
+            {!editorWindow && (
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger>
+                  <Button
+                    variant="ghost"
+                    color="gray"
+                    disabled={busy}
+                    aria-label="More hook actions"
                   >
-                    {modeTitles[value]}
-                  </DropdownMenu.Item>
-                ))}
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
+                    <MoreHorizontal size={18} />
+                  </Button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content>
+                  {(Object.keys(modeTitles) as Mode[]).map((value) => (
+                    <DropdownMenu.Item
+                      key={value}
+                      onSelect={() => changeMode(value)}
+                    >
+                      {modeTitles[value]}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
+            )}
             <Dialog.Close>
               <Button
                 variant="ghost"
@@ -464,7 +510,10 @@ export function HookMarketplaceDialog() {
             </Dialog.Close>
           </div>
         </div>
-        {mode !== 'import' && !preview && destination}
+        {mode !== 'import' &&
+          !preview &&
+          !(mode === 'publish' && fixedPublishHook) &&
+          destination}
         <div className="hook-marketplace-body">
           {mode === 'import' && !preview && (
             <>
@@ -553,11 +602,7 @@ export function HookMarketplaceDialog() {
                     <Button
                       variant="ghost"
                       disabled={busy}
-                      onClick={() =>
-                        setEditingGlobal(
-                          editingGlobal === hook.id ? undefined : hook.id
-                        )
-                      }
+                      onClick={() => openGlobalEditor(hook.id)}
                     >
                       Edit
                     </Button>
@@ -582,80 +627,6 @@ export function HookMarketplaceDialog() {
                       Remove
                     </Button>
                   </div>
-                  {editingGlobal === hook.id && (
-                    <div className="hook-global-editor">
-                      <label>
-                        Name
-                        <input
-                          value={hook.name}
-                          maxLength={120}
-                          onChange={(event) =>
-                            patchGlobal(hook, { name: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Page pathname
-                        <input
-                          value={hook.path}
-                          maxLength={500}
-                          onChange={(event) =>
-                            patchGlobal(hook, { path: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Excluded domains
-                        <input
-                          value={hook.exclusions.join(', ')}
-                          onChange={(event) =>
-                            patchGlobal(hook, {
-                              exclusions: event.target.value
-                                .split(',')
-                                .map((s) => s.trim().toLowerCase())
-                                .filter(Boolean),
-                            })
-                          }
-                          placeholder="example.com, *.example.org"
-                        />
-                      </label>
-                      {(['before', 'after', 'css'] as const).map((phase) => (
-                        <details key={phase}>
-                          <summary>
-                            {phase === 'css'
-                              ? 'CSS styles'
-                              : `${phase} load script`}
-                          </summary>
-                          <label>
-                            <span className="visually-hidden">
-                              {phase} source
-                            </span>
-                            <textarea
-                              rows={7}
-                              maxLength={20000}
-                              value={hook[phase]}
-                              spellCheck={false}
-                              onChange={(event) =>
-                                patchGlobal(hook, {
-                                  [phase]: event.target.value,
-                                })
-                              }
-                            />
-                          </label>
-                        </details>
-                      ))}
-                      <Button
-                        variant="soft"
-                        onClick={() => {
-                          setHookId(`global:${hook.id}`);
-                          setGeneral(true);
-                          setMode('publish');
-                        }}
-                      >
-                        Publish saved version
-                      </Button>
-                    </div>
-                  )}
                 </section>
               ))}
               {!state.global.hooks.length && (
@@ -668,26 +639,7 @@ export function HookMarketplaceDialog() {
                 <Button
                   variant="soft"
                   disabled={busy || state.global.hooks.length >= 20}
-                  onClick={() => {
-                    const hook: GlobalHook = {
-                      id: crypto.randomUUID(),
-                      name: 'New global hook',
-                      path: '/*',
-                      enabled: false,
-                      before: '',
-                      after: '',
-                      css: '',
-                      exclusions: [],
-                    };
-                    setState({
-                      ...state,
-                      global: {
-                        ...state.global,
-                        hooks: [...state.global.hooks, hook],
-                      },
-                    });
-                    setEditingGlobal(hook.id);
-                  }}
+                  onClick={() => openGlobalEditor()}
                 >
                   New global hook
                 </Button>
@@ -709,6 +661,7 @@ export function HookMarketplaceDialog() {
                     hookId,
                     description,
                     name: publishName,
+                    testUrl: publishTestURL.trim(),
                     license,
                     general,
                     ...(listingId
@@ -718,7 +671,10 @@ export function HookMarketplaceDialog() {
                         }
                       : {}),
                   });
+                  window.dispatchEvent(new Event('kudium-hook-published'));
                   setPublication(result);
+                  setListingId(result.id);
+                  setExpectedVersion(String(result.version));
                   setMessage(`Version ${result.version} published.`);
                 });
               }}
@@ -729,46 +685,50 @@ export function HookMarketplaceDialog() {
                     ? `Publishing as ${account.email || 'your Kudium account'}`
                     : 'Sign in to Kudium to publish.'}
                 </span>
-                <Button
-                  type="button"
-                  variant="soft"
-                  disabled={busy}
-                  onClick={() =>
-                    run(async () => {
-                      await invoke({ action: 'account-preferences' });
-                    })
-                  }
-                >
-                  {account?.signedIn ? 'Account settings' : 'Sign in'}
-                </Button>
+                {!account?.signedIn && (
+                  <Button
+                    type="button"
+                    variant="soft"
+                    disabled={busy}
+                    onClick={() =>
+                      run(async () => {
+                        await invoke({ action: 'account-preferences' });
+                      })
+                    }
+                  >
+                    Sign in
+                  </Button>
+                )}
               </div>
-              <label>
-                Saved hook
-                <select
-                  value={hookId}
-                  onChange={(event) => {
-                    setHookId(event.target.value);
-                    if (event.target.value.startsWith('global:'))
-                      setGeneral(true);
-                  }}
-                >
-                  <option value="">
-                    {state?.defaultHook
-                      ? 'Default hook'
-                      : 'Select a saved hook'}
-                  </option>
-                  {state?.siteHooks.map((hook) => (
-                    <option key={hook.id} value={hook.id}>
-                      {hook.name}
+              {!fixedPublishHook && (
+                <label>
+                  Saved hook
+                  <select
+                    value={hookId}
+                    onChange={(event) => {
+                      setHookId(event.target.value);
+                      if (event.target.value.startsWith('global:'))
+                        setGeneral(true);
+                    }}
+                  >
+                    <option value="">
+                      {state?.defaultHook
+                        ? 'Default hook'
+                        : 'Select a saved hook'}
                     </option>
-                  ))}
-                  {state?.global.hooks.map((hook) => (
-                    <option key={hook.id} value={`global:${hook.id}`}>
-                      {hook.name} · global
-                    </option>
-                  ))}
-                </select>
-              </label>
+                    {state?.siteHooks.map((hook) => (
+                      <option key={hook.id} value={hook.id}>
+                        {hook.name}
+                      </option>
+                    ))}
+                    {state?.global.hooks.map((hook) => (
+                      <option key={hook.id} value={`global:${hook.id}`}>
+                        {hook.name} · global
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label>
                 Public name
                 <input
@@ -789,68 +749,115 @@ export function HookMarketplaceDialog() {
                   onChange={(event) => setDescription(event.target.value)}
                 />
               </label>
-              <div className="hook-dialog-columns">
-                <label>
-                  License
-                  <select
-                    value={license}
-                    onChange={(event) =>
-                      setLicense(event.target.value as typeof license)
-                    }
-                  >
-                    {hookLicenses.map((value) => (
-                      <option key={value}>{value}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Applicability
-                  <select
-                    value={general ? 'general' : 'site'}
-                    disabled={hookId.startsWith('global:')}
-                    onChange={(event) =>
-                      setGeneral(event.target.value === 'general')
-                    }
-                  >
-                    <option value="site">This website</option>
-                    <option value="general">General / any website</option>
-                  </select>
-                </label>
-              </div>
-              <details>
-                <summary>Update an existing publication</summary>
-                <label>
-                  Marketplace hook ID
-                  <input
-                    value={listingId}
-                    onChange={(event) => setListingId(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Current published version
-                  <input
-                    type="number"
-                    min={1}
-                    required={!!listingId}
-                    value={expectedVersion}
-                    onChange={(event) => setExpectedVersion(event.target.value)}
-                  />
-                </label>
-              </details>
               {savedHook && (
-                <div className="hook-publish-source">
-                  <strong>{savedHook.name}</strong>
-                  <p>Path: {savedHook.path}</p>
-                  {(['before', 'after', 'css'] as const)
-                    .filter((phase) => savedHook[phase].trim())
-                    .map((phase) => (
-                      <details key={phase}>
-                        <summary>{phase} source</summary>
-                        <pre>{savedHook[phase]}</pre>
-                      </details>
-                    ))}
-                </div>
+                <p className="hook-publish-scope">
+                  Works on{' '}
+                  {savedHook.sites?.length
+                    ? savedHook.sites
+                        .map(
+                          (site) =>
+                            `${site.includeSubdomains ? '*.' : ''}${site.host}`
+                        )
+                        .join(', ')
+                    : general
+                    ? 'any website'
+                    : currentTarget
+                    ? new URL(currentTarget.url).host
+                    : 'this website'}
+                  {savedHook.path !== '/*' && ` · ${savedHook.path}`}
+                </p>
               )}
+              <details className="hook-publish-options">
+                <summary>Publishing options</summary>
+                <div className="hook-publish-options-body">
+                  <HookTestWebsiteField
+                    value={publishTestURL}
+                    onChange={setPublishTestURL}
+                    disabled={busy}
+                  />
+                  <div className="hook-dialog-columns">
+                    <label>
+                      License
+                      <select
+                        value={license}
+                        onChange={(event) =>
+                          setLicense(event.target.value as typeof license)
+                        }
+                      >
+                        {hookLicenses.map((value) => (
+                          <option key={value}>{value}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Applicability
+                      <select
+                        value={
+                          savedHook?.sites?.length
+                            ? 'restricted'
+                            : general
+                            ? 'general'
+                            : 'site'
+                        }
+                        disabled={hookId.startsWith('global:')}
+                        onChange={(event) =>
+                          setGeneral(event.target.value === 'general')
+                        }
+                      >
+                        {savedHook?.sites?.length ? (
+                          <option value="restricted">
+                            {savedHook.sites
+                              .map(
+                                (site) =>
+                                  `${site.includeSubdomains ? '*.' : ''}${
+                                    site.host
+                                  }`
+                              )
+                              .join(', ')}
+                          </option>
+                        ) : null}
+                        <option value="site">This website</option>
+                        <option value="general">General / any website</option>
+                      </select>
+                    </label>
+                  </div>
+                  <details>
+                    <summary>Update an existing publication</summary>
+                    <label>
+                      Marketplace hook ID
+                      <input
+                        value={listingId}
+                        onChange={(event) => setListingId(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Current published version
+                      <input
+                        type="number"
+                        min={1}
+                        required={!!listingId}
+                        value={expectedVersion}
+                        onChange={(event) =>
+                          setExpectedVersion(event.target.value)
+                        }
+                      />
+                    </label>
+                  </details>
+                  {savedHook && (
+                    <div className="hook-publish-source">
+                      {savedHook.actions?.map(action => <details key={action.id}><summary>{action.name} · context menu</summary><pre>{action.source}</pre></details>)}
+                      {(['before', 'after', 'css'] as const)
+                        .filter((phase) => savedHook[phase].trim())
+                        .map((phase) => (
+                          <details key={phase}>
+                            <summary>{phase} source</summary>
+                            <pre>{savedHook[phase]}</pre>
+                          </details>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </details>
               {!savedHook && (
                 <p role="status">
                   Add code and save a hook in the editor first, then select it
@@ -873,14 +880,20 @@ export function HookMarketplaceDialog() {
                   </p>
                 )}
                 <label className="hook-checkbox">
-                  <input type="checkbox" required /> I have the right to publish
-                  this code publicly under the selected license.
+                  <input type="checkbox" required /> I can share this code under
+                  the {license} license.
                 </label>
                 <Button
                   type="submit"
-                  disabled={busy || !savedHook || !account?.signedIn}
+                  disabled={
+                    busy || !savedHook || !account?.signedIn || !!publication
+                  }
                 >
-                  Publish hook
+                  {publication
+                    ? 'Published'
+                    : listingId
+                    ? 'Republish hook'
+                    : 'Publish hook'}
                 </Button>
               </div>
             </form>
@@ -963,6 +976,18 @@ export function HookMarketplaceDialog() {
               </span>
             </div>
             <p>{preview.package.description}</p>
+            {preview.package.testUrl && (
+              <p>
+                Test website:{' '}
+                <a
+                  href={preview.package.testUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {preview.package.testUrl}
+                </a>
+              </p>
+            )}
 
             <div className="hook-preview-facts">
               <span>{preview.package.license}</span>
@@ -998,6 +1023,8 @@ export function HookMarketplaceDialog() {
                 {selectedUpdate ? 'Review code changes' : 'Review source code'}
               </summary>
               <p className="hook-preview-source">Source: {preview.source}</p>
+              {!!preview.package.actions?.length && <p>Actions ask for permission when run. Updates do not carry permission grants.</p>}
+              {preview.package.actions?.map(action => <details key={action.id}><summary>{action.name} · {action.contexts.join(', ')}</summary><pre>{action.source}</pre></details>)}
               {(['before', 'after', 'css'] as const)
                 .filter(
                   (phase) =>

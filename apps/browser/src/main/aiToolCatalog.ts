@@ -96,7 +96,7 @@ export class AIToolCatalog {
   }
 
   guidance() {
-    return this.loaded.has('configure_site_hooks') ? hookRuntimeGuide : '';
+    return (this.loaded.has('configure_site_hooks') || this.loaded.has('save_global_hook') || this.loaded.has('test_hook')) ? hookRuntimeGuide : '';
   }
 
   private discoveryTool() {
@@ -172,7 +172,7 @@ export class AIToolCatalog {
     const names = exact
       ? [exact.function.name]
       : bundled.length
-      ? [...new Set(bundled)].slice(0, 5)
+      ? [...new Set(bundled)].slice(0, 8)
       : ranked
           .filter(({ score }) => score >= (ranked[0]?.score || 0) * 0.7)
           .slice(0, 3)
@@ -186,7 +186,7 @@ export class AIToolCatalog {
     if (!names.length) this.searchMisses += 1;
     return {
       loaded: names,
-      ...(names.includes('configure_site_hooks')
+      ...(names.some(name => ['configure_site_hooks', 'save_global_hook', 'test_hook'].includes(name))
         ? { runtimeGuide: hookRuntimeGuide }
         : {}),
       instruction: names.length

@@ -19,7 +19,7 @@ export function SidebarPager({
   const callback = useRef(onSwipe);
   callback.current = onSwipe;
   const previous = useRef(page);
-  const pointerInside = useRef(false);
+  const retainChromeFocus = useRef(false);
   const transition = useRef<{ offset: number; direction: number }>();
   const touch = useRef<{ x: number; y: number }>();
   const gesture = useRef({
@@ -123,8 +123,8 @@ export function SidebarPager({
     if (previous.current === page) return;
     previous.current = page;
     // Showing another native webpage can take focus away from the chrome.
-    // Retain sidebar input while the pointer is still over the pager.
-    if (pointerInside.current)
+    // Retain sidebar input after a click or gesture until the pointer leaves.
+    if (retainChromeFocus.current)
       browser.command({ id: '', action: 'focus-chrome' });
     const element = pane.current;
     if (!element) return;
@@ -185,9 +185,9 @@ export function SidebarPager({
           rearmTimer.current = undefined;
         }
         // Wheel input over this surface is sufficient to retain chrome focus.
-        if (!pointerInside.current)
+        if (!retainChromeFocus.current)
           browser.command({ id: '', action: 'focus-chrome' });
-        pointerInside.current = true;
+        retainChromeFocus.current = true;
         data.x = 0;
         data.y = 0;
         data.locked = false;
@@ -277,7 +277,7 @@ export function SidebarPager({
             locked: false,
             axis: '',
           };
-          pointerInside.current = true;
+          retainChromeFocus.current = true;
           browser.command({ id: '', action: 'focus-chrome' });
           pane.current
             ?.getAnimations()
@@ -306,15 +306,12 @@ export function SidebarPager({
       ref={root}
       className="sidebar-pager"
       aria-label="Sidebar spaces"
-      onPointerEnter={() => {
-        if (!pointerInside.current)
-          browser.command({ id: '', action: 'focus-chrome' });
-        pointerInside.current = true;
-      }}
       onPointerLeave={() => {
-        pointerInside.current = false;
+        retainChromeFocus.current = false;
       }}
       onPointerDown={(event) => {
+        browser.command({ id: '', action: 'focus-chrome' });
+        retainChromeFocus.current = true;
         if (event.pointerType !== 'touch') return;
         nativeGesture.current = false;
         if (rearmTimer.current) {

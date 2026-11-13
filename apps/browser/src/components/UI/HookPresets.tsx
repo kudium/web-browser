@@ -1,6 +1,7 @@
+/* eslint-disable react/require-default-props */
 import { useState } from 'react';
 import { Button, Dialog, TextField } from '@radix-ui/themes';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, BookOpen } from 'lucide-react';
 import { HookExamples } from './HookExamples';
 import type { HookStage } from '../../browser/hookExamples';
 import { HookAISetup } from './HookAISetup';
@@ -34,8 +35,8 @@ export function HookPresets({
   source: string;
   canRun: boolean;
   onInsert: (exampleSource: string, targetStage?: HookStage) => void;
-  onEnable: (example: HookExample) => void;
-  onAsk: (outcome: string) => void;
+  onEnable?: (example: HookExample) => void;
+  onAsk?: (outcome: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState('dark-mode');
@@ -48,10 +49,10 @@ export function HookPresets({
           <Sparkles size={14} /> Examples
         </Button>
       </Dialog.Trigger>
-      <Dialog.Content maxWidth="440px" size="2">
+      <Dialog.Content className="hook-presets-dialog" maxWidth="480px" size="2">
         <Dialog.Title size="3">Make this page yours</Dialog.Title>
         <Dialog.Description size="2">
-          Choose an enhancement. You can edit its code later.
+          Choose an example to customize your website.
         </Dialog.Description>
         <div className="hook-preset-list">
           {hookExamples
@@ -76,23 +77,35 @@ export function HookPresets({
             placeholder="#5aaca8"
           />
         )}
-        <HookExamples
-          stage={stage}
-          source={source}
-          disabled={disabled}
-          onInsert={(code) => {
-            onInsert(code);
-            setOpen(false);
-          }}
-        />
-        <div className="hook-preset-ai">
-          <HookAISetup
+        <div className="hook-preset-tools">
+          {onAsk && (
+            <HookAISetup
+              disabled={disabled}
+              onAsk={(outcome) => {
+                onAsk(outcome);
+                setOpen(false);
+              }}
+            />
+          )}
+          <HookExamples
+            stage={stage}
+            source={source}
             disabled={disabled}
-            onAsk={(outcome) => {
-              onAsk(outcome);
+            onInsert={(code) => {
+              onInsert(code);
               setOpen(false);
             }}
           />
+          <Button asChild size="1" variant="ghost" color="gray">
+            <a
+              href="https://browser.kudium.com/tutorials/website-hooks"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <BookOpen size={14} aria-hidden="true" />
+              Help
+            </a>
+          </Button>
         </div>
         <div className="site-hook-enable-actions">
           <Dialog.Close>
@@ -119,25 +132,27 @@ export function HookPresets({
           >
             Insert code
           </Button>
-          <Button
-            disabled={
-              disabled ||
-              !canRun ||
-              (selected === 'accent-colors' && !/^#[\da-f]{6}$/i.test(accent))
-            }
-            onClick={() => {
-              onEnable({
-                ...example,
-                source:
-                  selected === 'accent-colors'
-                    ? example.source.replace('#a855f7', accent)
-                    : example.source,
-              });
-              setOpen(false);
-            }}
-          >
-            Enable &amp; run
-          </Button>
+          {onEnable && (
+            <Button
+              disabled={
+                disabled ||
+                !canRun ||
+                (selected === 'accent-colors' && !/^#[\da-f]{6}$/i.test(accent))
+              }
+              onClick={() => {
+                onEnable({
+                  ...example,
+                  source:
+                    selected === 'accent-colors'
+                      ? example.source.replace('#a855f7', accent)
+                      : example.source,
+                });
+                setOpen(false);
+              }}
+            >
+              Enable &amp; run
+            </Button>
+          )}
         </div>
       </Dialog.Content>
     </Dialog.Root>

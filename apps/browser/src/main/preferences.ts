@@ -78,7 +78,14 @@ function freezePreferences(value: BrowserPreferences) {
 }
 let openPage:
   | ((
-      section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords' | 'spaces'
+      section?:
+        | 'ai'
+        | 'archive'
+        | 'sync'
+        | 'import'
+        | 'passwords'
+        | 'spaces'
+        | 'hooks'
     ) => void)
   | undefined;
 let aiSettingsWindow: (contents: WebContents) => boolean = () => false;
@@ -278,13 +285,20 @@ export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
 }
 export function showBrowserPreferences(
   _owner: BrowserWindow,
-  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces'
+  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks'
 ) {
   openPage?.(section);
 }
 export function registerPreferences(
   opener?: (
-    section?: 'ai' | 'archive' | 'sync' | 'import' | 'passwords' | 'spaces'
+    section?:
+      | 'ai'
+      | 'archive'
+      | 'sync'
+      | 'import'
+      | 'passwords'
+      | 'spaces'
+      | 'hooks'
   ) => void,
   isTrusted: (contents: WebContents) => boolean = () => false,
   isSettings: (contents: WebContents) => boolean = () => false
@@ -308,7 +322,11 @@ export function registerPreferences(
   });
   ipcMain.handle('browser-native-appearance', (event, appearance: unknown) => {
     ownerOf(event);
-    if (appearance !== 'system' && appearance !== 'light' && appearance !== 'dark')
+    if (
+      appearance !== 'system' &&
+      appearance !== 'light' &&
+      appearance !== 'dark'
+    )
       throw new Error('Unknown appearance.');
     nativeTheme.themeSource = appearance;
   });
@@ -318,7 +336,13 @@ export function registerPreferences(
       event,
       action: string,
       patch?: Partial<BrowserPreferences> & {
-        section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces';
+        section?:
+          | 'archive'
+          | 'sync'
+          | 'import'
+          | 'passwords'
+          | 'spaces'
+          | 'hooks';
       }
     ) => {
       const owner = ownerOf(event);
@@ -329,7 +353,8 @@ export function registerPreferences(
             patch?.section === 'sync' ||
             patch?.section === 'import' ||
             patch?.section === 'passwords' ||
-            patch?.section === 'spaces'
+            patch?.section === 'spaces' ||
+            patch?.section === 'hooks'
             ? patch.section
             : undefined
         );

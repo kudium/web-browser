@@ -1,5 +1,8 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 import { AIActivityLayer } from '../main/aiActivityLayer';
+import { getAppTheme } from '../main/appTheme';
+
+jest.mock('../main/appTheme', () => ({ getAppTheme: jest.fn() }));
 
 jest.mock('electron', () => ({
   WebContentsView: jest.fn(() => ({
@@ -48,8 +51,31 @@ function fixture() {
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  (getAppTheme as jest.Mock).mockReturnValue(undefined);
 });
 afterEach(() => jest.useRealTimers());
+
+it('inherits the host primary color, updates it live and avoids repeated renderer writes', () => {
+  const { layer, view } = fixture();
+  (getAppTheme as jest.Mock).mockReturnValue({ primary: '#df6363' });
+  layer.set('first');
+  const native = view();
+  expect(native.webContents.executeJavaScript).toHaveBeenLastCalledWith(
+    'document.documentElement.style.setProperty(\'--primary\',"#df6363")'
+  );
+  native.webContents.executeJavaScript.mockClear();
+  jest.advanceTimersByTime(100);
+  expect(native.webContents.executeJavaScript).not.toHaveBeenCalled();
+  (getAppTheme as jest.Mock).mockReturnValue({ primary: '#568fe0' });
+  jest.advanceTimersByTime(50);
+  expect(native.webContents.executeJavaScript).toHaveBeenLastCalledWith(
+    'document.documentElement.style.setProperty(\'--primary\',"#568fe0")'
+  );
+  native.webContents.executeJavaScript.mockClear();
+  native.webContents.emit('did-finish-load');
+  expect(native.webContents.executeJavaScript).toHaveBeenCalledTimes(1);
+  layer.dispose();
+});
 
 it('does not allocate an idle renderer or timer before the first AI action', () => {
   const { host, layer } = fixture();

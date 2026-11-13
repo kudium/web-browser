@@ -1,6 +1,7 @@
 import { app, ipcMain, WebContents } from 'electron';
 import { Worker } from 'worker_threads';
 import path from 'path';
+import fs from 'fs';
 import type {
   HookLanguageRequest,
   HookLanguageResult,
@@ -26,7 +27,7 @@ function stop() {
   });
   pending.clear();
 }
-function request(input: HookLanguageRequest): Promise<HookLanguageResult> {
+export function requestHookLanguage(input: HookLanguageRequest): Promise<HookLanguageResult> {
   if (pending.size >= 64)
     return Promise.reject(new Error('JavaScript assistance is busy.'));
   if (!worker) {
@@ -74,6 +75,7 @@ export function registerHookLanguage(
       throw new Error('Unauthorized editor request.');
     if (
       !input ||
+      (input.mode !== undefined && !['lifecycle', 'action'].includes(input.mode)) ||
       !['completions', 'diagnostics', 'hover'].includes(input.action) ||
       typeof input.source !== 'string' ||
       input.source.length > 100000 ||
@@ -82,7 +84,17 @@ export function registerHookLanguage(
       input.position > input.source.length
     )
       throw new Error('Invalid editor request.');
-    return request(input);
+    return requestHookLanguage(input);
   });
   app.on('before-quit', stop);
+}
+
+/** Exact declarations backing editor completion/hover; bundled with the runtime. */
+export function hookAPIReference() {
+  const file = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets/hook-language/hook-api.d.ts')
+    : path.join(__dirname, '../../.erb/resources/hook-api.txt');
+  const reference = fs.readFileSync(file, 'utf8');
+  if (reference.length > 40000) throw new Error('Hook API reference exceeds its bound.');
+  return reference;
 }

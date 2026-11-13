@@ -3,6 +3,7 @@ import type { AIExecution } from '../browser/ai';
 const effects = new Set([
   'create_task',
   'configure_site_hooks',
+  'save_global_hook',
   'set_page_appearance',
   'create_group',
   'new_tab',
@@ -128,6 +129,7 @@ export class AIExecutionTracker {
       (name === 'project_scripts' &&
         !['list'].includes(args.scriptRequest?.action)) ||
       (name === 'project_terminal' && args.terminalAction === 'stop') ||
+      (name === 'test_hook' && ['page', 'stop'].includes(args.testAction)) ||
       effects.has(name)
     ) {
       if (!output?.pending) this.value.applied += 1;

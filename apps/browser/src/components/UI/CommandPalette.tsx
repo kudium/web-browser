@@ -10,8 +10,9 @@ import {
   ArrowLeft,
   X,
   Tag,
+  History,
 } from 'lucide-react';
-import { useEffect, useState, useRef, ReactNode } from 'react';
+import { useEffect, useState, useRef, useMemo, ReactNode } from 'react';
 import { CollectionIcon } from './CollectionIcon';
 import {
   SearchEngine,
@@ -34,7 +35,9 @@ import { browser } from '../../browser/client';
 import { SpaceIcon } from './SpaceIcon';
 import { AppIcon } from './AppIcon/AppIcon';
 import { GroupIcon } from './GroupIcon';
-import { lockedGroup } from '../../utils/groupAccess';
+import { lockedGroup, useGroupAccess } from '../../utils/groupAccess';
+import type { HistoryRecord } from '../../browser/history';
+import { historySuggestions } from '../../utils/historySuggestions';
 
 interface CommandResult {
   id: string;
@@ -74,6 +77,8 @@ export function CommandPalette({
   const [fresh, setFresh] = useState(false);
   const openInNewGroup = !groupScope && (fresh || !groupSource);
   const [activeResult, setActiveResult] = useState(0);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const access = useGroupAccess();
   const { spaces, active } = useSpaces();
   useEffect(
     () =>
@@ -82,6 +87,31 @@ export function CommandPalette({
       }),
     []
   );
+  useEffect(() => {
+    if (!open) {
+      setHistory([]);
+      return undefined;
+    }
+    let live = true;
+    let changed = false;
+    const stop = browser.onHistory((records) => {
+      changed = true;
+      if (live) setHistory(records);
+    });
+    browser
+      .history('get')
+      .then((records) => {
+        if (live && !changed) setHistory(records);
+        return null;
+      })
+      .catch(() => {
+        // History is optional; navigation and tab suggestions remain available.
+      });
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [open]);
   useEffect(() => {
     if (open && initialGroup) {
       setGroupScope(initialGroup);
@@ -175,16 +205,20 @@ export function CommandPalette({
     /* Input errors appear when activated. */
   }
   const term = query.trim().toLowerCase();
-  const scopedApps = groupScope ? groupTabs(apps, groupScope) : apps;
-  const matching = scopedApps
-    .filter((app) => !tagScope || app.tags?.includes(tagScope))
-    .filter(
-      (app) =>
-        !app.archived &&
-        !lockedGroup(app) &&
-        `${app.customName || app.name} ${app.url}`.toLowerCase().includes(term)
-    )
-    .slice(0, 6);
+  const matching = useMemo(() => {
+    const scopedApps = groupScope ? groupTabs(apps, groupScope) : apps;
+    return scopedApps
+      .filter((app) => !tagScope || app.tags?.includes(tagScope))
+      .filter(
+        (app) =>
+          !app.archived &&
+          !lockedGroup(app, access) &&
+          `${app.customName || app.name} ${app.url}`
+            .toLowerCase()
+            .includes(term)
+      )
+      .slice(0, 6);
+  }, [apps, groupScope, tagScope, term, access]);
   const commands: CommandResult[] = [
     {
       id: 'settings',
@@ -325,6 +359,26 @@ export function CommandPalette({
       },
     };
   });
+  const historyMatches = useMemo(() => {
+    if (searchScope || tagScope) return [];
+    const hiddenProfiles = new Set(
+      AppManager.getAll()
+        .filter((item) => lockedGroup(item, access))
+        .map(loginProfileKey)
+    );
+    return historySuggestions(history, query, {
+      excludedURLs: matching.map((item) => item.url),
+      hiddenProfiles,
+      profile: groupScope ? loginProfileKey(groupScope) : undefined,
+    });
+  }, [history, query, matching, access, groupScope, searchScope, tagScope]);
+  const historyResults: CommandResult[] = historyMatches.map((record) => ({
+    id: `history-${record.id}`,
+    title: record.title || new URL(record.url).hostname,
+    detail: `History · ${record.url}`,
+    icon: <History size={18} />,
+    run: () => navigate(record.url),
+  }));
   const spaceResults: CommandResult[] = spaces
     .filter((space) => space.name.toLowerCase().includes(term))
     .slice(0, 4)
@@ -428,12 +482,13 @@ export function CommandPalette({
     ...engineResults,
     ...primary,
     ...tabResults,
+    ...historyResults,
     ...spaceResults,
     ...commandMatches,
   ];
   if (tagScope) results = tabResults;
   else if (term.startsWith('#')) results = tagResults;
-  else if (groupScope) results = [...tabResults, ...primary];
+  else if (groupScope) results = [...tabResults, ...historyResults, ...primary];
   else if (term.startsWith('@')) results = groupResults;
   else if (searchScope) results = primary;
   else if (!isAddress && term && commandMatches.length)
@@ -445,6 +500,7 @@ export function CommandPalette({
       ...engineResults,
       ...primary,
       ...tabResults,
+      ...historyResults,
       ...spaceResults,
     ];
   const selectedIndex = Math.min(activeResult, Math.max(0, results.length - 1));
@@ -494,10 +550,10 @@ export function CommandPalette({
           Open a website or run a command
         </Dialog.Title>
         <Dialog.Description className="command-accessible-title">
-          Type a URL, search, or choose an open tab. Use arrow keys to select
-          and Enter to open. Type @ to find groups by slug, then Tab to browse
-          their pages. Type a search engine name and press Tab to search that
-          site.
+          Type a URL, search, or choose an open tab or a page from history. Use
+          arrow keys to select and Enter to open. Type @ to find groups by slug,
+          then Tab to browse their pages. Type a search engine name and press
+          Tab to search that site.
         </Dialog.Description>
         <form
           onSubmit={(event) => {

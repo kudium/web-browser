@@ -164,3 +164,60 @@ it('renders all close-group choices with their original responses', () => {
     'data-response="2" class="primary destructive">Delete</button>'
   );
 });
+
+it('reuses input controls and escapes requested names and saved-field labels', () => {
+  const html = dialogDocument({
+    message: 'Share fields',
+    buttons: ['Cancel', 'Share'],
+    cancelId: 0,
+    inputs: [
+      {
+        key: 'firstName',
+        label: 'First name',
+        choices: [{ value: '0', label: 'Profile <script> · Name' }],
+      },
+      { key: 'question', label: 'Question <img src=x>' },
+    ],
+  });
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  expect(document.querySelector('[data-input="firstName"]')?.tagName).toBe(
+    'SELECT'
+  );
+  expect(document.querySelector('[data-input="question"]')?.tagName).toBe(
+    'INPUT'
+  );
+  expect(document.querySelector('option[value="0"]')?.textContent).toBe(
+    'Profile <script> · Name'
+  );
+  expect(document.querySelector('img')).toBeNull();
+  expect(document.querySelectorAll('script')).toHaveLength(1);
+});
+
+it('keeps Personal Data beside grouped inputs when saved matches are unavailable', () => {
+  const html = dialogDocument({
+    message: 'Complete your name',
+    buttons: ['Cancel', 'Continue'],
+    inputs: [
+      {
+        key: 'firstName',
+        label: 'First name',
+        group: 'Profile',
+        personalData: 'firstName',
+        saved: [],
+        savedHint: 'No saved values',
+      },
+    ],
+  });
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  expect(document.querySelector('.input-group h2')?.textContent).toBe(
+    'Profile'
+  );
+  expect(document.querySelector('.saved-picker')).not.toBeNull();
+  expect(document.querySelector('.saved-picker')?.tagName).toBe('BUTTON');
+  expect(document.querySelector('.saved-hint')).toBeNull();
+  expect(document.querySelector('.saved-input [data-input]')).not.toBeNull();
+  expect(document.querySelector('.saved-input .saved-picker')).not.toBeNull();
+  expect(
+    document.querySelector('[data-input]')?.getAttribute('aria-describedby')
+  ).toBe('error-0');
+});

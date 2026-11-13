@@ -1,3 +1,6 @@
+import { SiteGlobalHookList } from './SiteGlobalHookList';
+import { FormTextField } from './FormTextField';
+import { EditorWindowFooter } from './EditorWindowChrome';
 /* Function components use parameter defaults for optional props. */
 /* eslint-disable react/require-default-props */
 /* Native controls are associated through htmlFor and unique IDs. */
@@ -11,7 +14,6 @@ import {
   IconButton,
   Popover,
   Switch,
-  Tabs,
   TextField,
 } from '@radix-ui/themes';
 import {
@@ -28,7 +30,7 @@ import { HookHistory } from './HookHistory';
 import { HookAISetup } from './HookAISetup';
 import { HookPageTarget } from './HookPageTarget';
 import { SiteDeveloperWorkspace } from './SiteDeveloperWorkspace';
-import { CodeEditor } from './CodeEditor';
+import { HookEditor } from './HookEditor';
 import { PreferenceHint } from './PreferenceHint';
 import {
   emptyDeveloperConfig,
@@ -66,6 +68,12 @@ export function SiteDeveloperPanel({
   const serialized = JSON.stringify(saved);
   const [draft, setDraft] = useState(saved);
   const [hookId, setHookId] = useState(selectedHookId);
+  const [listAction, setListAction] = useState<{
+    id: string;
+    name: string;
+    action: 'rename' | 'delete';
+  }>();
+  const [renameValue, setRenameValue] = useState('');
   const [enablePrompt, setEnablePrompt] = useState<{
     config: SiteDeveloperConfig;
     hookId: string;
@@ -87,27 +95,38 @@ export function SiteDeveloperPanel({
           }
         : { ...previous, ...patch }
     );
+  const [importError, setImportError] = useState('');
   const [editor, setEditor] = useState<'before' | 'after' | 'css'>('after');
   const hasDeveloper = !!developer;
+  const createdHook = useRef(false);
   useEffect(() => {
-    if (hasDeveloper) setDraft(JSON.parse(serialized));
-  }, [serialized, hasDeveloper]);
-  const importInput = useRef<HTMLInputElement>(null);
+    if (!hasDeveloper) return;
+    const config = JSON.parse(serialized) as SiteDeveloperConfig;
+    if (
+      selectedHookId === '__new__' &&
+      !createdHook.current &&
+      (config.hooks?.length || 0) < 20
+    ) {
+      createdHook.current = true;
+      const id = crypto.randomUUID();
+      config.hooks = [
+        ...(config.hooks || []),
+        {
+          id,
+          name: 'New hook',
+          enabled: true,
+          path: '/*',
+          before: '',
+          after: '',
+          css: '',
+        },
+      ];
+      setHookId(id);
+    }
+    setDraft(config);
+  }, [serialized, hasDeveloper, selectedHookId]);
   const [jumpLine, setJumpLine] = useState<{ line: number; token: number }>();
-  const [importError, setImportError] = useState('');
   const dirty = JSON.stringify(draft) !== serialized;
-  const stageLabels = {
-    before: 'Before load',
-    after: 'After load',
-    css: 'CSS',
-  };
-  const stageHints = {
-    before:
-      'At document creation. Asynchronous work does not pause website scripts.',
-    after:
-      'After resources finish loading, and on navigation within this page.',
-    css: 'Applied at document start and on route changes. Browser CSS rules still apply.',
-  };
   const askAI = (repair = false, outcome = 'Ask me what outcome I want.') => {
     const error = repair
       ? developer?.logs.filter((entry) => entry.level === 'error').at(-1)
@@ -131,15 +150,18 @@ export function SiteDeveloperPanel({
         target?.name || 'Default hook'
       } (${
         targetId || 'default'
-      }). Read existing hooks first and preserve unrelated hooks. Use context.onCleanup, context.signal and managed timers/listeners. Explain the target, trigger and how to disable it. Show the proposed changes for local review; do not run code automatically. ${
+      }). Read read_hook_api for the full lifecycle and Hook Actions API, then existing hooks; preserve unrelated hooks and actions. Use context.onCleanup, context.signal and managed timers/listeners. Explain the target, trigger and how to disable it. Show the proposed changes for local review; do not run code automatically. ${
         repair ? `Relevant errors: ${errors}` : `Requested outcome: ${outcome}`
       }\nSelected stage: ${stage}\nSelected source (first 20,000 characters):\n${(target ||
-        draft)[stage].slice(0, 20000)}`,
+        draft)[stage].slice(0, 20000)}\nSelected actions (untrusted script data):\n${JSON.stringify((target || draft).actions || []).slice(0, 25000)}`,
     });
   };
   let publishHint = 'Publish this saved hook to the marketplace';
   if (dirty) publishHint = 'Save changes before publishing';
-  else if (![code.before, code.after, code.css].some((value) => value.trim()))
+  else if (
+    ![code.before, code.after, code.css].some((value) => value.trim()) &&
+    !code.actions?.some((action) => action.source.trim())
+  )
     publishHint = 'Add code before publishing';
   const globalStatus = developer?.globalHookCount
     ? `${developer.globalHookCount} global hook${
@@ -305,9 +327,12 @@ export function SiteDeveloperPanel({
                         disabled={
                           mode === 'publish' &&
                           (dirty ||
-                            ![code.before, code.after, code.css].some((value) =>
-                              value.trim()
-                            ))
+                            (![code.before, code.after, code.css].some(
+                              (value) => value.trim()
+                            ) &&
+                              !code.actions?.some((action) =>
+                                action.source.trim()
+                              )))
                         }
                         onSelect={() =>
                           window.dispatchEvent(
@@ -325,36 +350,161 @@ export function SiteDeveloperPanel({
               </div>
             </div>
             <div className="site-hooks-list">
-              <button
-                type="button"
-                className="site-hooks-list-item"
-                aria-pressed={!selectedHook}
-                disabled={disabled}
-                onClick={() => setHookId('')}
-              >
-                <strong>Default hook</strong>
-                <small>All pages</small>
-              </button>
-              {draft.hooks?.map((hook) => (
+              <div className="site-hook-list-row">
                 <button
-                  key={hook.id}
                   type="button"
                   className="site-hooks-list-item"
-                  title={`${hook.name || 'Untitled hook'} · ${hook.path}`}
-                  aria-pressed={hook.id === hookId}
+                  aria-pressed={!selectedHook}
                   disabled={disabled}
-                  onClick={() => setHookId(hook.id)}
+                  onClick={() => setHookId('')}
                 >
-                  <strong>{hook.name || 'Untitled hook'}</strong>
-                  <small>{hook.path}</small>
-                  <span>{hook.enabled ? 'Enabled' : 'Disabled'}</span>
+                  <strong>{draft.name || 'Default hook'}</strong>
                 </button>
+                <div className="site-hook-list-controls">
+                  <span className="site-hook-list-meta">All pages</span>
+                  <span className="site-hook-list-status">
+                    {draft.enabled && draft.defaultEnabled !== false
+                      ? 'Enabled'
+                      : 'Disabled'}
+                  </span>
+                  <Switch
+                    size="1"
+                    aria-label="Enable default hook"
+                    checked={draft.enabled && draft.defaultEnabled !== false}
+                    disabled={disabled}
+                    onCheckedChange={(enabled) =>
+                      setDraft((previous) => ({
+                        ...previous,
+                        defaultEnabled: enabled,
+                        ...(enabled ? { enabled: true } : {}),
+                      }))
+                    }
+                  />
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger>
+                      <IconButton
+                        size="1"
+                        variant="ghost"
+                        color="gray"
+                        aria-label="Default hook options"
+                        disabled={disabled}
+                      >
+                        <MoreHorizontal size={15} />
+                      </IconButton>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Content>
+                      <DropdownMenu.Item
+                        onSelect={() => {
+                          setRenameValue(draft.name || 'Default hook');
+                          setListAction({
+                            id: '',
+                            name: draft.name || 'Default hook',
+                            action: 'rename',
+                          });
+                        }}
+                      >
+                        Rename
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        color="red"
+                        onSelect={() =>
+                          setListAction({
+                            id: '',
+                            name: draft.name || 'Default hook',
+                            action: 'delete',
+                          })
+                        }
+                      >
+                        Clear code
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Root>
+                </div>
+              </div>
+              {draft.hooks?.map((hook) => (
+                <div className="site-hook-list-row" key={hook.id}>
+                  <button
+                    type="button"
+                    className="site-hooks-list-item"
+                    title={`${hook.name || 'Untitled hook'} · ${hook.path}`}
+                    aria-pressed={hook.id === hookId}
+                    disabled={disabled}
+                    onClick={() => setHookId(hook.id)}
+                  >
+                    <strong>{hook.name || 'Untitled hook'}</strong>
+                  </button>
+                  <div className="site-hook-list-controls">
+                    <span className="site-hook-list-meta">
+                      {hook.path === '/*' ? 'All pages' : hook.path}
+                    </span>
+                    <span className="site-hook-list-status">
+                      {draft.enabled && hook.enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                    <Switch
+                      size="1"
+                      aria-label={`Enable ${hook.name}`}
+                      checked={hook.enabled}
+                      disabled={disabled}
+                      onCheckedChange={(enabled) =>
+                        setDraft((previous) => ({
+                          ...previous,
+                          hooks: previous.hooks?.map((item) =>
+                            item.id === hook.id ? { ...item, enabled } : item
+                          ),
+                        }))
+                      }
+                    />
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger>
+                        <IconButton
+                          className="site-hook-list-menu"
+                          size="1"
+                          variant="ghost"
+                          color="gray"
+                          disabled={disabled}
+                          aria-label={`Options for ${
+                            hook.name || 'Untitled hook'
+                          }`}
+                        >
+                          <MoreHorizontal size={15} />
+                        </IconButton>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Content>
+                        <DropdownMenu.Item
+                          onSelect={() => {
+                            setRenameValue(hook.name);
+                            setListAction({
+                              id: hook.id,
+                              name: hook.name,
+                              action: 'rename',
+                            });
+                          }}
+                        >
+                          Rename
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item
+                          color="red"
+                          onSelect={() =>
+                            setListAction({
+                              id: hook.id,
+                              name: hook.name,
+                              action: 'delete',
+                            })
+                          }
+                        >
+                          Delete
+                        </DropdownMenu.Item>
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Root>
+                  </div>
+                </div>
               ))}
+              <SiteGlobalHookList url={origin} disabled={disabled} />
             </div>
           </aside>
           <div className="site-hook-detail">
             <div className="site-hook-selection">
-              <h2>{selectedHook?.name || 'Default hook'}</h2>
+              <h2>{selectedHook?.name || draft.name || 'Default hook'}</h2>
               <div className="site-hook-editor-actions">
                 <HookAISetup
                   disabled={disabled || dirty}
@@ -395,74 +545,6 @@ export function SiteDeveloperPanel({
                     send('set-site-developer', { developer: config });
                   }}
                 />
-                <HookPresets
-                  stage={editor}
-                  source={code[editor]}
-                  canRun={!dirty}
-                  onInsert={(source, targetStage = editor) => {
-                    updateCode({
-                      [targetStage]: code[targetStage].trim()
-                        ? `${code[targetStage]}\n\n${
-                            targetStage === 'css'
-                              ? source
-                              : `;\n{\n${source}\n}`
-                          }`
-                        : source,
-                    });
-                    setEditor(targetStage);
-                  }}
-                  onAsk={(outcome) => askAI(false, outcome)}
-                  disabled={disabled}
-                  onEnable={(example) => {
-                    const id = `preset-${example.id}`;
-                    const existing = draft.hooks?.find(
-                      (hook) => hook.id === id
-                    );
-                    if (!existing && (draft.hooks?.length || 0) >= 20) {
-                      setImportError(
-                        'This site already has 20 hooks. Remove one before adding another.'
-                      );
-                      return;
-                    }
-                    const config = {
-                      ...draft,
-                      enabled: true,
-                      hooks: existing
-                        ? draft.hooks?.map((hook) =>
-                            hook.id === id ? { ...hook, enabled: true } : hook
-                          )
-                        : [
-                            ...(draft.hooks || []),
-                            {
-                              id,
-                              name: example.name,
-                              path: '/*',
-                              enabled: true,
-                              before: '',
-                              after: '',
-                              css: '',
-                              [example.stage]: example.source,
-                            },
-                          ],
-                    };
-                    setDraft(config);
-                    setHookId(id);
-                    setEditor(example.stage);
-                    send('set-site-developer', {
-                      developer: config,
-                      run: true,
-                    });
-                  }}
-                />
-                <Button
-                  size="1"
-                  variant="ghost"
-                  color="gray"
-                  disabled={disabled}
-                  onClick={() => importInput.current?.click()}
-                >
-                  Import
-                </Button>
               </div>
               <div className="site-hook-options">
                 {selectedHook ? (
@@ -523,179 +605,186 @@ export function SiteDeveloperPanel({
                       aria-label="Delete hook"
                       title="Delete selected hook"
                       disabled={disabled}
-                      onClick={() => {
-                        setDraft((previous) => ({
-                          ...previous,
-                          hooks: previous.hooks?.filter(
-                            (hook) => hook.id !== hookId
-                          ),
-                        }));
-                        setHookId('');
-                      }}
+                      onClick={() =>
+                        setListAction({
+                          id: selectedHook.id,
+                          name: selectedHook.name,
+                          action: 'delete',
+                        })
+                      }
                     >
                       <Trash2 size={15} />
                     </IconButton>
                   </>
-                ) : (
-                  <span className="site-hook-default-target">All pages</span>
-                )}
+                ) : null}
               </div>
             </div>
             <SiteDeveloperWorkspace
               code={
-                <Tabs.Root
-                  value={editor}
-                  onValueChange={(value) => setEditor(value as typeof editor)}
-                  className="site-hook-editor"
-                >
-                  <div className="site-hook-editor-toolbar">
-                    <Tabs.List aria-label="Hook stage">
-                      {(['before', 'after', 'css'] as const).map((stage) => (
-                        <div className="site-hook-stage-tab" key={stage}>
-                          <Tabs.Trigger value={stage}>
-                            {stageLabels[stage]}
-                          </Tabs.Trigger>
-                          <PreferenceHint label={stageLabels[stage]}>
-                            {stageHints[stage]}
-                          </PreferenceHint>
-                        </div>
-                      ))}
-                    </Tabs.List>
-                  </div>
-                  <Tabs.Content
-                    value={editor}
-                    className="site-hook-editor-body"
-                  >
-                    <input
-                      ref={importInput}
-                      type="file"
-                      hidden
-                      aria-label="Import hook file"
-                      accept={
-                        editor === 'css'
-                          ? '.css,text/css'
-                          : '.js,.mjs,.txt,text/javascript,text/plain'
-                      }
-                      onChange={async (event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = '';
-                        if (!file) return;
-                        try {
-                          if (file.size > 100000)
-                            throw new Error(
-                              'Choose a file smaller than 100 KB.'
-                            );
-                          const source = await file.text();
-                          updateCode({ [editor]: source });
-                          setImportError('');
-                        } catch (error) {
-                          setImportError(String(error));
+                <HookEditor
+                  selectionKey={hookId}
+                  code={code}
+                  examples={
+                    <HookPresets
+                      stage={editor}
+                      source={code[editor]}
+                      canRun={!dirty}
+                      onInsert={(source, targetStage = editor) => {
+                        updateCode({
+                          [targetStage]: code[targetStage].trim()
+                            ? `${code[targetStage]}\n\n${
+                                targetStage === 'css'
+                                  ? source
+                                  : `;\n{\n${source}\n}`
+                              }`
+                            : source,
+                        });
+                        setEditor(targetStage);
+                      }}
+                      onAsk={(outcome) => askAI(false, outcome)}
+                      disabled={disabled}
+                      onEnable={(example) => {
+                        const id = `preset-${example.id}`;
+                        const existing = draft.hooks?.find(
+                          (hook) => hook.id === id
+                        );
+                        if (!existing && (draft.hooks?.length || 0) >= 20) {
+                          setImportError(
+                            'This site already has 20 hooks. Remove one before adding another.'
+                          );
+                          return;
                         }
+                        const config = {
+                          ...draft,
+                          enabled: true,
+                          hooks: existing
+                            ? draft.hooks?.map((hook) =>
+                                hook.id === id
+                                  ? { ...hook, enabled: true }
+                                  : hook
+                              )
+                            : [
+                                ...(draft.hooks || []),
+                                {
+                                  id,
+                                  name: example.name,
+                                  path: '/*',
+                                  enabled: true,
+                                  before: '',
+                                  after: '',
+                                  css: '',
+                                  [example.stage]: example.source,
+                                },
+                              ],
+                        };
+                        setDraft(config);
+                        setHookId(id);
+                        setEditor(example.stage);
+                        send('set-site-developer', {
+                          developer: config,
+                          run: true,
+                        });
                       }}
                     />
-                    {importError && (
-                      <p className="site-hook-import-error" role="alert">
-                        {importError}
-                      </p>
-                    )}
-                    <CodeEditor
-                      key={editor}
-                      label={`${stageLabels[editor]} code`}
-                      jumpLine={jumpLine}
-                      language={editor === 'css' ? 'css' : 'javascript'}
-                      value={code[editor]}
-                      disabled={disabled}
-                      onChange={(value) => updateCode({ [editor]: value })}
-                    />
-                  </Tabs.Content>
-                </Tabs.Root>
+                  }
+                  onChange={updateCode}
+                  disabled={disabled}
+                  stage={editor}
+                  onStageChange={setEditor}
+                  jumpLine={jumpLine}
+                ></HookEditor>
               }
               activity={
-                <section aria-labelledby="site-developer-activity">
-                  <div className="site-section-heading">
-                    <h2 id="site-developer-activity">Run output</h2>
-                    {developer?.logs.some(
-                      (entry) => entry.level === 'error'
-                    ) && (
+                !!developer?.logs.length && (
+                  <section aria-labelledby="site-developer-activity">
+                    <div className="site-section-heading">
+                      <h2 id="site-developer-activity">Run output</h2>
+                      {developer?.logs.some(
+                        (entry) => entry.level === 'error'
+                      ) && (
+                        <Button
+                          size="1"
+                          color="gray"
+                          variant="ghost"
+                          disabled={disabled || dirty}
+                          onClick={() => askAI(true)}
+                        >
+                          Fix with AI
+                        </Button>
+                      )}
                       <Button
                         size="1"
-                        color="gray"
                         variant="ghost"
-                        disabled={disabled || dirty}
-                        onClick={() => askAI(true)}
+                        color="gray"
+                        disabled={disabled || !developer?.logs.length}
+                        onClick={() => send('clear-site-developer-logs')}
                       >
-                        Fix with AI
+                        Clear
                       </Button>
-                    )}
-                    <Button
-                      size="1"
-                      variant="ghost"
-                      color="gray"
-                      disabled={disabled || !developer?.logs.length}
-                      onClick={() => send('clear-site-developer-logs')}
+                    </div>
+                    <div
+                      className="site-hook-logs"
+                      role="log"
+                      aria-label="Hook activity"
+                      aria-live="polite"
                     >
-                      Clear
-                    </Button>
-                  </div>
-                  <div
-                    className="site-hook-logs"
-                    role="log"
-                    aria-label="Hook activity"
-                    aria-live="polite"
-                  >
-                    {developer?.logs.length ? (
-                      developer.logs.map((entry, index) => (
-                        <div
-                          className="site-hook-log"
-                          data-level={entry.level}
-                          key={`${entry.time}-${index}`}
-                        >
-                          <time>
-                            {new Date(entry.time).toLocaleTimeString()}
-                          </time>
-                          <span>{entry.message}</span>
-                          {entry.level === 'error' &&
-                            /kudium-hook-(.+)-(before|after)\.js:(\d+)/.test(
-                              entry.message
-                            ) && (
-                              <button
-                                type="button"
-                                className="hook-error-line"
-                                onClick={() => {
-                                  const match = entry.message.match(
-                                    /kudium-hook-(.+)-(before|after)\.js:(\d+)/
-                                  )!;
-                                  let id: string;
-                                  try {
-                                    id = decodeURIComponent(match[1]);
-                                  } catch {
-                                    return;
-                                  }
-                                  if (
-                                    id !== 'default' &&
-                                    !draft.hooks?.some((hook) => hook.id === id)
-                                  )
-                                    return;
-                                  setHookId(
-                                    entry.hookId || (id === 'default' ? '' : id)
-                                  );
-                                  setEditor(match[2] as 'before' | 'after');
-                                  setJumpLine((previous) => ({
-                                    line: Math.max(1, Number(match[3]) - 3),
-                                    token: (previous?.token || 0) + 1,
-                                  }));
-                                }}
-                              >
-                                Go to line
-                              </button>
-                            )}
-                        </div>
-                      ))
-                    ) : (
-                      <p>Run a hook to see its logs here.</p>
-                    )}
-                  </div>
-                </section>
+                      {developer?.logs.length ? (
+                        developer.logs.map((entry, index) => (
+                          <div
+                            className="site-hook-log"
+                            data-level={entry.level}
+                            key={`${entry.time}-${index}`}
+                          >
+                            <time>
+                              {new Date(entry.time).toLocaleTimeString()}
+                            </time>
+                            <span>{entry.message}</span>
+                            {entry.level === 'error' &&
+                              /kudium-hook-(.+)-(before|after)\.js:(\d+)/.test(
+                                entry.message
+                              ) && (
+                                <button
+                                  type="button"
+                                  className="hook-error-line"
+                                  onClick={() => {
+                                    const match = entry.message.match(
+                                      /kudium-hook-(.+)-(before|after)\.js:(\d+)/
+                                    )!;
+                                    let id: string;
+                                    try {
+                                      id = decodeURIComponent(match[1]);
+                                    } catch {
+                                      return;
+                                    }
+                                    if (
+                                      id !== 'default' &&
+                                      !draft.hooks?.some(
+                                        (hook) => hook.id === id
+                                      )
+                                    )
+                                      return;
+                                    setHookId(
+                                      entry.hookId ||
+                                        (id === 'default' ? '' : id)
+                                    );
+                                    setEditor(match[2] as 'before' | 'after');
+                                    setJumpLine((previous) => ({
+                                      line: Math.max(1, Number(match[3]) - 3),
+                                      token: (previous?.token || 0) + 1,
+                                    }));
+                                  }}
+                                >
+                                  Go to line
+                                </button>
+                              )}
+                          </div>
+                        ))
+                      ) : (
+                        <p>Run a hook to see its logs here.</p>
+                      )}
+                    </div>
+                  </section>
+                )
               }
             />
           </div>
@@ -748,19 +837,25 @@ export function SiteDeveloperPanel({
           ))}
         </section>
       )}
-      <footer className="site-settings-footer site-developer-footer">
-        <span>
-          {dirty
+      <EditorWindowFooter
+        status={
+          dirty
             ? 'Unsaved changes · Save before publishing'
-            : 'Saved · Run reloads this page'}
-        </span>
+            : 'Saved · Run reloads this page'
+        }
+      >
         <Button
           variant="soft"
           color="gray"
           disabled={disabled || !dirty || !validDeveloperConfig(draft)}
           onClick={() => {
             send('set-site-developer', { developer: draft });
-            if (!draft.enabled || (selectedHook && !selectedHook.enabled))
+            if (
+              !draft.enabled ||
+              (selectedHook
+                ? !selectedHook.enabled
+                : draft.defaultEnabled === false)
+            )
               setEnablePrompt({
                 config: draft,
                 hookId: selectedHook?.id || '',
@@ -775,7 +870,10 @@ export function SiteDeveloperPanel({
           disabled={
             disabled ||
             dirty ||
-            ![code.before, code.after, code.css].some((value) => value.trim())
+            (![code.before, code.after, code.css].some((value) =>
+              value.trim()
+            ) &&
+              !code.actions?.some((action) => action.source.trim()))
           }
           title={publishHint}
           onClick={() =>
@@ -795,7 +893,12 @@ export function SiteDeveloperPanel({
             developer?.status === 'running'
           }
           onClick={() => {
-            if (!draft.enabled || (selectedHook && !selectedHook.enabled)) {
+            if (
+              !draft.enabled ||
+              (selectedHook
+                ? !selectedHook.enabled
+                : draft.defaultEnabled === false)
+            ) {
               setEnablePrompt({
                 config: draft,
                 hookId: selectedHook?.id || '',
@@ -809,7 +912,87 @@ export function SiteDeveloperPanel({
           <RotateCw size={14} />
           {dirty ? 'Save & Run' : 'Run'}
         </Button>
-      </footer>
+      </EditorWindowFooter>
+      <AlertDialog.Root
+        open={!!listAction}
+        onOpenChange={(open) => {
+          if (!open) setListAction(undefined);
+        }}
+      >
+        <AlertDialog.Content size="2" maxWidth="360px">
+          <AlertDialog.Title>
+            {listAction?.action === 'rename' ? 'Rename hook' : 'Delete hook?'}
+          </AlertDialog.Title>
+          <AlertDialog.Description>
+            {listAction?.action === 'rename'
+              ? 'Choose a name for this hook.'
+              : `Remove ${listAction?.name || 'this hook'} from this website?`}
+          </AlertDialog.Description>
+          {listAction?.action === 'rename' && (
+            <FormTextField
+              label="Hook name"
+              autoFocus
+              maxLength={120}
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+            />
+          )}
+          <div className="site-hook-enable-actions">
+            <AlertDialog.Cancel>
+              <Button variant="soft" color="gray">
+                Cancel
+              </Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action>
+              <Button
+                color={listAction?.action === 'delete' ? 'red' : undefined}
+                disabled={
+                  disabled ||
+                  (listAction?.action === 'rename' && !renameValue.trim())
+                }
+                onClick={() => {
+                  if (!listAction) return;
+                  setDraft((previous) =>
+                    !listAction.id
+                      ? {
+                          ...previous,
+                          ...(listAction.action === 'rename'
+                            ? { name: renameValue.trim() }
+                            : {
+                                before: '',
+                                after: '',
+                                css: '',
+                                defaultEnabled: false,
+                              }),
+                        }
+                      : {
+                          ...previous,
+                          hooks:
+                            listAction.action === 'delete'
+                              ? previous.hooks?.filter(
+                                  (hook) => hook.id !== listAction.id
+                                )
+                              : previous.hooks?.map((hook) =>
+                                  hook.id === listAction.id
+                                    ? { ...hook, name: renameValue.trim() }
+                                    : hook
+                                ),
+                        }
+                  );
+                  if (
+                    listAction.action === 'delete' &&
+                    hookId === listAction.id
+                  )
+                    setHookId('');
+                  setListAction(undefined);
+                }}
+              >
+                {listAction?.action === 'rename' ? 'Rename' : 'Delete'}
+              </Button>
+            </AlertDialog.Action>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
       <AlertDialog.Root
         open={!!enablePrompt}
         onOpenChange={(open) => {
@@ -835,6 +1018,7 @@ export function SiteDeveloperPanel({
                   const config = {
                     ...enablePrompt.config,
                     enabled: true,
+                    ...(!enablePrompt.hookId ? { defaultEnabled: true } : {}),
                     hooks: enablePrompt.config.hooks?.map((hook) =>
                       hook.id === enablePrompt.hookId
                         ? { ...hook, enabled: true }

@@ -1,3 +1,4 @@
+import { hookPublishPage } from '../src/hook-pages';
 import { beforeAll, afterAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -34,7 +35,7 @@ test("portable package validates scope, stages and source limits without accepti
   expect(pkg.name).toBe("Quiet reading");
   for (const invalid of [
     { ...pkg, enabled: true },
-    { ...pkg, schemaVersion: 2 },
+    { ...pkg, schemaVersion: 3 },
     { ...pkg, lifecycle: { ...pkg.lifecycle, ready: "x" } },
     { ...pkg, lifecycle: { ...pkg.lifecycle, after: "x".repeat(20001) } },
     {
@@ -403,4 +404,22 @@ test("email login returns to allowed marketplace pages and rejects external or e
         : "/account"
     );
   }
+});
+
+test("portable context menu actions need no permission declarations", () => {
+  const action = { id: "password", name: "Generate password", contexts: ["password" as const], source: "api.passwords.generateAndFill();" };
+  const pkg = parseHookPackage({ ...sample(), schemaVersion: 2, actions: [action], lifecycle: { before: "", after: "", css: "" } });
+  expect(pkg.actions).toEqual([action]);
+  expect(() => parseHookPackage({ ...pkg, actions: [{ ...action, permissions: ["vault.read"] }] })).toThrow();
+  expect(() => parseHookPackage({ ...pkg, actions: [{ ...action, granted: true }] })).toThrow();
+});
+
+test("website creator exposes shared action templates and retains update handlers", () => {
+  const action = {id:"generate",name:"Generate password",contexts:["password" as const],permissions:["password.generate" as const],source:"api.passwords.generateAndFill();"};
+  const pkg = parseHookPackage({...sample(),schemaVersion:2,actions:[action]});
+  const html = hookPublishPage({package:pkg,hook:{id:"listing",version:1}} as any);
+  expect(html).toContain('data-hook-actions');
+  expect(html).toContain('data-action-templates');
+  expect(html).toContain('api.passwords.generateAndFill();');
+  expect(html).not.toContain('data-action-permission');
 });

@@ -2,13 +2,29 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { GroupLockService } from '../main/groupLocks';
+import { app, BrowserWindow, powerMonitor } from 'electron';
+import {
+  GroupLockService,
+  getGroupLocks,
+  registerGroupLocks,
+} from '../main/groupLocks';
 
 jest.mock('../main/localStorage', () => ({
   safeStorage: jest.requireMock('electron').safeStorage,
 }));
 
-jest.mock('electron', () => ({ app: {}, ipcMain: {}, powerMonitor: {} }));
+jest.mock('electron', () => {
+  const { EventEmitter } = jest.requireActual('events');
+  return {
+    app: Object.assign(new EventEmitter(), {
+      getPath: jest.fn(),
+      whenReady: () => Promise.resolve(),
+    }),
+    ipcMain: { handle: jest.fn() },
+    powerMonitor: new EventEmitter(),
+    BrowserWindow: { getAllWindows: jest.fn(() => []) },
+  };
+});
 let root: string;
 beforeEach(() => {
   root = fs.mkdtempSync(
@@ -111,4 +127,37 @@ it('a revoked caller cannot protect or relock a group', async () => {
     'revoked'
   );
   expect(locks.locked('work')).toBe(false);
+});
+
+it('relocks protected groups on system lock and sleep, broadcasts state, and requires fresh authentication', async () => {
+  (app.getPath as jest.Mock).mockReturnValue(root);
+  const send = jest.fn();
+  (BrowserWindow.getAllWindows as jest.Mock).mockReturnValue([
+    { isDestroyed: () => false, webContents: { send } },
+  ]);
+  const authenticate = jest.fn().mockResolvedValue(undefined);
+  registerGroupLocks(() => true, {
+    authenticate,
+    available: async () => true,
+  });
+  await app.whenReady();
+  const locks = getGroupLocks();
+  await locks.change('protect', 'work');
+  await locks.change('unlock', 'work');
+  await locks.change('unlock', 'work');
+  expect(authenticate).toHaveBeenCalledTimes(1);
+
+  for (const event of ['lock-screen', 'suspend']) {
+    powerMonitor.emit(event);
+    expect(locks.locked('work')).toBe(true);
+    expect(send).toHaveBeenLastCalledWith(
+      'group-lock-state',
+      expect.objectContaining({ protected: ['work'], unlocked: [] })
+    );
+    await locks.change('unlock', 'work');
+    expect(locks.locked('work')).toBe(false);
+  }
+  expect(authenticate).toHaveBeenCalledTimes(3);
+  app.emit('before-quit');
+  expect(locks.locked('work')).toBe(true);
 });

@@ -63,6 +63,8 @@ export function buildSyncSnapshot(input: {
             id: id(space.id),
             name: label(space.name),
             color: space.color,
+            useWebsiteColors:
+              space.useWebsiteColors === true ? true : undefined,
             icon: space.icon,
             iconEmoji: space.iconEmoji?.slice(0, 16),
             customColor: /^#[0-9a-f]{6}$/i.test(space.customColor || '')
@@ -142,6 +144,7 @@ export interface IncomingSnapshot {
       id: string;
       name: string;
       color: Space['color'];
+      useWebsiteColors?: boolean;
       folders: { id: string; name: string }[];
     }[];
     apps: {
@@ -212,12 +215,20 @@ export function validateIncomingSnapshot(value: unknown): IncomingSnapshot {
         'icon',
         'iconEmoji',
         'customColor',
+        'useWebsiteColors',
         'folders',
       ]);
+      if (
+        space.useWebsiteColors !== undefined &&
+        typeof space.useWebsiteColors !== 'boolean'
+      )
+        throw new Error('Invalid website colors option');
       id(space.id);
       label(space.name);
       if (
-        !['iris', 'red', 'blue', 'green', 'amber', 'pink'].includes(space.color) ||
+        !['iris', 'red', 'blue', 'green', 'amber', 'pink'].includes(
+          space.color
+        ) ||
         !Array.isArray(space.folders) ||
         space.folders.length > 500
       )

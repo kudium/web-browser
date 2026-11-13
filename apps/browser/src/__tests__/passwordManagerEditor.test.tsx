@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -48,8 +49,56 @@ beforeEach(() => {
     electron: {
       passwordManager: request,
       onPasswordManagerLock: () => () => {},
+      browser: { confirm: jest.fn().mockResolvedValue(true) },
     },
   });
+});
+
+it('uses compact saved-item actions without the tab-targeted fill workflow', async () => {
+  show();
+  const list = await screen.findByRole('list', { name: 'Saved Personal Data' });
+  expect(within(list).getByRole('button', { name: 'Edit' }).querySelector('svg')).toBeTruthy();
+  expect(within(list).getByRole('button', { name: 'Delete' }).querySelector('svg')).toBeTruthy();
+  expect(screen.queryByText('Fill into')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Fill' })).not.toBeInTheDocument();
+  expect(request).not.toHaveBeenCalledWith({ action: 'pages' });
+  fireEvent.click(within(list).getByRole('button', { name: 'Example' }));
+  await screen.findByRole('dialog', { name: 'Edit saved item' });
+});
+
+it('keeps notes out of the saved-data list and avoids repeated browser-wide labels', async () => {
+  request.mockImplementation(async (input) => input.action === 'status' ? { ...status, items: [...status.items, { ...status.items[0], id: 'note', kind: 'note', title: 'Meeting note' }] } : []);
+  show();
+  const list = await screen.findByRole('list', { name: 'Saved Personal Data' });
+  expect(within(list).queryByText('Meeting note')).not.toBeInTheDocument();
+  expect(screen.queryByText('Browser-wide')).not.toBeInTheDocument();
+  expect(screen.getByText('1 item · Unlocked')).toBeInTheDocument();
+});
+
+it('keeps global AI access unchanged when toggling autofill', async () => {
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Autofill and access settings' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Manual autofill' }));
+  await waitFor(() => expect(request).toHaveBeenCalledWith({ action: 'settings', enabled: true, autofill: false, ai: false }));
+});
+
+it('confirms deletion through the icon action', async () => {
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+  await waitFor(() => expect(request).toHaveBeenCalledWith({ action: 'delete', id: 'one' }));
+  expect(window.electron.browser.confirm).toHaveBeenCalledWith(expect.objectContaining({ message: 'Delete “Example”?', confirm: 'Delete' }));
+});
+
+it('does not reopen a private editor when the computer locks during loading', async () => {
+  let lock = () => {};
+  Object.assign(window.electron, { onPasswordManagerLock: (callback: () => void) => { lock = callback; return () => {}; } });
+  let complete: (item: typeof saved) => void = () => {};
+  request.mockImplementation(async (input) => input.action === 'edit' ? new Promise(resolve => { complete = resolve; }) : status);
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+  await act(async () => { lock(); complete(saved); });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add item' })).toBeEnabled());
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 function show() {
   render(
@@ -176,4 +225,48 @@ it('shows initial load failure and lets the user retry', async () => {
   expect(screen.queryByText('Loading Personal Data…')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   await screen.findByRole('button', { name: 'Add item' });
+});
+
+it('lets related values have their own autofill mappings and a shared item name', async () => {
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+  fireEvent.change(screen.getByLabelText('Key 1'), {
+    target: { value: 'Number' },
+  });
+  fireEvent.change(screen.getByLabelText('Value 1'), {
+    target: { value: '+15555550100' },
+  });
+  fireEvent.change(screen.getByLabelText('Fill as for value 1'), {
+    target: { value: 'tel' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Add another value' }));
+  fireEvent.change(screen.getByLabelText('Key 2'), {
+    target: { value: 'Email' },
+  });
+  fireEvent.change(screen.getByLabelText('Value 2'), {
+    target: { value: 'alex@example.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Item name (optional)'), {
+    target: { value: 'Personal profile' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'save',
+        item: expect.objectContaining({
+          title: 'Personal profile',
+          fields: [
+            {
+              name: 'Number',
+              value: '+15555550100',
+              secret: false,
+              aliases: ['tel'],
+            },
+            { name: 'Email', value: 'alex@example.com', secret: false },
+          ],
+        }),
+      })
+    )
+  );
 });

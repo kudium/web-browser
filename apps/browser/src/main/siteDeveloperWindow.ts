@@ -1,3 +1,4 @@
+import { registerAppThemeWindow } from './appTheme';
 import path from 'path';
 import fs from 'fs';
 import {
@@ -74,6 +75,62 @@ function rememberEditorSize(editor: BrowserWindow) {
   }
 }
 
+/** Shared native window, material, sizing and lifecycle for every hook editor. */
+export function createHookEditorWindow(
+  title: string,
+  themeOwner?: BrowserWindow
+) {
+  const editor = new BrowserWindow({
+    title,
+    ...editorSize(),
+    minWidth: 400,
+    minHeight: 480,
+    show: false,
+    resizable: true,
+    backgroundColor: '#00000000',
+    ...(process.platform === 'darwin' && {
+      vibrancy: nativeTheme.prefersReducedTransparency
+        ? undefined
+        : ('sidebar' as const),
+      visualEffectState: 'followWindow' as const,
+    }),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true,
+      preload: app.isPackaged
+        ? path.join(__dirname, 'preload.js')
+        : path.join(__dirname, '../../.erb/dll/preload.js'),
+    },
+  });
+  registerAppThemeWindow(editor, { source: () => themeOwner });
+  const updateMaterial = () => {
+    if (process.platform === 'darwin' && !editor.isDestroyed())
+      editor.setVibrancy(
+        nativeTheme.prefersReducedTransparency ||
+          nativeTheme.shouldUseHighContrastColors
+          ? null
+          : 'sidebar'
+      );
+  };
+  if (process.platform === 'darwin') {
+    nativeTheme.on('updated', updateMaterial);
+    updateMaterial();
+    editor.once('closed', () =>
+      nativeTheme.removeListener('updated', updateMaterial)
+    );
+  }
+  editorContents.add(editor.webContents);
+  let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+  editor.on('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => rememberEditorSize(editor), 250);
+  });
+  editor.on('close', () => rememberEditorSize(editor));
+  editor.once('closed', () => clearTimeout(resizeTimer));
+  return editor;
+}
+
 /** Editor actions and breadcrumb navigation are bound to its original tab/group. */
 export function registerSiteDeveloperWindows(
   resolve: (id: string) =>
@@ -108,52 +165,10 @@ export function registerSiteDeveloperWindows(
       existing.window.focus();
       return;
     }
-    const editor = new BrowserWindow({
-      title: `${new URL(origin).host} — Developer`,
-      ...editorSize(),
-      minWidth: 400,
-      minHeight: 480,
-      show: false,
-      resizable: true,
-      backgroundColor: '#00000000',
-      ...(process.platform === 'darwin' && {
-        vibrancy: nativeTheme.prefersReducedTransparency
-          ? undefined
-          : ('sidebar' as const),
-        visualEffectState: 'followWindow' as const,
-      }),
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        webSecurity: true,
-        preload: app.isPackaged
-          ? path.join(__dirname, 'preload.js')
-          : path.join(__dirname, '../../.erb/dll/preload.js'),
-      },
-    });
-    const updateMaterial = () => {
-      if (process.platform === 'darwin' && !editor.isDestroyed())
-        editor.setVibrancy(
-          nativeTheme.prefersReducedTransparency ||
-            nativeTheme.shouldUseHighContrastColors
-            ? null
-            : 'sidebar'
-        );
-    };
-    if (process.platform === 'darwin') {
-      nativeTheme.on('updated', updateMaterial);
-      updateMaterial();
-      editor.once('closed', () =>
-        nativeTheme.removeListener('updated', updateMaterial)
-      );
-    }
-    editorContents.add(editor.webContents);
-    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
-    editor.on('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => rememberEditorSize(editor), 250);
-    });
-    editor.on('close', () => rememberEditorSize(editor));
+    const editor = createHookEditorWindow(
+      `${new URL(origin).host} — Developer`,
+      BrowserWindow.fromWebContents(event.sender) || undefined
+    );
     const current = () => {
       const latest = resolve(id);
       return latest &&
@@ -256,7 +271,6 @@ export function registerSiteDeveloperWindows(
       update(true);
     });
     editor.once('closed', () => {
-      clearTimeout(resizeTimer);
       clearInterval(timer);
       ipcMain.removeListener('site-developer-command', receive);
       editors.delete(key);

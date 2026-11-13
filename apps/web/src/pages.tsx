@@ -748,6 +748,7 @@ export function documentation() {
 
             <a href="/tutorials">Browser tutorials ↗</a>
             <a href="/docs/notes-and-activity">Notes and Activity API</a>
+            <a href="/tutorials/website-hooks#context-and-api">Hook actions: context and api</a>
             <a href="#overview">Service overview</a>
             <a href="#updates">App updates</a>
             <a href="#sync">Encrypted sync</a>
@@ -1058,6 +1059,28 @@ export function tutorialPage(tutorial: Tutorial) {
               </li>
             ))}
           </ol>
+          {tutorial.sections?.map((section) => (
+            <section className="tutorial-reference-section" key={section.id} aria-labelledby={section.id}>
+              <h2 id={section.id}>{section.title}</h2>
+              {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              {section.reference && (
+                <div className="tutorial-reference-table">
+                  <table aria-label={section.title}>
+                    <thead><tr><th scope="col">Property or method</th><th scope="col">What it does</th></tr></thead>
+                    <tbody>{section.reference.map(([name, detail]) => (
+                      <tr key={name}><th scope="row"><code>{name}</code></th><td>{detail}</td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+              {section.examples?.map((example) => (
+                <div key={example.title}>
+                  <h3>{example.title}</h3>
+                  <pre><code>{example.code}</code></pre>
+                </div>
+              ))}
+            </section>
+          ))}
           {tutorial.note && <div className="callout">{tutorial.note}</div>}
           <div className="tutorial-related">
             <h2>Related browser tutorials</h2>
@@ -1373,6 +1396,7 @@ export function notesAndActivityDocumentation() {
           <a href="#links">Links and unread state</a>
           <a href="#limits">Limits and permissions</a>
           <a href="/tutorials/website-hooks">Website hooks tutorial ↗</a>
+          <a href="/tutorials/website-hooks#context-and-api">Context menu action API ↗</a>
         </aside>
         <div className="docs-content">
           <section id="overview">
@@ -1382,8 +1406,9 @@ export function notesAndActivityDocumentation() {
             <p>Notes holds saved Markdown content. Activity has its own dedicated assistant page and toolbar button, with events, timestamps, unread badges, and actions to open a note or website.</p>
           </section>
           <section id="hook-api">
-            <h2>Hook API</h2>
-            <p>Use these asynchronous methods in an approved website hook. The browser assigns the source and group scope.</p>
+            <h2>Page lifecycle hook API</h2>
+            <p>Use these asynchronous methods in Before load or After load website scripts. The browser assigns the source and group scope.</p>
+            <p>For the Actions tab, <code>context</code> contains page data and <code>api</code> performs actions. Use <code>api.notes.create</code> and <code>api.activity.create</code> there; commands apply after the handler finishes and do not return IDs. See the <a href="/tutorials/website-hooks#context-and-api">context menu action guide and examples</a>.</p>
             <h3>Create an Activity alert</h3>
             <pre><code>{`const event = await context.activity.create({
   title: 'Price changed',

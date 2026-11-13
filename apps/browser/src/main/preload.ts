@@ -371,6 +371,7 @@ const electronHandler = {
       model: string;
       key?: string;
       thinking?: import('../browser/aiThinking').AIThinking;
+      contextManagement?: boolean;
       remember?: boolean;
       clear?: boolean;
     }): Promise<AISettings> {
@@ -469,11 +470,49 @@ const electronHandler = {
       };
     },
   },
+  appTheme: {
+    get(): Promise<import('../utils/appTheme').AppTheme | undefined> {
+      return invokeWhenReady('app-theme', { action: 'get' });
+    },
+    publish(
+      theme: import('../utils/appTheme').AppTheme
+    ): Promise<import('../utils/appTheme').AppTheme> {
+      return invokeWhenReady('app-theme', { action: 'publish', theme });
+    },
+    onChanged(
+      callback: (
+        theme: import('../utils/appTheme').AppTheme | undefined
+      ) => void
+    ) {
+      const listener = (
+        _event: IpcRendererEvent,
+        theme: import('../utils/appTheme').AppTheme | undefined
+      ) => callback(theme);
+      ipcRenderer.on('app-theme-changed', listener);
+      return () => {
+        ipcRenderer.removeListener('app-theme-changed', listener);
+      };
+    },
+  },
   hookMarketplace: {
     request(
       input: import('../browser/hookMarketplace').HookMarketplaceRequest
     ): Promise<any> {
       return invokeWhenReady('hook-marketplace', input);
+    },
+    onTestState(
+      callback: (
+        state: import('../browser/hookMarketplace').HookTestState
+      ) => void
+    ) {
+      const listener = (
+        _event: IpcRendererEvent,
+        state: import('../browser/hookMarketplace').HookTestState
+      ) => callback(state);
+      ipcRenderer.on('global-hook-test-state', listener);
+      return () => {
+        ipcRenderer.removeListener('global-hook-test-state', listener);
+      };
     },
     onInstall(callback: (url: string) => void) {
       const listener = (_event: IpcRendererEvent, url: unknown) => {
@@ -727,6 +766,14 @@ const electronHandler = {
     chooseSpaceIcon(): Promise<string | null> {
       return ipcRenderer.invoke('browser-space-icon');
     },
+    onAISelection(callback: (text: string) => void) {
+      const listener = (_event: IpcRendererEvent, text: unknown) => {
+        if (typeof text === 'string' && text.trim() && text.length <= 30000)
+          callback(text);
+      };
+      ipcRenderer.on('browser-ai-selection', listener);
+      return () => ipcRenderer.removeListener('browser-ai-selection', listener);
+    },
     onTabRequest(callback: (request: BrowserTabRequest) => void) {
       const listener = (_event: IpcRendererEvent, request: BrowserTabRequest) =>
         callback(request);
@@ -748,7 +795,13 @@ const electronHandler = {
     preferences(
       action: 'get' | 'open' | 'update',
       patch?: Partial<BrowserPreferences> & {
-        section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces';
+        section?:
+          | 'archive'
+          | 'sync'
+          | 'import'
+          | 'passwords'
+          | 'spaces'
+          | 'hooks';
       }
     ): Promise<BrowserPreferences> {
       return ipcRenderer.invoke('browser-preferences', action, patch);

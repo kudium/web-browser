@@ -2,6 +2,8 @@ import { Button, Dialog, TextField, Text } from '@radix-ui/themes';
 import { ImagePlus, Smile } from 'lucide-react';
 import { ReactNode, useRef, useState } from 'react';
 import { PanelDialogContent } from './PanelDialog';
+import { iconSymbols, imageSymbol, symbolImage } from './iconSymbols';
+import type { SpaceIconName } from '../../utils/SpaceManager';
 import { browser } from '../../browser/client';
 
 /** Shared on-demand emoji/image picker; callers supply their own default icon. */
@@ -12,13 +14,15 @@ export function IconPicker({
   preview,
   onChange,
   renderDefaultChoice,
+  symbol,
 }: {
   label: string;
   emoji: string;
   image: string;
   preview: ReactNode;
   onChange: (value: { emoji: string; image: string }) => void;
-  renderDefaultChoice: (select: () => void) => ReactNode;
+  renderDefaultChoice?: (select: () => void) => ReactNode;
+  symbol?: SpaceIconName;
 }) {
   const [open, setOpen] = useState(false);
   const [entry, setEntry] = useState(emoji);
@@ -60,37 +64,30 @@ export function IconPicker({
       >
         <Dialog.Title size="4">Choose an icon</Dialog.Title>
         <Dialog.Description size="2" color="gray">
-          Use an emoji, your own image, or the default icon.
+          Choose a symbol, emoji, or your own image.
         </Dialog.Description>
         <div className="icon-picker-content">
           <div
-            className="icon-picker-emojis"
+            className="icon-picker-symbols"
             role="group"
-            aria-label="Suggested emojis"
+            aria-label="Suggested icons"
           >
-            {[
-              '🏠',
-              '💼',
-              '✨',
-              '🎨',
-              '🚀',
-              '📚',
-              '🎮',
-              '🌿',
-              '💻',
-              '🌍',
-              '☕',
-              '❤️',
-            ].map((symbol) => (
+            {Object.entries(iconSymbols).map(([name, Symbol]) => (
               <button
                 type="button"
-                key={symbol}
-                aria-label={`Use ${symbol} for ${label}`}
-                aria-pressed={emoji === symbol}
+                key={name}
+                aria-label={`Use ${name} icon for ${label}`}
+                title={name[0].toUpperCase() + name.slice(1)}
+                aria-pressed={!emoji && (symbol || imageSymbol(image)) === name}
                 disabled={busy}
-                onClick={() => select({ emoji: symbol, image: '' })}
+                onClick={() =>
+                  select({
+                    emoji: '',
+                    image: symbolImage(name as SpaceIconName),
+                  })
+                }
               >
-                {symbol}
+                <Symbol size={20} strokeWidth={1.6} aria-hidden="true" />
               </button>
             ))}
           </div>
@@ -165,14 +162,16 @@ export function IconPicker({
             <ImagePlus size={16} />
             {busy ? 'Choosing image…' : 'Choose image…'}
           </Button>
-          {image && (
+          {image && !imageSymbol(image) && (
             <Text size="1" color="gray">
               A custom image is currently selected.
             </Text>
           )}
-          <fieldset className="icon-picker-default" disabled={busy}>
-            {renderDefaultChoice(() => setOpen(false))}
-          </fieldset>
+          {renderDefaultChoice && (
+            <fieldset className="icon-picker-default" disabled={busy}>
+              {renderDefaultChoice(() => setOpen(false))}
+            </fieldset>
+          )}
           {error && (
             <Text size="2" color="red" role="alert">
               {error}

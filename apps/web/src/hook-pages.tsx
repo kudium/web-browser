@@ -1,3 +1,4 @@
+import { actionContexts, actionTemplates, type HookAction } from '../../../packages/hooks/actions';
 import { renderToStaticMarkup } from "react-dom/server";
 import { Layout } from "./pages";
 import {
@@ -25,9 +26,20 @@ const render = (
       <script src="/assets/hooks.js" defer />
     </Layout>
   );
+function ActionFields({ action }: { action?: HookAction }) {
+  return <details data-hook-action className="hook-source-stage" open={!action}>
+    <summary data-action-title>{action?.name || 'New action'}</summary>
+    <label>Name<input data-action-name defaultValue={action?.name || 'New action'} maxLength={120} required /></label>
+    <fieldset><legend>Show for</legend>{actionContexts.map(c => <label key={c}><input type="checkbox" data-action-context value={c} defaultChecked={action ? action.contexts.includes(c) : c === 'page'} />{c}</label>)}</fieldset>
+    <label>Handler<textarea data-action-source defaultValue={action?.source || 'api.showResult(context.title);'} rows={8} maxLength={20000} spellCheck={false} /></label>
+    <input type="hidden" data-action-id defaultValue={action?.id || ''} />
+    <button type="button" data-remove-action>Remove action</button>
+  </details>;
+}
 function StageBadges({ pkg }: { pkg: HookPackage }) {
   return (
     <div className="hook-badges">
+      {!!pkg.actions?.length && <span>{pkg.actions.length} context menu actions</span>}
       {Object.entries(pkg.lifecycle)
         .filter(([, code]) => code.trim())
         .map(([stage]) => (
@@ -233,6 +245,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
               Review the source before you install. Hooks change the pages where
               you enable them.
             </p>
+            {pkg.actions?.map(action => <details key={action.id}><summary>{action.name} · context menu</summary><p>Show for: {action.contexts.join(', ')}</p><pre>{action.source}</pre></details>)}
             {Object.entries(pkg.lifecycle)
               .filter(([, source]) => source.trim())
               .map(([stage, source]) => (
@@ -339,6 +352,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
             <dd>
               <code>{pkg.path}</code>
             </dd>
+            {pkg.testUrl && <><dt>Test website</dt><dd><a href={pkg.testUrl} target="_blank" rel="noreferrer">{pkg.testUrl}</a></dd></>}
             <dt>License</dt>
             <dd>{pkg.license}</dd>
             <dt>Browser</dt>
@@ -482,6 +496,7 @@ export function hookPublishPage(detail?: Detail) {
               * matches characters. Query strings and fragments are ignored.
             </small>
           </label>
+          <label>Test website URL<input type="url" name="testUrl" defaultValue={pkg?.testUrl || ""} maxLength={4096} placeholder="https://example.com" /></label>
           <label>
             Minimum browser version
             <input
@@ -517,6 +532,13 @@ export function hookPublishPage(detail?: Detail) {
             </label>
           </details>
         ))}
+        </fieldset>
+        <fieldset className="hook-form-section" data-hook-actions data-action-templates={JSON.stringify(actionTemplates)}>
+          <legend>Context menu actions</legend>
+          <p>Actions run when you choose them from the right-click menu.</p>
+          <div data-action-list>{pkg?.actions?.map(action => <ActionFields key={action.id} action={action} />)}</div>
+          <template data-action-template><ActionFields /></template>
+          <div className="hook-publish-actions"><select aria-label="Action example" data-action-example><option value="custom">Custom action</option>{actionTemplates.map((a, i) => <option key={a.name} value={i}>{a.name}</option>)}</select><button type="button" data-add-action>Add action</button></div>
         </fieldset>
         <label className="hook-license-confirm">
           <input type="checkbox" required /> I have the right to publish this

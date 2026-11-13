@@ -18,6 +18,7 @@ export const nativeMenuLabels = {
   openOnLeft: 'Open on Left',
   openOnRight: 'Open on Right',
   groupSettings: 'Group Settings…',
+  exportGroup: 'Export Group…',
   closeGroup: 'Unload Group',
   setCurrentPageAsHome: 'Set Current Page as Home',
   removeGroup: 'Remove Group…',

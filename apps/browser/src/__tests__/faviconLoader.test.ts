@@ -1,6 +1,8 @@
 /** @jest-environment node */
 import {
   FaviconLoader,
+  faviconCandidates,
+  faviconSiteChanged,
   readFaviconBody,
   validateFaviconDimensions,
 } from '../main/faviconLoader';
@@ -184,12 +186,12 @@ it.each([
     expect(() => validateFaviconDimensions(bytes)).toThrow('dimensions');
   }
 );
-it('rejects corrupt data and unsupported buffer formats', () => {
+it('rejects corrupt data and oversized SVG dimensions', () => {
   expect(() => validateFaviconDimensions(Buffer.from('broken'))).toThrow();
   expect(() =>
     validateFaviconDimensions(
       Buffer.from(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"></svg>'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="32"></svg>'
       )
     )
   ).toThrow();
@@ -248,4 +250,111 @@ it('accepts a bounded ICO favicon supplied by a loaded website', () => {
   expect(() =>
     validateFaviconDimensions(Buffer.concat([header, png]))
   ).not.toThrow();
+});
+
+it('tries later candidates after transport and decoder failures', async () => {
+  const loader = new FaviconLoader();
+  const fetch = jest.fn(async (url: string) =>
+    url === 'missing' ? new Response('', { status: 404 }) : new Response(url)
+  );
+  const accepted: string[] = [];
+  await loader.load(
+    'tab',
+    ['missing', 'corrupt', 'working'],
+    fetch,
+    (bytes) => {
+      if (bytes.toString() === 'corrupt') throw new Error('Invalid image');
+      accepted.push(bytes.toString());
+    }
+  );
+  expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+    'missing',
+    'corrupt',
+    'working',
+  ]);
+  expect(accepted).toEqual(['working']);
+});
+
+it('loads embedded SVG bytes without a network request', async () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="red"/></svg>';
+  const fetch = jest.fn();
+  const accepted = jest.fn();
+  await new FaviconLoader().load(
+    'tab',
+    `data:image/svg+xml,${encodeURIComponent(svg)}`,
+    fetch,
+    accepted
+  );
+  expect(fetch).not.toHaveBeenCalled();
+  expect(accepted.mock.calls[0][0].toString()).toBe(svg);
+  expect(validateFaviconDimensions(Buffer.from(svg))).toBe('svg');
+});
+
+it('keeps declared candidates ordered and adds a deduplicated site fallback', () => {
+  expect(
+    faviconCandidates(
+      [
+        'https://example.com/brand.svg',
+        'data:image/png;base64,AA==',
+        'javascript:alert(1)',
+        'https://example.com/brand.svg',
+      ],
+      'https://example.com/page'
+    )
+  ).toEqual([
+    'https://example.com/brand.svg',
+    'data:image/png;base64,AA==',
+    'https://example.com/favicon.ico',
+  ]);
+  expect(faviconCandidates([], 'about:blank')).toEqual([]);
+});
+
+it('tries another candidate after a stalled candidate times out', async () => {
+  jest.useFakeTimers();
+  try {
+    const fetch = jest.fn(
+      async (url: string, options: { signal: AbortSignal }) => {
+        if (url === 'working') return new Response('healthy');
+        return new Promise<Response>((_resolve, reject) =>
+          options.signal.addEventListener(
+            'abort',
+            () => reject(options.signal.reason),
+            { once: true }
+          )
+        );
+      }
+    );
+    const accept = jest.fn();
+    const pending = new FaviconLoader().load(
+      'tab',
+      ['stalled', 'working'],
+      fetch,
+      accept
+    );
+    await jest.advanceTimersByTimeAsync(10001);
+    await pending;
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      'stalled',
+      'working',
+    ]);
+    expect(accept.mock.calls[0][0].toString()).toBe('healthy');
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('invalidates a favicon on domain changes, including committed redirect destinations', () => {
+  expect(
+    faviconSiteChanged('https://old.example/page', 'https://new.example/')
+  ).toBe(true);
+  expect(
+    faviconSiteChanged('https://example.com/page', 'https://example.com/other')
+  ).toBe(false);
+  expect(faviconSiteChanged('http://example.com', 'https://example.com')).toBe(
+    false
+  );
+  expect(
+    faviconSiteChanged('https://example.com', 'https://sub.example.com')
+  ).toBe(true);
 });

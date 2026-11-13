@@ -59,13 +59,15 @@ export function SiteSettingsDialog({
     if (state && site)
       command({ id: state.id, action, url: site.origin, ...patch });
   };
-  const secure = site?.origin.startsWith('https:');
+  const secure = site?.origin.startsWith('https:') && !site.certificateError;
   const ConnectionIcon = secure ? LockKeyhole : ShieldAlert;
   let connectionLabel = secure
     ? 'Connection uses HTTPS'
     : 'Connection is not secure';
   let connectionDescription = secure
     ? 'Your connection is encrypted with TLS. This does not guarantee the website is trustworthy.'
+    : site?.certificateError
+    ? `The website’s identity could not be verified because its TLS certificate is invalid (${site.certificateError}).`
     : 'This site uses HTTP. Information you send can be read or changed in transit.';
   if (!site) {
     connectionLabel = 'No website selected';

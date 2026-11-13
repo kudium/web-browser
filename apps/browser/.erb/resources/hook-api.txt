@@ -65,3 +65,78 @@ declare const onCleanup: KudiumHookContext['onCleanup'];
 declare const signal: KudiumHookContext['signal'];
 declare const listen: KudiumHookContext['listen'];
 declare const runId: KudiumHookContext['runId'];
+
+/** Context menu handlers receive content scoped to the user’s click. */
+interface KudiumActionField {
+  readonly key: string;
+  readonly type: string;
+  readonly label: string;
+  readonly name: string;
+  readonly id: string;
+  readonly placeholder: string;
+  readonly autocomplete: string;
+  readonly required: boolean;
+  readonly maxLength?: number;
+  readonly minLength?: number;
+  readonly pattern?: string;
+  /** Current text value; password values are excluded. */
+  readonly value?: string;
+}
+interface KudiumActionContext {
+  readonly apiVersion: 1;
+  readonly url: string;
+  readonly title: string;
+  /** Never provided for a password field. */
+  readonly selection?: string;
+  /** Visible text, up to 100,000 characters. */
+  readonly pageText?: string;
+  readonly link?: string;
+  /** Labels, rules and current text values from the clicked field. */
+  readonly field?: { readonly type: string } & Partial<KudiumActionField>;
+  /** Labels, rules and text values of up to 50 fields in the clicked form. */
+  readonly form?: { readonly fields: ReadonlyArray<KudiumActionField> };
+}
+interface KudiumInputField {
+  key: string;
+  label?: string;
+  type?: "text" | "email" | "tel" | "url" | "number" | "date" | "textarea" | "password" | "select";
+  group?: string;
+  required?: boolean;
+  placeholder?: string;
+  personalData?: string;
+  options?: Array<{value: string; label: string}>;
+}
+interface KudiumInputRequest {
+  title?: string;
+  fields: Array<string | KudiumInputField>;
+}
+/** Outputs are queued, validated, then applied by the browser after the handler ends. */
+interface KudiumActionApi {
+  readonly version: 1;
+  showResult(text: string): void;
+  readonly field: { fill(text: string): void };
+  /** Choose a saved field locally and fill the clicked text input. No values returned. */
+  /** Legacy request alias; use api.input.request with personalData field mappings. */
+  readonly personalData: {
+    /** Review and save the clicked form. Passwords remain private to the browser. */
+    saveForm(): void;
+    fill(): void;
+    request(options: KudiumInputRequest): Promise<Readonly<Record<string, string>> | null>;
+  };
+  /** Grouped, typed fields with optional saved-data filling. Cancel returns null. */
+  readonly input: {
+    request(options: KudiumInputRequest): Promise<Readonly<Record<string, string>> | null>;
+  };
+  /** Keys come from context.form. Password fields are excluded. */
+  readonly form: { fill(values: Array<{key: string; value: string}>): void };
+  /** Generates and fills directly; never returns the password to the handler. */
+  readonly passwords: {
+    generateAndFill(): void;
+    /** Fill a custom password made by your script. */
+    fill(text: string): void;
+  };
+  /** Opens the built-in AI composer. The user submits the request. */
+  readonly ai: { compose(prompt: string): void };
+  readonly notes: { create(input: KudiumNoteInput): void };
+  readonly activity: { create(input: {title: string; message?: string}): void };
+}

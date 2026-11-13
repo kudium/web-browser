@@ -1,3 +1,4 @@
+import { HookIcon } from '../../UI/HookIcon';
 import { useEffect, useState } from 'react';
 import {
   Button,
@@ -43,6 +44,7 @@ import {
   PreferenceAction,
   PreferenceInfo,
 } from '../../../browser/preferences';
+import { HooksSettings } from './HooksSettings';
 import { AppUpdateSettings } from './AppUpdateSettings';
 import { Workspace } from './tabs/Workspace';
 import { TabOption } from './tabs/TabOption';
@@ -165,6 +167,12 @@ const sections = [
       'Use extensions in selected groups or all current and future groups.',
   },
   {
+    id: 'hooks',
+    title: 'Hooks',
+    icon: HookIcon,
+    description: 'Create and manage global hooks across websites and groups.',
+  },
+  {
     id: 'developer',
     title: 'Developer',
     icon: Code2,
@@ -191,6 +199,7 @@ const sectionOrder = [
   'downloads',
   'privacy',
   'extensions',
+  'hooks',
   'languages',
   'performance',
   'websites',
@@ -401,7 +410,6 @@ export function Settings() {
             </Tabs.Trigger>
           ))}
         </Tabs.List>
-        <span className="preferences-footer">Kudium Browser</span>
       </aside>
       <main className="preferences-main">
         <header className="preferences-topbar">
@@ -457,6 +465,7 @@ export function Settings() {
                 {item.description}
               </PreferenceHint>
             </header>
+            {item.id === 'hooks' && <HooksSettings />}
             {item.id === 'updates' && <AppUpdateSettings />}
             {item.id === 'import' && <BrowserImportSettings />}
             {item.id === 'ai' && (
@@ -491,6 +500,7 @@ export function Settings() {
                   'apps',
                   'spaces',
                   'archive',
+                  'hooks',
                 ].includes(item.id)
                   ? 'preference-page-content'
                   : 'preference-card'

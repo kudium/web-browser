@@ -1,9 +1,15 @@
 /* The shared address input forwards its native editing handlers. */
 /* eslint-disable react/jsx-props-no-spreading */
 import { FormEventHandler, InputHTMLAttributes, ReactNode, useId } from 'react';
-import { ChevronDown, Link, SlidersHorizontal } from 'lucide-react';
+import {
+  ChevronDown,
+  Link,
+  SlidersHorizontal,
+  LockKeyholeOpen,
+} from 'lucide-react';
 import { FormInput } from './FormControls';
 import type { SiteDeveloperState } from '../../browser/siteDeveloper';
+import { websiteThemeStyle } from '../../utils/websiteTheme';
 import { ChromeIconButton } from './ChromeIconButton';
 
 export function AddressBar({
@@ -14,6 +20,8 @@ export function AddressBar({
   onSiteSettings,
   toolsDisabled,
   developer,
+  insecure,
+  themeColor,
   expanded,
   onToggleExtensions,
   extensions,
@@ -29,6 +37,8 @@ export function AddressBar({
   onSiteSettings: () => void;
   toolsDisabled: boolean;
   developer?: SiteDeveloperState;
+  insecure?: boolean;
+  themeColor?: string;
   expanded: boolean;
   onToggleExtensions: () => void;
   extensions: ReactNode;
@@ -42,10 +52,23 @@ export function AddressBar({
     <div
       className="address-bar form-control-surface"
       data-placement={placement}
+      data-website-color={
+        (!!websiteThemeStyle(themeColor) && !insecure) || undefined
+      }
+      style={insecure ? undefined : websiteThemeStyle(themeColor)}
+      data-insecure={insecure || undefined}
     >
       {navigation && <div className="address-navigation">{navigation}</div>}
       <form className="address-bar-input" onSubmit={onSubmit}>
         {groupBadge}
+        {insecure && (
+          <ChromeIconButton
+            icon={LockKeyholeOpen}
+            label="Not secure — site settings"
+            className="address-insecure-indicator"
+            onClick={onSiteSettings}
+          />
+        )}
         <FormInput
           {...inputProps}
           className="location-label"

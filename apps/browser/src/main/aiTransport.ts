@@ -1,5 +1,11 @@
+import { managedProviderContext } from './aiAppleContext';
+import { aiContextManagement } from '../browser/aiContextManagement';
 import { aiThinking, thinkingOptions, AIThinking } from '../browser/aiThinking';
-import { isOllamaEndpoint } from '../browser/aiProviders';
+import {
+  isOllamaEndpoint,
+  isLocalAIEndpoint,
+  isAppleAIEndpoint,
+} from '../browser/aiProviders';
 /* Translate native Claude tool blocks into the agent's shared conversation format. */
 export const isClaude = (endpoint: string) =>
   new URL(endpoint).hostname === 'api.anthropic.com';
@@ -15,7 +21,7 @@ export function providerHeaders(
         'Content-Type': 'application/json',
       }
     : {
-        ...(isOllamaEndpoint(endpoint)
+        ...(isLocalAIEndpoint(endpoint)
           ? {}
           : { Authorization: `Bearer ${key}` }),
         'Content-Type': 'application/json',
@@ -41,8 +47,21 @@ export function providerRequest(
   model: string,
   messages: any[],
   tools: any[],
-  options: { cacheSystem?: boolean; thinking?: AIThinking } = {}
+  options: {
+    cacheSystem?: boolean;
+    thinking?: AIThinking;
+    contextManagement?: boolean;
+  } = {}
 ): Record<string, any> {
+  const manageContext = aiContextManagement(
+    endpoint,
+    options.contextManagement
+  );
+  if (manageContext && !isAppleAIEndpoint(endpoint)) {
+    const context = managedProviderContext({ messages, tools });
+    messages = context.messages;
+    tools = context.tools;
+  }
   const thinking = aiThinking(options.thinking);
   const supported = thinkingOptions(endpoint, model).some(
     (option) => option.id === thinking
@@ -58,6 +77,9 @@ export function providerRequest(
   if (!isClaude(endpoint))
     return {
       model,
+      ...(isAppleAIEndpoint(endpoint)
+        ? { kudium_context_management: manageContext }
+        : {}),
       ...reasoning,
       messages: portableMessages(messages).map(
         ({ retainImages: _retainImages, ...message }) => message

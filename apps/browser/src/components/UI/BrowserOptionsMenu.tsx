@@ -15,6 +15,7 @@ import {
   Puzzle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { HookIcon } from './HookIcon';
 import { ChromeIconButton } from './ChromeIconButton';
 
 export type BrowserOption =
@@ -29,6 +30,7 @@ export type BrowserOption =
   | 'print'
   | 'settings'
   | 'site-settings'
+  | 'hooks'
   | 'extensions';
 const groups: {
   id: BrowserOption;
@@ -52,6 +54,7 @@ const groups: {
     { id: 'print', label: 'Print…', icon: Printer, page: true },
     { id: 'site-settings', label: 'Site settings…', icon: Globe, page: true },
     { id: 'extensions', label: 'Extensions', icon: Puzzle },
+    { id: 'hooks', label: 'Global hooks', icon: HookIcon },
   ],
   [{ id: 'settings', label: 'Settings…', icon: Settings2 }],
 ];

@@ -41,7 +41,19 @@ export async function canUseOSAuthentication() {
     return false;
   }
 }
-export async function authenticateOS(
+let personalDataAuthenticated = false;
+let personalDataAuthentication: Promise<void> | undefined;
+let authenticationRevision = 0;
+
+// Only the successful OS check is retained, never a password or decrypted data.
+// Window closure and one-shot vault operations do not end the browser session.
+export function revokeOSAuthentication() {
+  authenticationRevision += 1;
+  personalDataAuthenticated = false;
+  personalDataAuthentication = undefined;
+}
+
+async function promptOS(
   purpose: 'personal-data' | 'group' = 'personal-data'
 ) {
   const helper = helperPath();
@@ -54,6 +66,31 @@ export async function authenticateOS(
     });
   } catch {
     throw new Error('Authentication was cancelled or unsuccessful.');
+  }
+}
+export async function authenticateOS(
+  purpose: 'personal-data' | 'group' = 'personal-data'
+) {
+  // Group protection has its own per-group grants and must not inherit access
+  // from a previous Personal Data authentication.
+  if (purpose === 'group') return promptOS(purpose);
+  if (personalDataAuthenticated) return;
+  if (!personalDataAuthentication) {
+    const revision = authenticationRevision;
+    const work = (async () => {
+      await promptOS(purpose);
+      if (revision !== authenticationRevision)
+        throw new Error('Personal Data was locked during authentication.');
+      personalDataAuthenticated = true;
+    })();
+    personalDataAuthentication = work;
+  }
+  const work = personalDataAuthentication;
+  try {
+    await work;
+  } finally {
+    if (personalDataAuthentication === work)
+      personalDataAuthentication = undefined;
   }
 }
 export function readOSCredential() {

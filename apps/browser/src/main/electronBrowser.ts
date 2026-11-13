@@ -1,3 +1,4 @@
+import { hookActionMenu } from './hookActions';
 /* Native menus and commands deliberately resolve their current host window. */
 /* eslint no-shadow: ["error", {"allow": ["window"]}] */
 import { randomUUID } from 'crypto';
@@ -12,9 +13,12 @@ import {
   ipcMain,
   Menu,
   WebContentsView,
-  nativeImage,
   RestoreOptions,
 } from 'electron';
+import {
+  certificateErrorFor,
+  allowWebsiteCertificateErrors,
+} from './websiteCertificates';
 import { effectiveHookConfig } from './globalHooks';
 import { registerHookMarketplace } from './hookMarketplace';
 import { aiGroupId } from '../browser/aiGroups';
@@ -26,7 +30,12 @@ import {
   registerGroupRemoval,
   sameRemovalGroup,
 } from './groupRemoval';
-import { FaviconLoader, validateFaviconDimensions } from './faviconLoader';
+import {
+  FaviconLoader,
+  faviconCandidates,
+  faviconSiteChanged,
+} from './faviconLoader';
+import { FaviconDecoder } from './faviconDecoder';
 import { hookNotifications } from './hookNotifications';
 import {
   authenticatePersonalData,
@@ -283,7 +292,9 @@ export function registerElectronBrowser(
   let overlayGeneration = 0;
   const playingMedia = new Set<string>();
   const icons = new Map<string, string>();
+  const themeColors = new WeakMap<WebContents, string>();
   const faviconLoader = new FaviconLoader();
+  const faviconDecoder = new FaviconDecoder();
   const publish = (id: string, view: WebContentsView, error?: string) => {
     const contents = view.webContents;
     if (window.isDestroyed() || !contents || contents.isDestroyed()) return;
@@ -305,6 +316,7 @@ export function registerElectronBrowser(
       siteSettings: origin
         ? {
             origin,
+            certificateError: certificateErrorFor(contents.session, origin),
             permissions: getSiteSettings(profile, origin).permissions,
             blocked: getBrowserPreferences().permissions === 'block',
             developer: developerState(contents, origin),
@@ -312,6 +324,7 @@ export function registerElectronBrowser(
         : undefined,
       url: contents.getURL(),
       title: contents.getTitle(),
+      themeColor: themeColors.get(contents),
       icon: icons.get(id),
       muted: contents.isAudioMuted(),
       audible: contents.isCurrentlyAudible(),
@@ -573,6 +586,14 @@ export function registerElectronBrowser(
         if (!adopted) window.contentView.addChildView(view);
         const browserView = view;
         const contents = view.webContents;
+        let faviconPageURL = item.url;
+        contents.on('did-navigate', (_, url) => {
+          if (faviconSiteChanged(faviconPageURL, url)) icons.set(item.id, '');
+          faviconPageURL = url;
+        });
+        allowWebsiteCertificateErrors(contents, () =>
+          publish(item.id, browserView)
+        );
         registerDeveloperPage(
           contents,
           loginProfileKey(item),
@@ -990,7 +1011,17 @@ export function registerElectronBrowser(
               contents,
               params
             ) || [],
-            pip.contextAction(params)
+            pip.contextAction(params),
+            hookActionMenu(window, contents, params, profileId, () => {
+              const current = configurations.get(item.id);
+              return current && !isGroupLocked(current)
+                ? {
+                    groupId: groupKey(current),
+                    sourceId: current.id,
+                    scope: personalDataScope(current),
+                  }
+                : undefined;
+            })
           );
         });
         const permissionProfile = profileId;
@@ -1032,9 +1063,16 @@ export function registerElectronBrowser(
           playingMedia.delete(item.id);
           publish(item.id, browserView);
         });
+        contents.on('did-change-theme-color', (_, color) => {
+          if (color && /^#[0-9a-f]{6}$/i.test(color))
+            themeColors.set(contents, color);
+          else themeColors.delete(contents);
+          publish(item.id, browserView);
+        });
         contents.on('did-start-navigation', (_, _url, inPlace, mainFrame) => {
           if (mainFrame && !inPlace) {
             faviconLoader.cancel(item.id);
+            themeColors.delete(contents);
             failures.delete(item.id);
             publish(item.id, browserView);
           }
@@ -1090,35 +1128,44 @@ export function registerElectronBrowser(
               id: item.id,
             });
         });
-        contents.on('page-favicon-updated', (_, urls: string[]) => {
-          const url = urls.find(validURL);
-          if (!url) {
+        let declaredFavicons: string[] = [];
+        const refreshFavicon = (urls: string[]) => {
+          const candidates = faviconCandidates(urls, contents.getURL());
+          if (!candidates.length) {
             faviconLoader.cancel(item.id);
             return;
           }
           // eslint-disable-next-line no-void
-          void (async () => {
-            try {
-              await faviconLoader.load(
-                item.id,
-                url,
-                (address, options) => contents.session.fetch(address, options),
-                (buffer) => {
-                  if (contents.isDestroyed()) return;
-                  validateFaviconDimensions(buffer);
-                  const image = nativeImage.createFromBuffer(buffer);
-                  if (image.isEmpty()) return;
-                  icons.set(
-                    item.id,
-                    image.resize({ width: 64, height: 64 }).toDataURL()
-                  );
-                  publish(item.id, browserView);
-                }
-              );
-            } catch {
-              // Retain the saved icon when the network or image decoding fails.
-            }
-          })();
+          void faviconLoader
+            .load(
+              item.id,
+              candidates,
+              (address, options) => contents.session.fetch(address, options),
+              async (buffer, signal) => {
+                const icon = await faviconDecoder.decode(buffer, signal);
+                if (contents.isDestroyed()) return;
+                signal.throwIfAborted();
+                icons.set(item.id, icon);
+                publish(item.id, browserView);
+              }
+            )
+            .catch((error) => {
+              if (error?.name !== 'AbortError')
+                log.debug('Favicon candidates failed', {
+                  tab: item.id,
+                  reason: String(error),
+                });
+            });
+        };
+        contents.on('did-start-navigation', (_, _url, inPlace, mainFrame) => {
+          if (mainFrame && !inPlace) declaredFavicons = [];
+        });
+        contents.on('page-favicon-updated', (_, urls: string[]) => {
+          declaredFavicons = urls;
+          refreshFavicon(urls);
+        });
+        contents.on('did-finish-load', () => {
+          if (!declaredFavicons.length) refreshFavicon([]);
         });
         contents.on('did-fail-load', (_, code, description, url, mainFrame) => {
           if (mainFrame && code !== -3) {
@@ -1355,7 +1402,8 @@ export function registerElectronBrowser(
     contents.close({ waitForBeforeUnload: true });
   };
   const rootWindow = window;
-  const command = (event: IpcMainEvent, request: BrowserCommand) => {
+  const command = (event: IpcMainEvent, incoming: BrowserCommand) => {
+    let request = incoming;
     const requestWindow =
       windows?.trusted(event) ||
       (event.sender === rootWindow.webContents &&
@@ -1370,7 +1418,7 @@ export function registerElectronBrowser(
       return;
     const window = requestWindow;
     if (request.action === 'focus-chrome') {
-      window.webContents.focus();
+      if (window.isFocused()) window.webContents.focus();
       return;
     }
     const targetGroup = configurations.get(request.id);
@@ -1496,6 +1544,42 @@ export function registerElectronBrowser(
         })
         .catch(() => {});
       return;
+    }
+    if (request.action === 'toggle-site-hook') {
+      const origin = siteOrigin(contents?.getURL() || targetGroup?.url || '');
+      if (
+        !targetGroup ||
+        !origin ||
+        origin !== request.url ||
+        typeof request.hookId !== 'string'
+      )
+        return;
+      const config = getSiteSettings(
+        loginProfileKey(targetGroup),
+        origin
+      ).developer;
+      if (!config) return;
+      const hook = config.hooks?.find((item) => item.id === request.hookId);
+      if (request.hookId && !hook) return;
+      const enabled = !(
+        config.enabled &&
+        (hook ? hook.enabled : config.defaultEnabled !== false)
+      );
+      request = {
+        ...request,
+        action: 'set-site-developer',
+        developer: {
+          ...config,
+          enabled: enabled || config.enabled,
+          ...(hook
+            ? {
+                hooks: config.hooks?.map((item) =>
+                  item.id === hook.id ? { ...item, enabled } : item
+                ),
+              }
+            : { defaultEnabled: enabled }),
+        },
+      };
     }
     if (request.action === 'open-site-developer') {
       if (request.url)
@@ -1764,7 +1848,8 @@ export function registerElectronBrowser(
           configurations.get(request.id) || ({} as IApp)
         );
         const settings = getSiteSettings(profile, origin);
-        const secure = origin.startsWith('https:');
+        const certificateError = certificateErrorFor(contents.session, origin);
+        const secure = origin.startsWith('https:') && !certificateError;
         const permissions = new Map<string, string>(sitePermissions);
         Object.keys(settings.permissions).forEach((permission) => {
           if (!permissions.has(permission))
@@ -1783,6 +1868,8 @@ export function registerElectronBrowser(
                   : 'Connection is not secure',
                 detail: secure
                   ? `${origin} uses TLS to encrypt its connection. This does not guarantee the website is trustworthy.`
+                  : certificateError
+                  ? `${origin} has an invalid TLS certificate (${certificateError}). The website’s identity could not be verified.`
                   : `${origin} uses HTTP. Information you send can be read or changed in transit.`,
                 buttons: ['Done'],
               });
@@ -2331,6 +2418,7 @@ export function registerElectronBrowser(
     if (disposed) return;
     disposed = true;
     faviconLoader.clear();
+    faviconDecoder.clear();
     disposeGroupRemoval();
     stopWindows?.();
     stopRuntime?.();

@@ -1,3 +1,9 @@
+export const APPLE_AI_ENDPOINT = 'https://apple-intelligence.invalid/v1';
+export const isAppleAIEndpoint = (endpoint: string) =>
+  endpoint.replace(/\/$/, '') === APPLE_AI_ENDPOINT;
+export const isLocalAIEndpoint = (endpoint: string) =>
+  isAppleAIEndpoint(endpoint) || isOllamaEndpoint(endpoint);
+
 export const AI_PROVIDERS = [
   {
     id: 'openai',
@@ -76,6 +82,12 @@ export const AI_PROVIDERS = [
     label: 'Ollama',
     endpoint: 'http://localhost:11434/v1',
     model: '',
+  },
+  {
+    id: 'apple',
+    label: 'Apple Intelligence — Local Mac',
+    endpoint: APPLE_AI_ENDPOINT,
+    model: 'apple-on-device',
   },
   { id: 'custom', label: 'Custom', endpoint: '', model: '' },
 ];

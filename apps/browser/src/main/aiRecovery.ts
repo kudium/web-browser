@@ -22,6 +22,9 @@ const pageActions: readonly AITool[] = [
   'wheel',
 ];
 const observations: readonly AITool[] = [
+  'read_hook_api',
+  'read_global_hooks',
+  'test_hook',
   'read_site_hooks',
   'find_hook_personal_data',
   'create_task',

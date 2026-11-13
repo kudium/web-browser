@@ -32,6 +32,7 @@ jest.mock('../main/localStorage', () => ({ safeStorage: {} }));
 jest.mock('../main/groupLocks', () => ({
   getGroupLocks: () => ({ subscribe: jest.fn(), locked: () => mockLocked }),
 }));
+jest.mock('../main/globalHooks', () => ({ getGlobalHooks: () => ({enabled:true,hooks:[{id:'prices',enabled:true},{id:'other',enabled:true}]}), saveGlobalHooks: jest.fn(), globalHookHash: () => 'hash' }));
 jest.mock('../main/siteSettings', () => ({
   getSiteSettings: () => ({
     developer: {
@@ -80,4 +81,16 @@ it('disables only the stored source hook and rejects hidden or untrusted entries
     )
   ).toThrow('Unauthorized');
   mockLocked = false;
+});
+
+it('disables a global action from its activity without modifying site hooks', () => {
+  const { saveGlobalHooks } = jest.requireMock('../main/globalHooks');
+  registerActivity(() => true);
+  const handler = (ipcMain.handle as jest.Mock).mock.calls.find(([name]) => name === 'browser-activity')[1];
+  const frame = {}; const sender = {mainFrame:frame,once:jest.fn()};
+  mockEntries[0].trigger.hookId = 'global:all:prices';
+  try {
+    handler({sender,senderFrame:frame},{action:'disableHook',id:'event'});
+    expect(saveGlobalHooks).toHaveBeenCalledWith('@all-groups', {enabled:true,hooks:[{id:'prices',enabled:false},{id:'other',enabled:true}]}, 'hash');
+  } finally { mockEntries[0].trigger.hookId = 'prices'; }
 });

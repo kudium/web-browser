@@ -1,10 +1,12 @@
 import type { AIThinking } from './aiThinking';
+import { AI_PROVIDERS } from './aiProviders';
 export interface AISettings {
   endpoint: string;
   model: string;
   hasKey: boolean;
   remembered: boolean;
   thinking?: AIThinking;
+  contextManagement?: boolean;
 }
 export interface AIUsage {
   /** Local schema characters, not provider-reported tokens. */
@@ -70,8 +72,8 @@ export interface AITaskStatus {
   history?: Array<AIEvent | { type: 'user'; text: string }>;
 }
 export const AI_DEFAULTS = {
-  endpoint: 'https://api.openai.com/v1',
-  model: 'gpt-4.1',
+  endpoint: AI_PROVIDERS[0].endpoint,
+  model: AI_PROVIDERS[0].model,
 };
 export const AI_PROJECT_TOOLS = [
   'get_project',
@@ -86,6 +88,10 @@ export const AI_TOOLS = [
   ...AI_PROJECT_TOOLS,
   'request_user_feedback',
   'request_personal_data',
+  'read_hook_api',
+  'read_global_hooks',
+  'save_global_hook',
+  'test_hook',
   'read_site_hooks',
   'configure_site_hooks',
   'find_hook_personal_data',

@@ -235,3 +235,36 @@ test('attributes custom outputs to the exact hook and rejects unknown hook IDs',
     })
   ).toThrow('no longer enabled');
 });
+
+it('runs a preview draft through the normal runtime without writing notes or activity', async () => {
+  const previewConfig = { ...mockConfig, after: "log('draft test')" };
+  registerDeveloperPage(
+    event.sender,
+    '@preview',
+    jest.fn(),
+    () => undefined,
+    () => previewConfig
+  );
+  const configure = (ipcMain.on as jest.Mock).mock.calls.find(
+    ([name]) => name === 'site-developer-config'
+  )![1];
+  configure(event);
+  expect(event.returnValue.after).toBe("log('draft test')");
+  const receive = (ipcMain.on as jest.Mock).mock.calls.find(
+    ([name]) => name === 'site-developer-event'
+  )![1];
+  receive(event, {
+    token: event.returnValue.token,
+    kind: 'success',
+    value: 'Draft completed',
+  });
+  expect(create).not.toHaveBeenCalled();
+  expect(() =>
+    output(event, {
+      token: event.returnValue.token,
+      kind: 'notes',
+      input: { title: 'Test', body: 'Draft' },
+    })
+  ).toThrow('Unauthorized');
+  expect(saveNoteWithActivity).not.toHaveBeenCalled();
+});

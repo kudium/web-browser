@@ -1,4 +1,5 @@
 export interface HookLanguageRequest {
+  mode?: 'lifecycle' | 'action';
   action: 'completions' | 'diagnostics' | 'hover';
   source: string;
   position: number;

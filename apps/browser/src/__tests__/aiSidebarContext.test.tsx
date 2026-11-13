@@ -189,6 +189,20 @@ it('selects scope and model in the composer and expands scope explicitly for men
       contextReferences: [{ kind: 'tab', id: 'mail' }],
     })
   );
+  fireEvent.change(input, {
+    target: { value: 'My existing draft', selectionStart: 17 },
+  });
+  rerender(
+    <AISidebar
+      promptRequest={{ text: 'Selected website text', append: true, token: 1 }}
+    />
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: 'Task for AI' })).toHaveValue(
+      'My existing draft\n\nSelected website text'
+    )
+  );
+  expect(ai.run).toHaveBeenCalledTimes(1);
 });
 
 it('offers thinking controls for Ollama and saves the selected setting', async () => {

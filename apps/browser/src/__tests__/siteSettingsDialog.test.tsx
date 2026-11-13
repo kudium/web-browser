@@ -102,3 +102,34 @@ it('exposes compact capture modes and PDF export independently of website permis
   fireEvent.click(screen.getByRole('button', { name: 'Save PDF' }));
   expect(capture).toHaveBeenLastCalledWith('pdf');
 });
+
+it('shows invalid HTTPS certificates as insecure', () => {
+  render(
+    <Theme>
+      <SiteSettingsDialog
+        open
+        onOpenChange={jest.fn()}
+        command={jest.fn()}
+        state={{
+          id: 'expired',
+          url: 'https://expired.example',
+          title: 'Expired',
+          loading: false,
+          canGoBack: false,
+          canGoForward: false,
+          siteSettings: {
+            origin: 'https://expired.example',
+            permissions: {},
+            blocked: false,
+            certificateError: 'net::ERR_CERT_DATE_INVALID',
+          },
+        }}
+      />
+    </Theme>
+  );
+  expect(screen.getByText('Connection is not secure')).toBeInTheDocument();
+  expect(screen.getByText(/identity could not be verified/)).toHaveTextContent(
+    'ERR_CERT_DATE_INVALID'
+  );
+  expect(screen.queryByText('Connection uses HTTPS')).not.toBeInTheDocument();
+});

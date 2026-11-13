@@ -2,7 +2,10 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { AISettingsPage } from '../components/View/Settings/AISettingsPage';
-import { AI_DEFAULTS } from '../browser/ai';
+import { AI_DEFAULTS as NEW_AI_DEFAULTS } from '../browser/ai';
+
+// Existing cloud configurations remain selected when the application default changes.
+const AI_DEFAULTS = { endpoint: 'https://api.openai.com/v1', model: 'gpt-4.1' };
 
 Object.assign(global, {
   ResizeObserver: jest.fn(() => ({
@@ -321,4 +324,43 @@ it('ignores discovery from Ollama after switching providers', async () => {
   expect(
     screen.queryByRole('option', { name: 'local-only' })
   ).not.toBeInTheDocument();
+});
+
+it('offers Apple local AI without credentials and shows availability errors', async () => {
+  window.electron.ai.models = jest
+    .fn()
+    .mockRejectedValue(new Error('Apple Intelligence is disabled'));
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  await waitFor(() => expect(screen.getByLabelText('Provider')).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'apple' },
+  });
+  await screen.findByText('Apple Intelligence is disabled');
+  expect(screen.queryByLabelText('API key')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Local provider')).toHaveAttribute('readonly');
+});
+
+it('selects the first provider for a new configuration', async () => {
+  (window.electron.ai.settings as jest.Mock).mockResolvedValue({
+    ...NEW_AI_DEFAULTS,
+    hasKey: false,
+    remembered: false,
+  });
+  (window.electron.ai.models as jest.Mock).mockResolvedValue([
+    NEW_AI_DEFAULTS.model,
+  ]);
+  render(
+    <Theme>
+      <AISettingsPage />
+    </Theme>
+  );
+  await waitFor(() =>
+    expect(screen.getByLabelText('Provider')).toHaveValue('openai')
+  );
+  expect(screen.getByLabelText('Model')).toHaveValue(NEW_AI_DEFAULTS.model);
+  expect(screen.getByLabelText('API key')).toBeInTheDocument();
 });

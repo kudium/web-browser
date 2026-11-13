@@ -133,3 +133,13 @@ it.each([
 ])('rejects arguments outside the published schema for %s', (name, value) => {
   expect(() => mcpArguments(name, value)).toThrow();
 });
+
+it('accepts site hook actions, website rules and test URLs and rejects invented APIs in declarations', () => {
+  const action = { id: 'fill', name: 'Fill field', contexts: ['input'], source: 'api.personalData.fill();' };
+  const hook = { ...developer, id: 'form-tools', name: 'Form tools', path: '/*', actions: [action], sites: [{ host: 'example.com', includeSubdomains: false }], testUrl: 'https://example.com' };
+  const input = { ...args, developer: { ...developer, name: 'My site', defaultEnabled: false, actions: [action], hooks: [hook] }, expectedHash: 'a'.repeat(64) };
+  expect(mcpArguments('configure_site_hooks', input).args).toEqual(input);
+  expect(() => mcpArguments('configure_site_hooks', { ...input, developer: { ...input.developer, hooks: [{ ...hook, actions: [{ ...action, contexts: ['invented'] }] }] } })).toThrow();
+  expect(mcpArguments('save_global_hook', { hook: { ...hook, exclusions: [] }, reason: 'Create', expectedHash: 'a'.repeat(64), hookScope: 'browser' }).name).toBe('save_global_hook');
+  expect(mcpArguments('test_hook', { testAction: 'action', hook: { ...hook, exclusions: [] }, actionId: 'fill', sampleContext: { url: 'https://example.com', title: 'Example' }, sampleAnswers: [null, { email: 'sample@example.com' }] }).name).toBe('test_hook');
+});

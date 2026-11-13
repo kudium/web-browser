@@ -30,10 +30,11 @@ it('reveals icon customization on demand and dismisses it with Escape', () => {
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Personal icon' }));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Use 🚀 for Personal icon' })
+    screen.getByRole('button', { name: 'Use rocket icon for Personal icon' })
   );
   expect(change).toHaveBeenCalledWith({
-    iconEmoji: '🚀',
+    icon: 'rocket',
+    iconEmoji: undefined,
     iconImage: undefined,
   });
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

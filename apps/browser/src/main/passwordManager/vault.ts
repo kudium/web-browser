@@ -1,3 +1,4 @@
+import { personalDataMatching } from '../../browser/personalDataMatching';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -451,7 +452,11 @@ export class PasswordVault {
             ...(field.aliases || [])
               .slice(0, 10)
               .map((alias) => bounded(alias, 120)),
-            ...inferredFieldAliases(field.name),
+            ...((field.aliases || []).some((alias) =>
+              personalDataMatching.types.some((type) => type.value === alias)
+            )
+              ? []
+              : inferredFieldAliases(field.name)),
           ])
         ),
       })),

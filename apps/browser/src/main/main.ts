@@ -1,3 +1,4 @@
+import { registerAppThemeWindow, refreshAppThemes } from './appTheme';
 /* eslint global-require: off, no-console: off, promise/always-return: off */
 
 /**
@@ -23,6 +24,8 @@ import {
 import log from 'electron-log';
 import fs from 'fs';
 import {
+  registerHookMarketplace,
+  hookDestinationsFor,
   queueHookInstallLink,
   deliverHookInstallLinks,
 } from './hookMarketplace';
@@ -231,6 +234,7 @@ export const createNewWindow = async ({
     const existing = activeWindows[view]!;
     if (view === 'settings' && parentWindow && !parentWindow.isDestroyed()) {
       existing.setParentWindow(parentWindow);
+      refreshAppThemes();
       if (parentWindow.isMinimized()) parentWindow.restore();
     }
     if (existing.isMinimized()) existing.restore();
@@ -292,6 +296,19 @@ export const createNewWindow = async ({
     ...options,
   });
 
+  registerAppThemeWindow(newWindow, {
+    producer: view === 'main',
+    source: () =>
+      newWindow.getParentWindow() || activeWindows.main || undefined,
+  });
+  if (view === 'settings') {
+    registerHookMarketplace(newWindow, () => {
+      const owner = newWindow.getParentWindow();
+      return owner && !owner.isDestroyed()
+        ? hookDestinationsFor(owner.webContents)
+        : [];
+    });
+  }
   const windowKey = additional ? `browser-${newWindow.id}` : view;
   activeWindows[windowKey] = newWindow;
   if (savedSize) rememberWindowSize(newWindow, sizeFile);

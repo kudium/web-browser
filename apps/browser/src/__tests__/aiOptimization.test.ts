@@ -113,12 +113,16 @@ test('preloads narrow workflows from user intent without executing them', () => 
     expect(catalog.preloadIntent(prompt)).toEqual([
       'read_site_hooks',
       'configure_site_hooks',
+      'read_hook_api',
+      'test_hook',
     ]);
     expect(catalog.has('find_hook_personal_data')).toBe(false);
     expect(catalog.guidance()).toContain('10 seconds');
     expect(catalog.discover({ query: prompt }).loaded).toEqual([
       'read_site_hooks',
       'configure_site_hooks',
+      'read_hook_api',
+      'test_hook',
     ]);
   }
   const catalog = new AIToolCatalog();
@@ -374,4 +378,13 @@ test('continues tool history across Claude and OpenAI-compatible models', () => 
   });
   expect(JSON.stringify(back)).not.toContain('old-signature');
   expect(history[0]).toHaveProperty('claudeContent');
+});
+
+test('loads global and action authoring from intent and keeps references deferred otherwise', () => {
+  const catalog = new AIToolCatalog();
+  expect(catalog.has('read_hook_api')).toBe(false);
+  expect(catalog.preloadIntent('Create a global hook with a hook action')).toEqual(expect.arrayContaining([
+    'read_hook_api', 'read_global_hooks', 'save_global_hook', 'test_hook',
+  ]));
+  expect(catalog.guidance()).toContain('fictional');
 });

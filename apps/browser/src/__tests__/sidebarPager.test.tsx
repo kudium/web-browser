@@ -113,7 +113,7 @@ it('ignores tiny initial vertical noise before a horizontal swipe', () => {
   expect(onSwipe).toHaveBeenCalledWith(1);
 });
 
-it('claims chrome focus on hover and retains it through consecutive switches without clicks', () => {
+it('does not focus on hover, but retains gesture focus through consecutive switches', () => {
   const onSwipe = jest.fn();
   const { rerender } = render(
     <SidebarPager page="home" direction={1} onSwipe={onSwipe}>
@@ -122,11 +122,12 @@ it('claims chrome focus on hover and retains it through consecutive switches wit
   );
   const pager = screen.getByLabelText('Sidebar spaces');
   fireEvent.pointerEnter(pager);
+  expect(browser.command).not.toHaveBeenCalled();
+  fireEvent.wheel(pager, { deltaX: 60, deltaY: 0 });
   expect(browser.command).toHaveBeenCalledWith({
     id: '',
     action: 'focus-chrome',
   });
-  fireEvent.wheel(pager, { deltaX: 60, deltaY: 0 });
   expect(onSwipe).toHaveBeenCalledTimes(1);
   rerender(
     <SidebarPager page="work" direction={1} onSwipe={onSwipe}>

@@ -22,6 +22,7 @@ jest.mock('../main/preferences', () => ({
 }));
 
 const openTab = jest.fn();
+const owner = { isDestroyed: () => false, webContents: { send: jest.fn() } };
 const contents = {
   getURL: () => 'https://example.com/page',
   focus: jest.fn(),
@@ -33,7 +34,7 @@ const contents = {
 const pictureInPicture = jest.fn();
 function menu(patch: Partial<ContextMenuParams> = {}) {
   showBrowserContextMenu(
-    {} as BrowserWindow,
+    owner as unknown as BrowserWindow,
     contents,
     {
       mediaType: 'none',
@@ -200,4 +201,20 @@ it('offers native PiP for supported video, including streams without source URLs
       } as ContextMenuParams['mediaFlags'],
     }).some((item: any) => item.label === 'Exit Picture in Picture')
   ).toBe(true);
+});
+
+test('puts built-in AI first and prefills the owning window without opening a search tab', () => {
+  const items = menu({ selectionText: '  selected text  ' });
+  const submenu = items.find(
+    (entry: any) => entry.label === 'Search With'
+  ).submenu;
+  expect(submenu[0]).toEqual(
+    expect.objectContaining({ label: 'Kudium AI', enabled: true })
+  );
+  submenu[0].click();
+  expect(owner.webContents.send).toHaveBeenCalledWith(
+    'browser-ai-selection',
+    'selected text'
+  );
+  expect(openTab).not.toHaveBeenCalled();
 });

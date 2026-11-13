@@ -802,3 +802,10 @@ body:has(.hooks-library) footer { background: transparent; border-top-color: #e7
   .hooks-library .hook-detail-layout article > section { margin-top: 8px; }
   .hooks-library .hook-install-card > button { min-height: 44px; }
 }
+
+[data-hook-actions] [data-hook-action] { padding:16px; background:var(--surface, rgba(128,128,128,.07)); border-radius:12px; margin:8px 0; }
+[data-hook-action] fieldset { display:flex; flex-wrap:wrap; gap:8px 16px; border:0; padding:8px 0; }
+[data-hook-action] fieldset label { display:flex; align-items:center; gap:6px; font-size:13px; }
+[data-hook-action] input[type=checkbox] { width:auto; }
+[data-hook-action] > label { display:grid; gap:6px; margin:8px 0; }
+[data-hook-action] textarea { width:100%; }

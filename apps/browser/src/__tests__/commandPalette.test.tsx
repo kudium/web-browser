@@ -20,6 +20,8 @@ jest.mock('../browser/client', () => ({
     onShortcut: jest.fn(() => () => {}),
     preferences: jest.fn(() => Promise.resolve()),
     preferenceAction: jest.fn(() => Promise.resolve()),
+    history: jest.fn(() => Promise.resolve([])),
+    onHistory: jest.fn(() => () => {}),
   },
 }));
 Object.assign(global, {
@@ -42,6 +44,10 @@ beforeEach(() => {
   localStorage.clear();
   AppManager.set([source]);
   jest.clearAllMocks();
+  (browser.history as jest.Mock).mockResolvedValue([]);
+});
+afterEach(async () => {
+  await act(async () => {});
 });
 const mount = (initialGroup?: IApp) => {
   const select = jest.fn();
@@ -65,6 +71,129 @@ const mount = (initialGroup?: IApp) => {
     }),
   };
 };
+it('opens a history suggestion with arrow keys and Enter in the current group', async () => {
+  (browser.history as jest.Mock).mockResolvedValue([
+    {
+      id: 'docs',
+      url: 'https://docs.example.com/guide?q=one',
+      title: 'Developer guide',
+      visitedAt: Date.now(),
+      profile: 'work',
+    },
+  ]);
+  const { input, select } = mount();
+  fireEvent.change(input, { target: { value: 'docs.example' } });
+  const suggestion = await screen.findByRole('option', {
+    name: /Developer guide History/,
+  });
+  const index = screen.getAllByRole('option').indexOf(suggestion);
+  for (let n = 0; n < index; n += 1)
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+  fireEvent.submit(input.closest('form')!);
+  expect(select).toHaveBeenCalledWith(
+    expect.objectContaining({
+      url: 'https://docs.example.com/guide?q=one',
+      sessionId: 'work',
+    })
+  );
+});
+
+it('does not let an older history load restore entries removed by a live update', async () => {
+  let finish: (records: unknown[]) => void = () => {};
+  (browser.history as jest.Mock).mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    })
+  );
+  const { input } = mount();
+  fireEvent.change(input, { target: { value: 'docs' } });
+  const record = {
+    id: 'docs',
+    url: 'https://docs.example.com/',
+    title: 'Docs',
+    visitedAt: Date.now(),
+    profile: 'work',
+  };
+  act(() => (browser.onHistory as jest.Mock).mock.calls.at(-1)[0]([record]));
+  expect(screen.getByRole('option', { name: /Docs History/ })).toBeVisible();
+  act(() => (browser.onHistory as jest.Mock).mock.calls.at(-1)[0]([]));
+  await act(async () => finish([record]));
+  expect(
+    screen.queryByRole('option', { name: /Docs History/ })
+  ).not.toBeInTheDocument();
+});
+
+it('limits group-scoped suggestions to that group history and removes tab duplicates', async () => {
+  (browser.history as jest.Mock).mockResolvedValue([
+    {
+      id: 'tab',
+      url: source.url,
+      title: 'Existing history',
+      visitedAt: Date.now(),
+      profile: 'work',
+    },
+    {
+      id: 'work',
+      url: 'https://example.com/docs',
+      title: 'Work docs',
+      visitedAt: Date.now(),
+      profile: 'work',
+    },
+    {
+      id: 'other',
+      url: 'https://example.com/private',
+      title: 'Other docs',
+      visitedAt: Date.now(),
+      profile: 'other',
+    },
+  ]);
+  const { input } = mount(source);
+  fireEvent.change(input, { target: { value: 'example.com' } });
+  expect(
+    await screen.findByRole('option', { name: /Work docs History/ })
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('option', { name: /Other docs History/ })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('option', { name: /Existing history History/ })
+  ).not.toBeInTheDocument();
+});
+it('keeps navigation usable when history cannot be loaded', async () => {
+  (browser.history as jest.Mock).mockRejectedValue(
+    new Error('History unavailable')
+  );
+  const { input, select } = mount();
+  await act(async () => {});
+  fireEvent.change(input, { target: { value: 'example.com/new' } });
+  fireEvent.submit(input.closest('form')!);
+  expect(select).toHaveBeenCalledWith(
+    expect.objectContaining({
+      url: 'https://example.com/new',
+      sessionId: 'work',
+    })
+  );
+});
+
+it('opens history in a fresh group when the user chose New group', async () => {
+  (browser.history as jest.Mock).mockResolvedValue([
+    {
+      id: 'docs',
+      url: 'https://docs.example.com/',
+      title: 'Docs',
+      visitedAt: Date.now(),
+      profile: 'work',
+    },
+  ]);
+  const { input } = mount();
+  act(() =>
+    (browser.onShortcut as jest.Mock).mock.calls.at(-1)[0]('new-session')
+  );
+  fireEvent.change(input, { target: { value: 'docs' } });
+  fireEvent.click(await screen.findByRole('option', { name: /Docs History/ }));
+  expect(AppManager.getAll().at(-1)?.url).toBe('https://docs.example.com/');
+  expect(AppManager.getAll().at(-1)?.sessionId).not.toBe('work');
+});
 it('uses arrow keys and Enter to switch to a matching tab without duplicating it', () => {
   const { input, select } = mount();
   fireEvent.change(input, { target: { value: 'Work account' } });

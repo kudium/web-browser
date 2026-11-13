@@ -148,3 +148,23 @@ it('verifies marketplace metadata against source and rejects unsupported browser
     fetchHookPackage('https://example.com/package', '1.0.0')
   ).rejects.toThrow('lifecycle');
 });
+
+it('round-trips an optional test website URL and preserves legacy package shape', () => {
+  expect(parseHookPackage(pkg)).toEqual(pkg);
+  expect(
+    Object.prototype.hasOwnProperty.call(parseHookPackage(pkg), 'testUrl')
+  ).toBe(false);
+  const withTest = { ...pkg, testUrl: 'https://example.com/articles/one' };
+  expect(parseHookPackage(withTest)).toEqual(withTest);
+  expect(parseHookPackage(JSON.parse(JSON.stringify(withTest))).testUrl).toBe(
+    withTest.testUrl
+  );
+  for (const testUrl of [
+    'file:///tmp/test',
+    'javascript:alert(1)',
+    'https://user:secret@example.com',
+    'not-a-url',
+  ]) {
+    expect(() => parseHookPackage({ ...pkg, testUrl })).toThrow('test website');
+  }
+});

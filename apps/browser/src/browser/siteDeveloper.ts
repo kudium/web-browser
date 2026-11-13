@@ -1,4 +1,12 @@
-import { validInstalledHookSource } from './hookMarketplace';
+// eslint-disable-next-line import/no-relative-packages
+import {
+  validHookActions,
+  type HookAction,
+} from '../../../../packages/hooks/actions';
+import {
+  validInstalledHookSource,
+  validTestWebsiteUrl,
+} from './hookMarketplace';
 
 export interface HookNotificationPermission {
   id: string;
@@ -9,6 +17,15 @@ export interface HookNotificationPermission {
 }
 
 export interface SiteHook {
+  actions?: HookAction[];
+  publication?: {
+    id: string;
+    version: number;
+    description: string;
+    license: import('./hookMarketplace').HookPackage['license'];
+  };
+  sites?: Array<{ host: string; includeSubdomains: boolean }>;
+  testUrl?: string;
   installed?: import('./hookMarketplace').InstalledHookSource;
   id: string;
   name: string;
@@ -21,6 +38,9 @@ export interface SiteHook {
 }
 
 export interface SiteDeveloperConfig {
+  actions?: HookAction[];
+  name?: string;
+  defaultEnabled?: boolean;
   hooks?: SiteHook[];
   enabled: boolean;
   before: string;
@@ -62,6 +82,11 @@ export function validDeveloperConfig(
   const config = value as SiteDeveloperConfig;
   return (
     typeof config.enabled === 'boolean' &&
+    (config.actions === undefined || validHookActions(config.actions)) &&
+    (config.name === undefined ||
+      (typeof config.name === 'string' && config.name.length <= 120)) &&
+    (config.defaultEnabled === undefined ||
+      typeof config.defaultEnabled === 'boolean') &&
     (config.hooks === undefined ||
       (Array.isArray(config.hooks) &&
         config.hooks.length <= 20 &&
@@ -70,12 +95,37 @@ export function validDeveloperConfig(
         config.hooks.every(
           (hook) =>
             hook &&
+            (hook.actions === undefined || validHookActions(hook.actions)) &&
             typeof hook.id === 'string' &&
             hook.id.length > 0 &&
             hook.id.length <= 100 &&
             !hook.id.startsWith('global:') &&
             (hook.installed === undefined ||
               validInstalledHookSource(hook.installed)) &&
+            (hook.testUrl === undefined || validTestWebsiteUrl(hook.testUrl)) &&
+            (hook.sites === undefined ||
+              (Array.isArray(hook.sites) &&
+                hook.sites.length <= 20 &&
+                hook.sites.every(
+                  (site) =>
+                    site &&
+                    typeof site.host === 'string' &&
+                    site.host.length <= 253 &&
+                    /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
+                      site.host
+                    ) &&
+                    typeof site.includeSubdomains === 'boolean'
+                ))) &&
+            (hook.publication === undefined ||
+              (typeof hook.publication.id === 'string' &&
+                hook.publication.id.length <= 200 &&
+                Number.isInteger(hook.publication.version) &&
+                hook.publication.version > 0 &&
+                typeof hook.publication.description === 'string' &&
+                hook.publication.description.length <= 4000 &&
+                ['MIT', 'Apache-2.0', 'BSD-3-Clause', 'GPL-3.0-only'].includes(
+                  hook.publication.license
+                ))) &&
             typeof hook.name === 'string' &&
             hook.name.length <= 120 &&
             typeof hook.enabled === 'boolean' &&
@@ -112,6 +162,7 @@ export interface SiteDeveloperPageSummary {
   name: string;
   url: string;
   origin?: string;
+  hooks?: Array<{ id: string; name: string; path: string; enabled: boolean }>;
   hasHooks: boolean;
   enabled: boolean;
   status: SiteDeveloperState['status'];
@@ -142,4 +193,16 @@ export function hookMatchesPath(pattern: string, url: string): boolean {
     .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('.*');
   return new RegExp(`^${escaped}$`).test(pathname);
+}
+
+export function hookMatchesWebsite(hook: SiteHook, url: string): boolean {
+  const host = new URL(url).hostname;
+  return (
+    !hook.sites?.length ||
+    hook.sites.some(
+      (site) =>
+        host === site.host ||
+        (site.includeSubdomains && host.endsWith(`.${site.host}`))
+    )
+  );
 }

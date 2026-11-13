@@ -1,6 +1,10 @@
+import { resolveAppTheme, appThemeStyle } from '../../../utils/appTheme';
+import { SpaceThemeContext } from '../../../utils/spaceTheme';
+import { websiteThemeStyle } from '../../../utils/websiteTheme';
 import { BrowserOptionsMenu } from '../../UI/BrowserOptionsMenu';
 import {
   CSSProperties,
+  useContext,
   useCallback,
   DragEvent,
   useEffect,
@@ -163,7 +167,6 @@ import { InlineTabName } from '../../UI/InlineTabName';
 import { CommandPalette } from '../../UI/CommandPalette';
 import {
   SpaceManager,
-  spaceFrameColor,
   useSpaces,
   SpaceColor,
 } from '../../../utils/SpaceManager';
@@ -363,6 +366,7 @@ export function Main() {
   const [spaceEmoji, setSpaceEmoji] = useState('');
   const [spaceCustomColor, setSpaceCustomColor] = useState('');
   const [spaceFrameTint, setSpaceFrameTint] = useState('');
+  const [spaceUseWebsiteColors, setSpaceUseWebsiteColors] = useState(false);
   const [spaceColor, setSpaceColor] = useState<SpaceColor>('iris');
   const openCreateSpace = () => {
     setEditingSpace(undefined);
@@ -373,6 +377,7 @@ export function Main() {
     setSpaceColor('iris');
     setSpaceCustomColor('');
     setSpaceFrameTint('');
+    setSpaceUseWebsiteColors(false);
     setSpaceDialog(true);
   };
   const [favoriteRename, setFavoriteRename] = useState<IApp>();
@@ -505,7 +510,22 @@ export function Main() {
   const [aiPromptRequest, setAIPromptRequest] = useState<{
     text: string;
     token: number;
+    append?: boolean;
   }>();
+  useEffect(
+    () =>
+      browser.onAISelection?.((text) => {
+        setAIMounted(true);
+        setAIOpen(true);
+        setAIPane('assistant');
+        setAIPromptRequest((previous) => ({
+          text,
+          append: true,
+          token: (previous?.token || 0) + 1,
+        }));
+      }),
+    [setAIOpen, setAIPane]
+  );
   useEffect(
     () =>
       window.electron.siteDeveloper?.onAskAI?.((text) => {
@@ -886,6 +906,7 @@ export function Main() {
       setSpaceIcon(target.icon || 'layers');
       setSpaceIconImage(target.iconImage || '');
       setSpaceEmoji(target.iconEmoji || '');
+      setSpaceUseWebsiteColors(target.useWebsiteColors === true);
       setSpaceColor(target.color);
       setSpaceCustomColor(target.customColor || '');
       setSpaceFrameTint(target.frameColor || '');
@@ -1144,6 +1165,16 @@ export function Main() {
     aiResizing ||
     !!dragged;
   const state = selected && states[selected.id];
+  const spaceThemeColor = split
+    ? states[split[split.focused]]?.themeColor
+    : state?.themeColor;
+  const setSpaceTheme = useContext(SpaceThemeContext);
+  useEffect(() => {
+    setSpaceTheme({ spaceId: active.id, color: spaceThemeColor });
+    return () => setSpaceTheme(undefined);
+  }, [setSpaceTheme, active.id, spaceThemeColor]);
+  const theme = resolveAppTheme(active, spaceThemeColor);
+
   useEffect(() => {
     if (state?.pictureInPicture?.error)
       setMoveMessage(state.pictureInPicture.error);
@@ -1406,7 +1437,7 @@ export function Main() {
               !item.customName && item.sessionName === item.name
                 ? next.title || item.name
                 : item.sessionName,
-            icon: next.icon || item.icon,
+            icon: next.icon !== undefined ? next.icon : item.icon,
           });
         }
       }),
@@ -2205,6 +2236,15 @@ export function Main() {
               {nativeMenuLabels.groupSettings}
             </ContextMenu.Item>
             <ContextMenu.Item
+              onSelect={() =>
+                window.electron.siteDeveloper
+                  .transfer('export', item.id)
+                  .catch((error) => setMoveMessage(String(error)))
+              }
+            >
+              {nativeMenuLabels.exportGroup}
+            </ContextMenu.Item>
+            <ContextMenu.Item
               onSelect={() => {
                 try {
                   AppManager.set(
@@ -2509,13 +2549,8 @@ export function Main() {
               <div className="sidebar-group-content-inner">
                 <div className="sidebar-group-tabs">
                   {tabsForPreview(item).map((tab) => (
-                    <button
-                      type="button"
+                    <div
                       key={tab.id}
-                      tabIndex={expanded ? 0 : -1}
-                      aria-current={
-                        selected?.id === tab.id ? 'page' : undefined
-                      }
                       className={`sidebar-group-tab ${
                         selected?.id === tab.id ? 'active' : ''
                       }`}
@@ -2539,10 +2574,6 @@ export function Main() {
                         }
                       }}
                       onDrop={(event) => dropTab(event, tab, 'horizontal')}
-                      onClick={() => {
-                        closePreview();
-                        select(tab);
-                      }}
                       onContextMenu={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
@@ -2559,12 +2590,37 @@ export function Main() {
                         }
                       }}
                     >
-                      <AppIcon
-                        icon={tab.icon}
-                        title={tab.customName || tab.name}
-                      />
-                      <span>{tab.customName || tab.name}</span>
-                    </button>
+                      <button
+                        type="button"
+                        className="sidebar-group-tab-select"
+                        tabIndex={expanded ? 0 : -1}
+                        aria-current={
+                          selected?.id === tab.id ? 'page' : undefined
+                        }
+                        onClick={() => {
+                          closePreview();
+                          select(tab);
+                        }}
+                      >
+                        <AppIcon
+                          icon={tab.icon}
+                          title={tab.customName || tab.name}
+                        />
+                        <span>{tab.customName || tab.name}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="sidebar-group-tab-close"
+                        tabIndex={expanded ? 0 : -1}
+                        aria-label={`Close ${tab.customName || tab.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          closePageTab(tab);
+                        }}
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -2662,6 +2718,7 @@ export function Main() {
   const renderAddressBar = () => (
     <AddressBar
       placement={addressBarPlacement}
+      themeColor={state?.themeColor}
       mediaControl={
         <PictureInPictureButton
           state={state?.pictureInPicture}
@@ -2734,6 +2791,11 @@ export function Main() {
             />
           </>
         ) : null
+      }
+      insecure={
+        !!state?.siteSettings &&
+        (state.siteSettings.origin.startsWith('http:') ||
+          !!state.siteSettings.certificateError)
       }
       developer={state?.siteSettings?.developer}
       tools={addressBarPlacement === 'header' ? renderBrowserTools() : null}
@@ -3129,6 +3191,15 @@ export function Main() {
         onPointerDown={() => {
           if (side) select(paneSelected, side);
         }}
+        style={
+          side
+            ? websiteThemeStyle(states[paneSelected.id]?.themeColor)
+            : undefined
+        }
+        data-website-color={
+          (side && !!websiteThemeStyle(states[paneSelected.id]?.themeColor)) ||
+          undefined
+        }
         aria-label={side ? `Tabs on ${side}` : 'Tabs in current group'}
       >
         <PageLoading
@@ -3188,6 +3259,10 @@ export function Main() {
                       paneSelected.id === item.id ? 'active' : ''
                     } ${item.tabPinned && !renaming ? 'icon-only' : ''}`}
                     key={item.id}
+                    style={websiteThemeStyle(tabState?.themeColor)}
+                    data-website-color={
+                      !!websiteThemeStyle(tabState?.themeColor) || undefined
+                    }
                     data-tab-motion={`horizontal-${side || 'main'}-${item.id}`}
                     data-dragging={dragged?.id === item.id || undefined}
                     draggable={!renaming}
@@ -3339,13 +3414,14 @@ export function Main() {
       } ${sidebarHidden ? 'hidden-sidebar' : ''}`} ${
         sidebarResizing ? 'sidebar-resizing' : ''
       } ${aiResizing ? 'ai-resizing' : ''}`}
+      data-website-space={active.useWebsiteColors || undefined}
       data-glass={translucentChrome}
       data-ai-glass={translucentAI}
       style={
         {
           '--sidebar-width': `${sidebarWidth}px`,
           '--ai-sidebar-width': `${effectiveAIWidth}px`,
-          '--space-tint': spaceFrameColor(active),
+          ...appThemeStyle(theme),
         } as CSSProperties
       }
     >
@@ -4678,8 +4754,11 @@ export function Main() {
               iconEmoji: spaceEmoji,
               customColor: spaceCustomColor,
               frameColor: spaceFrameTint,
+              useWebsiteColors: spaceUseWebsiteColors,
             }}
             onChange={(patch) => {
+              if (patch.useWebsiteColors !== undefined)
+                setSpaceUseWebsiteColors(patch.useWebsiteColors);
               if (patch.name !== undefined) setSpaceName(patch.name);
               if (patch.icon) setSpaceIcon(patch.icon);
               if (patch.color) setSpaceColor(patch.color);
@@ -4705,6 +4784,7 @@ export function Main() {
                   iconEmoji: spaceEmoji || undefined,
                   customColor: spaceCustomColor || undefined,
                   frameColor: spaceFrameTint || undefined,
+                  useWebsiteColors: spaceUseWebsiteColors,
                 });
                 setSpaceName('');
                 setSpaceDialog(false);

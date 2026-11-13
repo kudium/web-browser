@@ -1,6 +1,11 @@
+import { personalDataMatching } from '../../browser/personalDataMatching';
 import type { VaultItem } from '../../browser/passwordManager';
 /** Serialized into the owning main frame. No values or page errors return. */
-export function fillDocument(item: VaultItem, ai: boolean) {
+export function fillDocument(
+  item: VaultItem,
+  ai: boolean,
+  matchField = personalDataMatching.score
+) {
   if (
     window.location.origin !== item.origin ||
     window.location.protocol !== 'https:'
@@ -37,48 +42,79 @@ export function fillDocument(item: VaultItem, ai: boolean) {
         input.type === 'password' && input.autocomplete !== 'new-password'
     );
     if (
-      passwords.length !== 1 ||
-      visible.some((input) => input.autocomplete === 'new-password')
-    )
-      return { filled: 0 };
-    const password = passwords[0];
-    const usernames = visible.filter(
-      (input) =>
-        input.form === password.form &&
-        (input.autocomplete === 'username' ||
-          input.autocomplete === 'email' ||
-          input.type === 'email')
-    );
-    if (usernames.length === 1)
-      assignments.push([usernames[0], item.username, false]);
-    else {
-      const candidates = visible.filter(
+      passwords.length === 1 &&
+      !visible.some((input) => input.autocomplete === 'new-password')
+    ) {
+      const password = passwords[0];
+      const usernames = visible.filter(
         (input) =>
           input.form === password.form &&
-          input.type === 'text' &&
-          /user|login|email/i.test(input.name + input.id)
+          (input.autocomplete === 'username' ||
+            input.autocomplete === 'email' ||
+            input.type === 'email')
       );
-      if (candidates.length === 1)
-        assignments.push([candidates[0], item.username, false]);
+      if (usernames.length === 1)
+        assignments.push([usernames[0], item.username, false]);
+      else {
+        const candidates = visible.filter(
+          (input) =>
+            input.form === password.form &&
+            input.type === 'text' &&
+            /user|login|email/i.test(input.name + input.id)
+        );
+        if (candidates.length === 1)
+          assignments.push([candidates[0], item.username, false]);
+      }
+      if (item.password) assignments.push([password, item.password, true]);
     }
-    if (item.password) assignments.push([password, item.password, true]);
   }
-  if (!ai || item.kind !== 'login')
-    item.fields.forEach((field) => {
-      const matches = controls.filter((input) =>
-        [field.name, ...(field.aliases || [])].some(
-          (name) =>
-            input.name.toLowerCase() === name.toLowerCase() ||
-            input.id.toLowerCase() === name.toLowerCase() ||
-            (input.getAttribute('autocomplete') || '').split(' ').includes(name)
-        )
-      );
+  if (!ai || item.kind !== 'login') {
+    const proposed = item.fields
+      .filter((field) => field.value)
+      .flatMap((field) => {
+        const scored = controls.map((input) => ({
+          input,
+          score:
+            input.type === 'password' && !field.secret
+              ? 0
+              : matchField(field.name, field.aliases || [], {
+                  name: input.name,
+                  id: input.id,
+                  label:
+                    (input.getAttribute('aria-labelledby') || '')
+                      .split(/\s+/)
+                      .slice(0, 10)
+                      .map(
+                        (id) => document.getElementById(id)?.textContent || ''
+                      )
+                      .join(' ')
+                      .trim() ||
+                    input.getAttribute('aria-label') ||
+                    Array.from(input.labels || [])
+                      .map((label) => label.textContent || '')
+                      .join(' ')
+                      .trim() ||
+                    '',
+                  placeholder: input.getAttribute('placeholder') || '',
+                  autocomplete: input.autocomplete,
+                  type: input.type,
+                }),
+        }));
+        const best = Math.max(0, ...scored.map((entry) => entry.score));
+        const matches = scored.filter(
+          (entry) => entry.score === best && best > 0
+        );
+        return matches.length === 1 ? [{ input: matches[0].input, field }] : [];
+      });
+    proposed.forEach(({ input, field }) => {
+      // Never resolve two saved values for one control by their storage order.
       if (
-        matches.length === 1 &&
-        !assignments.some(([input]) => input === matches[0])
+        proposed.filter((entry) => entry.input === input).length === 1 &&
+        !assignments.some(([assigned]) => assigned === input)
       )
-        assignments.push([matches[0], field.value, field.secret]);
+        assignments.push([input, field.value, field.secret]);
     });
+  }
   let filled = 0;
   assignments.forEach(([input, value, secret]) => {
     if (window.location.origin !== item.origin || !input.isConnected) return;

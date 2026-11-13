@@ -371,3 +371,13 @@ it('keeps privately saved documents private through lock, reload and editing', (
     fs.readFileSync(path.join(directory, 'vault.json'), 'utf8')
   ).not.toContain('private resume text');
 });
+
+it('preserves an explicit fill mapping when a known field name means something else', () => {
+  const saved = vault.save({
+    ...profile,
+    fields: [
+      { name: 'Name', aliases: ['given-name'], value: 'Alex', secret: false },
+    ],
+  });
+  expect(vault.edit(saved).fields[0].aliases).toEqual(['given-name']);
+});

@@ -1,3 +1,4 @@
+import { fetchAppleAI } from './aiApple';
 import { fetchOllamaThinking } from './aiOllamaThinking';
 /* Retry inference only: browser effects remain outside this request boundary. */
 /* eslint-disable no-await-in-loop, no-continue */
@@ -10,6 +11,7 @@ import {
 /** Never forward private provider requests through an endpoint redirect. */
 export async function fetchAIProvider(url: string, request: RequestInit) {
   const response =
+    (await fetchAppleAI(aiProviderURL(url), request)) ??
     (await fetchOllamaThinking(aiProviderURL(url), request)) ??
     (await fetch(aiProviderURL(url), {
       ...request,

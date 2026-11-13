@@ -1,7 +1,13 @@
+import {
+  SpaceThemeContext,
+  ActiveSpaceTheme,
+  useAppTheme,
+} from '../utils/spaceTheme';
 import { CSSProperties, useEffect, useState } from 'react';
 import { Theme } from '@radix-ui/themes';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { HookMarketplaceDialog } from '../components/UI/HookMarketplaceDialog';
+import { GlobalHookEditorPage } from '../components/View/GlobalHookEditorPage';
 import { SiteDeveloperPage } from '../components/View/SiteDeveloperPage';
 import { useAppearance } from '../utils/appearance';
 import { AddApp } from '../components/View/AddApp/AddApp';
@@ -10,12 +16,8 @@ import { BrowserWorkspace } from '../components/UI/BrowserWorkspace';
 import { Downloads } from '../components/View/Downloads/Downloads';
 import { Settings } from '../components/View/Settings/Settings';
 import { View } from '../types';
-import {
-  useSpaces,
-  spacePrimaryColor,
-  spaceFrameColor,
-  primaryContrast,
-} from '../utils/SpaceManager';
+import { useSpaces } from '../utils/SpaceManager';
+import { appThemeStyle } from '../utils/appTheme';
 import { installFocusModality } from '../utils/focusModality';
 import { browser } from '../browser/client';
 import { defaultPreferences } from '../browser/preferences';
@@ -30,6 +32,8 @@ export function AppSelectedView() {
       window.electron?.telemetry?.feature('downloads_opened');
   }, [view]);
   switch (view) {
+    case 'global-hook-editor':
+      return <GlobalHookEditorPage />;
     case 'site-developer':
       return <SiteDeveloperPage />;
     case 'main':
@@ -49,8 +53,8 @@ export default function App() {
   useEffect(installFocusModality, []);
   const { appearance } = useAppearance();
   const { active } = useSpaces();
-  const primary = spacePrimaryColor(active);
-  const frame = spaceFrameColor(active);
+  const [pageTheme, setPageTheme] = useState<ActiveSpaceTheme>();
+  const theme = useAppTheme(active, pageTheme);
   const [glass, setGlass] = useState({
     chrome: defaultPreferences.translucentChrome,
     assistant: defaultPreferences.translucentAI,
@@ -81,6 +85,20 @@ export default function App() {
         unsubscribe();
       };
     }
+    if (
+      new URL(window.location.href).searchParams.get('view') ===
+      'global-hook-editor'
+    ) {
+      window.electron.hookMarketplace
+        .request({ action: 'state' })
+        .then((state) => {
+          if (state.material) update(state.material);
+        })
+        .catch(() => {});
+      return () => {
+        live = false;
+      };
+    }
     const unsubscribe = browser.onPreferences(update);
     browser
       .preferences('get')
@@ -93,40 +111,34 @@ export default function App() {
   }, []);
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--kudium-primary', primary);
-    root.style.setProperty(
-      '--kudium-primary-contrast',
-      primaryContrast(primary)
+    Object.entries(appThemeStyle(theme)).forEach(([property, value]) =>
+      root.style.setProperty(property, value)
     );
-    root.style.setProperty('--kudium-frame', frame);
     root.dataset.chromeGlass = String(glass.chrome);
     root.dataset.assistantGlass = String(glass.assistant);
-  }, [primary, frame, glass]);
+  }, [theme.primary, theme.frame, theme.contrast, glass]);
   document.documentElement.dataset.platform =
     window.electron?.platform || 'unknown';
   return (
-    <Theme
-      style={
-        {
-          '--kudium-primary': primary,
-          '--kudium-primary-contrast': primaryContrast(primary),
-        } as CSSProperties
-      }
-      appearance={appearance}
-      panelBackground="solid"
-      accentColor="teal"
-      grayColor="gray"
-      radius="large"
-      scaling="100%"
-    >
-      {['main', 'site-developer'].includes(
-        new URL(window.location.href).searchParams.get('view') || ''
-      ) && <HookMarketplaceDialog />}
-      <MemoryRouter>
-        <Routes>
-          <Route path="/" element={<AppSelectedView />} />
-        </Routes>
-      </MemoryRouter>
-    </Theme>
+    <SpaceThemeContext.Provider value={setPageTheme}>
+      <Theme
+        style={appThemeStyle(theme) as CSSProperties}
+        appearance={appearance}
+        panelBackground="solid"
+        accentColor="teal"
+        grayColor="gray"
+        radius="large"
+        scaling="100%"
+      >
+        {['main', 'site-developer', 'settings', 'global-hook-editor'].includes(
+          new URL(window.location.href).searchParams.get('view') || ''
+        ) && <HookMarketplaceDialog />}
+        <MemoryRouter>
+          <Routes>
+            <Route path="/" element={<AppSelectedView />} />
+          </Routes>
+        </MemoryRouter>
+      </Theme>
+    </SpaceThemeContext.Provider>
   );
 }

@@ -1,4 +1,9 @@
 const progress: Record<string, string> = {
+  read_hook_api: 'Reading the hook API…',
+  read_global_hooks: 'Checking global hooks…',
+  save_global_hook: 'Saving the hook…',
+  test_hook: 'Testing the hook…',
+  configure_site_hooks: 'Setting up website hooks…',
   discover_tools: 'Finding the right tools…',
   update_task_memory: 'Updating task notes…',
   read_page: 'Reading the page…',

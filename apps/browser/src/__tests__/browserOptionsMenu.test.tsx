@@ -30,3 +30,19 @@ it('opens the custom menu, disables page actions, and routes settings', async ()
   fireEvent.click(screen.getByRole('menuitem', { name: 'Settings…' }));
   expect(select).toHaveBeenCalledWith('settings');
 });
+
+it('offers Global hooks without an open page and routes to the Hooks preferences section', async () => {
+  const select = jest.fn();
+  render(
+    <Theme>
+      <BrowserOptionsMenu onSelect={select} pageAvailable={false} />
+    </Theme>
+  );
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Browser options' }), {
+    key: 'Enter',
+  });
+  const item = await screen.findByRole('menuitem', { name: 'Global hooks' });
+  expect(item).not.toHaveAttribute('data-disabled');
+  fireEvent.click(item);
+  expect(select).toHaveBeenCalledWith('hooks');
+});

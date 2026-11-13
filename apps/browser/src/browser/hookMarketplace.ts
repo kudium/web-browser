@@ -12,6 +12,7 @@ export type {
   HookPackage,
   PublishedHookPackage,
 } from '../../../../packages/hooks/package';
+export { validTestWebsiteUrl } from '../../../../packages/hooks/package';
 export interface InstalledHookSource {
   url: string;
   packageId?: string;
@@ -47,6 +48,9 @@ type ScopedHookMarketplaceRequest =
   | { action: 'browse' }
   | { action: 'preview'; url: string }
   | { action: 'state'; id?: string }
+  | { action: 'global-editor-open'; id?: string; hookId?: string }
+  | { action: 'global-test-run'; url: string; hook: GlobalHook }
+  | { action: 'global-test-stop' }
   | {
       action: 'install';
       id?: string;
@@ -66,6 +70,7 @@ type ScopedHookMarketplaceRequest =
       id?: string;
       hookId: string;
       description: string;
+      testUrl?: string;
       name?: string;
       license: HookPackage['license'];
       general: boolean;
@@ -79,6 +84,8 @@ export type HookMarketplaceRequest = ScopedHookMarketplaceRequest & {
   allGroups?: boolean;
 };
 export interface HookMarketplaceState {
+  material?: { translucentChrome: boolean; translucentAI: boolean };
+  editorHook?: GlobalHook;
   destination: HookDestination;
   global: GlobalHookConfig;
   globalHash: string;
@@ -141,4 +148,10 @@ export function validInstalledHookSource(
   } catch {
     return false;
   }
+}
+
+export interface HookTestState {
+  url: string;
+  status: 'loading' | 'waiting' | 'running' | 'success' | 'error' | 'stopped';
+  logs: { time: number; level: 'info' | 'error'; message: string }[];
 }

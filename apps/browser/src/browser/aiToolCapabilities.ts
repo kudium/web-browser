@@ -19,6 +19,10 @@ export const families = {
     'fill_saved_login',
   ],
   site_customization: [
+    'read_hook_api',
+    'read_global_hooks',
+    'save_global_hook',
+    'test_hook',
     'read_site_hooks',
     'configure_site_hooks',
     'find_hook_personal_data',
@@ -54,18 +58,22 @@ export const hints: Record<string, string> = {
   tasks: 'save schedule task reminder',
   personal_data: 'saved information documents login credentials memory',
   site_customization:
-    'developer settings customize JavaScript script CSS hooks monitoring appearance notifications',
+    'developer settings customize JavaScript script CSS site global hooks context menu actions input autofill password monitoring appearance notifications',
   downloads: 'download upload attachment files',
   advanced_interaction:
     'extract screenshot frames options pointer keyboard drag hover',
 };
 export const hookRuntimeGuide =
-  'Hook runtime: sandboxed isolated DOM world; no Node.js or website JavaScript globals. Use the after-load stage for DOM interaction. Setup must return within 10 seconds: register timers, video ended listeners or MutationObservers rather than awaiting an endless loop. Ongoing callbacks can run while the document stays loaded. Inspect the actual scroll container; dynamic feeds may require observing new videos. Path filters match at document load and on same-document navigation. Route changes clean up prior effects and rerun CSS and after-load hooks; before-load runs only on a new document. context.signal is aborted when the run stops. Register DOM/observer cleanup with context.onCleanup; use context.setInterval, context.setTimeout and context.listen for owned resources. Preserve existing hooks; avoid duplicate listeners and debounce outputs. Saving does not start the hook: reload only when the user requested starting it, then read_site_hooks to check errors. A successful setup does not verify later scrolling.';
+  'Hook runtime: sandboxed isolated DOM world; no Node.js or website JavaScript globals. Use the after-load stage for DOM interaction. Setup must return within 10 seconds: register timers, video ended listeners or MutationObservers rather than awaiting an endless loop. Ongoing callbacks can run while the document stays loaded. Inspect the actual scroll container; dynamic feeds may require observing new videos. Path filters match at document load and on same-document navigation. Route changes clean up prior effects and rerun CSS and after-load hooks; before-load runs only on a new document. context.signal is aborted when the run stops. Register DOM/observer cleanup with context.onCleanup; use context.setInterval, context.setTimeout and context.listen for owned resources. Preserve existing hooks; avoid duplicate listeners and debounce outputs. Load read_hook_api before authoring to learn the complete editor API and shared action templates. Use actions for click-triggered context menus, not lifecycle context APIs; actions receive context and api, with no DOM/network. Use read_global_hooks/save_global_hook for group or explicitly requested All groups hooks. Use test_hook for editor diagnostics, sandboxed action dry-runs with fictional input, or disposable website previews; never claim preview commands were applied. Saving does not start the hook: reload only when the user requested starting it, then read_site_hooks to check errors. A successful setup does not verify later scrolling.';
 export const intentBundles = [
+  {
+    pattern: /\b(global hook|all groups.{0,20}hook|hook.{0,20}all (?:pages|websites)|context menu action|hook action)\b/i,
+    tools: ['read_hook_api', 'read_global_hooks', 'save_global_hook', 'read_site_hooks', 'configure_site_hooks', 'test_hook'],
+  },
   {
     pattern:
       /\b(auto[ -]?scroll|scroll automatically|developer settings|javascript hook|css hook|create.{0,20}hook|watch.{0,30}price|monitor.{0,30}(page|changes))\b/i,
-    tools: ['read_site_hooks', 'configure_site_hooks'],
+    tools: ['read_site_hooks', 'configure_site_hooks', 'read_hook_api', 'test_hook'],
   },
   {
     pattern: /\b(schedule|remind me|save.{0,15}task)\b/i,

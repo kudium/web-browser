@@ -52,3 +52,32 @@ test('refreshes space colors when another window saves them', () => {
   expect(spacePrimaryColor(result.current.active)).toBe('#abcdef');
   unmount();
 });
+
+test('website colors override the space only when enabled and valid', () => {
+  const saved = {
+    ...space,
+    customColor: '#345678',
+    frameColor: '#123456',
+    useWebsiteColors: true,
+  };
+  expect(spacePrimaryColor(saved, '#4285f4')).toBe('#4285f4');
+  expect(spaceFrameColor(saved, '#4285f4')).toBe('#123456');
+  expect(spaceFrameColor({ ...saved, frameColor: undefined }, '#4285f4')).toBe(
+    '#4285f4'
+  );
+  expect(spacePrimaryColor(saved)).toBe('#345678');
+  expect(spaceFrameColor(saved, 'invalid')).toBe('#123456');
+  expect(
+    spaceFrameColor({ ...saved, useWebsiteColors: false }, '#4285f4')
+  ).toBe('#123456');
+  SpaceManager.set([saved]);
+  expect(
+    SpaceManager.getAll().find((entry) => entry.id === space.id)
+      ?.useWebsiteColors
+  ).toBe(true);
+  SpaceManager.update(space.id, { useWebsiteColors: false });
+  expect(
+    SpaceManager.getAll().find((entry) => entry.id === space.id)
+      ?.useWebsiteColors
+  ).toBe(false);
+});
