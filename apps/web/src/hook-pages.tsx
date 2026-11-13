@@ -63,7 +63,6 @@ function Card({
         {item.hook.name}
       </a>
       <p>{item.hook.description}</p>
-      <StageBadges pkg={item.package} />
       <div className="hook-card-footer">
         <span>By {item.author.name}</span>
         <span>♡ {item.hook.likes}</span>
@@ -77,7 +76,7 @@ function Card({
               admin ? `/hooks/${item.hook.id}` : `/hooks/${item.hook.id}/edit`
             }
           >
-            {admin ? "Review submission" : "Edit / publish update"}
+            {admin ? "Review submission" : "Edit hook"}
           </a>
         </div>
       )}
@@ -96,70 +95,71 @@ export function hookIndexPage(
   });
   const path = admin ? "/hooks/admin" : mine ? "/account/hooks" : "/hooks";
   return render(
-    <main className="hooks-marketplace" data-hook-marketplace>
+    <main className="hooks-marketplace hooks-library" data-hook-marketplace>
       <div className="hooks-heading">
         <div>
-          <span className="hooks-eyebrow">THE KUDIUM COMMUNITY</span>
           <h1>
             {admin
               ? "Marketplace moderation"
               : mine
               ? "Your hooks"
-              : "Small hooks. Big possibilities."}
+              : "Hooks"}
           </h1>
           <p>
-            {mine
-              ? "Share what you create, and keep your publications up to date."
-              : "Make your favourite websites work your way. Discover scripts and styles made by the community."}
+            {admin
+              ? "Review submissions and manage published hooks."
+              : mine
+              ? "Manage the hooks you’ve shared with the community."
+              : "Scripts and styles for your favourite websites."}
           </p>
         </div>
         <a className="hook-primary" href="/hooks/new">
-          Publish a hook <span aria-hidden="true">↗</span>
+          Publish a hook
         </a>
       </div>
-      <div className="hooks-section-links">
-        <a href="/hooks">Explore hooks</a>
-        <a href="/account/hooks">My hooks</a>
-        {admin && <a href="/hooks/admin">Moderation</a>}
-      </div>
+      <nav className="hooks-section-links" aria-label="Hooks navigation">
+        <a href="/hooks" aria-current={!mine && !admin ? "page" : undefined}>Explore</a>
+        <a href="/account/hooks" aria-current={mine && !admin ? "page" : undefined}>Your hooks</a>
+        {admin && <a href="/hooks/admin" aria-current="page">Moderation</a>}
+      </nav>
       <form className="hook-search" method="get" action={path}>
         <label>
-          <span>Search hooks</span>
+          <span className="visually-hidden">Search hooks</span>
           <input
             name="q"
             type="search"
-            placeholder="Search by hook name…"
+            placeholder="Search hooks"
             defaultValue={query.q}
           />
         </label>
         <label>
-          <span>Site</span>
+          <span className="visually-hidden">Site</span>
           <input
             name="site"
-            placeholder="e.g. github.com"
+            placeholder="Website, e.g. github.com"
             defaultValue={query.site}
           />
         </label>
         <label>
-          <span>Hook type</span>
+          <span className="visually-hidden">Hook type</span>
           <select name="kind" defaultValue={query.kind}>
             <option value="all">All hooks</option>
             <option value="site">Site-specific</option>
             <option value="general">General hooks</option>
           </select>
         </label>
-        <button className="hook-primary" type="submit">
+        <button className="hook-filter-button" type="submit">
           Search
         </button>
       </form>
-      <div className="hooks-results-heading">
+      {page.items.length > 0 && <div className="hooks-results-heading">
         <h2>
           {query.q
             ? `Results for “${query.q}”`
-            : "Discover your next improvement"}
+            : admin ? "Submissions" : mine ? "Published hooks" : "All hooks"}
         </h2>
         <span>Newest first</span>
-      </div>
+      </div>}
       <div className="hook-grid">
         {page.items.map((item) => (
           <Card
@@ -172,16 +172,16 @@ export function hookIndexPage(
       </div>
       {!page.items.length && (
         <div className="hook-empty">
-          <span aria-hidden="true">◎</span>
-          <h2>{mine ? "Your first hook starts here" : "No hooks here yet"}</h2>
+          <svg className="hook-empty-icon" aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" /><path d="m9 9-3 3 3 3m6-6 3 3-3 3" /></svg>
+          <h2>{query.q || query.site || query.kind !== "all" ? "No matching hooks" : admin ? "No submissions to review" : mine ? "No published hooks yet" : "No hooks yet"}</h2>
           <p>
-            {query.q || query.site
+            {query.q || query.site || query.kind !== "all"
               ? "Try another name or clear your filters."
-              : "Publish a useful script or style and help shape the community."}
+              : admin ? "New submissions will appear here." : "Share a script or style you’ve made for Kudium."}
           </p>
-          <a href={query.q || query.site ? path : "/hooks/new"}>
-            {query.q || query.site ? "Clear filters" : "Create a hook"}
-          </a>
+          {(!admin || query.q || query.site || query.kind !== "all") && <a href={query.q || query.site || query.kind !== "all" ? path : "/hooks/new"}>
+            {query.q || query.site || query.kind !== "all" ? "Clear filters" : "Create a hook"}
+          </a>}
         </div>
       )}
       {page.nextCursor && (
@@ -190,7 +190,7 @@ export function hookIndexPage(
         </a>
       )}
     </main>,
-    mine ? "My hooks" : "Hooks marketplace",
+    admin ? "Hook moderation" : mine ? "Your hooks" : "Hooks",
     path,
     mine || admin
   );
@@ -200,7 +200,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
   const packageURL = `/v1/hooks/${hook.id}/versions/${hook.version}/package`;
   return render(
     <main
-      className="hooks-marketplace hook-detail"
+      className="hooks-marketplace hooks-library hook-detail"
       data-hook-id={hook.id}
       data-viewer={viewer || ""}
       data-liked={String(detail.liked)}
@@ -214,7 +214,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
           <div className="hook-detail-intro">
             <span className="hooks-eyebrow">
               {pkg.applicability === "general"
-                ? "WORKS ACROSS WEBSITES"
+                ? "Across websites"
                 : pkg.sites.map((s) => s.host).join(" · ")}
             </span>
             <h1>{hook.name}</h1>
@@ -228,7 +228,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
             <StageBadges pkg={pkg} />
           </div>
           <section className="hook-code-section">
-            <h2>Look under the hood</h2>
+            <h2>Source code</h2>
             <p>
               Review the source before you install. Hooks change the pages where
               you enable them.
@@ -278,7 +278,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
             </ul>
           </section>
           <section className="hook-discussion">
-            <h2>Community discussion</h2>
+            <h2>Discussion</h2>
             {viewer ? (
               <form data-hook-comment>
                 <label htmlFor="hook-comment-body">
@@ -312,10 +312,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
           </section>
         </article>
         <aside className="hook-install-card">
-          <span className="hook-site-mark" aria-hidden="true">
-            ↗
-          </span>
-          <h2>Make it yours</h2>
+          <h2>Install hook</h2>
           <p>
             Preview in Kudium, choose where it runs, then enable it when you’re
             ready.
@@ -348,7 +345,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
             <dd>{pkg.minimumBrowserVersion} or later</dd>
           </dl>
           {hook.authorId === viewer && (
-            <a href={`/hooks/${hook.id}/edit`}>Edit / publish update</a>
+            <a href={`/hooks/${hook.id}/edit`}>Edit hook</a>
           )}
           {hook.status !== "approved" && (
             <p className="hook-notice">
@@ -389,13 +386,12 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
 export function hookPublishPage(detail?: Detail) {
   const pkg = detail?.package;
   return render(
-    <main className="hooks-marketplace hook-publish">
+    <main className="hooks-marketplace hooks-library hook-publish">
       <a className="hook-back" href="/account/hooks">
-        ← My hooks
+        ← Your hooks
       </a>
-      <span className="hooks-eyebrow">BUILD SOMETHING USEFUL</span>
       <div className="hook-publish-heading">
-        <h1>{detail ? "Publish an update" : "Share your hook"}</h1>
+        <h1>{detail ? "Publish an update" : "Publish a hook"}</h1>
         <label className="hook-import-file">
           Import JSON
           <input
@@ -408,8 +404,7 @@ export function hookPublishPage(detail?: Detail) {
         </label>
       </div>
       <p>
-        A thoughtful tweak can make someone’s day. Describe what your hook does
-        and where it works.
+        Add your hook’s details, choose where it runs, and review the code.
       </p>
       <form
         id="hook-publish-form"
@@ -417,6 +412,8 @@ export function hookPublishPage(detail?: Detail) {
         data-id={detail?.hook.id || ""}
         data-version={detail?.hook.version || ""}
       >
+        <fieldset className="hook-form-section">
+          <legend>Details</legend>
         <div className="hook-form-grid">
           <label>
             Name
@@ -425,7 +422,7 @@ export function hookPublishPage(detail?: Detail) {
               defaultValue={pkg?.name}
               maxLength={120}
               required
-              placeholder="A clear, memorable name"
+              placeholder="e.g. Quiet reading"
             />
           </label>
           <label>
@@ -445,9 +442,12 @@ export function hookPublishPage(detail?: Detail) {
             maxLength={4000}
             required
             rows={3}
-            placeholder="What changes? How do people use it?"
+            placeholder="Describe what your hook changes."
           />
         </label>
+        </fieldset>
+        <fieldset className="hook-form-section">
+          <legend>Where it runs</legend>
         <div className="hook-form-grid">
           <label>
             Works on
@@ -456,7 +456,7 @@ export function hookPublishPage(detail?: Detail) {
               defaultValue={pkg?.applicability || "site"}
             >
               <option value="site">Specific websites</option>
-              <option value="general">General / any website</option>
+              <option value="general">Any website</option>
             </select>
           </label>
           <label>
@@ -491,6 +491,9 @@ export function hookPublishPage(detail?: Detail) {
             />
           </label>
         </div>
+        </fieldset>
+        <fieldset className="hook-form-section hook-code-fields">
+          <legend>Code</legend>
         {(["before", "after", "css"] as const).map((phase) => (
           <details
             key={phase}
@@ -514,13 +517,14 @@ export function hookPublishPage(detail?: Detail) {
             </label>
           </details>
         ))}
+        </fieldset>
         <label className="hook-license-confirm">
           <input type="checkbox" required /> I have the right to publish this
           code under the selected license.
         </label>
         <div className="hook-publish-actions">
           <p data-hook-feedback role="status" />
-          <button className="hook-primary">
+          <button className="hook-primary" type="submit">
             {detail ? "Publish new version" : "Publish hook"}
           </button>
         </div>
