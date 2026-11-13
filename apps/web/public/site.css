@@ -2042,3 +2042,8 @@ body.account-page:has(.cloud-workspace) header nav > a[href='/docs'] { display: 
 
 .whats-new-entries { min-width:0; display:grid; gap:64px; }
 .whats-new-article { scroll-margin-top:28px; }
+
+.whats-new-screenshots { display:grid; gap:24px; margin-top:28px; }
+.whats-new-screenshots figure { margin:0; }
+.whats-new-screenshots img { display:block; width:100%; height:auto; border-radius:12px; border:1px solid var(--line, #ddd); }
+.whats-new-screenshots figcaption { margin-top:10px; font-size:14px; color:var(--muted, #666); }

@@ -1148,6 +1148,14 @@ export function Main() {
     window.addEventListener(OPEN_TERMINAL_LINK, open);
     return () => window.removeEventListener(OPEN_TERMINAL_LINK, open);
   }, [active.id, select]);
+  const openWhatsNew = (url: string) => {
+    if (!selected || lockedGroup(selected)) return false;
+    const item = commandDestination([], selected, url, false, selected.spaceId || active.id).app;
+    if (!item) return false;
+    AppManager.add(item);
+    select(item);
+    return true;
+  };
   const nativeOverlayOpen = useNativeOverlay();
   const overlayOpen =
     !!tabSwitcher.shown ||
@@ -4140,7 +4148,7 @@ export function Main() {
         <AccountSyncPublisher tabs={appList} states={states} />
         <BrowserImportSuggestion />
         <FirstGroupSyncSuggestion tabs={appList} />
-        <AppUpdateBanner compact={compact} />
+        <AppUpdateBanner compact={compact} onWhatsNew={openWhatsNew} />
         <div
           className="sidebar-bottom"
           onContextMenu={(event) => {
@@ -4285,7 +4293,7 @@ export function Main() {
               </ContextMenu.Content>
             </ContextMenu.Root>
           </div>
-          {sidebarHidden && <AppUpdateBanner compact />}
+          {sidebarHidden && <AppUpdateBanner compact onWhatsNew={openWhatsNew} />}
           {selected && tabDisplayMode === 'horizontal' && (
             <div
               className={`pane-tab-strips ${split ? 'split-tab-strips' : ''}`}

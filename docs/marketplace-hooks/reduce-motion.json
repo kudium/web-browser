@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "minimumBrowserVersion": "1.0.9",
+  "name": "Reduce motion",
+  "description": "Reduce decorative animations, transitions and smooth scrolling. Some animated controls may appear different. Disable to restore normal motion. Runs locally, with no network requests or page data collection.",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://example.com",
+  "lifecycle": {
+    "before": "",
+    "after": "",
+    "css": "*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }"
+  }
+}

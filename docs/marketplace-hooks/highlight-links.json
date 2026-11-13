@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "minimumBrowserVersion": "1.0.9",
+  "name": "Highlight links",
+  "description": "Make webpage links easier to spot with blue text and a clear underline. Works across websites; disable it to restore the original appearance. Runs locally without sending page data anywhere.",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://example.com",
+  "lifecycle": {
+    "before": "",
+    "after": "",
+    "css": "a[href] { color: #007aff !important; text-decoration: underline !important; text-underline-offset: 3px !important; }"
+  }
+}

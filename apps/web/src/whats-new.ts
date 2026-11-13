@@ -1,5 +1,21 @@
 export const whatsNew = [
   {
+    version: '1.0.10',
+    date: '2026-11-13',
+    title: 'Hooks with actions and a more capable assistant',
+    screenshots: [
+      { asset: 'site-hooks-light', alt: 'Atlas Studio website hook editor with saved script and run output', caption: 'Edit and run website hooks from the developer workspace.' },
+      { asset: 'ai-context', alt: 'Kudium assistant with an unsent draft and Atlas Studio project references', caption: 'Bring browser tabs and project files into an assistant task.' },
+    ],
+    highlights: [
+      ['Hooks with actions', 'Build reusable hooks with editable actions, test them on a website, and manage general hooks from Settings. Form actions can use your saved personal data, with review before submission.'],
+      ['Apple local AI', 'Use the Apple local AI provider on supported Macs, with clearer prerequisite guidance and browser context management.'],
+      ['A more useful assistant', 'Adjust thinking effort, manage context, and ask AI to help author hooks. Loop guards help tasks recover when progress stalls.'],
+      ['Workspace polish', 'Updated space icons and colors, form controls, password authentication, history suggestions and website appearance settings make everyday browsing smoother.'],
+      ['One place for release notes', 'The browser’s What’s New button now opens this website page in a new tab in your current group, linking directly to your installed version.'],
+    ],
+  },
+  {
     version: '1.0.9',
     date: '2026-11-12',
     title: 'A hooks marketplace and a smoother workspace',

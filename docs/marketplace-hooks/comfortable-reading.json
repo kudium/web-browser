@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "minimumBrowserVersion": "1.0.9",
+  "name": "Comfortable reading",
+  "description": "Enlarge article and main paragraph text with more line spacing. Useful for long reads; disable the hook to restore the website\u2019s original styling. Runs locally, with no network requests or collection of page data.",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://example.com",
+  "lifecycle": {
+    "before": "",
+    "after": "",
+    "css": "article p, main p { font-size: 18px !important; line-height: 1.8 !important; }"
+  }
+}

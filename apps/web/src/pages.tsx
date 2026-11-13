@@ -196,7 +196,7 @@ export function homepage() {
                   >
                     <div className="hero-screen">
                       <img
-                        src={`/assets/product/demo/${image}.webp?v=10`}
+                        src={`/assets/product/demo/${image}.webp?v=11`}
                         alt={description}
                         width="1440"
                         height="940"
@@ -316,7 +316,7 @@ export function homepage() {
               </div>
               <figure data-sidebar-sample="expanded" hidden>
                 <img
-                  src="/assets/product/demo/sidebar-expanded.webp?v=10"
+                  src="/assets/product/demo/sidebar-expanded.webp?v=11"
                   width="2880"
                   height="1880"
                   alt="Apple’s website in Kudium, with favorite tiles, Product Studio and Engineering collections, and folder and stack groups"
@@ -329,7 +329,7 @@ export function homepage() {
               </figure>
               <figure data-sidebar-sample="collapsed">
                 <img
-                  src="/assets/product/demo/sidebar-collapsed.webp?v=10"
+                  src="/assets/product/demo/sidebar-collapsed.webp?v=11"
                   width="2880"
                   height="1880"
                   alt="The same Apple page with the sidebar hidden and the Design group switcher in the address bar"
@@ -423,7 +423,7 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/developer-terminal.webp?v=10"
+                src="/assets/product/demo/developer-terminal.webp?v=11"
                 width="2880"
                 height="1880"
                 alt="The linked Atlas Studio demo project beside its local collection overview, with real project files and an integrated terminal running a passing Bun test"
@@ -501,7 +501,7 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/ai-mentions.webp?v=10"
+                src="/assets/product/demo/ai-mentions.webp?v=11"
                 width="2880"
                 height="1880"
                 alt="The Atlas Studio collection overview beside Kudium’s AI sidebar, with an attached project brief and group suggestions directly beneath the draft’s typing line"
@@ -1040,7 +1040,7 @@ export function tutorialPage(tutorial: Tutorial) {
                 aria-label="Open full size screenshot"
               >
                 <img
-                  src={`/assets/product/demo/${tutorial.image}.webp?v=10`}
+                  src={`/assets/product/demo/${tutorial.image}.webp?v=11`}
                   alt={tutorial.imageAlt || `${tutorial.title} in the real Kudium Browser interface with fictional Atlas Studio demo data`}
                   width="1280"
                   height="800"
@@ -1537,6 +1537,14 @@ export function whatsNewPage() {
                     </section>
                   ))}
                 </div>
+                {'screenshots' in release && <div className="whats-new-screenshots">
+                  {release.screenshots.map(shot => <figure key={shot.asset}>
+                    <a href={`/assets/product/demo/${shot.asset}.webp?v=11`}>
+                      <img src={`/assets/product/demo/${shot.asset}.webp?v=11`} alt={shot.alt} loading="lazy" />
+                    </a>
+                    <figcaption>{shot.caption}</figcaption>
+                  </figure>)}
+                </div>}
               </article>
             ))}
           </div>
