@@ -446,3 +446,56 @@ it('starts a native file drag and rechecks group access after loading the icon',
     fs.rmSync(folder, { recursive: true, force: true });
   }
 });
+
+it('discovers and imports project tasks by reviewed identity and rejects changed tasks', async () => {
+  const folder = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'project-import-'))
+  );
+  const manifest = path.join(folder, 'package.json');
+  fs.writeFileSync(manifest, JSON.stringify({ scripts: { test: 'vitest' } }));
+  const linked = jest
+    .spyOn(projects, 'linkedProjectFolder')
+    .mockReturnValue(folder);
+  const mainFrame = {};
+  const sender = {
+    id: 101,
+    mainFrame,
+    on: jest.fn(),
+    removeListener: jest.fn(),
+    send: jest.fn(),
+  };
+  const dispose = registerSiteDeveloperLibrary(
+    { webContents: sender, isDestroyed: () => false } as any,
+    () => tabs,
+    () => undefined
+  );
+  const handler = (ipcMain.handle as jest.Mock).mock.calls
+    .slice()
+    .reverse()
+    .find(([channel]) => channel === 'site-developer-scripts')[1];
+  const event = { sender, senderFrame: mainFrame };
+  try {
+    const found = await handler(event, 'home', { action: 'discover' });
+    expect(found.candidates).toHaveLength(1);
+    expect(found.candidates[0].command).toBe('npm run test');
+    const result = await handler(event, 'home', {
+      action: 'import',
+      ids: [found.candidates[0].id],
+    });
+    expect(result.imported).toBe(1);
+    expect(sender.send).toHaveBeenCalledWith('site-developer-library-changed');
+    const again = await handler(event, 'home', { action: 'discover' });
+    expect(again.candidates[0].saved).toBe(true);
+    fs.writeFileSync(manifest, '{"scripts":{}}');
+    await expect(
+      handler(event, 'home', {
+        action: 'import',
+        ids: [found.candidates[0].id],
+      })
+    ).rejects.toThrow('tasks changed');
+  } finally {
+    dispose();
+    linked.mockRestore();
+    fs.rmSync(folder, { recursive: true, force: true });
+  }
+});

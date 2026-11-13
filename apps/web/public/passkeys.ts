@@ -8,7 +8,7 @@ async function request(path: string, body?: unknown) {
   return result;
 }
 const next = new URLSearchParams(location.search).get('next');
-const destination = next && /^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(next) ? next : '/account';
+const destination = next && (/^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(next) || /^\/(?:hooks(?:\/(?:new|admin|[A-Za-z0-9-]{1,100})(?:\/edit)?)?|account\/hooks)$/.test(next)) ? next : '/account';
 let busy = false;
 async function run(action: () => Promise<void>) {
   if (busy || document.querySelector<HTMLButtonElement>('[data-auth-form] button')?.disabled) return;

@@ -3,6 +3,8 @@ import fs from 'fs';
 import { EventEmitter } from 'events';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { effectiveHookConfig, onGlobalHooksChanged } from './globalHooks';
+import { ALL_GROUPS_HOOK_SCOPE } from '../browser/hookMarketplace';
 import {
   emptyDeveloperConfig,
   hookMatchesPath,
@@ -44,7 +46,7 @@ if (window === window.top) {
     const active = () => current === generation;
     const send = (kind, value, detail = {}) => { if (active()) ipcRenderer.send('site-developer-event', { token, kind, value, ...detail }); };
     const format = value => { try { return typeof value === 'string' ? value : JSON.stringify(value); } catch (_) { return String(value); } };
-    const hooks = [{...config, id: undefined, name: 'Default hook'}, ...(config.hooks || [])];
+    const hooks = [...(config.hooks || []).filter(hook => hook.id?.startsWith('global:')), {...config, id: undefined, name: 'Default hook'}, ...(config.hooks || []).filter(hook => !hook.id?.startsWith('global:'))];
     let failed = false;
     const failedHooks = new Set();
     const run = async (hook, phase) => {
@@ -174,6 +176,11 @@ export function developerState(contents: WebContents, origin: string) {
   const previous = page?.states.get(origin);
   return {
     config,
+    globalHookCount:
+      effectiveHookConfig(
+        page?.profile || '',
+        contents.getURL() || origin
+      ).hooks?.filter((hook) => hook.id.startsWith('global:')).length || 0,
     revisions: getSiteSettings(page?.profile || '', origin).hookRevisions,
     status: previous?.status || 'waiting',
     logs: previous?.logs || [],
@@ -182,7 +189,10 @@ export function developerState(contents: WebContents, origin: string) {
           ...page.scope()!,
           profile: page.profile,
           origin,
-          config,
+          config: effectiveHookConfig(
+            page.profile,
+            contents.getURL() || origin
+          ),
         })
       : [],
   } as SiteDeveloperState;
@@ -259,9 +269,35 @@ export function registerDeveloperPage(
         !page.token
       )
         return;
-      const config = getSiteSettings(changedProfile, origin).developer;
+      const config = effectiveHookConfig(
+        changedProfile,
+        ownedContents.getURL() || origin
+      );
       if (!config?.enabled || hookScriptHash(config) !== page.scriptHash)
         resetDeveloperState(ownedContents, origin);
+    });
+  });
+  onGlobalHooksChanged((changedProfile) => {
+    pages.forEach((page, ownedContents) => {
+      if (
+        (changedProfile === ALL_GROUPS_HOOK_SCOPE ||
+          page.profile === changedProfile) &&
+        page.origin
+      ) {
+        hookNotifications().reconcile(
+          page.profile,
+          page.origin,
+          effectiveHookConfig(page.profile, ownedContents.getURL())
+        );
+        resetDeveloperState(ownedContents, page.origin);
+      }
+    });
+  });
+  getGroupLocks().subscribe(() => {
+    pages.forEach((page, ownedContents) => {
+      const identity = page.scope();
+      if (identity && page.origin && getGroupLocks().locked(identity.groupId))
+        resetDeveloperState(ownedContents, page.origin);
     });
   });
   ipcMain.handle('site-developer-output', (event, request: unknown) => {
@@ -276,7 +312,7 @@ export function registerDeveloperPage(
     const origin = siteOrigin(event.senderFrame?.url || '');
     const config =
       page && origin
-        ? getSiteSettings(page.profile, origin).developer
+        ? effectiveHookConfig(page.profile, event.senderFrame?.url || origin)
         : undefined;
     if (
       !page ||
@@ -387,8 +423,12 @@ export function registerDeveloperPage(
       data.text.length > 2000
     )
       throw new Error('Unauthorized hook notification.');
-    const config = getSiteSettings(page.profile, origin).developer;
-    if (!config?.enabled) throw new Error('Site hooks are disabled.');
+    const config = effectiveHookConfig(
+      page.profile,
+      event.senderFrame?.url || origin
+    );
+    if (getGroupLocks().locked(identity.groupId) || !config?.enabled)
+      throw new Error('Site hooks are disabled.');
     const context: HookContext = {
       ...identity,
       profile: page.profile,
@@ -446,8 +486,15 @@ export function registerDeveloperPage(
       event.returnValue = null;
       return;
     }
-    const config = getSiteSettings(page.profile, origin).developer;
-    if (!config?.enabled) {
+    const identity = page.scope();
+    const config = effectiveHookConfig(
+      page.profile,
+      event.senderFrame?.url || origin
+    );
+    if (
+      (identity && getGroupLocks().locked(identity.groupId)) ||
+      !config?.enabled
+    ) {
       event.returnValue = null;
       return;
     }
@@ -492,9 +539,14 @@ export function registerDeveloperPage(
       token !== page.token ||
       !page.origin ||
       siteOrigin(event.senderFrame.url) !== page.origin ||
-      !getSiteSettings(page.profile, page.origin).developer?.enabled ||
-      hookScriptHash(getSiteSettings(page.profile, page.origin).developer!) !==
-        page.scriptHash ||
+      !effectiveHookConfig(page.profile, event.senderFrame?.url || page.origin)
+        ?.enabled ||
+      hookScriptHash(
+        effectiveHookConfig(
+          page.profile,
+          event.senderFrame?.url || page.origin
+        )!
+      ) !== page.scriptHash ||
       typeof value !== 'string'
     )
       return;

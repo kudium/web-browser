@@ -1754,11 +1754,19 @@ body:has(.cloud-workspace) { --cloud-page-width: 1320px; --cloud-page-gutter: 40
 body:has(.cloud-workspace) header { padding-inline: max(var(--cloud-page-gutter), calc((100% - var(--cloud-page-width)) / 2 + var(--cloud-page-gutter))); background: #f5f6f8ed; border-bottom-color: #e7e8ec; }
 body:has(.cloud-workspace) header nav a:is([href='/#highlights'], [href='/tutorials'], [href='/account']) { display: none; }
 body:has(.cloud-workspace) footer { background: transparent; border-top-color: #e7e8ec; }
-.account-dashboard:has(.cloud-workspace) { max-width: var(--cloud-page-width); padding: 44px var(--cloud-page-gutter) 64px; }
-.account-dashboard:has(.cloud-workspace) .account-heading { margin-bottom: 28px; }
+.account-dashboard:has(.cloud-workspace) { max-width: var(--cloud-page-width); padding: 32px var(--cloud-page-gutter) 64px; }
+.account-dashboard:has(.cloud-workspace) .account-heading { margin-bottom: 24px; flex-wrap: wrap; gap: 16px 24px; }
 .account-dashboard:has(.cloud-workspace) .account-eyebrow { color: #71747b; font-size: 12px; letter-spacing: .02em; }
-.account-dashboard:has(.cloud-workspace) .account-heading h1 { font-size: 32px; }
+.account-dashboard:has(.cloud-workspace) .account-heading h1 { font-size: 24px; margin: 0; letter-spacing: -.025em; }
 .account-dashboard:has(.cloud-workspace) .account-email { color: #777b82; font-size: 13px; }
+.account-heading-identity { min-width: 0; flex: 1 1 240px; }
+.account-heading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.account-heading-actions .account-button { min-height: 40px; text-decoration: none; }
+.account-heading-actions .account-publish-button { background: var(--teal-ink); border-color: var(--teal-ink); color: white; }
+.account-heading-actions .account-publish-button:hover { background: #235d58; border-color: #235d58; }
+.account-heading-actions .account-sign-out { background: transparent; border-color: transparent; color: var(--muted); }
+.account-heading-actions .account-sign-out:hover { background: #eeeef1; color: var(--ink); }
+.account-heading-actions .account-button:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
 .cloud-workspace { --cloud-bg: #fff; --cloud-sidebar: #f8f9fb; --cloud-line: #e9ebef; --cloud-text: #272a30; --cloud-muted: #737981; --cloud-select: #e8f2f1; --cloud-accent: #286e6a; display: grid; grid-template-columns: 192px minmax(0, 1fr); border: 1px solid #e0e3e8; border-radius: 22px; overflow: hidden; background: var(--cloud-bg); box-shadow: 0 12px 40px #242b3a06, 0 2px 6px #242b3a03; color: var(--cloud-text); }
 .cloud-workspace [hidden] { display: none !important; }
 .cloud-sidebar { background: var(--cloud-sidebar); padding: 28px 12px 22px; display: flex; flex-direction: column; border-right: 1px solid var(--cloud-line); }
@@ -1966,3 +1974,37 @@ body.account-page:has(.cloud-workspace) header nav > a[href='/docs'] { display: 
 @media(max-width: 700px) { .passkey-create { flex-direction: column; align-items: stretch; } .passkey-create input { font-size: 16px; } }
 
 .account-page footer > .privacy-link { display: inline; }
+
+/* A quiet shortcut to release updates on public pages. */
+.whats-new-fab {
+  position: fixed;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #d4dfdc;
+  border-radius: 999px;
+  color: #245c56;
+  background: #fff;
+  box-shadow: 0 3px 12px #153b3414;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity .65s ease, background .15s ease, border-color .15s ease;
+}
+.whats-new-fab-icon { display:flex; align-items:center; color:inherit; }
+.whats-new-fab:hover { text-decoration:none; background:#f2f7f5; border-color:#9cbdb5; }
+.whats-new-fab:focus-visible { outline:3px solid var(--teal-ink); outline-offset:4px; }
+@media (max-width:700px) {
+  .whats-new-fab { right:max(16px, env(safe-area-inset-right)); bottom:max(16px, env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion:reduce) { .whats-new-fab { transition:none; } }
+
+.whats-new-fab[data-scrolling]:not(:focus-within) { opacity:0; pointer-events:none; }
+
+.whats-new-entries { min-width:0; display:grid; gap:64px; }
+.whats-new-article { scroll-margin-top:28px; }

@@ -12,6 +12,8 @@ import {
 import { Plus, X, Ellipsis, Terminal as TerminalIcon } from 'lucide-react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { OPEN_TERMINAL_LINK } from '../../browser/terminalLinks';
 import {
   PanelDropdownContent,
   PanelDialogContent,
@@ -95,11 +97,22 @@ function TerminalSurface({
     let ready = false;
     let sequence = 0;
     let pending: ProjectTerminalEvent[] = [];
+    const openLink = (event: MouseEvent, url: string) => {
+      event.preventDefault();
+      if (!live) return;
+      window.dispatchEvent(
+        new CustomEvent(OPEN_TERMINAL_LINK, {
+          detail: { group, url },
+        })
+      );
+    };
     const terminal = new Terminal({
       fontFamily: 'Menlo, Monaco, monospace',
       fontSize: 12,
       cursorBlink: true,
+      allowTransparency: true,
       scrollback: 3000,
+      linkHandler: { activate: openLink },
       screenReaderMode: true,
       disableStdin: true,
       theme: terminalThemes.dark,
@@ -107,6 +120,7 @@ function TerminalSurface({
     terminalRef.current = terminal;
     const fit = new FitAddon();
     terminal.loadAddon(fit);
+    terminal.loadAddon(new WebLinksAddon(openLink));
     terminal.open(element);
     const fitTerminal = () => {
       if (element.clientWidth > 0 && element.clientHeight > 0) fit.fit();
@@ -164,6 +178,12 @@ function TerminalSurface({
         const key = event.key.toLowerCase();
         if (key === 'c' || key === 'k') {
           event.preventDefault();
+          if (key === 'c' && terminal.hasSelection()) {
+            navigator.clipboard
+              .writeText(terminal.getSelection())
+              .catch(() => errorRef.current('Could not copy the selection.'));
+            return false;
+          }
           if (ready) {
             window.electron.siteDeveloper
               .terminal(
@@ -240,9 +260,43 @@ function TerminalSurface({
     };
   }, [group, tab, generation]);
   useEffect(() => {
-    if (terminalRef.current)
-      terminalRef.current.options.theme =
-        terminalThemes[appearance === 'light' ? 'light' : 'dark'];
+    const element = container.current;
+    if (!element) return undefined;
+    const updateTheme = () => {
+      const terminal = terminalRef.current;
+      if (!terminal) return;
+      const glass =
+        (element.ownerDocument.defaultView || window)
+          .getComputedStyle(element)
+          .getPropertyValue('--terminal-glass')
+          .trim() === '1';
+      const theme = terminalThemes[appearance === 'light' ? 'light' : 'dark'];
+      terminal.options.theme = {
+        ...theme,
+        background: glass ? '#00000000' : theme.background,
+      };
+    };
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: [
+        'data-chrome-glass',
+        'data-assistant-glass',
+        'data-platform',
+      ],
+    });
+    const media = [
+      window.matchMedia('(prefers-reduced-transparency: reduce)'),
+      window.matchMedia('(prefers-contrast: more)'),
+    ];
+    media.forEach((query) => query.addEventListener('change', updateTheme));
+    return () => {
+      observer.disconnect();
+      media.forEach((query) =>
+        query.removeEventListener('change', updateTheme)
+      );
+    };
   }, [appearance, group, tab, generation]);
   useEffect(() => {
     if (active) terminalRef.current?.focus();

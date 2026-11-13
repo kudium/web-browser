@@ -110,8 +110,12 @@ export function AssistantPanelHost({
           return copy;
         })
       );
-      child.document.documentElement.dataset.platform =
-        document.documentElement.dataset.platform;
+      const root = child.document.documentElement;
+      root.dataset.platform = document.documentElement.dataset.platform;
+      root.dataset.chromeGlass = document.documentElement.dataset.chromeGlass;
+      root.dataset.assistantGlass =
+        document.documentElement.dataset.assistantGlass;
+      root.style.cssText = document.documentElement.style.cssText;
       const source = dock.current?.closest('.radix-themes');
       if (source) {
         Array.from(theme.attributes).forEach((attr) =>
@@ -130,6 +134,7 @@ export function AssistantPanelHost({
       subtree: true,
       characterData: true,
     });
+    observer.observe(document.documentElement, { attributes: true });
     const source = dock.current?.closest('.radix-themes');
     if (source) observer.observe(source, { attributes: true });
     theme.appendChild(container);

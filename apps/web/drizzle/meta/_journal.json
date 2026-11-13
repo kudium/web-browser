@@ -36,6 +36,34 @@
       "when": 1794423317411,
       "tag": "0004_perfect_quicksilver",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794528493811,
+      "tag": "0005_silly_tiger_shark",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794529121684,
+      "tag": "0006_pretty_prowler",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794529982176,
+      "tag": "0007_sticky_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794530066012,
+      "tag": "0008_faithful_firedrake",
+      "breakpoints": true
     }
   ]
 }

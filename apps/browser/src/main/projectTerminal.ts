@@ -280,6 +280,10 @@ export class ProjectTerminals {
     };
     delete env.ELECTRON_RUN_AS_NODE;
     delete env.NODE_OPTIONS;
+    // npm injects this when launching the dev app; nvm rejects inherited prefixes.
+    Object.keys(env).forEach((key) => {
+      if (key.toLowerCase() === 'npm_config_prefix') delete env[key];
+    });
     let cwd = session.folder;
     if (session.cwd) {
       const root = fs.realpathSync(session.folder);

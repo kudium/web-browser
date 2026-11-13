@@ -826,6 +826,30 @@ export class AccountSyncClient {
     this.message = 'Disconnected. Local browsing data was kept.';
   }
 
+  async publishHook(data: unknown): Promise<{ id: string; version: number }> {
+    const token = this.saved.credential?.token;
+    if (!token)
+      throw new Error('Sign in through Sync Preferences, then publish again.');
+    const response = await fetch(`${SYNC_ORIGIN}/api/hooks/publish`, {
+      method: 'POST',
+      redirect: 'error',
+      signal: AbortSignal.timeout(20000),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(
+        response.status === 401
+          ? 'Your account session expired. Sign in through Sync Preferences.'
+          : result.error || 'Publishing failed.'
+      );
+    return result;
+  }
+
   async deleteData() {
     const { credential } = this.saved;
     if (!credential) throw new Error('Connect your account first.');

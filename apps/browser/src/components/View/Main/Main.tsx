@@ -74,6 +74,10 @@ import {
   groupTabs,
   newGroupName,
 } from '../../../utils/groups';
+import {
+  OPEN_TERMINAL_LINK,
+  terminalLinkTab,
+} from '../../../browser/terminalLinks';
 import { commandDestination } from '../../../utils/commandNavigation';
 import {
   rememberGroupTab,
@@ -1100,6 +1104,28 @@ export function Main() {
     window.addEventListener('kudiumbrowser-open-project-file', open);
     return () =>
       window.removeEventListener('kudiumbrowser-open-project-file', open);
+  }, [active.id, select]);
+  useEffect(() => {
+    const open = (event: Event) => {
+      const { detail } = event as CustomEvent;
+      if (
+        !detail ||
+        typeof detail.group !== 'string' ||
+        typeof detail.url !== 'string'
+      )
+        return;
+      const item = terminalLinkTab(
+        AppManager.getAll(),
+        detail.group,
+        detail.url,
+        active.id
+      );
+      if (!item || lockedGroup(item)) return;
+      AppManager.add(item);
+      select(item);
+    };
+    window.addEventListener(OPEN_TERMINAL_LINK, open);
+    return () => window.removeEventListener(OPEN_TERMINAL_LINK, open);
   }, [active.id, select]);
   const nativeOverlayOpen = useNativeOverlay();
   const overlayOpen =

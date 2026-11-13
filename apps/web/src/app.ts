@@ -1,3 +1,4 @@
+import { hookRoutes } from './hook-routes';
 import { releasePublishing, type PublishingConfig } from './release-publishing';
 import { registerReleases } from './releases';
 import { Hono } from 'hono';
@@ -18,7 +19,7 @@ import { tutorials } from './tutorials';
 import { whatsNewPage } from './pages';
 import { privacyPage } from './privacy';
 import { managedSync, managedKeyRecord } from './managed-sync';
-export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey }: { syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
+export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey, hookAdminIds }: { hookAdminIds?: string[]; syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
   const app = new Hono<{ Variables: { account: string } }>();
   const store = syncStore(db);
   const managed = syncMasterKey ? managedSync(store, syncMasterKey) : undefined;
@@ -41,6 +42,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   });
   app.notFound(c => c.json({ error: 'not_found' }, 404));
   if (publishing) app.route('/', releasePublishing(publishing, manifests => registerReleases(db, manifests)));
+  app.route('/', hookRoutes(db, auth, hookAdminIds));
   app.get('/health', c => c.json({ status: 'ok' }));
   app.get('/ready', async c => { try { await db.execute(sql`select 1`); return c.json({ status: 'ready', sync: authenticate ? 'configured' : 'unconfigured' }); } catch { return c.json({ status: 'unavailable' }, 503); } });
   app.get('/', c => c.html(homepage()));
@@ -64,7 +66,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/docs/notes-and-activity', c => c.html(notesAndActivityDocumentation()));
   app.get('/tutorials', c => c.html(tutorialIndex()));
   app.get('/tutorials/:slug', c => { const tutorial = tutorials.find(t => t.slug === c.req.param('slug')); return tutorial ? c.html(tutorialPage(tutorial)) : c.notFound(); });
-  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-mentions', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace']);
+  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-glassy', 'ai-mentions', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace']);
   app.get('/assets/product/demo/:filename', async c => {
     const filename = c.req.param('filename');
     if (!filename.endsWith('.webp') || !demoAssets.has(filename.slice(0, -5))) return c.notFound();
@@ -83,6 +85,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     return c.body(await file.arrayBuffer());
   });
   app.get('/assets/download.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/download.js', import.meta.url)).text()); });
+  app.get('/assets/whats-new-fab.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/whats-new-fab.js', import.meta.url)).text()); });
   app.get('/assets/showcase.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/showcase.js', import.meta.url)).text()); });
   app.get('/assets/site.css', async c => { c.header('Cache-Control', 'public, max-age=300'); c.header('Content-Type', 'text/css; charset=utf-8'); return c.body(await Bun.file(new URL('../public/site.css', import.meta.url)).text()); });
   app.use('/api/auth/*', bodyLimit({ maxSize: 64 * 1024, onError: c => c.json({ error: 'body_too_large' }, 413) }));

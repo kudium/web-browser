@@ -2,11 +2,11 @@ name: Browser checks
 on:
   pull_request:
     paths:
-      ["apps/browser/**", ".github/workflows/browser-*.yml", "scripts/ci/**", "scripts/local-release*", "package.json"]
+      ["apps/browser/**", "packages/hooks/**", ".github/workflows/browser-*.yml", "scripts/ci/**", "scripts/local-release*", "package.json"]
   push:
     branches: [main]
     paths:
-      ["apps/browser/**", ".github/workflows/browser-*.yml", "scripts/ci/**", "scripts/local-release*", "package.json"]
+      ["apps/browser/**", "packages/hooks/**", ".github/workflows/browser-*.yml", "scripts/ci/**", "scripts/local-release*", "package.json"]
   workflow_dispatch:
     inputs:
       include_macos:

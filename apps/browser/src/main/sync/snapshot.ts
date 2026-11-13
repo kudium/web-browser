@@ -217,7 +217,7 @@ export function validateIncomingSnapshot(value: unknown): IncomingSnapshot {
       id(space.id);
       label(space.name);
       if (
-        !['iris', 'blue', 'green', 'amber', 'pink'].includes(space.color) ||
+        !['iris', 'red', 'blue', 'green', 'amber', 'pink'].includes(space.color) ||
         !Array.isArray(space.folders) ||
         space.folders.length > 500
       )

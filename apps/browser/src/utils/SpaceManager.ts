@@ -8,20 +8,29 @@ import { readSavedList, writeSavedList } from './storageRecovery';
 export const DEFAULT_SPACE = 'default';
 export const SPACE_KEY = 'kudiumbrowser-spaces';
 export const ACTIVE_SPACE_KEY = 'kudiumbrowser-active-space';
-export const spaceColors = ['iris', 'blue', 'green', 'amber', 'pink'] as const;
+export const spaceColors = [
+  'iris',
+  'red',
+  'blue',
+  'green',
+  'amber',
+  'pink',
+] as const;
 export const spaceColorNames = {
   iris: 'Kudium teal',
+  red: 'Red',
   blue: 'Blue',
   green: 'Green',
-  amber: 'Gold',
+  amber: 'Yellow',
   pink: 'Pink',
 };
 export const spaceColorValues = {
   iris: '#5aaca8',
-  blue: '#6c9bd2',
-  green: '#76ad91',
-  amber: '#d2a35f',
-  pink: '#cd83aa',
+  red: '#df6363',
+  blue: '#568fe0',
+  green: '#4ca87a',
+  amber: '#e9b949',
+  pink: '#df6ca4',
 };
 export type SpaceColor = (typeof spaceColors)[number];
 export type SpaceIconName =
@@ -236,14 +245,21 @@ export const SpaceManager = {
 export function useSpaces() {
   const [spaces, setSpaces] = useState(SpaceManager.getAll);
   const [activeId, setActiveId] = useState(SpaceManager.activeId);
-  useEffect(
-    () =>
-      eventBus.on(EVENT_KEY.SPACE_UPDATE, () => {
-        setSpaces(SpaceManager.getAll());
-        setActiveId(SpaceManager.activeId());
-      }),
-    []
-  );
+  useEffect(() => {
+    const update = () => {
+      setSpaces(SpaceManager.getAll());
+      setActiveId(SpaceManager.activeId());
+    };
+    const unsubscribe = eventBus.on(EVENT_KEY.SPACE_UPDATE, update);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === SPACE_KEY || event.key === null) update();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
   return {
     spaces,
     activeId,

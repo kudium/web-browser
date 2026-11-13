@@ -1,14 +1,35 @@
 import path from 'path';
 import fs from 'fs';
-import { app, BrowserWindow, ipcMain, shell, screen } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  shell,
+  screen,
+  nativeTheme,
+} from 'electron';
 import type { IpcMainEvent, WebContents } from 'electron';
 import type { BrowserCommand } from '../browser/contracts';
 import type { SiteDeveloperWindowState } from '../browser/siteDeveloper';
 import { isBrowserCommand } from './browserRequests';
 import { resolveHtmlPath } from './util';
 import { protectWindowNavigation } from './windowNavigation';
+import { getBrowserPreferences } from './preferences';
 
 const editorContents = new WeakSet<WebContents>();
+const editorBindings = new WeakMap<
+  WebContents,
+  {
+    host: WebContents;
+    id: string;
+    profile: string;
+    origin: string;
+    current: () => boolean;
+  }
+>();
+export function getSiteDeveloperBinding(contents: WebContents) {
+  return editorBindings.get(contents);
+}
 export function isSiteDeveloperEditor(contents: WebContents) {
   return editorContents.has(contents) && !contents.isDestroyed();
 }
@@ -94,6 +115,13 @@ export function registerSiteDeveloperWindows(
       minHeight: 480,
       show: false,
       resizable: true,
+      backgroundColor: '#00000000',
+      ...(process.platform === 'darwin' && {
+        vibrancy: nativeTheme.prefersReducedTransparency
+          ? undefined
+          : ('sidebar' as const),
+        visualEffectState: 'followWindow' as const,
+      }),
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
@@ -103,6 +131,22 @@ export function registerSiteDeveloperWindows(
           : path.join(__dirname, '../../.erb/dll/preload.js'),
       },
     });
+    const updateMaterial = () => {
+      if (process.platform === 'darwin' && !editor.isDestroyed())
+        editor.setVibrancy(
+          nativeTheme.prefersReducedTransparency ||
+            nativeTheme.shouldUseHighContrastColors
+            ? null
+            : 'sidebar'
+        );
+    };
+    if (process.platform === 'darwin') {
+      nativeTheme.on('updated', updateMaterial);
+      updateMaterial();
+      editor.once('closed', () =>
+        nativeTheme.removeListener('updated', updateMaterial)
+      );
+    }
     editorContents.add(editor.webContents);
     let resizeTimer: ReturnType<typeof setTimeout> | undefined;
     editor.on('resize', () => {
@@ -120,15 +164,27 @@ export function registerSiteDeveloperWindows(
         ? latest.state
         : undefined;
     };
+    editorBindings.set(editor.webContents, {
+      host: event.sender,
+      id,
+      profile: target.profile,
+      origin,
+      current: () => !!current()?.available,
+    });
     let previous = '';
     let lastState = target.state;
     const update = (force = false) => {
       if (editor.isDestroyed()) return;
       const latest = current();
       if (latest) lastState = latest;
+      const preferences = getBrowserPreferences();
       const state: SiteDeveloperWindowState = {
         ...(latest || { ...lastState, available: false }),
         selectedHookId: hookId,
+        material: {
+          translucentChrome: preferences.translucentChrome,
+          translucentAI: preferences.translucentAI,
+        },
       };
       const serialized = JSON.stringify(state);
       if (force || serialized !== previous) {

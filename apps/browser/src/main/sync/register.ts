@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { setHookPublisher, setHookAccountStatus } from '../hookMarketplace';
 import {
   authenticatePersonalData,
   withPersonalData,
@@ -64,6 +65,11 @@ export function registerAccountSync(
       });
     return client;
   };
+  setHookPublisher((data) => get().publishHook(data));
+  setHookAccountStatus(() => {
+    const status = get().status();
+    return { signedIn: status.connected, email: status.email };
+  });
   ipcMain.handle(
     'account-sync',
     async (event, action: AccountSyncAction, input: AccountSyncInput = {}) => {

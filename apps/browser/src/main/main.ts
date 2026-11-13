@@ -22,6 +22,10 @@ import {
 } from 'electron';
 import log from 'electron-log';
 import fs from 'fs';
+import {
+  queueHookInstallLink,
+  deliverHookInstallLinks,
+} from './hookMarketplace';
 import { onWindowClosed } from './windowLifecycle';
 import {
   initializeLocalStorage,
@@ -386,8 +390,11 @@ createAdditionalWindow = async () => {
 const openExternalLink = (value: string) => {
   try {
     const url = new URL(value);
-    if (!['http:', 'https:'].includes(url.protocol)) return;
-    externalLinks.push({ url: value, activeGroup: true });
+    if (url.protocol === 'kudium:' && url.hostname === 'install-hook')
+      queueHookInstallLink(value);
+    else if (['http:', 'https:'].includes(url.protocol))
+      externalLinks.push({ url: value, activeGroup: true });
+    else return;
     if (app.isReady()) {
       createNewWindow(MAIN_WINDOW)
         .then(() => {
@@ -396,6 +403,7 @@ const openExternalLink = (value: string) => {
           host?.show();
           host?.focus();
           deliverExternalLinks();
+          if (host) deliverHookInstallLinks(host);
         })
         .catch(() => log.error('Unable to open external link window'));
     }
@@ -418,12 +426,13 @@ app.on('open-url', (event, url) => {
   event.preventDefault();
   openExternalLink(url);
 });
+if (app.isPackaged) app.setAsDefaultProtocolClient('kudium');
 const hasInstanceLock = app.requestSingleInstanceLock();
 if (!hasInstanceLock) app.quit();
 else {
   app.on('second-instance', (_event, argv) => {
     argv
-      .filter((value) => /^https?:\/\//i.test(value))
+      .filter((value) => /^(https?:\/\/|kudium:\/\/install-hook)/i.test(value))
       .forEach(openExternalLink);
     const host = activeWindows.main;
     if (host?.isMinimized()) host.restore();
@@ -431,7 +440,7 @@ else {
     host?.focus();
   });
   process.argv
-    .filter((value) => /^https?:\/\//i.test(value))
+    .filter((value) => /^(https?:\/\/|kudium:\/\/install-hook)/i.test(value))
     .forEach(openExternalLink);
 }
 
@@ -484,7 +493,9 @@ registerBrowserMigration(
     isBrowserChrome(contents)
 );
 registerActivity((contents) => isBrowserChrome(contents));
-registerHookLanguage((contents) => isBrowserChrome(contents) || isSiteDeveloperEditor(contents));
+registerHookLanguage(
+  (contents) => isBrowserChrome(contents) || isSiteDeveloperEditor(contents)
+);
 registerPasswordManager(
   (contents) =>
     activeWindows.settings?.webContents === contents ||

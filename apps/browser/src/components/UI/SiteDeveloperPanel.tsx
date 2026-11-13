@@ -7,13 +7,22 @@ import { createPortal } from 'react-dom';
 import {
   AlertDialog,
   Button,
+  DropdownMenu,
   IconButton,
   Popover,
   Switch,
   Tabs,
   TextField,
 } from '@radix-ui/themes';
-import { RotateCw, Plus, Settings2, Trash2 } from 'lucide-react';
+import {
+  RotateCw,
+  Plus,
+  Settings2,
+  Trash2,
+  Store,
+  MoreHorizontal,
+} from 'lucide-react';
+import { OPEN_HOOK_MARKETPLACE } from './HookMarketplaceDialog';
 import { HookPresets } from './HookPresets';
 import { HookHistory } from './HookHistory';
 import { HookAISetup } from './HookAISetup';
@@ -128,6 +137,15 @@ export function SiteDeveloperPanel({
         draft)[stage].slice(0, 20000)}`,
     });
   };
+  let publishHint = 'Publish this saved hook to the marketplace';
+  if (dirty) publishHint = 'Save changes before publishing';
+  else if (![code.before, code.after, code.css].some((value) => value.trim()))
+    publishHint = 'Add code before publishing';
+  const globalStatus = developer?.globalHookCount
+    ? `${developer.globalHookCount} global hook${
+        developer.globalHookCount === 1 ? '' : 's'
+      } active`
+    : 'Hooks are off';
   const toolbar = (
     <div className="site-developer-toolbar">
       <span id="site-developer-enable-label">Enable site hooks</span>
@@ -204,7 +222,7 @@ export function SiteDeveloperPanel({
         <span>
           {saved.enabled
             ? labels[developer?.status || 'waiting']
-            : 'Hooks are off'}
+            : globalStatus}
         </span>
         {dirty && <span className="site-developer-unsaved">Unsaved</span>}
       </div>
@@ -217,35 +235,94 @@ export function SiteDeveloperPanel({
         <div className="site-hooks-layout">
           <aside className="site-hooks-sidebar" aria-label="Site hooks">
             <div className="site-hooks-sidebar-heading">
-              <h2>Hooks</h2>
-              <IconButton
+              <h2 className="visually-hidden">Hooks</h2>
+              <Button
                 size="1"
-                variant="ghost"
-                color="gray"
-                aria-label="Add hook"
-                disabled={disabled || (draft.hooks?.length || 0) >= 20}
-                onClick={() => {
-                  const id = crypto.randomUUID();
-                  setDraft({
-                    ...draft,
-                    hooks: [
-                      ...(draft.hooks || []),
-                      {
-                        id,
-                        name: 'New hook',
-                        enabled: true,
-                        path: '/*',
-                        before: '',
-                        after: '',
-                        css: '',
-                      },
-                    ],
-                  });
-                  setHookId(id);
-                }}
+                variant="soft"
+                className="site-hooks-get-button"
+                disabled={disabled}
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                      detail: { mode: 'import', origin, hookId },
+                    })
+                  )
+                }
               >
-                <Plus size={16} />
-              </IconButton>
+                <Store size={14} aria-hidden="true" /> Get Hooks
+              </Button>
+              <div className="site-hooks-heading-actions">
+                <IconButton
+                  size="1"
+                  variant="ghost"
+                  color="gray"
+                  aria-label="Add hook"
+                  disabled={disabled || (draft.hooks?.length || 0) >= 20}
+                  onClick={() => {
+                    const id = crypto.randomUUID();
+                    setDraft({
+                      ...draft,
+                      hooks: [
+                        ...(draft.hooks || []),
+                        {
+                          id,
+                          name: 'New hook',
+                          enabled: true,
+                          path: '/*',
+                          before: '',
+                          after: '',
+                          css: '',
+                        },
+                      ],
+                    });
+                    setHookId(id);
+                  }}
+                >
+                  <Plus size={16} />
+                </IconButton>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger>
+                    <IconButton
+                      variant="ghost"
+                      size="1"
+                      color="gray"
+                      disabled={disabled}
+                      aria-label="More hook actions"
+                    >
+                      <MoreHorizontal size={16} />
+                    </IconButton>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content>
+                    {(
+                      [
+                        ['global', 'Global hooks'],
+                        ['publish', 'Publish saved hook'],
+                        ['updates', 'Check for updates'],
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <DropdownMenu.Item
+                        key={mode}
+                        disabled={
+                          mode === 'publish' &&
+                          (dirty ||
+                            ![code.before, code.after, code.css].some((value) =>
+                              value.trim()
+                            ))
+                        }
+                        onSelect={() =>
+                          window.dispatchEvent(
+                            new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                              detail: { mode, origin, hookId },
+                            })
+                          )
+                        }
+                      >
+                        {label}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
+              </div>
             </div>
             <div className="site-hooks-list">
               <button
@@ -673,7 +750,9 @@ export function SiteDeveloperPanel({
       )}
       <footer className="site-settings-footer site-developer-footer">
         <span>
-          {dirty ? 'Unsaved changes' : 'Saved · Run reloads this page'}
+          {dirty
+            ? 'Unsaved changes · Save before publishing'
+            : 'Saved · Run reloads this page'}
         </span>
         <Button
           variant="soft"
@@ -689,6 +768,25 @@ export function SiteDeveloperPanel({
           }}
         >
           Save hooks
+        </Button>
+        <Button
+          variant="soft"
+          color="gray"
+          disabled={
+            disabled ||
+            dirty ||
+            ![code.before, code.after, code.css].some((value) => value.trim())
+          }
+          title={publishHint}
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                detail: { mode: 'publish', origin, hookId },
+              })
+            )
+          }
+        >
+          Publish
         </Button>
         <Button
           disabled={

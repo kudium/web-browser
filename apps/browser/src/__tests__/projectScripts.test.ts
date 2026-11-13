@@ -4,6 +4,8 @@ import os from 'os';
 import path from 'path';
 import {
   projectScripts,
+  importProjectScripts,
+  onProjectScriptsChanged,
   savedProjectScript,
   validScriptRequest,
 } from '../main/projectScripts';
@@ -105,5 +107,62 @@ it('rejects malformed commands and refuses to run invalid saved data', () => {
   );
   expect(() => savedProjectScript('one', '/code/a', 'bad')).toThrow(
     'no longer available'
+  );
+});
+
+it('notifies after persisted saves and deletions, but not reads or rejected writes', () => {
+  const changed = jest.fn();
+  const stop = onProjectScriptsChanged(changed);
+  try {
+    const saved = projectScripts('one', '/code/a', {
+      action: 'save',
+      name: 'Dev',
+      command: 'npm run dev',
+      scope: 'project',
+    })[0];
+    expect(changed).toHaveBeenCalledTimes(1);
+    projectScripts('one', '/code/a', { action: 'list' });
+    expect(changed).toHaveBeenCalledTimes(1);
+    projectScripts('one', '/code/a', { action: 'delete', id: saved.id });
+    expect(changed).toHaveBeenCalledTimes(2);
+    expect(() =>
+      projectScripts('one', '/code/a', { action: 'delete', id: saved.id })
+    ).toThrow();
+    expect(changed).toHaveBeenCalledTimes(2);
+  } finally {
+    stop();
+  }
+});
+
+it('imports selected commands atomically, skips duplicates and never overwrites saved scripts', () => {
+  const candidate = {
+    id: 'a'.repeat(64),
+    name: 'Test',
+    command: 'cargo test',
+    source: 'Cargo.toml',
+    kind: 'standard' as const,
+  };
+  const first = importProjectScripts('one', '/code/a', [candidate, candidate]);
+  expect(first.imported).toBe(1);
+  const again = importProjectScripts('one', '/code/a', [candidate]);
+  expect(again.imported).toBe(0);
+  expect(again.scripts).toEqual(first.scripts);
+  expect(() =>
+    importProjectScripts('one', '/code/a', [
+      { ...candidate, name: 'Valid', command: 'cargo build' },
+      { ...candidate, command: 'bad\ncommand' },
+    ])
+  ).toThrow('invalid');
+  expect(projectScripts('one', '/code/a', { action: 'list' })).toEqual(
+    first.scripts
+  );
+  const many = Array.from({ length: 64 }, (_, index) => ({
+    ...candidate,
+    name: `Task ${index}`,
+    command: `echo ${index}`,
+  }));
+  expect(() => importProjectScripts('one', '/code/a', many)).toThrow('64');
+  expect(projectScripts('one', '/code/a', { action: 'list' })).toEqual(
+    first.scripts
   );
 });

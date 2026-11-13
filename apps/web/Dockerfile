@@ -1,11 +1,12 @@
 FROM oven/bun:1.2.19
-WORKDIR /app
-COPY --chown=bun:bun package.json bun.lock ./
+WORKDIR /app/apps/web
+COPY --chown=bun:bun apps/web/package.json apps/web/bun.lock ./
 RUN bun install --frozen-lockfile --production
-COPY --chown=bun:bun src ./src
-COPY --chown=bun:bun public ./public
-COPY --chown=bun:bun scripts ./scripts
-COPY --chown=bun:bun drizzle ./drizzle
+COPY --chown=bun:bun apps/web/src ./src
+COPY --chown=bun:bun apps/web/public ./public
+COPY --chown=bun:bun apps/web/scripts ./scripts
+COPY --chown=bun:bun apps/web/drizzle ./drizzle
+COPY --chown=bun:bun packages/hooks /app/packages/hooks
 ENV NODE_ENV=production PORT=3000
 RUN mkdir -p /app/release-assets && chown bun:bun /app/release-assets
 VOLUME ["/app/release-assets"]

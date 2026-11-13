@@ -1,6 +1,7 @@
+import { createHash, randomUUID } from 'crypto';
+import { effectiveHookConfig } from './globalHooks';
 /* The constructor stores injected local services; keys do not belong to instances. */
 /* eslint-disable no-useless-constructor, no-empty-function, class-methods-use-this */
-import { createHash, randomUUID } from 'crypto';
 import type {
   SiteDeveloperConfig,
   HookNotificationBinding,
@@ -15,7 +16,7 @@ import {
   onPersonalDataRevoked,
 } from './passwordManager';
 import { getGroupLocks } from './groupLocks';
-import { getSiteSettings, onSiteSettingsChanged } from './siteSettings';
+import { onSiteSettingsChanged } from './siteSettings';
 import { deliverHookWebhook, webhookURL } from './hookWebhook';
 
 export interface HookContext {
@@ -449,11 +450,7 @@ export function hookNotifications() {
       service!.revokeLocked();
     });
     onSiteSettingsChanged((profile, origin) =>
-      service!.reconcile(
-        profile,
-        origin,
-        getSiteSettings(profile, origin).developer
-      )
+      service!.reconcile(profile, origin, effectiveHookConfig(profile, origin))
     );
   }
   return service;

@@ -39,6 +39,8 @@ const context = vm.createContext({
   process: { argv: ['KudiumBrowser', 'https://example.com/cold?q=1#anchor'] },
   URL,
   randomUUID: require('crypto').randomUUID,
+  queueHookInstallLink: () => {},
+  deliverHookInstallLinks: () => {},
   MAIN_WINDOW: {},
   createNewWindow: async () => {},
 });

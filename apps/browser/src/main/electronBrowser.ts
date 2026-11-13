@@ -15,6 +15,9 @@ import {
   nativeImage,
   RestoreOptions,
 } from 'electron';
+import { effectiveHookConfig } from './globalHooks';
+import { registerHookMarketplace } from './hookMarketplace';
+import { aiGroupId } from '../browser/aiGroups';
 import { projectFileNavigation } from './projectFileNavigation';
 import { onWindowClosed } from './windowLifecycle';
 import { presentSnapshots } from './snapshotPresentation';
@@ -1418,10 +1421,10 @@ export function registerElectronBrowser(
     ) {
       const origin = siteOrigin(contents?.getURL() || targetGroup.url);
       if (!origin || origin !== request.url) return;
-      const config = getSiteSettings(
+      const config = effectiveHookConfig(
         loginProfileKey(targetGroup),
-        origin
-      ).developer;
+        contents?.getURL() || targetGroup.url
+      );
       if (!config) return;
       const context = {
         groupId: groupKey(targetGroup),
@@ -1470,7 +1473,10 @@ export function registerElectronBrowser(
             throw new Error('Group or permissions changed during review.');
           permissions.activate(request.grantId!, {
             ...context,
-            config: getSiteSettings(context.profile, origin).developer!,
+            config: effectiveHookConfig(
+              context.profile,
+              views.get(request.id)?.webContents.getURL() || current.url
+            ),
           });
         }
         if (!window.isDestroyed())
@@ -2113,6 +2119,24 @@ export function registerElectronBrowser(
       ? views.get(id)?.webContents
       : undefined;
   });
+  registerHookMarketplace(window, () =>
+    [...configurations].flatMap(([id, item]) => {
+      if (item.archived || isGroupLocked(item) || removals.blocks(item))
+        return [];
+      const url = views.get(id)?.webContents.getURL() || item.url;
+      if (!siteOrigin(url)) return [];
+      return [
+        {
+          id,
+          name: item.name,
+          groupName: item.sessionName || item.name,
+          groupId: aiGroupId(item),
+          profile: loginProfileKey(item),
+          url,
+        },
+      ];
+    })
+  );
   developerWindows = registerSiteDeveloperWindows(
     (id) => {
       const contents = views.get(id)?.webContents;
@@ -2148,13 +2172,7 @@ export function registerElectronBrowser(
                   profile: loginProfileKey(config),
                   scope: personalDataScope(config),
                   origin,
-                  config: getSiteSettings(loginProfileKey(config), origin)
-                    .developer || {
-                    enabled: false,
-                    before: '',
-                    after: '',
-                    css: '',
-                  },
+                  config: effectiveHookConfig(loginProfileKey(config), pageURL),
                 }),
                 status: savedDeveloperErrors.has(id) ? 'error' : 'waiting',
                 logs: savedDeveloperErrors.has(id)

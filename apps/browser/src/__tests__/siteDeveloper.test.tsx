@@ -637,3 +637,33 @@ it('lets users keep a custom hook disabled while the site is enabled', () => {
     }),
   });
 });
+
+it('offers publishing beside save and run for saved default code and blocks unsaved changes', () => {
+  const config = { ...emptyDeveloperConfig, after: 'log("saved")' };
+  const listener = jest.fn();
+  window.addEventListener('kudium-hooks-dialog', listener);
+  const view = render(
+    <Theme>
+      <SiteDeveloperPanel
+        developer={{ config, status: 'waiting', logs: [] }}
+        disabled={false}
+        origin="https://example.com"
+        send={jest.fn()}
+      />
+    </Theme>
+  );
+  const publish = screen.getByRole('button', { name: 'Publish' });
+  expect(publish).toBeEnabled();
+  fireEvent.click(publish);
+  expect(listener.mock.calls[0][0].detail).toEqual({
+    mode: 'publish',
+    origin: 'https://example.com',
+    hookId: '',
+  });
+  fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
+    target: { value: 'draft' },
+  });
+  expect(publish).toBeDisabled();
+  view.unmount();
+  window.removeEventListener('kudium-hooks-dialog', listener);
+});

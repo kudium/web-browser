@@ -54,3 +54,10 @@ Their download pages permit personal and commercial use without required attribu
 The disposable profile contains five groups of four tabs: Social (YouTube, Reddit, Instagram, LinkedIn), Work (Notion, Linear, Google Calendar, Slack), Design (Figma, Dribbble, Unsplash, Apple), Development (GitHub, Bun, React, the local Atlas Studio project), and Reading (Hacker News, MDN, Wikipedia, The Verge). Site icons are fetched before capture and stored as image data. Public websites are photographed live; no personal accounts are used. The developer workspace links the actual demo folder through production project IPC. The terminal runs the demo test. AI is an unsent planning draft with an attached brief.
 
 The same profile also has four global Favorites: ChatGPT, Perplexity, Gemini, and Google Translate. `sidebar-expanded`, `sidebar-collapsed`, and `address-group-picker` show the same Apple page with the sidebar open, hidden, and its address-bar group picker open. Only visible native webpage layers are composited; suspended pages use the browser’s own snapshot beneath its popover.
+
+## Current refresh workflow
+
+From the repository root, use `npm run showcase:refresh` after starting the renderer.
+Read [SHOWCASE.md](SHOWCASE.md) for the LLM runbook and verification checklist.
+`atlas-studio/docs/launch-plan.md` contains reusable fictional team and launch data.
+The capture includes both the solid default AI panel and the optional glassy panel.

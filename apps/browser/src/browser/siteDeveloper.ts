@@ -1,3 +1,5 @@
+import { validInstalledHookSource } from './hookMarketplace';
+
 export interface HookNotificationPermission {
   id: string;
   key: string;
@@ -7,6 +9,7 @@ export interface HookNotificationPermission {
 }
 
 export interface SiteHook {
+  installed?: import('./hookMarketplace').InstalledHookSource;
   id: string;
   name: string;
   enabled: boolean;
@@ -39,6 +42,7 @@ export interface HookRevision {
   workingHooks?: string[];
 }
 export interface SiteDeveloperState {
+  globalHookCount?: number;
   config: SiteDeveloperConfig;
   status: 'waiting' | 'running' | 'success' | 'error';
   logs: SiteDeveloperLog[];
@@ -69,6 +73,9 @@ export function validDeveloperConfig(
             typeof hook.id === 'string' &&
             hook.id.length > 0 &&
             hook.id.length <= 100 &&
+            !hook.id.startsWith('global:') &&
+            (hook.installed === undefined ||
+              validInstalledHookSource(hook.installed)) &&
             typeof hook.name === 'string' &&
             hook.name.length <= 120 &&
             typeof hook.enabled === 'boolean' &&
@@ -90,6 +97,7 @@ export function validDeveloperConfig(
 }
 
 export interface SiteDeveloperWindowState {
+  material?: { translucentChrome: boolean; translucentAI: boolean };
   selectedHookId?: string;
   origin: string;
   groupName: string;

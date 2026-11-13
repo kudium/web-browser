@@ -24,7 +24,7 @@ function validateICNS(bytes: Buffer) {
         throw new Error('Icon dimensions exceed supported limits.');
       images += 1;
     } else if (
-      /^(ICON|ICN#|icm[#48]|ics[#48]|icl[48]|ich[48]|is32|il32|ih32|it32|[slht]8mk)$/.test(
+      /^(ic0[45]|ICON|ICN#|icm[#48]|ics[#48]|icl[48]|ich[48]|is32|il32|ih32|it32|[slht]8mk)$/.test(
         kind
       )
     ) {

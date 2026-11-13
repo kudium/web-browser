@@ -24,7 +24,7 @@ if (form) form.addEventListener('submit', async event => {
     const email = String(fields.get('email') || '').trim();
     const password = String(fields.get('password') || '');
     const next = new URLSearchParams(location.search).get('next');
-    const destination = next && /^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(next) ? next : '/account';
+    const destination = next && (/^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(next) || /^\/(?:hooks(?:\/(?:new|admin|[A-Za-z0-9-]{1,100})(?:\/edit)?)?|account\/hooks)$/.test(next)) ? next : '/account';
     const callbackURL = `${location.origin}${destination}`;
     if (mode === 'sign-up') {
       const result = await authRequest('sign-up/email', { name: String(fields.get('name') || '').trim(), email, password, callbackURL });
@@ -54,7 +54,7 @@ if (signOut) signOut.addEventListener('click', async () => {
 });
 // Preserve a device approval request when moving between sign-in and sign-up.
 const returnTo = new URLSearchParams(location.search).get('next');
-if (returnTo && /^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(returnTo)) {
+if (returnTo && (/^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(returnTo) || /^\/(?:hooks(?:\/(?:new|admin|[A-Za-z0-9-]{1,100})(?:\/edit)?)?|account\/hooks)$/.test(returnTo))) {
   for (const link of document.querySelectorAll('a[href="/sign-in"],a[href="/sign-up"]')) {
     link.href = `${link.getAttribute('href')}?next=${encodeURIComponent(returnTo)}`;
   }

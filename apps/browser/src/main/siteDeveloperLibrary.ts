@@ -6,6 +6,7 @@ import {
   IpcMainInvokeEvent,
 } from 'electron';
 import { fileURLToPath } from 'url';
+import { discoverProjectScripts } from './projectScriptDiscovery';
 import { registerSidebarDrop } from './sidebarDrop';
 import { transferGroup } from './groupTransfer';
 import type { IApp } from '../types';
@@ -19,7 +20,11 @@ import {
 import { developerState, onDeveloperStateChanged } from './siteDeveloper';
 import { isGroupLocked, getGroupLocks } from './groupLocks';
 import { aiGroupId, aiGroups } from '../browser/aiGroups';
-import { projectAction, linkedProjectFolder } from './developerProject';
+import {
+  projectAction,
+  linkedProjectFolder,
+  onProjectChanged,
+} from './developerProject';
 import { installedEditors, chooseProjectEditor } from './projectEditors';
 import {
   ProjectTerminals,
@@ -29,6 +34,8 @@ import {
 import { projectFiles, validFilesRequest } from './projectFiles';
 import {
   projectScripts,
+  importProjectScripts,
+  onProjectScriptsChanged,
   savedProjectScript,
   validScriptRequest,
 } from './projectScripts';
@@ -195,6 +202,41 @@ export function registerSiteDeveloperLibrary(
           throw new Error('Invalid script request.');
         const group = owner.groupForSource(id);
         const folder = owner.validateGroup(group);
+        if (request.action === 'discover' || request.action === 'import') {
+          return (async () => {
+            const ensureAccess = () => {
+              if (
+                owner.host.isDestroyed() ||
+                owner.groupForSource(id) !== group ||
+                owner.validateGroup(group) !== folder
+              )
+                throw new Error('This project changed. Reopen Scripts.');
+            };
+            const found = await discoverProjectScripts(folder, ensureAccess);
+            ensureAccess();
+            const saved = projectScripts(group, folder, { action: 'list' });
+            if (request.action === 'discover')
+              return {
+                scripts: saved,
+                ...found,
+                candidates: found.candidates.map((candidate) => ({
+                  ...candidate,
+                  saved: saved.some(
+                    (script) =>
+                      script.scope === 'project' &&
+                      script.command === candidate.command
+                  ),
+                })),
+              };
+            const selected = new Set(request.ids);
+            const candidates = found.candidates.filter((candidate) =>
+              selected.has(candidate.id)
+            );
+            if (candidates.length !== selected.size)
+              throw new Error('Project tasks changed. Scan the project again.');
+            return importProjectScripts(group, folder, candidates);
+          })();
+        }
         if (request.action === 'run') {
           const script = savedProjectScript(group, folder, request.id);
           const terminal = owner.terminals.runCommand(
@@ -374,6 +416,17 @@ export function registerSiteDeveloperLibrary(
     if (!source) throw new Error('This group is no longer available.');
     return developerPageSummaries(items, source, contents);
   });
+  const offScripts = onProjectScriptsChanged(() => {
+    if (!host.isDestroyed())
+      host.webContents.send('site-developer-library-changed');
+  });
+  const offProjects = onProjectChanged((key) => {
+    if (
+      !host.isDestroyed() &&
+      tabs().some((tab) => !tab.archived && aiGroupId(tab) === key)
+    )
+      host.webContents.send('site-developer-library-changed');
+  });
   const offRuntime = onDeveloperStateChanged?.((page) => {
     if (!host.isDestroyed() && tabs().some((tab) => contents(tab.id) === page))
       host.webContents.send('site-developer-library-changed');
@@ -387,6 +440,8 @@ export function registerSiteDeveloperLibrary(
   });
   return () => {
     offDrop();
+    offProjects();
+    offScripts();
     offChanges();
     offRuntime?.();
     libraries.delete(hostId);

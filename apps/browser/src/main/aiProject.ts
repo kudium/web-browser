@@ -136,6 +136,7 @@ export async function aiProjectTool(options: {
     const request = args.scriptRequest;
     if (
       !validScriptRequest(request) ||
+      !['list', 'save', 'delete', 'run'].includes(request.action) ||
       (request.action === 'save' && request.scope !== 'project')
     )
       throw new Error('AI can save scripts only in this project.');

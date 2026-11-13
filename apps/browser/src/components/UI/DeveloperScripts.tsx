@@ -16,9 +16,9 @@ import {
   Pencil,
   Trash2,
   ArrowLeft,
+  Download,
   ChevronRight,
 } from 'lucide-react';
-import { SettingsLibrary } from './SettingsLibrary';
 import {
   PanelDropdownContent,
   PanelDialogContent,
@@ -27,6 +27,7 @@ import {
 } from './PanelDialog';
 import type {
   ProjectScript,
+  ProjectScriptCandidate,
   ProjectScriptRequest,
 } from '../../browser/developerProject';
 import { scriptCommandPresets } from '../../browser/scriptCommandPresets';
@@ -48,7 +49,16 @@ export function DeveloperScripts({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [candidates, setCandidates] = useState<ProjectScriptCandidate[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [selectedImports, setSelectedImports] = useState<Set<string>>(
+    new Set()
+  );
+  const [importMessage, setImportMessage] = useState('');
+  const importSlots = Math.max(0, 64 - scripts.length);
   const [id, setId] = useState<string>();
   const [name, setName] = useState('');
   const [command, setCommand] = useState('');
@@ -74,6 +84,7 @@ export function DeveloperScripts({
   const live = useRef(true);
   const acting = useRef(false);
   const revision = useRef(0);
+  const requestSequence = useRef(0);
   useEffect(() => {
     live.current = true;
     return () => {
@@ -83,24 +94,54 @@ export function DeveloperScripts({
   }, [sourceId]);
   const request = async (value: ProjectScriptRequest) => {
     const { current } = revision;
+    requestSequence.current += 1;
+    const sequence = requestSequence.current;
     const result = await window.electron.siteDeveloper.scripts(sourceId, value);
-    if (live.current && current === revision.current)
+    if (
+      live.current &&
+      current === revision.current &&
+      sequence === requestSequence.current
+    )
       setScripts(result.scripts);
     return result;
   };
   const refresh = async () => {
     const { current } = revision;
+    const sequence = requestSequence.current + 1;
     setLoading(true);
     setError('');
     try {
       await request({ action: 'list' });
     } catch (reason) {
-      if (live.current && current === revision.current)
+      if (
+        live.current &&
+        current === revision.current &&
+        sequence === requestSequence.current
+      )
         setError(projectErrorMessage(reason));
     } finally {
-      if (live.current && current === revision.current) setLoading(false);
+      if (
+        live.current &&
+        current === revision.current &&
+        sequence === requestSequence.current
+      )
+        setLoading(false);
     }
   };
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  useEffect(() => {
+    if (!open && !menuOpen) return undefined;
+    const reload = () => {
+      refreshRef.current();
+    };
+    const stop = window.electron.siteDeveloper.onPagesChanged?.(reload);
+    window.addEventListener('focus', reload);
+    return () => {
+      stop?.();
+      window.removeEventListener('focus', reload);
+    };
+  }, [sourceId, open, menuOpen]);
   const run = async (scriptId: string) => {
     if (acting.current) return;
     acting.current = true;
@@ -178,14 +219,68 @@ export function DeveloperScripts({
     acting.current = true;
     setBusy(true);
     setError('');
+    const { current } = revision;
     try {
       await request({ action: 'delete', id: scriptId });
-      if (live.current) setDeleting(undefined);
+      if (live.current && current === revision.current) setDeleting(undefined);
     } catch (reason) {
-      if (live.current) setError(projectErrorMessage(reason));
+      if (live.current && current === revision.current)
+        setError(projectErrorMessage(reason));
     } finally {
       acting.current = false;
-      if (live.current) setBusy(false);
+      if (live.current && current === revision.current) setBusy(false);
+    }
+  };
+  const discover = async () => {
+    if (acting.current) return;
+    const { current } = revision;
+    acting.current = true;
+    setBusy(true);
+    setError('');
+    setImportMessage('');
+    setImporting(true);
+    setCandidates([]);
+    setWarnings([]);
+    setSelectedImports(new Set());
+    try {
+      const result = await request({ action: 'discover' });
+      if (live.current && current === revision.current) {
+        setCandidates(result.candidates || []);
+        setWarnings(result.warnings || []);
+      }
+    } catch (reason) {
+      if (live.current && current === revision.current)
+        setError(projectErrorMessage(reason));
+    } finally {
+      acting.current = false;
+      if (live.current && current === revision.current) setBusy(false);
+    }
+  };
+  const importSelected = async () => {
+    if (acting.current || !selectedImports.size) return;
+    const { current } = revision;
+    acting.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      const result = await request({
+        action: 'import',
+        ids: [...selectedImports],
+      });
+      if (live.current && current === revision.current) {
+        setImporting(false);
+        setImportMessage(
+          `Imported ${result.imported || 0} script${
+            result.imported === 1 ? '' : 's'
+          } into this project.`
+        );
+      }
+    } catch (reason) {
+      if (live.current && current === revision.current)
+        setError(projectErrorMessage(reason));
+    } finally {
+      acting.current = false;
+      if (live.current && current === revision.current) setBusy(false);
     }
   };
   const entries = (target: 'project' | 'global') =>
@@ -194,6 +289,7 @@ export function DeveloperScripts({
     <>
       <DropdownMenu.Root
         onOpenChange={(shown) => {
+          setMenuOpen(shown);
           if (shown) refresh();
         }}
       >
@@ -245,6 +341,8 @@ export function DeveloperScripts({
             onSelect={() => {
               setOpen(true);
               setEditing(false);
+              setImporting(false);
+              setImportMessage('');
               setDeleting(undefined);
               refresh();
             }}
@@ -279,9 +377,17 @@ export function DeveloperScripts({
           }}
         >
           <PanelDialogHeader
-            title={editing ? (id ? 'Edit script' : 'New script') : 'Scripts'}
+            title={
+              importing
+                ? 'Import scripts'
+                : editing
+                ? id
+                  ? 'Edit script'
+                  : 'New script'
+                : 'Scripts'
+            }
             leading={
-              editing ? (
+              editing || importing ? (
                 <IconButton
                   type="button"
                   size="1"
@@ -291,6 +397,7 @@ export function DeveloperScripts({
                   disabled={busy}
                   onClick={() => {
                     setEditing(false);
+                    setImporting(false);
                     setError('');
                   }}
                 >
@@ -299,7 +406,129 @@ export function DeveloperScripts({
               ) : null
             }
           />
-          {editing ? (
+          {importing ? (
+            <>
+              <Dialog.Description className="developer-script-hint">
+                Select commands to save for this project. Importing does not run
+                them.
+              </Dialog.Description>
+              {busy && !candidates.length && (
+                <p className="developer-script-hint">
+                  Scanning project task files…
+                </p>
+              )}
+              {!busy && !candidates.length && !error && (
+                <p className="developer-script-hint">
+                  No supported task files found. You can still add a script
+                  manually.
+                </p>
+              )}
+              {importSlots === 0 && (
+                <p className="developer-script-hint">
+                  Remove a saved script to make room for imports.
+                </p>
+              )}
+              {!!candidates.length && (
+                <>
+                  <div className="developer-script-import-actions">
+                    <Button
+                      size="1"
+                      color="gray"
+                      variant="soft"
+                      disabled={busy}
+                      onClick={() =>
+                        setSelectedImports(
+                          new Set(
+                            candidates
+                              .filter((candidate) => !candidate.saved)
+                              .slice(0, importSlots)
+                              .map((candidate) => candidate.id)
+                          )
+                        )
+                      }
+                    >
+                      Select available
+                    </Button>
+                    <Button
+                      size="1"
+                      color="gray"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => setSelectedImports(new Set())}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <div
+                    className="developer-script-import-list"
+                    aria-label="Project commands"
+                  >
+                    {candidates.map((candidate) => (
+                      <label
+                        className="developer-script-import-row"
+                        key={candidate.id}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedImports.has(candidate.id)}
+                          disabled={
+                            busy ||
+                            candidate.saved ||
+                            (!selectedImports.has(candidate.id) &&
+                              selectedImports.size >= importSlots)
+                          }
+                          onChange={(event) => {
+                            const next = new Set(selectedImports);
+                            if (event.target.checked) next.add(candidate.id);
+                            else next.delete(candidate.id);
+                            setSelectedImports(next);
+                          }}
+                        />
+                        <span>
+                          <strong>{candidate.name}</strong>
+                          <code>{candidate.command}</code>
+                          <small>
+                            {candidate.source} ·{' '}
+                            {candidate.saved
+                              ? 'Already saved'
+                              : candidate.kind === 'task'
+                              ? 'Project task'
+                              : 'Standard command'}
+                          </small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+              {warnings.map((warning) => (
+                <p className="developer-script-hint" key={warning}>
+                  {warning}
+                </p>
+              ))}
+              {error && (
+                <p role="alert" className="developer-project-notice">
+                  {error}
+                </p>
+              )}
+              <div className="developer-script-footer">
+                <Button
+                  color="gray"
+                  variant="soft"
+                  disabled={busy}
+                  onClick={() => setImporting(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={busy || !selectedImports.size}
+                  onClick={importSelected}
+                >
+                  Import {selectedImports.size || ''} selected
+                </Button>
+              </div>
+            </>
+          ) : editing ? (
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -498,51 +727,77 @@ export function DeveloperScripts({
               <Dialog.Description size="2" className="developer-script-hint">
                 Run saved commands in a new project terminal.
               </Dialog.Description>
+              {importMessage && (
+                <p role="status" className="developer-script-hint">
+                  {importMessage}
+                </p>
+              )}
               <div className="developer-script-list" aria-busy={loading}>
                 {loading && (
                   <p className="developer-script-hint">Loading scripts…</p>
                 )}
-                <SettingsLibrary
-                  label="Saved scripts"
-                  entries={scripts.map((script) => ({
-                    ...script,
-                    subtitle:
-                      script.scope === 'global'
-                        ? 'All projects'
-                        : 'This project',
-                  }))}
-                  renderToolbar={() => (
-                    <IconButton
+                <div className="developer-script-toolbar">
+                  <span>
+                    {scripts.length} saved{' '}
+                    {scripts.length === 1 ? 'script' : 'scripts'}
+                  </span>
+                  <div>
+                    <Button
                       size="1"
-                      variant="ghost"
+                      variant="soft"
                       color="gray"
-                      aria-label="Add script"
+                      disabled={loading || busy}
+                      onClick={discover}
+                    >
+                      <Download size={14} /> Import from project
+                    </Button>
+                    <Button
+                      size="1"
                       disabled={loading || busy}
                       onClick={() => edit()}
+                      aria-label="Add script"
                     >
-                      <Plus size={13} />
-                    </IconButton>
-                  )}
+                      <Plus size={14} /> New script
+                    </Button>
+                  </div>
+                </div>
+                {!loading && scripts.length === 0 && (
+                  <div className="developer-script-empty">
+                    <strong>Your project commands, one click away</strong>
+                    <p>
+                      Import tasks from your project or add your own command.
+                    </p>
+                  </div>
+                )}
+                <div
+                  className="developer-script-cards"
+                  aria-label="Saved scripts"
                 >
-                  {(script) => (
+                  {scripts.map((script) => (
                     <div className="developer-script-row" key={script.id}>
                       <div className="developer-script-row-main">
                         <div className="developer-script-copy">
-                          <strong>{script.name}</strong>
+                          <div className="developer-script-card-heading">
+                            <strong>{script.name}</strong>
+                            <span>
+                              {script.scope === 'global'
+                                ? 'All projects'
+                                : 'This project'}
+                            </span>
+                          </div>
                           <code title={script.command}>{script.command}</code>
                         </div>
-                        <IconButton
+                        <Button
                           size="1"
-                          variant="ghost"
-                          color="gray"
+                          variant="soft"
                           aria-label={`Run ${script.name}`}
                           disabled={busy}
                           onClick={async () => {
                             await run(script.id);
                           }}
                         >
-                          <Play size={13} />
-                        </IconButton>
+                          <Play size={13} /> Run
+                        </Button>
                         <IconButton
                           size="1"
                           variant="ghost"
@@ -594,8 +849,8 @@ export function DeveloperScripts({
                         </div>
                       )}
                     </div>
-                  )}
-                </SettingsLibrary>
+                  ))}
+                </div>
               </div>
               {error && (
                 <p role="alert" className="developer-project-notice">

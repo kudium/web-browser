@@ -27,3 +27,11 @@ The homepage carousel now uses full browser captures of public Apple and YouTube
 `demo/ai-active-tabs.webp` is a focused activity-control preview from the production `AIWorkingTabsBadge` component in Electron. The two tab titles, icons, and activity state are illustrative fixtures. The crop contains the actual popup and composer controls and excludes simulated conversation text. No live provider response is claimed. The homepage’s AI activity stage and `/tutorials/ai-active-tabs` explain the toolbar count, badge, statuses, and tab selection.
 
 November 2026 refresh: the disposable Studio workspace now places Work (stack) and Design (folder) in Product Studio, with Development (stack) in Engineering. Captures use the current window manager and production sidebar. `ai-mentions.webp` shows the real caret-anchored group chooser beside an unsent draft and attached brief. The website copy reflects collection session sharing and optional separate group logins.
+
+November 2026 appearance refresh: AI and developer captures show the local Atlas
+Studio overview beside the real panels. The attached brief includes fictional team
+owners and launch milestones; the full reusable data is in the demo launch plan.
+`demo/ai-context.webp` uses the solid default and `demo/ai-glassy.webp` uses the
+optional glassy setting via production preferences. Both drafts are unsent.
+Run `npm run showcase:refresh` from the repository root; follow
+`apps/browser/demo/SHOWCASE.md` for review and future LLM instructions.

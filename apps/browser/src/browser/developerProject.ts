@@ -17,6 +17,7 @@ export interface DeveloperProject {
 export interface ProjectEditor {
   id: string;
   name: string;
+  icon?: string;
 }
 export interface ProjectEditors {
   editors: ProjectEditor[];
@@ -88,6 +89,8 @@ export interface ProjectScript {
 }
 export type ProjectScriptRequest =
   | { action: 'list' }
+  | { action: 'discover' }
+  | { action: 'import'; ids: string[] }
   | {
       action: 'save';
       id?: string;
@@ -97,7 +100,18 @@ export type ProjectScriptRequest =
     }
   | { action: 'delete'; id: string }
   | { action: 'run'; id: string; cwd?: string };
+export interface ProjectScriptCandidate {
+  id: string;
+  name: string;
+  command: string;
+  source: string;
+  kind: 'task' | 'standard';
+  saved?: boolean;
+}
 export interface ProjectScriptResult {
+  candidates?: ProjectScriptCandidate[];
+  warnings?: string[];
+  imported?: number;
   scripts: ProjectScript[];
   terminal?: ProjectTerminalState;
 }

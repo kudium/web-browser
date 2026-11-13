@@ -17,6 +17,10 @@ bun run db:migrate
 bun run dev
 ```
 
+The dev command applies pending migrations before starting the server, including
+the marketplace tables. If a migration fails, the server does not start. The
+standalone `db:migrate` command also updates an already-running local server's database.
+
 Open http://localhost:3000 and http://localhost:3000/docs. React renders HTML on the
 server; the account forms use a small same-origin script. `bun run start` runs
 the production server. Database, Better Auth secret/base URL and allowed asset origins are configured
@@ -289,3 +293,38 @@ allow-list in the test only. Native signatures, server verification, session
 cookies, ownership, deletion, OAuth initiation and device-approval return paths
 are exercised. Discoverable passkey selection, actual Touch ID/Face ID, and live
 Google consent/callbacks still require real-browser verification after deployment.
+
+## Hooks marketplace
+
+`/hooks` is public. Existing Kudium accounts publish at `/hooks/new`, manage
+publications at `/account/hooks`, and like/comment on hook detail pages. New
+publications are approved by default; a rejected publication must be reviewed
+again after resubmission. Set `HOOK_ADMIN_ACCOUNT_IDS` to a comma-separated list
+of Better Auth **user IDs** (not sync account hashes or email addresses) to enable
+`/hooks/admin` and its reports/moderation controls. No account can assign itself
+this role.
+
+Public JSON packages live at `/v1/hooks/:id/versions/:version/package`; the current
+version is available at `/v1/hooks/:id/package`. The portable source contract is
+`packages/hooks/package.ts`. Packages contain code, target rules and licensing,
+never runtime permissions or local credentials. Browser installs and updates are
+saved disabled and executable hooks are not automatically synced. The browser group
+picker offers “All groups” for general hooks; these apply across browser sessions,
+including groups added later. Named groups retain their shared-session scope.
+
+Run migrations before serving the marketplace. The database migration requires
+permission to install PostgreSQL's `pg_trgm` extension; otherwise an administrator
+must install it beforehand. It adds indexed name search and cursor pagination.
+
+Because both apps share the package contract, build the web image from the
+**repository root**:
+
+```sh
+docker build -f apps/web/Dockerfile -t kudium-web .
+```
+
+For Coolify, set the Docker build context/base directory to the repository root
+and Dockerfile location to `apps/web/Dockerfile`. The release-assets volume path
+remains `/app/release-assets`. Website deployment is separate from a browser
+installer release. The new `kudium://install-hook` protocol needs a newly packaged
+browser; URL import remains available inside the hooks workspace.

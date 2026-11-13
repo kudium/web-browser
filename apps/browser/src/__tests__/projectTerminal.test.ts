@@ -437,3 +437,25 @@ it('runs a configured command in a selected subfolder and refuses outside folder
     fs.rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+it('removes inherited npm prefixes without changing the parent environment', () => {
+  const keys = ['npm_config_prefix', 'NPM_CONFIG_PREFIX'];
+  const original = keys.map((key) => process.env[key]);
+  try {
+    keys.forEach((key) => {
+      process.env[key] = '/dev-app/prefix';
+    });
+    const terminals = new ProjectTerminals(host, () => process.cwd());
+    terminals.request('group', { action: 'open', cols: 80, rows: 24 });
+    const { env } = (spawn as jest.Mock).mock.calls[0][2];
+    expect(env).not.toHaveProperty('npm_config_prefix');
+    expect(env).not.toHaveProperty('NPM_CONFIG_PREFIX');
+    expect(process.env.npm_config_prefix).toBe('/dev-app/prefix');
+    expect(process.env.NPM_CONFIG_PREFIX).toBe('/dev-app/prefix');
+  } finally {
+    keys.forEach((key, index) => {
+      if (original[index] === undefined) delete process.env[key];
+      else process.env[key] = original[index];
+    });
+  }
+});

@@ -17,6 +17,16 @@ import { openSystemTerminal } from './projectSystemTerminal';
 
 import { getBrowserPreferences } from './preferences';
 
+const projectListeners = new Set<(key: string) => void>();
+export function onProjectChanged(listener: (key: string) => void) {
+  projectListeners.add(listener);
+  return () => {
+    projectListeners.delete(listener);
+  };
+}
+function notifyProjectChanged(key: string) {
+  projectListeners.forEach((listener) => listener(key));
+}
 const run = promisify(execFile);
 const filename = () =>
   path.join(app.getPath('userData'), 'developer-projects.json');
@@ -51,6 +61,7 @@ export function linkProjectFolder(
   if (previous && previous !== folder && fs.existsSync(previous))
     updateBrowserProjectContext(previous, key, null);
   writePrivateFile(filename(), JSON.stringify(next));
+  notifyProjectChanged(key);
 }
 export function repositoryURL(remote: string): string | undefined {
   try {
@@ -172,6 +183,7 @@ export async function projectAction(
       updateBrowserProjectContext(previous, key, null);
     delete next[key];
     writePrivateFile(filename(), JSON.stringify(next));
+    notifyProjectChanged(key);
   }
   const folder = read()[key];
   if (!folder) return null;

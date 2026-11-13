@@ -4,6 +4,8 @@ on:
     paths:
       [
         "apps/web/**",
+        "packages/hooks/**",
+        ".dockerignore",
         ".github/workflows/web-ci-deploy.yml",
         "scripts/ci/deploy-website.mjs",
       ]
@@ -12,6 +14,8 @@ on:
     paths:
       [
         "apps/web/**",
+        "packages/hooks/**",
+        ".dockerignore",
         ".github/workflows/web-ci-deploy.yml",
         "scripts/ci/deploy-website.mjs",
       ]
@@ -47,7 +51,7 @@ jobs:
         working-directory: apps/web
       - run: bun run check && bun test
         working-directory: apps/web
-      - run: docker build -t kudium-web-check apps/web
+      - run: docker build -f apps/web/Dockerfile -t kudium-web-check .
   deploy:
     name: Deploy website
     needs: check

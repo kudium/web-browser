@@ -207,3 +207,24 @@ it('links a project directly from group settings and displays the resulting fold
   expect(project).toHaveBeenCalledWith('one', 'link', undefined);
   expect(submitted).not.toHaveBeenCalled();
 });
+
+it('picks up a project linked elsewhere without waiting for window focus', async () => {
+  let changed = () => {};
+  Object.assign(window.electron.siteDeveloper, {
+    onPagesChanged: (listener: () => void) => {
+      changed = listener;
+      return () => {};
+    },
+  });
+  project.mockResolvedValue(null);
+  render(
+    <Theme>
+      <DeveloperProjectSection sourceId="one" active />
+    </Theme>
+  );
+  await screen.findByRole('button', { name: 'Link folder' });
+  project.mockResolvedValue(linked);
+  act(() => changed());
+  await screen.findByText('Example');
+  expect(screen.queryByRole('button', { name: 'Link folder' })).toBeNull();
+});

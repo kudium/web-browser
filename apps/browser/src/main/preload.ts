@@ -205,15 +205,25 @@ const electronHandler = {
     return invokeWhenReady('browser-migration', action, input);
   },
   activity(request: {
-    action: 'list' | 'read' | 'readAll' | 'clearAll' | 'testSound' | 'delete' | 'disableHook';
+    action:
+      | 'list'
+      | 'read'
+      | 'readAll'
+      | 'clearAll'
+      | 'testSound'
+      | 'delete'
+      | 'disableHook';
     id?: string;
   }): Promise<import('../browser/activity').BrowserActivity[] | undefined> {
     return invokeWhenReady('browser-activity', request);
   },
   onActivityChanged(callback: () => void) {
     const listener = () => callback();
-    const open = (_event: Electron.IpcRendererEvent, id: string) => {
-      if (typeof id === 'string') window.dispatchEvent(new CustomEvent('kudiumbrowser-open-activity', { detail: id }));
+    const open = (_event: IpcRendererEvent, id: string) => {
+      if (typeof id === 'string')
+        window.dispatchEvent(
+          new CustomEvent('kudiumbrowser-open-activity', { detail: id })
+        );
     };
     ipcRenderer.on('browser-activity-changed', listener);
     ipcRenderer.on('browser-open-activity', open);
@@ -459,15 +469,39 @@ const electronHandler = {
       };
     },
   },
+  hookMarketplace: {
+    request(
+      input: import('../browser/hookMarketplace').HookMarketplaceRequest
+    ): Promise<any> {
+      return invokeWhenReady('hook-marketplace', input);
+    },
+    onInstall(callback: (url: string) => void) {
+      const listener = (_event: IpcRendererEvent, url: unknown) => {
+        if (typeof url === 'string' && url.length <= 4096) callback(url);
+      };
+      ipcRenderer.on('hook-marketplace-install', listener);
+      return () => {
+        ipcRenderer.removeListener('hook-marketplace-install', listener);
+      };
+    },
+    ready() {
+      ipcRenderer.send('hook-marketplace-ready');
+    },
+  },
   siteDeveloper: {
     onAskAI(callback: (prompt: string) => void) {
-      const listener = (_event: Electron.IpcRendererEvent, prompt: unknown) => {
-        if (typeof prompt === 'string' && prompt.length <= 30000) callback(prompt);
+      const listener = (_event: IpcRendererEvent, prompt: unknown) => {
+        if (typeof prompt === 'string' && prompt.length <= 30000)
+          callback(prompt);
       };
       ipcRenderer.on('browser-hook-ai', listener);
-      return () => { ipcRenderer.removeListener('browser-hook-ai', listener); };
+      return () => {
+        ipcRenderer.removeListener('browser-hook-ai', listener);
+      };
     },
-    language(request: import('../browser/hookLanguage').HookLanguageRequest): Promise<import('../browser/hookLanguage').HookLanguageResult> {
+    language(
+      request: import('../browser/hookLanguage').HookLanguageRequest
+    ): Promise<import('../browser/hookLanguage').HookLanguageResult> {
       return invokeWhenReady('hook-language', request);
     },
     drop(

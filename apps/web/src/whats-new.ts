@@ -2,8 +2,11 @@ export const whatsNew = [
   {
     version: '1.0.9',
     date: '2026-11-12',
-    title: 'Smarter hooks, smoother notes and project files',
+    title: 'A hooks marketplace and a smoother workspace',
     highlights: [
+      ['Discover and share hooks', 'Browse the public hooks marketplace, search by name or website, and publish your saved hooks with your Kudium account. Install from a link, review the code before saving, and choose a group or All groups for general hooks. Imports stay disabled until you enable them, and updates require your review.'],
+      ['A clearer developer workspace', 'Get Hooks and Publish are now easy to find. The hook editor and publishing forms fit smaller windows, with actions kept within reach. Linked projects update immediately, terminal URLs open in new tabs, and run scripts can be imported from project files across more languages.'],
+      ['A simpler account dashboard', 'The web dashboard has a compact header with My hooks and Publish hook actions. The marketplace supports likes and native comments, and the What’s New page is easier to reach from the website.'],
       ['More capable website hooks', 'Use one Examples picker to try useful page enhancements or insert their code. Save & Run, script history, cleanup on navigation, and JavaScript suggestions make hooks easier to build and maintain. Ask AI to help set up or repair a hook, then review its changes.'],
       ['Activity that gets your attention', 'Choose a notification sound, preview it, and optionally enable system banners. Hook-created activity shows its website icon and a shortcut back to the developer tools. Clear all entries from the Activity page.'],
       ['Project files in AI chat', 'Reference a file from its context menu or type / to find skills and files in your group’s linked folder. AI can open project files in browser tabs. The chat header now includes a Developer shortcut, with tidier model and access controls.'],

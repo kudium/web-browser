@@ -1,5 +1,40 @@
+import { sql } from 'drizzle-orm';
 import { pgTable, text, integer, bigint, timestamp, jsonb, primaryKey, uniqueIndex, boolean, index } from 'drizzle-orm/pg-core';
 import type { Envelope, ReleaseManifest } from './validation';
+import type { HookPackage } from '../../../packages/hooks/package';
+export const hookListings = pgTable('hook_listings', {
+  id: text('id').primaryKey(), authorId: text('author_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), description: text('description').notNull(), applicability: text('applicability').notNull(),
+  status: text('status').$type<'pending' | 'approved' | 'rejected'>().notNull().default('approved'), statusReason: text('status_reason'),
+  version: integer('version').notNull().default(1), likes: integer('likes').notNull().default(0),
+  publishedAt: timestamp('published_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+}, t => [index('hook_author').on(t.authorId), index('hook_public_cursor').on(t.publishedAt.desc().nullsFirst(), t.id.desc().nullsFirst()).where(sql`${t.status} = 'approved'`), index('hook_name_search').using('gin', sql`${t.name} gin_trgm_ops`).where(sql`${t.status} = 'approved'`)]);
+export const hookVersions = pgTable('hook_versions', {
+  hookId: text('hook_id').notNull().references(() => hookListings.id, { onDelete: 'cascade' }), version: integer('version').notNull(),
+  status: text('status').$type<'pending' | 'approved' | 'rejected'>().notNull().default('approved'),
+  package: jsonb('package').$type<HookPackage>().notNull(), contentHash: text('content_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+}, t => [primaryKey({ columns: [t.hookId, t.version] })]);
+export const hookTargets = pgTable('hook_targets', {
+  hookId: text('hook_id').notNull().references(() => hookListings.id, { onDelete: 'cascade' }), host: text('host').notNull(), includeSubdomains: boolean('include_subdomains').notNull(),
+}, t => [primaryKey({ columns: [t.hookId, t.host] }), index('hook_target_host').on(t.host, t.hookId)]);
+export const hookLikes = pgTable('hook_likes', {
+  hookId: text('hook_id').notNull().references(() => hookListings.id, { onDelete: 'cascade' }), userId: text('user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
+}, t => [primaryKey({ columns: [t.hookId, t.userId] })]);
+export const hookComments = pgTable('hook_comments', {
+  id: text('id').primaryKey(), hookId: text('hook_id').notNull().references(() => hookListings.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }), body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+}, t => [index('hook_comment_cursor').on(t.hookId, t.createdAt, t.id)]);
+export const hookReports = pgTable('hook_reports', {
+  id: text('id').primaryKey(), hookId: text('hook_id').notNull().references(() => hookListings.id, { onDelete: 'cascade' }),
+  commentId: text('comment_id').references(() => hookComments.id, { onDelete: 'set null' }), userId: text('user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
+  reason: text('reason').notNull(), resolved: boolean('resolved').notNull().default(false), createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+});
+export const hookModeration = pgTable('hook_moderation', {
+  id: text('id').primaryKey(), hookId: text('hook_id').notNull().references(() => hookListings.id, { onDelete: 'cascade' }),
+  adminId: text('admin_id').notNull().references(() => authUser.id), action: text('action').notNull(), reason: text('reason'), createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+});
 export const accounts = pgTable('sync_accounts', {
   id: text('id').primaryKey(), changeCount: integer('change_count').notNull().default(0), revision: bigint('revision', { mode: 'number' }).notNull().default(0),
   historyBytes: integer('history_bytes').notNull().default(0), usedBytes: integer('used_bytes').notNull().default(0), recordCount: integer('record_count').notNull().default(0),

@@ -1,11 +1,15 @@
+import { act, renderHook } from '@testing-library/react';
 import {
   SpaceManager,
   spaceFrameColor,
   spacePrimaryColor,
   SPACE_KEY,
+  useSpaces,
 } from '../utils/SpaceManager';
 
-jest.mock('../utils/EventBus', () => ({ eventBus: { dispatch: jest.fn() } }));
+jest.mock('../utils/EventBus', () => ({
+  eventBus: { dispatch: jest.fn(), on: jest.fn(() => () => {}) },
+}));
 
 const space = {
   id: 'colors',
@@ -35,4 +39,16 @@ test('independent frame tint survives saving and changing the primary', () => {
       SpaceManager.getAll().find((entry) => entry.id === space.id)!
     )
   ).toBe('#abcdef');
+});
+
+test('refreshes space colors when another window saves them', () => {
+  SpaceManager.set([{ ...space, id: 'default', customColor: '#345678' }]);
+  const { result, unmount } = renderHook(useSpaces);
+  expect(spacePrimaryColor(result.current.active)).toBe('#345678');
+  act(() => {
+    SpaceManager.set([{ ...space, id: 'default', customColor: '#abcdef' }]);
+    window.dispatchEvent(new StorageEvent('storage', { key: SPACE_KEY }));
+  });
+  expect(spacePrimaryColor(result.current.active)).toBe('#abcdef');
+  unmount();
 });

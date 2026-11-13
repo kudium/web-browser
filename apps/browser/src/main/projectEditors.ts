@@ -7,6 +7,7 @@ import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import type { ProjectEditors } from '../browser/developerProject';
 import { writePrivateFile } from './privateFile';
+import { loadLocalIcon } from './localImage';
 
 const run = promisify(execFile);
 const known = [
@@ -42,6 +43,46 @@ async function exists(candidate: string) {
     return true;
   } catch {
     return false;
+  }
+}
+async function editorIcon(editorPath: string): Promise<string | undefined> {
+  if (process.platform === 'darwin' && editorPath.endsWith('.app')) {
+    try {
+      const { stdout } = await run(
+        '/usr/bin/plutil',
+        [
+          '-extract',
+          'CFBundleIconFile',
+          'raw',
+          '-o',
+          '-',
+          path.join(editorPath, 'Contents', 'Info.plist'),
+        ],
+        { maxBuffer: 4096 }
+      );
+      const name = stdout.trim();
+      if (!name || path.basename(name) !== name)
+        throw new Error('Invalid app icon');
+      const icon = await loadLocalIcon(
+        path.join(
+          editorPath,
+          'Contents',
+          'Resources',
+          path.extname(name) ? name : `${name}.icns`
+        ),
+        () => {}
+      );
+      if (!icon.isEmpty())
+        return icon.resize({ width: 32, height: 32 }).toDataURL();
+    } catch {
+      // Apps without a readable bundle icon use the platform fallback.
+    }
+  }
+  try {
+    const icon = await app.getFileIcon(editorPath, { size: 'normal' });
+    return icon.isEmpty() ? undefined : icon.toDataURL();
+  } catch {
+    return undefined;
   }
 }
 export async function installedEditors(): Promise<ProjectEditors> {
@@ -110,9 +151,11 @@ export async function installedEditors(): Promise<ProjectEditors> {
       saved.custom,
       path.basename(saved.custom).replace(/\.(app|exe)$/i, '')
     );
-  const editors = [...found]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const editors = await Promise.all(
+    [...found]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(async ([id, name]) => ({ id, name, icon: await editorIcon(id) }))
+  );
   return {
     editors,
     preferred: editors.some((editor) => editor.id === saved.preferred)

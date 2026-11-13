@@ -1,0 +1,16 @@
+**
+!apps/
+!apps/web/
+!apps/web/package.json
+!apps/web/bun.lock
+!apps/web/src/
+!apps/web/src/**
+!apps/web/public/
+!apps/web/public/**
+!apps/web/scripts/
+!apps/web/scripts/**
+!apps/web/drizzle/
+!apps/web/drizzle/**
+!packages/
+!packages/hooks/
+!packages/hooks/**

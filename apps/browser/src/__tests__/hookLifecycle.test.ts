@@ -18,14 +18,14 @@ const flush = async () => {
   for (let index = 0; index < 40; index += 1) await Promise.resolve();
 };
 
-function launch(after: string, before = '') {
+function launch(after: string, before = '', hooks: any[] = []) {
   let config: any = {
     token: 'run-1',
     enabled: true,
     before,
     after,
     css: '',
-    hooks: [],
+    hooks,
   };
   const listeners = new Map<string, () => void>();
   const send = jest.fn();
@@ -166,4 +166,38 @@ it('owns ordinary JavaScript timers too, and cleans up timed-out hooks', async (
   } finally {
     jest.useRealTimers();
   }
+});
+
+it('runs global hooks before default and named site hooks, and cleans every CSS resource on stop', async () => {
+  const runtime = launch("log('site after')", "log('site before')", [
+    {
+      id: 'global:one',
+      name: 'Global',
+      before: "log('global before')",
+      after: "log('global after')",
+      css: 'body{}',
+    },
+    {
+      id: 'site-one',
+      name: 'Site named',
+      before: "log('named before')",
+      after: "log('named after')",
+      css: 'p{}',
+    },
+  ]);
+  await flush();
+  const messages = runtime.send.mock.calls
+    .map(([, event]) => event.value)
+    .filter((value) => typeof value === 'string');
+  expect(messages.indexOf('Global · before: global before')).toBeLessThan(
+    messages.indexOf('Default hook · before: site before')
+  );
+  expect(messages.indexOf('Default hook · before: site before')).toBeLessThan(
+    messages.indexOf('Site named · before: named before')
+  );
+  expect(messages.indexOf('Global · after: global after')).toBeLessThan(
+    messages.indexOf('Default hook · after: site after')
+  );
+  runtime.stop();
+  expect(runtime.removeInsertedCSS).toHaveBeenCalledTimes(2);
 });

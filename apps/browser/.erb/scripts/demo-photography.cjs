@@ -440,6 +440,8 @@ app
     await wait(2500);
     const capture = async (win, name, expected) => {
       await wait(450);
+      const broken = await evaluate(win, `!!document.querySelector('iframe#webpack-dev-server-client-overlay') || /Failed to compile|Module not found:/.test(document.body.innerText)`);
+      if (broken) throw Error('Renderer compile error in ' + name + '; fix it before capturing.');
       const text = await evaluate(
         win,
         "document.body.innerText+' '+[...document.querySelectorAll('[aria-label]')].map(el=>el.getAttribute('aria-label')).join(' ')"
@@ -505,6 +507,8 @@ app
     await main.reload();
     await wait(1800);
     await capture(main, 'workspace-dark', 'Development');
+    // Show the reproducible local project beside AI and developer tools.
+    await evaluate(main, `localStorage.setItem('user_last_app_id','demo-15');const spaces=JSON.parse(localStorage.getItem('kudiumbrowser-spaces'));spaces.find(s=>s.id==='default').selectedAppId='demo-15';localStorage.setItem('kudiumbrowser-spaces',JSON.stringify(spaces));undefined`);
     await evaluate(
       main,
       "localStorage.setItem('kudiumbrowser-ai-page-open','true');localStorage.setItem('kudiumbrowser-ai-page-pane','\"assistant\"');undefined"
@@ -526,7 +530,11 @@ app
       main,
       "(()=>{const el=document.querySelector('.ai-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'Help me plan this build. Use the project brief and React documentation to suggest an accessible component structure.');el.dispatchEvent(new Event('input',{bubbles:true}));})();undefined"
     );
+    require(path.join(runtimeDir, 'preferences.js')).updateBrowserPreferences({ translucentAI: false });
     await capture(main, 'ai-context', 'project-brief.md');
+    require(path.join(runtimeDir, 'preferences.js')).updateBrowserPreferences({ translucentAI: true });
+    await capture(main, 'ai-glassy', 'project-brief.md');
+    require(path.join(runtimeDir, 'preferences.js')).updateBrowserPreferences({ translucentAI: false });
     await evaluate(main, `(()=>{const el=document.querySelector('.ai-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'Review the project brief with @w');el.focus();el.setSelectionRange(el.value.length,el.value.length);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('select',{bubbles:true}));})();undefined`);
     await wait(300);
     await capture(main, 'ai-mentions', 'Work');

@@ -1,5 +1,12 @@
 /* eslint-disable react/require-default-props */
-import { KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { Button, DropdownMenu, IconButton } from '@radix-ui/themes';
 import {
   Folder,
@@ -8,13 +15,14 @@ import {
   PanelTop,
   Terminal,
   Code2,
+  GitBranch,
   ArrowUpRight,
   MoreHorizontal,
   ChevronDown,
 } from 'lucide-react';
+import { developerProjectStore } from '../../browser/developerProjectStore';
 import { PanelDropdownContent } from './PanelDialog';
 import type {
-  DeveloperProject,
   ProjectAction,
   ProjectEditors,
 } from '../../browser/developerProject';
@@ -49,57 +57,31 @@ export function DeveloperProjectSection({
     if (onViewChange) onViewChange(open ? 'files' : 'pages');
     else setLocalFilesOpen(open);
   };
-  const [project, setProject] = useState<DeveloperProject | null>(null);
+  const subscribe = useCallback(
+    (listener: () => void) =>
+      active ? developerProjectStore.subscribe(sourceId, listener) : () => {},
+    [sourceId, active]
+  );
+  const snapshot = useSyncExternalStore(subscribe, () =>
+    developerProjectStore.getSnapshot(sourceId)
+  );
+  const { project, loading } = snapshot;
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [actionError, setError] = useState('');
+  const error =
+    actionError || (snapshot.error ? projectErrorMessage(snapshot.error) : '');
   const [editors, setEditors] = useState<ProjectEditors>({ editors: [] });
   const [editorLoading, setEditorLoading] = useState(false);
   const revision = useRef(0);
   const acting = useRef(false);
-  const operation = useRef(0);
   useEffect(() => {
     revision.current += 1;
-    const request = revision.current;
-    setProject(null);
     setLocalFilesOpen(false);
     setError('');
     setBusy(false);
     acting.current = false;
-    setLoading(true);
-    if (!active) return undefined;
-    const refresh = () => {
-      if (acting.current) return;
-      operation.current += 1;
-      const currentOperation = operation.current;
-      window.electron.siteDeveloper
-        .project(sourceId, 'get')
-        .then((value) => {
-          if (
-            request === revision.current &&
-            currentOperation === operation.current
-          ) {
-            setProject(value);
-            setError('');
-            setLoading(false);
-          }
-          return undefined;
-        })
-        .catch(() => {
-          if (
-            request === revision.current &&
-            currentOperation === operation.current
-          ) {
-            setError('Could not load this project.');
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    window.addEventListener('focus', refresh);
     return () => {
       revision.current += 1;
-      window.removeEventListener('focus', refresh);
     };
   }, [sourceId, active]);
   useEffect(() => {
@@ -135,7 +117,6 @@ export function DeveloperProjectSection({
   ) => {
     if (acting.current) return;
     const request = revision.current;
-    operation.current += 1;
     acting.current = true;
     setBusy(true);
     setError('');
@@ -147,7 +128,7 @@ export function DeveloperProjectSection({
         ...(folderPath === undefined ? [] : [folderPath])
       );
       if (request === revision.current) {
-        setProject(value);
+        developerProjectStore.set(sourceId, value);
         if (action === 'link' || action === 'unlink') {
           setFilesOpen(false);
           onProjectChange();
@@ -375,6 +356,16 @@ export function DeveloperProjectSection({
                           checked={editor.id === editors.preferred}
                           onSelect={() => perform('editor', editor.id)}
                         >
+                          {editor.icon ? (
+                            <img
+                              className="developer-editor-icon"
+                              src={editor.icon}
+                              alt=""
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Code2 size={16} aria-hidden="true" />
+                          )}
                           {editor.name}
                         </DropdownMenu.CheckboxItem>
                       ))}
@@ -388,6 +379,7 @@ export function DeveloperProjectSection({
                       disabled={editorLoading}
                       onSelect={() => refreshEditors(true)}
                     >
+                      <FolderPlus size={16} aria-hidden="true" />
                       Choose application…
                     </DropdownMenu.Item>
                   </PanelDropdownContent>
@@ -408,7 +400,7 @@ export function DeveloperProjectSection({
                     title={project.repository}
                     aria-label="Repository"
                   >
-                    <ArrowUpRight size={14} />
+                    <GitBranch size={14} aria-hidden="true" />
                     <span className="developer-project-action-label">
                       Repository
                     </span>
@@ -434,7 +426,9 @@ export function DeveloperProjectSection({
         <div className="developer-project-empty">
           <div>
             {!settingsOnly && <strong>Project folder</strong>}
-            <p>Connect a local project folder to work with AI and browser tools.</p>
+            <p>
+              Connect a local project folder to work with AI and browser tools.
+            </p>
           </div>
           <Button
             type="button"

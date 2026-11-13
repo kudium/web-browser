@@ -4,9 +4,18 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import type {
   ProjectScript,
+  ProjectScriptCandidate,
   ProjectScriptRequest,
 } from '../browser/developerProject';
 import { writePrivateFile } from './privateFile';
+
+const listeners = new Set<() => void>();
+export function onProjectScriptsChanged(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
 
 type Store = {
   global: ProjectScript[];
@@ -21,7 +30,16 @@ export function validScriptRequest(
 ): value is ProjectScriptRequest {
   if (!value || typeof value !== 'object') return false;
   const request = value as ProjectScriptRequest;
-  if (request.action === 'list') return true;
+  if (request.action === 'list' || request.action === 'discover') return true;
+  if (request.action === 'import')
+    return (
+      Array.isArray(request.ids) &&
+      request.ids.length > 0 &&
+      request.ids.length <= 64 &&
+      request.ids.every(
+        (id) => typeof id === 'string' && /^[a-f0-9]{64}$/.test(id)
+      )
+    );
   const validId = (id: unknown) =>
     typeof id === 'string' && !!id && id.length <= 100;
   if (request.action === 'delete') return validId(request.id);
@@ -96,7 +114,12 @@ export function projectScripts(
   folder: string,
   request: ProjectScriptRequest
 ): ProjectScript[] {
-  if (!validScriptRequest(request)) throw new Error('Invalid script request.');
+  if (
+    !validScriptRequest(request) ||
+    request.action === 'discover' ||
+    request.action === 'import'
+  )
+    throw new Error('Invalid script request.');
   const store = read();
   const key = keyFor(group, folder);
   const local = store.projects[key] || [];
@@ -125,6 +148,8 @@ export function projectScripts(
     store.projects[key] = local.filter((item) => item.id !== request.id);
     writePrivateFile(filename(), JSON.stringify(store));
   }
+  if (request.action === 'save' || request.action === 'delete')
+    listeners.forEach((listener) => listener());
   return [...(store.projects[key] || []), ...store.global];
 }
 export function savedProjectScript(group: string, folder: string, id: string) {
@@ -134,4 +159,49 @@ export function savedProjectScript(group: string, folder: string, id: string) {
   if (!script || !validScriptRequest({ action: 'save', ...script }))
     throw new Error('This script is no longer available.');
   return script;
+}
+
+/** Save the selected commands atomically. */
+export function importProjectScripts(
+  group: string,
+  folder: string,
+  candidates: ProjectScriptCandidate[]
+) {
+  const store = read();
+  const key = keyFor(group, folder);
+  const local = store.projects[key] || [];
+  const commands = new Set(local.map((script) => script.command));
+  const additions: ProjectScript[] = [];
+  candidates.forEach((candidate) => {
+    if (commands.has(candidate.command)) return;
+    if (
+      !validScriptRequest({
+        action: 'save',
+        name: candidate.name,
+        command: candidate.command,
+        scope: 'project',
+      })
+    )
+      throw new Error('An imported command is invalid.');
+    commands.add(candidate.command);
+    additions.push({
+      id: randomUUID(),
+      name: candidate.name,
+      command: candidate.command,
+      scope: 'project',
+    });
+  });
+  if (local.length + store.global.length + additions.length > 64)
+    throw new Error(
+      'Select fewer commands. A project supports up to 64 saved scripts including shared scripts.'
+    );
+  if (additions.length) {
+    store.projects[key] = [...local, ...additions];
+    writePrivateFile(filename(), JSON.stringify(store));
+    listeners.forEach((listener) => listener());
+  }
+  return {
+    scripts: [...(store.projects[key] || []), ...store.global],
+    imported: additions.length,
+  };
 }

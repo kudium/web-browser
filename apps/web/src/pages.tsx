@@ -8,6 +8,8 @@ import { whatsNew } from "./whats-new";
 import type { groupReleaseHistory, ReleaseHistoryEntry } from "./releases";
 const stylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/site.css", import.meta.url))).digest("hex").slice(0, 12);
 const accountDataVersion = createHash("sha256").update(readFileSync(new URL("../public/account-data.js", import.meta.url))).digest("hex").slice(0, 12);
+const authScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/auth.js", import.meta.url))).digest("hex").slice(0, 12);
+const passkeyScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/passkeys.ts", import.meta.url))).digest("hex").slice(0, 12);
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
 export function Layout({
@@ -68,6 +70,7 @@ export function Layout({
           </a>
           <nav aria-label="Main navigation">
             <a href="/#highlights">Overview</a>
+            <a href="/hooks">Hooks</a>
             <a href="/tutorials">Tutorials</a>
             <a href="/docs" aria-current={docs ? "page" : undefined}>
               Docs
@@ -94,6 +97,19 @@ export function Layout({
           <a href={githubUrl}>GitHub</a>
           <a href={sponsorsUrl}>Support Kudium</a>
         </footer>
+        {!privatePage && canonicalPath !== "/whats-new" && (
+          <>
+          <a className="whats-new-fab" href="/whats-new">
+            <span className="whats-new-fab-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 11a9 9 0 1 1 2.6 7.4M3 4v7h7M12 7v5l3 2" />
+              </svg>
+            </span>
+            <span>What’s new</span>
+          </a>
+          <script src="/assets/whats-new-fab.js?v=1" defer />
+          </>
+        )}
       </body>
     </html>
   );
@@ -147,6 +163,11 @@ export function homepage() {
                     "Keep your page in view while you bring a project brief into the AI sidebar and plan your next move.",
                   ],
                   [
+                    "ai-glassy",
+                    "Make the AI panel your own.",
+                    "Choose a solid AI panel for everyday reading, or turn on Glassy AI panel in Preferences → Appearance for softer, translucent surfaces. Glassy AI panel is off by default.",
+                  ],
+                  [
                     "ai-active-tabs",
                     "See which tabs AI is working on.",
                     "Open Active AI tabs above the Assistant input to see tab icons, activity status, and a shortcut to each page. Illustrated with two sample tabs.",
@@ -171,11 +192,11 @@ export function homepage() {
                     className="hero-slide"
                     id={`workflow-${index}`}
                     key={image}
-                    aria-label={`${index + 1} of 8`}
+                    aria-label={`${index + 1} of 9`}
                   >
                     <div className="hero-screen">
                       <img
-                        src={`/assets/product/demo/${image}.webp?v=9`}
+                        src={`/assets/product/demo/${image}.webp?v=10`}
                         alt={description}
                         width="1440"
                         height="940"
@@ -193,6 +214,7 @@ export function homepage() {
                             "spaces-and-groups",
                             "sidebar-and-group-picker",
                             "spaces-and-groups",
+                            "ai-assistant",
                             "ai-assistant",
                             "ai-active-tabs",
                             "developer-project",
@@ -221,6 +243,7 @@ export function homepage() {
                     "Focus",
                     "Social",
                     "AI assistant",
+                    "Appearance",
                     "AI activity",
                     "Developer",
                     "Files",
@@ -293,7 +316,7 @@ export function homepage() {
               </div>
               <figure data-sidebar-sample="expanded" hidden>
                 <img
-                  src="/assets/product/demo/sidebar-expanded.webp?v=9"
+                  src="/assets/product/demo/sidebar-expanded.webp?v=10"
                   width="2880"
                   height="1880"
                   alt="Apple’s website in Kudium, with favorite tiles, Product Studio and Engineering collections, and folder and stack groups"
@@ -306,7 +329,7 @@ export function homepage() {
               </figure>
               <figure data-sidebar-sample="collapsed">
                 <img
-                  src="/assets/product/demo/sidebar-collapsed.webp?v=9"
+                  src="/assets/product/demo/sidebar-collapsed.webp?v=10"
                   width="2880"
                   height="1880"
                   alt="The same Apple page with the sidebar hidden and the Design group switcher in the address bar"
@@ -400,10 +423,10 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/developer-terminal.webp?v=9"
+                src="/assets/product/demo/developer-terminal.webp?v=10"
                 width="2880"
                 height="1880"
-                alt="The linked Atlas Studio demo project beside Bun’s website, with real project files and an integrated terminal running a passing Bun test"
+                alt="The linked Atlas Studio demo project beside its local collection overview, with real project files and an integrated terminal running a passing Bun test"
                 loading="lazy"
               />
               <figcaption>
@@ -478,10 +501,10 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/ai-mentions.webp?v=9"
+                src="/assets/product/demo/ai-mentions.webp?v=10"
                 width="2880"
                 height="1880"
-                alt="Bun’s website beside Kudium’s AI sidebar, with an attached project brief and group suggestions directly beneath the draft’s typing line"
+                alt="The Atlas Studio collection overview beside Kudium’s AI sidebar, with an attached project brief and group suggestions directly beneath the draft’s typing line"
                 loading="lazy"
               />
               <figcaption>
@@ -1016,7 +1039,7 @@ export function tutorialPage(tutorial: Tutorial) {
                 aria-label="Open full size screenshot"
               >
                 <img
-                  src={`/assets/product/demo/${tutorial.image}.webp?v=9`}
+                  src={`/assets/product/demo/${tutorial.image}.webp?v=10`}
                   alt={tutorial.imageAlt || `${tutorial.title} in the real Kudium Browser interface with fictional Atlas Studio demo data`}
                   width="1280"
                   height="800"
@@ -1095,7 +1118,7 @@ export function authPage(
             <h1>{title}</h1>
             <p>One account for your browser workspace.</p>
             <p className="auth-note">
-              Sign in or create an account, then approve your browser’s connection
+              Sign in to publish hooks, join discussions, or approve your browser’s connection
               request. Return to Sync in Preferences to set up encrypted sync.
             </p>
           </section>
@@ -1196,8 +1219,8 @@ export function authPage(
             )}
           </section>
         </main>
-        <script src="/assets/auth.js" defer />
-        <script src="/assets/passkeys.js" type="module" />
+        <script src={`/assets/auth.js?v=${authScriptVersion}`} defer />
+        <script src={`/assets/passkeys.js?v=${passkeyScriptVersion}`} type="module" />
       </Layout>
     )
   );
@@ -1207,6 +1230,8 @@ export function accountPage(
   email: string,
   usage: { usedBytes: number; recordCount: number; quotas: { bytes: number } }
 ) {
+  const displayName = name.trim();
+  const showName = displayName && displayName.toLowerCase() !== email.trim().toLowerCase();
   const capacity = Math.max(0, usage.quotas.bytes);
   const used = Math.max(0, usage.usedBytes);
   const percent = capacity > 0 ? Math.min(100, (used / capacity) * 100) : 0;
@@ -1219,12 +1244,18 @@ export function accountPage(
       <Layout privatePage title="Account">
         <main className="account-dashboard">
           <div className="account-heading">
-            <div>
-              <p className="account-eyebrow">Kudium Cloud</p>
-              <h1>{name ? `Hello, ${name}.` : "Your workspace."}</h1>
-              <p className="account-email">{email}</p>
+            <div className="account-heading-identity">
+              <h1>Your workspace</h1>
+              <p className="account-email">
+                {showName && <><span>{displayName}</span><span aria-hidden="true"> · </span></>}
+                {email}
+              </p>
             </div>
-            <button className="account-button" type="button" data-sign-out>Sign out</button>
+            <div className="account-heading-actions">
+              <a className="account-button" href="/account/hooks">My hooks</a>
+              <a className="account-button account-publish-button" href="/hooks/new">Publish hook</a>
+              <button className="account-button account-sign-out" type="button" data-sign-out>Sign out</button>
+            </div>
           </div>
           <p className="account-status" data-auth-message role="status" aria-live="polite" />
           <section className="cloud-workspace" data-account-data aria-label="Your synced data">
@@ -1289,8 +1320,8 @@ export function accountPage(
           </section>
 
         </main>
-        <script src="/assets/auth.js" defer />
-        <script src="/assets/passkeys.js" type="module" />
+        <script src={`/assets/auth.js?v=${authScriptVersion}`} defer />
+        <script src={`/assets/passkeys.js?v=${passkeyScriptVersion}`} type="module" />
         <script src="/assets/sessions.js?v=2" defer />
         <script src={`/assets/account-data.js?v=${accountDataVersion}`} defer />
       </Layout>
@@ -1444,19 +1475,47 @@ new MutationObserver(() => {
 export function whatsNewPage() {
   return renderToStaticMarkup(
     <Layout title="What’s New" canonicalPath="/whats-new">
-      <main className="tutorial-article">
-        <h1>What’s New</h1>
-        <p className="lead">The latest improvements to your Kudium workspace.</p>
-        {whatsNew.map(release => (
-          <article key={release.version}>
-            <p>Version {release.version} · <time dateTime={release.date}>{release.date}</time></p>
-            <h2>{release.title}</h2>
-            {release.highlights.map(([title, detail]) => (
-              <section key={title}><h3>{title}</h3><p>{detail}</p></section>
+      <main className="whats-new-page">
+        <div className="whats-new-heading">
+          <h1>What’s New</h1>
+          <p className="lead">The latest improvements to your Kudium workspace.</p>
+        </div>
+        <div className="whats-new-layout">
+          <nav className="whats-new-history" aria-label="Release versions">
+            <h2>Updates</h2>
+            <ol>
+              {whatsNew.map(release => (
+                <li key={release.version}>
+                  <a href={`#release-${release.version}`}>
+                    <span className="release-dot" aria-hidden="true" />
+                    <strong>{release.version}</strong>
+                    <time dateTime={release.date}>{release.date}</time>
+                  </a>
+                </li>
+              ))}
+            </ol>
+            <a className="whats-new-download" href="/releases">History & downloads</a>
+          </nav>
+          <div className="whats-new-entries">
+            {whatsNew.map((release, index) => (
+              <article className="whats-new-article" id={`release-${release.version}`} key={release.version}>
+                <div className="whats-new-meta">
+                  <span>Version {release.version}</span>
+                  <time dateTime={release.date}>{release.date}</time>
+                  {index === 0 && <span>Latest update</span>}
+                </div>
+                <h2>{release.title}</h2>
+                <div className="whats-new-changes">
+                  {release.highlights.map(([title, detail]) => (
+                    <section key={title}>
+                      <div><h3>{title}</h3><p>{detail}</p></div>
+                    </section>
+                  ))}
+                </div>
+              </article>
             ))}
-          </article>
-        ))}
-        <a className="text-link" href="/releases">Release history and downloads →</a>
+          </div>
+        </div>
       </main>
     </Layout>
   );

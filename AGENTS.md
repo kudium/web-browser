@@ -83,3 +83,11 @@ defines these commands, run from the repository root on a Mac:
 - Website deployment is separate from installer publication. Local website
   edits are not live until deployed to the backend. Do not claim deployment or
   working iCloud support based only on a successful signed installer build.
+
+## Website showcase and demo photography
+
+Before updating product screenshots or website appearance examples, read
+[apps/browser/demo/SHOWCASE.md](apps/browser/demo/SHOWCASE.md).
+Reuse the fictional Atlas Studio fixture and disposable capture profile. Refresh
+real UI captures, WebP derivatives and verification manifest together; visually
+inspect the results and update website asset allowlists and cache versions.

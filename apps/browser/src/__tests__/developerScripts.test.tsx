@@ -1,5 +1,11 @@
 import { useState, ReactNode } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { PanelOverlayProvider } from '../components/UI/PanelDialog';
 import { DeveloperScripts } from '../components/UI/DeveloperScripts';
@@ -200,3 +206,87 @@ it.each([
     expect(input.value).toBe(`${command} --help`);
   }
 );
+
+it('refreshes an open menu after external changes and ignores its older list response', async () => {
+  let changed = () => {};
+  let finish: (value: { scripts: (typeof local)[] }) => void = () => {};
+  Object.assign(window.electron.siteDeveloper, {
+    onPagesChanged: (listener: () => void) => {
+      changed = listener;
+      return () => {};
+    },
+  });
+  scripts.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  render(
+    <Theme>
+      <DeveloperScripts sourceId="tab" disabled={false} onRun={show} />
+    </Theme>
+  );
+  openMenu();
+  const updated = { ...local, name: 'Updated server' };
+  scripts.mockResolvedValue({ scripts: [updated] });
+  act(() => changed());
+  await screen.findByRole('menuitem', { name: 'Updated server' });
+  await act(async () => {
+    finish({ scripts: [local] });
+  });
+  expect(screen.queryByRole('menuitem', { name: 'Dev server' })).toBeNull();
+  expect(screen.getByRole('menuitem', { name: 'Updated server' })).toBeTruthy();
+});
+
+it('reviews discovered project commands and imports only the selection without running it', async () => {
+  const candidate = {
+    id: 'a'.repeat(64),
+    name: 'Build',
+    command: 'cargo build',
+    source: 'Cargo.toml',
+    kind: 'standard',
+  };
+  scripts.mockImplementation(async (_source, request) => {
+    if (request.action === 'discover')
+      return {
+        scripts: [local],
+        candidates: [
+          candidate,
+          { ...candidate, id: 'b'.repeat(64), name: 'Saved test', saved: true },
+        ],
+        warnings: [],
+      };
+    if (request.action === 'import')
+      return {
+        scripts: [local, { ...candidate, id: 'saved', scope: 'project' }],
+        imported: 1,
+      };
+    return { scripts: [local] };
+  });
+  render(
+    <Theme>
+      <DeveloperScripts sourceId="tab" disabled={false} onRun={show} />
+    </Theme>
+  );
+  openMenu();
+  fireEvent.click(
+    await screen.findByRole('menuitem', { name: 'Manage scripts…' })
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Import from project' })
+  );
+  const checkbox = await screen.findByRole('checkbox', { name: /Build/ });
+  fireEvent.click(checkbox);
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 selected' }));
+  await screen.findByRole('status');
+  expect(scripts).toHaveBeenCalledWith('tab', {
+    action: 'import',
+    ids: [candidate.id],
+  });
+  expect(show).not.toHaveBeenCalled();
+  expect(scripts).not.toHaveBeenCalledWith(
+    'tab',
+    expect.objectContaining({ action: 'run' })
+  );
+});
