@@ -14,8 +14,16 @@ describe('App', () => {
   it('should render', () => {
     Object.assign(window, {
       electron: {
-        browser: { nativeAppearance: jest.fn().mockResolvedValue(undefined) },
+        browser: {
+          nativeAppearance: jest.fn().mockResolvedValue(undefined),
+          onPreferences: jest.fn(() => () => {}),
+          preferences: jest.fn().mockResolvedValue({}),
+        },
         ipcRenderer: { on: jest.fn(() => () => {}) },
+        hookMarketplace: {
+          onInstall: jest.fn(() => () => {}),
+          ready: jest.fn(),
+        },
       },
     });
     window.history.replaceState({}, '', '/?view=main');

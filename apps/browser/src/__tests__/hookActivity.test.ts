@@ -40,7 +40,7 @@ jest.mock('../main/hookNotifications', () => ({
   hookNotifications: () => ({ permissions: () => [] }),
 }));
 jest.mock('../main/groupLocks', () => ({
-  getGroupLocks: jest.fn(() => ({ locked: () => false })),
+  getGroupLocks: jest.fn(() => ({ locked: () => false, subscribe: jest.fn() })),
 }));
 jest.mock('../main/activity', () => ({
   browserActivity: jest.fn(() => ({ create: jest.fn() })),
@@ -54,10 +54,14 @@ let token: string;
 const create = jest.fn(() => ({ id: 'activity' }));
 beforeEach(() => {
   (browserActivity as jest.Mock).mockReturnValue({ create });
-  (getGroupLocks as jest.Mock).mockReturnValue({ locked: () => false });
+  (getGroupLocks as jest.Mock).mockReturnValue({
+    locked: () => false,
+    subscribe: jest.fn(),
+  });
   const frame = { url: 'https://example.com/page' };
   const contents = {
     mainFrame: frame,
+    getURL: () => frame.url,
     once: jest.fn(),
     on: jest.fn(),
     send: jest.fn(),
