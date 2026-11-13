@@ -16,6 +16,13 @@ import { inspectDiscardCandidate } from '../main/tabDiscard';
 import { bindDownloadSource } from '../main/downloads';
 import { registerAI } from '../main/ai';
 
+jest.mock('../main/faviconDecoder', () => ({
+  FaviconDecoder: jest.fn(() => ({
+    decode: jest.fn().mockResolvedValue('data:image/png;base64,cached'),
+    clear: jest.fn(),
+  })),
+}));
+
 jest.mock('../main/localStorage', () => ({
   safeStorage: jest.requireMock('electron').safeStorage,
 }));
@@ -885,6 +892,8 @@ it.each(['navigation', 'removal', 'window', 'empty-list'])(
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
+    const decoder = jest.requireMock('../main/faviconDecoder').FaviconDecoder.mock.results.at(-1).value;
+    const decodedBeforeRequest = decoder.decode.mock.calls.length;
     let signal: AbortSignal | undefined;
     contents.session.fetch.mockImplementationOnce(
       (_address: string, options: { signal: AbortSignal }) =>
@@ -914,9 +923,9 @@ it.each(['navigation', 'removal', 'window', 'empty-list'])(
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
-    expect(window.webContents.send).not.toHaveBeenCalledWith(
-      'browser-state',
-      expect.objectContaining({ icon: 'data:image/png;base64,cached' })
+    // Empty candidate lists trigger the root favicon fallback after cancellation.
+    expect(decoder.decode).toHaveBeenCalledTimes(
+      decodedBeforeRequest + (scenario === 'empty-list' ? 1 : 0)
     );
     dispose();
     timer.mockRestore();

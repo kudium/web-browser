@@ -84,7 +84,8 @@ it.each(['error', 'handoff'] as const)(
       mock.event({ type, text: 'Connection failed', resumable: true });
       mock.event({ type: 'done', text: '', resumable: true });
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue task' }));
+    const recoveryLabel = type === 'error' ? 'Retry' : 'Continue task';
+    fireEvent.click(screen.getByRole('button', { name: recoveryLabel }));
     await waitFor(() => expect(mock.ai.resume).toHaveBeenCalledTimes(1));
     expect(mock.ai.run).not.toHaveBeenCalled();
     await waitFor(() =>

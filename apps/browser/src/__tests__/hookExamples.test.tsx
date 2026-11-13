@@ -115,7 +115,7 @@ it('edits and deletes saved examples without modifying the page script', () => {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Delete Renamed' }));
   expect(readHookExamples()).toEqual([]);
-  expect(screen.getByText(/No saved examples yet/)).toBeVisible();
+  expect(screen.getByText(/No saved scripts/)).toBeVisible();
   expect(onInsert).not.toHaveBeenCalled();
 });
 
