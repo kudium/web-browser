@@ -15,7 +15,7 @@ import { authenticateSession, syncAccountId, type Authenticate, type Auth } from
 import { envelopeSchema, opaqueId, targetSchema } from './validation';
 import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest, releaseHistory } from './releases';
-import { homepage, downloadPage, documentation, notesAndActivityDocumentation, unavailablePage, authPage, accountPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
+import { homepage, downloadPage, documentation, notesAndActivityDocumentation, unavailablePage, authPage, accountPage, accountSettingsPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
 import { tutorials } from './tutorials';
 import { whatsNewPage } from './pages';
 import { privacyPage } from './privacy';
@@ -145,6 +145,14 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   });
   app.get('/assets/sessions.js', async c => {c.header('Content-Type','text/javascript; charset=utf-8');return c.body(await Bun.file(new URL('../public/sessions.js',import.meta.url)).text());});
   app.get('/assets/device.js', async c => {c.header('Content-Type','text/javascript; charset=utf-8');return c.body(await Bun.file(new URL('../public/device.js',import.meta.url)).text());});
+  app.get('/account/settings', async c => {
+    c.header('Cache-Control', 'no-store');
+    if (!auth) return c.redirect('/sign-in');
+    const session = await auth.api.getSession({ headers: c.req.raw.headers, query: { disableCookieCache: true } });
+    if (!session) return c.redirect('/sign-in');
+    const linkedAccounts = await auth.api.listUserAccounts({ headers: c.req.raw.headers });
+    return c.html(accountSettingsPage(session.user.name, session.user.email, Boolean(auth.options.emailAndPassword?.sendResetPassword), linkedAccounts.some(account => account.providerId === 'credential')));
+  });
   app.get('/account', async c => {
     c.header('Cache-Control', 'no-store');
     if (!auth) return c.redirect('/sign-in');

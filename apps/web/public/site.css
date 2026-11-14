@@ -2047,3 +2047,14 @@ body.account-page:has(.cloud-workspace) header nav > a[href='/docs'] { display: 
 .whats-new-screenshots figure { margin:0; }
 .whats-new-screenshots img { display:block; width:100%; height:auto; border-radius:12px; border:1px solid var(--line, #ddd); }
 .whats-new-screenshots figcaption { margin-top:10px; font-size:14px; color:var(--muted, #666); }
+
+.account-settings { max-width: 880px; }
+.account-settings-card { margin-top: 24px; padding: 28px; border: 1px solid var(--border, #deded8); border-radius: 16px; background: var(--surface, #fff); }
+.account-settings-card h2 { margin-top: 0; }
+.account-settings-card form { display: grid; gap: 16px; max-width: 480px; margin-top: 20px; }
+.account-settings-card label { display: grid; gap: 8px; font-weight: 500; }
+.account-settings-card input { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid #bcbcb5; border-radius: 8px; font: inherit; background: #fff; color: #20201e; }
+.account-settings-card button { justify-self: start; }
+.account-settings-card [data-form-message] { min-height: 1.5em; margin: 0; }
+.account-settings-card .account-text-link { display: inline-block; margin-top: 20px; }
+@media (max-width: 600px) { .account-settings-card { padding: 20px; } }

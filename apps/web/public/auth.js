@@ -59,3 +59,35 @@ if (returnTo && (/^\/device\?user_code=[A-Za-z0-9-]{4,32}$/.test(returnTo) || /^
     link.href = `${link.getAttribute('href')}?next=${encodeURIComponent(returnTo)}`;
   }
 }
+
+for (const settingsForm of document.querySelectorAll('[data-account-form]')) {
+  settingsForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = settingsForm.querySelector('button[type="submit"]');
+    const status = settingsForm.querySelector('[data-form-message]');
+    if (button.disabled) return;
+    button.disabled = true;
+    status.textContent = 'Saving…';
+    const fields = new FormData(settingsForm);
+    try {
+      const mode = settingsForm.dataset.accountForm;
+      if (mode === 'profile') {
+        const name = String(fields.get('name') || '').trim();
+        if (!name) throw new Error('Enter your name.');
+        await authRequest('update-user', { name });
+        status.textContent = 'Profile saved.';
+      } else if (mode === 'email') {
+        await authRequest('change-email', { newEmail: String(fields.get('email') || '').trim(), callbackURL: `${location.origin}/account/settings` });
+        status.textContent = 'Check your current inbox to confirm the change, then verify your new email address. Your email stays unchanged until verification is complete.';
+      } else if (mode === 'password') {
+        const newPassword = String(fields.get('newPassword') || '');
+        if (newPassword !== fields.get('confirmPassword')) throw new Error('The new passwords do not match.');
+        await authRequest('change-password', { currentPassword: String(fields.get('currentPassword') || ''), newPassword, revokeOtherSessions: true });
+        settingsForm.reset();
+        status.textContent = 'Password changed. Your other sessions have been signed out.';
+      }
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : 'Unable to save changes. Please try again.';
+    } finally { button.disabled = false; }
+  });
+}

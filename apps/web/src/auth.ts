@@ -23,6 +23,12 @@ export function createAuth(db: Database, config: AuthConfig, delivery?: MailDeli
     database: drizzleAdapter(db, { provider: 'pg', schema: { user: authUser, session: authSession, account: authAccount, verification: authVerification, rateLimit: authRateLimit, deviceCode: authDeviceCode, passkey: authPasskey } }),
     socialProviders: config.google ? { google: { ...config.google, prompt: 'select_account' } } : {},
     account: { encryptOAuthTokens: true, accountLinking: { enabled: true, requireLocalEmailVerified: true, allowDifferentEmails: false } },
+    user: { changeEmail: {
+      enabled: Boolean(sendMail),
+      ...(sendMail ? { sendChangeEmailConfirmation: async ({ user, newEmail, url }: { user: { email: string }; newEmail: string; url: string }) => {
+        await sendMail!({ from: config.smtpFrom, to: user.email, subject: 'Confirm your Kudium email change', text: `Confirm changing your email to ${newEmail}:\n${url}\n\nIf you did not request this, do not open this link.` });
+      } } : {}),
+    } },
     emailAndPassword: {
       enabled: true, minPasswordLength: 12, maxPasswordLength: 128,
       requireEmailVerification: Boolean(sendMail),

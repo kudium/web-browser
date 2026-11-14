@@ -1255,6 +1255,30 @@ export function authPage(
     )
   );
 }
+export function accountSettingsPage(name: string, email: string, mailEnabled: boolean, hasPassword: boolean) {
+  return "<!doctype html>" + renderToStaticMarkup(
+    <Layout privatePage title="Account settings">
+      <main className="account-dashboard account-settings">
+        <div className="account-heading"><div><h1>Account settings</h1><p className="account-email">{email}</p></div><a className="account-button" href="/account">Back to workspace</a></div>
+        <section className="account-settings-card" aria-labelledby="profile-heading">
+          <h2 id="profile-heading">Profile</h2>
+          <form data-account-form="profile"><label>Your name<input name="name" defaultValue={name} autoComplete="name" required maxLength={100} /></label><button className="account-button" type="submit">Save profile</button><p data-form-message role="status" aria-live="polite" /></form>
+        </section>
+        <section className="account-settings-card" aria-labelledby="email-heading">
+          <h2 id="email-heading">Email address</h2>
+          {mailEnabled ? <><p>Confirm the change from your current inbox, then verify your new email address.</p><form data-account-form="email"><label>New email address<input name="email" type="email" autoComplete="email" required maxLength={254} /></label><button className="account-button" type="submit">Change email</button><p data-form-message role="status" aria-live="polite" /></form></> : <p>Email changes require email delivery, which is currently unavailable. Contact <a href="mailto:hello@kudium.com">hello@kudium.com</a> for help.</p>}
+        </section>
+        <section className="account-settings-card" aria-labelledby="password-heading">
+          <h2 id="password-heading">Password</h2>
+          {hasPassword ? <><p>Use at least 12 characters. Changing your password signs out your other sessions.</p><form data-account-form="password"><label>Current password<input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128} /></label><label>New password<input name="newPassword" type="password" autoComplete="new-password" required minLength={12} maxLength={128} /></label><label>Confirm new password<input name="confirmPassword" type="password" autoComplete="new-password" required minLength={12} maxLength={128} /></label><button className="account-button" type="submit">Change password</button><p data-form-message role="status" aria-live="polite" /></form></> : <p>You sign in with Google or a passkey. {mailEnabled ? "Use a password reset email to add a password to your account." : "Continue using your existing sign-in method."}</p>}
+          {mailEnabled ? <a className="account-text-link" href="/forgot-password">Send a password reset email</a> : <p className="account-caption">Password reset emails are currently unavailable. Contact <a href="mailto:hello@kudium.com">hello@kudium.com</a> for help.</p>}
+        </section>
+      </main>
+      <script src={`/assets/auth.js?v=${authScriptVersion}`} defer />
+    </Layout>
+  );
+}
+
 export function accountPage(
   name: string,
   email: string,
@@ -1282,6 +1306,7 @@ export function accountPage(
               </p>
             </div>
             <div className="account-heading-actions">
+              <a className="account-button" href="/account/settings">Account settings</a>
               <a className="account-button" href="/account/hooks">My hooks</a>
               <a className="account-button account-publish-button" href="/hooks/new">Publish hook</a>
               <button className="account-button account-sign-out" type="button" data-sign-out>Sign out</button>
