@@ -65,7 +65,7 @@ function mockAI(
     feedback: jest.fn().mockResolvedValue(true),
     run: jest.fn(),
   };
-  Object.assign(window, { electron: { ai } });
+  Object.assign(window, { electron: { ai, browser: { onState: jest.fn(() => () => {}) } } });
   return {
     ai,
     event: (event: AIEvent) => listener(event),

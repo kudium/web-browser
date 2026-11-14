@@ -146,6 +146,7 @@ jest.mock('electron', () => {
         getURL: () => 'https://example.com',
         getTitle: () => 'Example',
         isLoading: jest.fn(() => false),
+        isLoadingMainFrame: jest.fn(() => false),
         isAudioMuted: jest.fn(() => false),
         isCurrentlyAudible: jest.fn(() => true),
         setAudioMuted: jest.fn(),
@@ -630,12 +631,14 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
   );
   expect(getSiteSettings('one', 'https://example.com').permissions).toEqual({});
   views[0].webContents.isLoading.mockReturnValue(true);
+  views[0].webContents.isLoadingMainFrame.mockReturnValue(true);
   views[0].webContents.emit('did-start-loading');
   expect(window.webContents.send).toHaveBeenLastCalledWith(
     'browser-state',
     expect.objectContaining({ id: 'one', loading: true })
   );
   views[0].webContents.isLoading.mockReturnValue(false);
+  views[0].webContents.isLoadingMainFrame.mockReturnValue(false);
   views[0].webContents.emit('did-stop-loading');
   expect(window.webContents.send).toHaveBeenLastCalledWith(
     'browser-state',

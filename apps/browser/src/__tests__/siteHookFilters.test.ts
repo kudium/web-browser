@@ -6,6 +6,8 @@ import {
 import { hookScriptHash } from '../main/hookNotifications';
 import { aiToolParameters } from '../browser/aiToolSchemas';
 
+jest.mock('../main/passwordManager', () => ({}));
+
 jest.mock('../main/localStorage', () => ({
   safeStorage: jest.requireMock('electron').safeStorage,
 }));

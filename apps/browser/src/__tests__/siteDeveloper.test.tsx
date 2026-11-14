@@ -360,7 +360,7 @@ it('opens the Developer window from site settings and dismisses the blocking dia
     </Theme>
   );
   expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Developer' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Manage Site Hooks' }));
   expect(command).toHaveBeenCalledWith({
     id: 'tab',
     url: 'https://example.com',

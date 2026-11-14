@@ -13,7 +13,8 @@ const template = file.slice(
   file.indexOf('String.raw`') + 11,
   file.indexOf('`;\nlet preloadPath')
 );
-const source = new Function(`return String.raw\`${template}\``)();
+// Autofill has its own DOM tests; this harness isolates website hook lifecycle.
+const source = new Function('installPersonalDataAutofill', 'createPersonalDataMatching', `return String.raw\`${template}\``)(() => {}, () => ({ score: () => 0 }));
 const flush = async () => {
   for (let index = 0; index < 40; index += 1) await Promise.resolve();
 };
