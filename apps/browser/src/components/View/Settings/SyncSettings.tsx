@@ -1,3 +1,4 @@
+import { browser } from '../../../browser/client';
 import { useEffect, useState } from 'react';
 import { Switch } from '@radix-ui/themes';
 import {
@@ -48,7 +49,11 @@ export function SyncSettings({
         return undefined;
       })
       .catch(() => {});
-    return (
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return (
     <div className="cloud-sync-settings sync-visual-page">
       <div className="sync-section-heading">
         <h2>Syncing options</h2>
@@ -70,7 +75,12 @@ export function SyncSettings({
               }
               disabled={busy}
               onCheckedChange={(enabled) =>
-                save({ ...settings, provider: 'kudiumbrowser', enabled })
+                save({
+                  ...settings,
+                  provider: 'kudiumbrowser',
+                  enabled,
+                  icloud: icloudAvailable ? false : settings.icloud,
+                })
               }
             />
           </div>
@@ -88,7 +98,9 @@ export function SyncSettings({
           <div>
             <strong>iCloud</strong>
             <p className="preference-note">
-              {icloudAvailable ? 'Sync encrypted browser data using the iCloud account on this Mac.' : 'Not available in this build. Your choice is saved for when iCloud sync is available.'}
+              {icloudAvailable
+                ? 'Sync encrypted browser data using the iCloud account on this Mac.'
+                : 'Not available in this build. Your choice is saved for when iCloud sync is available.'}
             </p>
           </div>
           <Switch
@@ -98,16 +110,41 @@ export function SyncSettings({
                 (settings.provider === 'icloud' && settings.enabled)
             )}
             disabled={busy}
-            onCheckedChange={(icloud) => save(icloudAvailable ? { ...settings, icloud, provider: icloud ? 'icloud' : 'kudiumbrowser', enabled: icloud } : { ...settings, icloud })}
+            onCheckedChange={(icloud) =>
+              save(
+                icloudAvailable
+                  ? {
+                      ...settings,
+                      icloud,
+                      provider: icloud ? 'icloud' : 'kudiumbrowser',
+                      enabled: icloud,
+                    }
+                  : { ...settings, icloud }
+              )
+            }
           />
         </div>
-        {icloudAvailable && settings.enabled && settings.provider === 'icloud' && <AccountSyncSettings provider="icloud" enabled passwordsEnabled={Boolean(settings.categories.passwords)} notesEnabled={Boolean(settings.categories.notes)} onEnabled={() => {}} />}
+        {icloudAvailable &&
+          settings.enabled &&
+          settings.provider === 'icloud' && (
+            <AccountSyncSettings
+              provider="icloud"
+              enabled
+              passwordsEnabled={Boolean(settings.categories.passwords)}
+              notesEnabled={Boolean(settings.categories.notes)}
+              onEnabled={() => {}}
+            />
+          )}
       </div>
       <div className="sync-section-heading">
         <h2>Included in sync</h2>
         <PreferenceHint label="sync privacy">
-          Account sync encrypts data with an account-managed key, so signing in can unlock it on another device. This is not end-to-end encryption. Older backups may still require their recovery key. Password sync requires unlocking Personal Data. Group-only credentials, passkeys, cookies, AI
-          keys and AI history stay local.
+          {settings.provider === 'icloud'
+            ? 'iCloud sync encrypts data with your recovery key. Keep that key safe to restore on another device.'
+            : 'Account sync encrypts data with an account-managed key, so signing in can unlock it on another device. This is not end-to-end encryption.'}{' '}
+          Older backups may still require their recovery key. Password sync
+          requires unlocking Personal Data. Group-only credentials, passkeys,
+          cookies, AI keys and AI history stay local.
         </PreferenceHint>
       </div>
       <div className="sync-category-grid">

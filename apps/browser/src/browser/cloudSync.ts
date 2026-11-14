@@ -50,7 +50,10 @@ export function defaultSyncSettings(_platform = 'darwin'): SyncSettings {
     },
   };
 }
-export function validateSyncSettings(value: unknown, icloudAvailable = false): SyncSettings {
+export function validateSyncSettings(
+  value: unknown,
+  icloudAvailable = false
+): SyncSettings {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid sync settings');
   const settings = value as SyncSettings;
@@ -88,7 +91,9 @@ export function validateSyncSettings(value: unknown, icloudAvailable = false): S
   if (settings.enabled && !Object.values(settings.categories).some(Boolean))
     throw new Error('Select at least one category to sync');
   return {
-    enabled: (settings.provider === 'kudiumbrowser' || icloudAvailable) && settings.enabled,
+    enabled:
+      (settings.provider === 'kudiumbrowser' || icloudAvailable) &&
+      settings.enabled,
     provider: icloudAvailable ? settings.provider : 'kudiumbrowser',
     icloud:
       settings.icloud ?? (settings.provider === 'icloud' && settings.enabled),
@@ -121,7 +126,8 @@ export function cloudSyncStatus(
       message =
         'iCloud sync is available only on Mac. Choose Kudium Browser for other platforms.';
     else if (icloudAvailable)
-      message = 'Connect the iCloud account on this Mac to set up encrypted sync.';
+      message =
+        'Connect the iCloud account on this Mac to set up encrypted sync.';
     else
       message =
         'iCloud connection is not available in this build. Your choices are saved; no data is uploaded.';

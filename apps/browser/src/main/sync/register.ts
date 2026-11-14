@@ -25,31 +25,31 @@ import type {
 
 export function registerAccountSync(
   trusted: (window: BrowserWindow) => boolean,
-  main: (window: BrowserWindow) => boolean
+  main: (window: BrowserWindow) => boolean,
 ) {
   const passwordScheduler = new PasswordSyncScheduler();
   const clients = new Map<'icloud' | 'kudiumbrowser', AccountSyncClient>();
   const filename = (provider: 'icloud' | 'kudiumbrowser') =>
     path.join(
       app.getPath('userData'),
-      provider === 'icloud' ? 'icloud-sync.bin' : 'account-sync.bin'
+      provider === 'icloud' ? 'icloud-sync.bin' : 'account-sync.bin',
     );
   const get = (provider = getBrowserPreferences().cloudSync.provider) => {
     let client = clients.get(provider);
     if (provider === 'icloud' && !cloudKitAvailable())
       throw new Error(
-        'iCloud is unavailable outside a provisioned integration build.'
+        'iCloud is unavailable outside a provisioned integration build.',
       );
     if (!safeStorage.isEncryptionAvailable())
       throw new Error(
-        'Enable secure local storage before connecting sync. Restart the browser to enable it.'
+        'Enable secure local storage before connecting sync. Restart the browser to enable it.',
       );
     if (!client) {
       const options: ConstructorParameters<typeof AccountSyncClient>[0] = {
         load: () => {
           if (!fs.existsSync(filename(provider))) return {};
           return JSON.parse(
-            safeStorage.decryptString(fs.readFileSync(filename(provider)))
+            safeStorage.decryptString(fs.readFileSync(filename(provider))),
           );
         },
         save: (value) => {
@@ -57,7 +57,7 @@ export function registerAccountSync(
           fs.writeFileSync(
             `${file}.tmp`,
             safeStorage.encryptString(JSON.stringify(value)),
-            { mode: 0o600 }
+            { mode: 0o600 },
           );
           fs.renameSync(`${file}.tmp`, file);
         },
@@ -115,7 +115,7 @@ export function registerAccountSync(
             remote: [],
           };
         throw new Error(
-          'Choose Kudium Account or use a provisioned iCloud integration build.'
+          'Choose Kudium Account or use a provisioned iCloud integration build.',
         );
       }
       const instance = get();
@@ -180,14 +180,14 @@ export function registerAccountSync(
                   !item.scope &&
                   item.kind === 'login' &&
                   item.origin &&
-                  item.password
+                  item.password,
               )
               .map(({ title, origin, username, password }) => ({
                 title,
                 origin,
                 username,
                 password,
-              }))
+              })),
           );
           await instance.syncPasswords(items);
         } else {
@@ -201,7 +201,7 @@ export function registerAccountSync(
           )
             throw new Error('Window changed during import.');
           const imported = withPersonalData((vault) =>
-            vault.importSyncedLogins(items)
+            vault.importSyncedLogins(items),
           );
           operationMessage = `${imported} saved logins imported. Existing passwords were kept.`;
         }
@@ -214,17 +214,30 @@ export function registerAccountSync(
       else if (action === 'reset-sync') {
         const revision = instance.connectionRevision();
         const answer = await dialog.showMessageBox(owner, {
-          type: 'warning', buttons: ['Cancel', 'Reset cloud sync'], defaultId: 0, cancelId: 0, noLink: true,
+          type: 'warning',
+          buttons: ['Cancel', 'Reset cloud sync'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
           message: 'Reset cloud backups only?',
-          detail: 'This permanently deletes the cloud backups for this account and prepares cloud sync for a fresh backup. Local tabs, groups, notes, passwords and browsing data will not be changed or deleted. Your current local data can be uploaded when you enable sync again. Other devices must reconnect. Backups encrypted with a lost key cannot be recovered.',
+          detail:
+            'This permanently deletes the cloud backups for this account and prepares cloud sync for a fresh backup. Local tabs, groups, notes, passwords and browsing data will not be changed or deleted. Your current local data can be uploaded when you enable sync again. Other devices must reconnect. Backups encrypted with a lost key cannot be recovered.',
         });
         if (answer.response !== 1) return instance.status();
-        if (owner.isDestroyed() || !trusted(owner) || clients.get(getBrowserPreferences().cloudSync.provider) !== instance || revision !== instance.connectionRevision()) throw new Error('Your account changed. Try resetting again.');
+        if (
+          owner.isDestroyed() ||
+          !trusted(owner) ||
+          clients.get(getBrowserPreferences().cloudSync.provider) !==
+            instance ||
+          revision !== instance.connectionRevision()
+        )
+          throw new Error('Your account changed. Try resetting again.');
         passwordScheduler.reset();
-        updateBrowserPreferences({ cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false } });
+        updateBrowserPreferences({
+          cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false },
+        });
         await instance.resetSync(true);
-      }
-      else if (action === 'disconnect') {
+      } else if (action === 'disconnect') {
         passwordScheduler.reset();
         updateBrowserPreferences({
           cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false },
@@ -253,7 +266,7 @@ export function registerAccountSync(
       // Only the settings window needs the recovery key for explicit setup.
       if (main(owner)) return { ...status, recoveryKey: undefined };
       return status;
-    }
+    },
   );
 
   let lastPasswords = 0;
@@ -275,7 +288,8 @@ export function registerAccountSync(
         const settings = getBrowserPreferences().cloudSync;
         const status = instance.status();
         return (
-          clients.get(getBrowserPreferences().cloudSync.provider) === instance &&
+          clients.get(getBrowserPreferences().cloudSync.provider) ===
+            instance &&
           status.connected &&
           status.phase === 'ready' &&
           settings.enabled &&
@@ -297,7 +311,7 @@ export function registerAccountSync(
                   !item.scope &&
                   item.kind === 'login' &&
                   item.origin &&
-                  item.password
+                  item.password,
               )
               .map(({ title, origin, username, password }) => ({
                 title,

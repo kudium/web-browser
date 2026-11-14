@@ -40,16 +40,19 @@ export const portablePreferenceKeys = [
 ] as const;
 
 /** Explicit outbound allowlist. No localStorage/profile directory export. */
-export function buildSyncSnapshot(input: {
-  settings: SyncSettings;
-  deviceId: string;
-  apps: (IApp & { private?: boolean })[];
-  spaces: Space[];
-  preferences: BrowserPreferences;
-  currentUrls?: Record<string, string>;
-  now?: number;
-}) {
-  const settings = validateSyncSettings(input.settings);
+export function buildSyncSnapshot(
+  input: {
+    settings: SyncSettings;
+    deviceId: string;
+    apps: (IApp & { private?: boolean })[];
+    spaces: Space[];
+    preferences: BrowserPreferences;
+    currentUrls?: Record<string, string>;
+    now?: number;
+  },
+  icloudAvailable = false
+) {
+  const settings = validateSyncSettings(input.settings, icloudAvailable);
   if (!settings.enabled) throw new Error('Sync is disabled');
   if (input.apps.length > 5000 || input.spaces.length > 200)
     throw new Error('Sync snapshot is too large');

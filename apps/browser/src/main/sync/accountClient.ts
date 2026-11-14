@@ -268,87 +268,97 @@ export class AccountSyncClient {
     }
   }
 
-  private async enroll(token: string, user: { id: string; email: string }, generation: number) {
+  private async enroll(
+    token: string,
+    user: { id: string; email: string },
+    generation: number
+  ) {
     if (generation !== this.generation) return;
-      const accountId = createHash('sha256')
-        .update(`${this.options.provider === 'icloud' ? 'icloud' : 'better-auth'}\0${user.id}`)
-        .digest('hex');
-      const previous = this.saved.credential;
-      this.saved = {
-        credential: {
-          token,
-          email: user.email,
-          accountId,
-          deviceId:
-            previous?.accountId === accountId
-              ? previous.deviceId
-              : randomUUID(),
-          key: previous?.accountId === accountId ? previous.key : undefined,
-          enrolled:
-            previous?.accountId === accountId ? previous.enrolled : false,
-        },
-      };
-      this.remote.clear();
-      this.noteRecords.clear();
-      this.passwordRecords.clear();
-      this.lastDigest = undefined;
-      this.pending = undefined;
-      this.persist();
-      const credential = this.saved.credential!;
-      this.managedKeyAttempted = false;
-      if (await this.recoverAccountKey()) return;
+    const accountId = createHash('sha256')
+      .update(
+        `${this.options.provider === 'icloud' ? 'icloud' : 'better-auth'}\0${
+          user.id
+        }`
+      )
+      .digest('hex');
+    const previous = this.saved.credential;
+    this.saved = {
+      credential: {
+        token,
+        email: user.email,
+        accountId,
+        deviceId:
+          previous?.accountId === accountId ? previous.deviceId : randomUUID(),
+        key: previous?.accountId === accountId ? previous.key : undefined,
+        enrolled: previous?.accountId === accountId ? previous.enrolled : false,
+      },
+    };
+    this.remote.clear();
+    this.noteRecords.clear();
+    this.passwordRecords.clear();
+    this.lastDigest = undefined;
+    this.pending = undefined;
+    this.persist();
+    const credential = this.saved.credential!;
+    this.managedKeyAttempted = false;
+    if (await this.recoverAccountKey()) return;
+    if (generation !== this.generation) return;
+    try {
+      const root = (await this.request(`/v1/sync/records/${keyRecord}`, token))
+        .body;
       if (generation !== this.generation) return;
-      try {
-        const root = (
-          await this.request(`/v1/sync/records/${keyRecord}`, token)
-        ).body;
-        if (generation !== this.generation) return;
-        let valid = false;
-        if (credential.key && credential.enrolled) {
-          const key = Buffer.from(credential.key, 'base64url');
-          try {
-            const check = decryptSyncRecord(root.envelope, key) as any;
-            valid =
-              check?.kind === 'kudium-sync-key' &&
-              check.accountId === accountId;
-          } catch {
-            valid = false;
-          } finally {
-            key.fill(0);
-          }
+      let valid = false;
+      if (credential.key && credential.enrolled) {
+        const key = Buffer.from(credential.key, 'base64url');
+        try {
+          const check = decryptSyncRecord(root.envelope, key) as any;
+          valid =
+            check?.kind === 'kudium-sync-key' && check.accountId === accountId;
+        } catch {
+          valid = false;
+        } finally {
+          key.fill(0);
         }
-        if (valid) {
-          this.phase = 'ready';
-          this.message = 'Connected. Review your sync choices and enable sync.';
-        } else {
-          credential.enrolled = false;
-          credential.key = undefined;
-          this.phase = 'recovery-required';
-          this.message =
-            'Enter the recovery key from your first device to unlock sync.';
-        }
-        this.persist();
-      } catch (error) {
-        if (generation !== this.generation) return;
-        if (!(error instanceof SyncHTTPError) || error.status !== 404)
-          throw error;
-        credential.enrolled = false;
-        credential.key = randomBytes(32).toString('base64url');
-        this.persist();
-        this.phase = 'key-required';
-        this.message =
-          'Save this recovery key. You will need it on your other devices.';
       }
+      if (valid) {
+        this.phase = 'ready';
+        this.message = 'Connected. Review your sync choices and enable sync.';
+      } else {
+        credential.enrolled = false;
+        credential.key = undefined;
+        this.phase = 'recovery-required';
+        this.message =
+          'Enter the recovery key from your first device to unlock sync.';
+      }
+      this.persist();
+    } catch (error) {
+      if (generation !== this.generation) return;
+      if (!(error instanceof SyncHTTPError) || error.status !== 404)
+        throw error;
+      credential.enrolled = false;
+      credential.key = randomBytes(32).toString('base64url');
+      this.persist();
+      this.phase = 'key-required';
+      this.message =
+        'Save this recovery key. You will need it on your other devices.';
+    }
   }
 
   pollingInterval() {
     return this.pending?.interval || 5000;
   }
 
-  connectionRevision() { return this.generation; }
+  connectionRevision() {
+    return this.generation;
+  }
 
   async autoUnlock() {
-    if (this.managedKeyAttempted || !this.saved.credential || this.saved.credential.enrolled) return;
+    if (
+      this.managedKeyAttempted ||
+      !this.saved.credential ||
+      this.saved.credential.enrolled
+    )
+      return;
     this.managedKeyAttempted = true;
     await this.recoverAccountKey();
   }
@@ -361,18 +371,44 @@ export class AccountSyncClient {
     const migrationKey = recoveryKey?.trim() || credential.key;
     let endpointAvailable = false;
     try {
-      const response = await this.request('/v1/sync/account-key', credential.token, migrationKey ? { recoveryKey: migrationKey } : {});
+      const response = await this.request(
+        '/v1/sync/account-key',
+        credential.token,
+        migrationKey ? { recoveryKey: migrationKey } : {}
+      );
       endpointAvailable = true;
-      if (generation !== this.generation || credential !== this.saved.credential) return false;
+      if (
+        generation !== this.generation ||
+        credential !== this.saved.credential
+      )
+        return false;
       const value = response.body?.key;
-      if (response.body?.managed !== true || typeof value !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(value) || Buffer.from(value, 'base64url').toString('base64url') !== value) throw new Error('The server returned an invalid account key.');
+      if (
+        response.body?.managed !== true ||
+        typeof value !== 'string' ||
+        !/^[A-Za-z0-9_-]{43}$/.test(value) ||
+        Buffer.from(value, 'base64url').toString('base64url') !== value
+      )
+        throw new Error('The server returned an invalid account key.');
       const key = Buffer.from(value, 'base64url');
       try {
-        const root = (await this.request(`/v1/sync/records/${keyRecord}`, credential.token)).body;
+        const root = (
+          await this.request(`/v1/sync/records/${keyRecord}`, credential.token)
+        ).body;
         const proof = decryptSyncRecord(root.envelope, key) as any;
-        if (proof?.kind !== 'kudium-sync-key' || proof.accountId !== credential.accountId) throw new Error('The account key could not unlock your synced data.');
-      } finally { key.fill(0); }
-      if (generation !== this.generation || credential !== this.saved.credential) return false;
+        if (
+          proof?.kind !== 'kudium-sync-key' ||
+          proof.accountId !== credential.accountId
+        )
+          throw new Error('The account key could not unlock your synced data.');
+      } finally {
+        key.fill(0);
+      }
+      if (
+        generation !== this.generation ||
+        credential !== this.saved.credential
+      )
+        return false;
       credential.key = value;
       credential.enrolled = true;
       this.managedKeyAttempted = true;
@@ -382,32 +418,54 @@ export class AccountSyncClient {
       return true;
     } catch (error) {
       if (generation !== this.generation) return false;
-      if (error instanceof SyncHTTPError && error.status === 409 && error.code === 'recovery_key_required') {
+      if (
+        error instanceof SyncHTTPError &&
+        error.status === 409 &&
+        error.code === 'recovery_key_required'
+      ) {
         this.phase = 'recovery-required';
-        this.message = 'Older encrypted backups need their recovery key once. If you no longer have it, you can reset cloud sync and start fresh.';
+        this.message =
+          'Older encrypted backups need their recovery key once. If you no longer have it, you can reset cloud sync and start fresh.';
         return false;
       }
-      if (!endpointAvailable && error instanceof SyncHTTPError && (error.status === 404 || (error.status === 503 && error.code === 'managed_sync_not_configured'))) return false;
-      if (error instanceof SyncHTTPError && error.status === 400) throw new Error('That recovery key could not unlock your backups. Check the key or choose Reset cloud sync.');
+      if (
+        !endpointAvailable &&
+        error instanceof SyncHTTPError &&
+        (error.status === 404 ||
+          (error.status === 503 &&
+            error.code === 'managed_sync_not_configured'))
+      )
+        return false;
+      if (error instanceof SyncHTTPError && error.status === 400)
+        throw new Error(
+          'That recovery key could not unlock your backups. Check the key or choose Reset cloud sync.'
+        );
       throw error;
     }
   }
 
   /** Reset cloud records and sync bookkeeping only; keep the current local snapshot and data stores intact. */
   async resetSync(confirmed: boolean) {
-    if (confirmed !== true) throw new Error('Confirm resetting cloud sync first.');
+    if (confirmed !== true)
+      throw new Error('Confirm resetting cloud sync first.');
     await this.deleteData();
     this.managedKeyAttempted = false;
     const { credential } = this.saved;
     const { generation } = this;
     if (await this.recoverAccountKey()) {
-      this.message = 'Cloud sync was reset. Your local data was kept. Enable sync to back it up again.';
+      this.message =
+        'Cloud sync was reset. Your local data was kept. Enable sync to back it up again.';
     } else {
-      if (generation !== this.generation || credential !== this.saved.credential) return;
+      if (
+        generation !== this.generation ||
+        credential !== this.saved.credential
+      )
+        return;
       credential!.key = randomBytes(32).toString('base64url');
       this.persist();
       this.phase = 'key-required';
-      this.message = 'Cloud sync was reset. Save your new recovery key to start again.';
+      this.message =
+        'Cloud sync was reset. Save your new recovery key to start again.';
     }
   }
 
@@ -417,10 +475,12 @@ export class AccountSyncClient {
     const { generation } = this;
     if (await this.recoverAccountKey(input.recoveryKey)) {
       this.options.enable();
-      this.message = 'Sync is on. Your account unlocks your data on other devices.';
+      this.message =
+        'Sync is on. Your account unlocks your data on other devices.';
       return;
     }
-    if (generation !== this.generation || credential !== this.saved.credential) return;
+    if (generation !== this.generation || credential !== this.saved.credential)
+      return;
     const value = input.recoveryKey?.trim() || credential.key;
     if (
       !value ||
@@ -516,7 +576,8 @@ export class AccountSyncClient {
       !credential?.enrolled ||
       !credential.key ||
       !preferences.cloudSync.enabled ||
-      preferences.cloudSync.provider !== (this.options.provider || 'kudiumbrowser') ||
+      preferences.cloudSync.provider !==
+        (this.options.provider || 'kudiumbrowser') ||
       !this.input
     )
       return;
@@ -527,7 +588,8 @@ export class AccountSyncClient {
     const active = () =>
       generation === this.generation &&
       this.options.preferences().cloudSync.enabled &&
-      this.options.preferences().cloudSync.provider === (this.options.provider || 'kudiumbrowser');
+      this.options.preferences().cloudSync.provider ===
+        (this.options.provider || 'kudiumbrowser');
     try {
       const root = (
         await this.request(`/v1/sync/records/${keyRecord}`, credential.token)
@@ -604,12 +666,15 @@ export class AccountSyncClient {
         if (page === 4999) throw new Error('Sync history is too large.');
       }
       if (!active()) return;
-      const snapshot = buildSyncSnapshot({
-        settings: preferences.cloudSync,
-        deviceId: credential.deviceId,
-        ...this.input,
-        preferences,
-      });
+      const snapshot = buildSyncSnapshot(
+        {
+          settings: preferences.cloudSync,
+          deviceId: credential.deviceId,
+          ...this.input,
+          preferences,
+        },
+        this.options.provider === 'icloud'
+      );
       const digest = createHash('sha256')
         .update(JSON.stringify({ ...snapshot, createdAt: 0 }))
         .digest('hex');
@@ -756,7 +821,8 @@ export class AccountSyncClient {
         generation !== this.generation ||
         !current() ||
         !this.options.preferences().cloudSync.enabled ||
-        this.options.preferences().cloudSync.provider !== (this.options.provider || 'kudiumbrowser') ||
+        this.options.preferences().cloudSync.provider !==
+          (this.options.provider || 'kudiumbrowser') ||
         !this.options.preferences().cloudSync.categories[category]
       )
         throw new Error('Private data sync was paused.');
@@ -800,7 +866,8 @@ export class AccountSyncClient {
       if (
         generation !== this.generation ||
         !this.options.preferences().cloudSync.enabled ||
-        this.options.preferences().cloudSync.provider !== (this.options.provider || 'kudiumbrowser') ||
+        this.options.preferences().cloudSync.provider !==
+          (this.options.provider || 'kudiumbrowser') ||
         !this.options.preferences().cloudSync.categories[category] ||
         data.version !== 1 ||
         `${category}_${data.deviceId}` !== recordId ||
@@ -960,7 +1027,10 @@ export class AccountSyncClient {
       { 'X-Confirm-Delete': 'all-sync-data' },
       'DELETE'
     );
-    if (generation !== this.generation || credential !== this.saved.credential) throw new Error('Your account changed while resetting sync. Reconnect before continuing.');
+    if (generation !== this.generation || credential !== this.saved.credential)
+      throw new Error(
+        'Your account changed while resetting sync. Reconnect before continuing.'
+      );
     this.pause();
     credential.enrolled = false;
     credential.key = undefined;

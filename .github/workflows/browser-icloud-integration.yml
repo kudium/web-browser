@@ -1,12 +1,5 @@
 name: Browser iCloud integration
 on:
-  push:
-    branches: [codex/icloud-native-integration]
-    paths:
-      - .github/workflows/browser-icloud-integration.yml
-      - apps/browser/.erb/configs/electron-builder.icloud.cjs
-      - apps/browser/.erb/configs/webpack.config.main.prod.ts
-      - apps/browser/native/cloud-sync/**
   workflow_dispatch:
 permissions:
   contents: read
