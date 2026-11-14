@@ -11,7 +11,15 @@ output_root = root / 'release-artifacts' / 'open-source'
 output_root.mkdir(parents=True, exist_ok=True)
 output = Path(tempfile.mkdtemp(prefix='history-', dir=output_root))
 mirror = output / 'clean.git'
-subprocess.run(['git', 'clone', '--mirror', '--no-local', str(root), str(mirror)], check=True)
+# Fetch only source branches and tags; local stashes are not publication source.
+subprocess.run(['git', 'init', '--bare', str(mirror)], check=True)
+subprocess.run(['git', 'fetch', '--no-write-fetch-head', str(root), '+refs/heads/*:refs/heads/*', '+refs/tags/*:refs/tags/*'], cwd=mirror, check=True)
+subprocess.run(['git', 'symbolic-ref', 'HEAD', 'refs/heads/main'], cwd=mirror, check=True)
+# Local mirrors also copy stashes and remote-tracking refs. Never publish stashes.
+all_refs = subprocess.check_output(['git', 'for-each-ref', '--format=%(refname)'], cwd=mirror, text=True).splitlines()
+for ref in all_refs:
+    if not ref.startswith(('refs/heads/', 'refs/tags/')):
+        subprocess.run(['git', 'update-ref', '-d', ref], cwd=mirror, check=True)
 refs_before = subprocess.check_output(['git', 'for-each-ref', '--format=%(refname)'], cwd=mirror, text=True).splitlines()
 callback = output / 'sanitize-file.py'
 callback.write_text(r'''
@@ -30,7 +38,7 @@ if not value.is_binary(contents):
         blob_id = value.insert_file_with_contents(cleaned)
 return (filename, mode, blob_id)
 ''')
-subprocess.run(['git', 'filter-repo', '--file-info-callback', str(callback), '--email-callback', 'return b"contributors@example.invalid"', '--message-callback', 'import re; return re.sub(rb"/Users/[A-Za-z0-9._-]+/", b"/path/to/user/", message)'], cwd=mirror, check=True)
+subprocess.run(['git', 'filter-repo', '--force', '--file-info-callback', str(callback), '--email-callback', 'return b"contributors@example.invalid"', '--message-callback', 'import re; return re.sub(rb"/Users/[A-Za-z0-9._-]+/", b"/path/to/user/", message)'], cwd=mirror, check=True)
 subprocess.run(['git', 'reflog', 'expire', '--expire=now', '--all'], cwd=mirror, check=True)
 subprocess.run(['git', 'gc', '--prune=now'], cwd=mirror, check=True)
 subprocess.run(['git', 'fsck', '--full', '--no-reflogs'], cwd=mirror, check=True)
@@ -42,7 +50,7 @@ checked_info = subprocess.check_output(['git', 'cat-file', '--batch-check'], inp
 blobs = [line.split()[0] for line in checked_info if line.split()[1] == b'blob']
 checked = 0
 private_path = re.compile(rb'/Users/[A-Za-z0-9._-]+/')
-marker = b'kudium:' + b'browser-group:'
+private_group = re.compile(rb'kudium:' + rb'browser-group:[a-f0-9]{64}:')
 for index in range(0, len(blobs), 128):
     batch = blobs[index:index + 128]
     data = subprocess.check_output(['git', 'cat-file', '--batch'], input=b'\n'.join(batch) + b'\n', cwd=mirror)
@@ -51,7 +59,7 @@ for index in range(0, len(blobs), 128):
         end = data.index(b'\n', offset)
         size = int(data[offset:end].split()[2])
         content = data[end + 1:end + 1 + size]
-        if private_path.search(content) or marker in content:
+        if private_path.search(content) or private_group.search(content):
             raise RuntimeError('Historical private metadata remains')
         offset = end + 1 + size + 1
         checked += 1

@@ -214,7 +214,7 @@
     "css-minimizer-webpack-plugin": "^8.0.0",
     "detect-port": "^1.5.1",
     "electron": "^45.0.0",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.18.0",
     "electronmon": "^2.0.2",
     "esbuild": "^0.28.2",
     "eslint": "^8.33.0",
@@ -242,7 +242,7 @@
     "react-refresh": "^0.14.0",
     "react-refresh-typescript": "^2.0.12",
     "react-test-renderer": "^18.3.1",
-    "rimraf": "^4.1.2",
+    "rimraf": "^6.1.4",
     "sass": "^1.58.0",
     "sass-loader": "^13.2.0",
     "style-loader": "^3.3.1",
@@ -371,6 +371,7 @@
   },
   "packageManager": "npm@12.2.0",
   "overrides": {
-    "adm-zip": "0.6.1"
+    "adm-zip": "0.6.1",
+    "minimatch@>=7 <11.0.1": "^11.0.8"
   }
 }

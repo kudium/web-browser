@@ -28,7 +28,11 @@ assessment. Third-party licensing review remains deferred by user instruction.
   input lease, privileged navigation, page capture and image preflight).
 - TypeScript checks pass for both apps.
 - Web Bun audit reports no advisories after the updates; browser production npm
-  audit reports no advisories. Advisory databases can change.
+  audit reports no advisories. Browser tooling updates remove the eight moderate
+  findings: electron-builder 26.18.0, rimraf 6.1.4 and minimatch 11.0.8 are used.
+  Nine low findings remain through development-only deepmerge 4.3.1 and its
+  dependents (GHSA-gcqx-w48m-w2h4); no patched upstream release is available. These
+  are not suppressed or claimed fixed. Advisory databases can change.
 - Local test database migrations and `drizzle-kit check` pass with upgraded ORM
   and development tools.
 
@@ -38,6 +42,15 @@ resource, durability and cross-platform limitations in the earlier browser
 security reviews remain independent work; no blanket security certification is
 made. The source is safer after the concrete fixes above, but tests and advisory
 scans cannot establish that all vulnerabilities are absent.
+
+## Remaining tooling risk
+
+The deepmerge issue concerns prototype poisoning during object merges. Keep build
+and test configuration trusted; do not run unreviewed third-party configuration
+in the development toolchain. Reassess when a patched upstream release becomes
+available. A maintainer-reviewed dependency patch or toolchain replacement would
+be a separate change with its own regression and packaging validation. This is
+an outstanding known finding, not a claim of zero vulnerabilities.
 
 ## Cleaned history candidate
 
