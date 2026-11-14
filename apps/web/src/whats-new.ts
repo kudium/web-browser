@@ -1,5 +1,17 @@
 export const whatsNew = [
   {
+    version: '1.0.11',
+    date: '2026-11-14',
+    title: 'More flexible autofill and a smoother browser',
+    highlights: [
+      ['Choose your saved values', 'Personal Data now offers Browse saved data even when a field has no suggested matches. Search profiles, field names and values, then choose a value to fill just the focused field.'],
+      ['More reliable website icons', 'Improved favicon discovery, decoding and fallbacks help website icons appear consistently in tabs, the tab switcher and Activity.'],
+      ['Clearer active groups and loading', 'Collapsed folder-style tab groups use a subtle background to show the active group. Late-loading embedded content no longer makes a loaded page look as though it is reloading.'],
+      ['Better developer tools and hooks', 'Improved code suggestions, hook authoring and marketplace tools make it easier to build and manage website enhancements.'],
+      ['Browser reliability improvements', 'Updates to extension compatibility, private browsing, assistant context and account sync improve everyday browsing.'],
+    ],
+  },
+  {
     version: '1.0.10',
     date: '2026-11-13',
     title: 'Hooks with actions and a more capable assistant',
