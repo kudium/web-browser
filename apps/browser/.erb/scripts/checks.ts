@@ -56,6 +56,7 @@ if (check === 'storage-migration') {
   const desktop = args.includes('--desktop');
   const jestArgs = args.filter((arg) => arg !== '--desktop');
   run(process.execPath, [path.join(__dirname, 'patch-native-messaging.cjs')]);
+  run(process.execPath, [path.join(__dirname, 'deepmerge-security-regression.cjs')]);
   run(process.execPath, [
     path.join(__dirname, 'extension-webextension-alias-regression.cjs'),
   ]);

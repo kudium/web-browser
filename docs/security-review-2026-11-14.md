@@ -24,15 +24,17 @@ assessment. Third-party licensing review remains deferred by user instruction.
 ## Validation
 
 - Web: 83 tests pass against a dedicated local PostgreSQL test database.
-- Browser: six focused suites, 41 tests pass (AI permissions/approval, private
-  input lease, privileged navigation, page capture and image preflight).
-- TypeScript checks pass for both apps.
+- Browser: six focused security suites (41 tests) and the full 311-suite source
+  regression run (1,898 tests) pass.
+- TypeScript checks pass for both apps. Browser production source build passes
+  after the patch; no installer was signed, released or replaced.
 - Web Bun audit reports no advisories after the updates; browser production npm
   audit reports no advisories. Browser tooling updates remove the eight moderate
   findings: electron-builder 26.18.0, rimraf 6.1.4 and minimatch 11.0.8 are used.
-  Nine low findings remain through development-only deepmerge 4.3.1 and its
-  dependents (GHSA-gcqx-w48m-w2h4); no patched upstream release is available. These
-  are not suppressed or claimed fixed. Advisory databases can change.
+  Nine low scanner findings remain through development-only deepmerge 4.3.1 and
+  its dependents (GHSA-gcqx-w48m-w2h4). A checksum-pinned local patch addresses the
+  demonstrated result-prototype poisoning; these scanner findings are retained,
+  not suppressed. Advisory databases can change.
 - Local test database migrations and `drizzle-kit check` pass with upgraded ORM
   and development tools.
 
@@ -43,14 +45,23 @@ security reviews remain independent work; no blanket security certification is
 made. The source is safer after the concrete fixes above, but tests and advisory
 scans cannot establish that all vulnerabilities are absent.
 
-## Remaining tooling risk
+## Development dependency patch
 
-The deepmerge issue concerns prototype poisoning during object merges. Keep build
-and test configuration trusted; do not run unreviewed third-party configuration
-in the development toolchain. Reassess when a patched upstream release becomes
-available. A maintainer-reviewed dependency patch or toolchain replacement would
-be a separate change with its own regression and packaging validation. This is
-an outstanding known finding, not a claim of zero vulnerabilities.
+No patched upstream deepmerge release is available. The existing install, predev,
+prebuild and test patch pipeline now applies a pinned fix to deepmerge 4.3.1.
+All three distributed source files are matched against exact original/patched
+SHA-256 hashes. Unexpected versions or contents fail rather than silently skip.
+Every destination property is defined as a data property, preventing JavaScript's
+`__proto__` assignment setter from changing the merged object's prototype.
+
+The original installed library reproduced an inherited attacker `isAdmin` flag.
+After patching, tests against actual installed CommonJS and UMD code reject that
+behavior for malicious target, null-prototype target and nested input cases.
+Normal object, array and symbol merges, merge-all behavior, idempotence and
+modified-patch rejection pass. The package's source entry is also hash checked.
+The upstream version remains flagged by npm audit; the reproduction and local
+patch evidence explain its mitigation rather than hiding the alert. Review and
+remove the patch when an upstream fixed version becomes available.
 
 ## Cleaned history candidate
 
