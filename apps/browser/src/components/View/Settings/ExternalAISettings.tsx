@@ -85,7 +85,7 @@ export function ExternalAISettings() {
     setConfiguration('');
     setConfigError('');
     if (status?.running && manualOpen) {
-      const request =
+      const request: Promise<unknown> =
         format === 'stdio'
           ? window.electron.ai.mcpStdio()
           : window.electron.ai.mcpConnection();

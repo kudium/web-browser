@@ -7,7 +7,7 @@ import { setSessionCookie } from 'better-auth/cookies';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import nodemailer from 'nodemailer';
 import type { Database } from './db';
-import type { AuthConfig } from './config';
+import { smtpTransportOptions, type AuthConfig } from './config';
 import { authUser, authSession, authAccount, authVerification, authRateLimit, authDeviceCode, authPasskey } from './schema';
 export type Authenticate = (token: string) => Promise<string>;
 export function syncAccountId(userId: string) {
@@ -15,7 +15,7 @@ export function syncAccountId(userId: string) {
 }
 export type MailDelivery = (message: { from?: string; to: string; subject: string; text: string }) => Promise<unknown>;
 export function createAuth(db: Database, config: AuthConfig, delivery?: MailDelivery) {
-  const mailer = config.smtpURL ? nodemailer.createTransport(config.smtpURL) : undefined;
+  const mailer = config.smtpURL ? nodemailer.createTransport(smtpTransportOptions(config.smtpURL, config.baseURL)) : undefined;
   const sendMail = delivery ?? (mailer ? (message: Parameters<MailDelivery>[0]) => mailer.sendMail(message) : undefined);
   const auth = betterAuth({
     appName: 'Kudium Browser', secret: config.secret, baseURL: config.baseURL, basePath: '/api/auth',

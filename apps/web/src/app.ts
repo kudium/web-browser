@@ -108,6 +108,11 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     }
     await next();
   });
+  app.use('/api/auth/*', async (c, next) => {
+    c.header('Cache-Control', 'no-store');
+    await next();
+  });
+  app.use('/api/auth/*', bodyLimit({ maxSize: 64 * 1024, onError: c => c.json({ error: 'body_too_large' }, 413) }));
   app.on(['GET', 'POST'], '/api/auth/*', c => {
     c.header('Cache-Control', 'no-store');
     if (!auth) throw new HTTPException(503, { message: 'auth_not_configured' });

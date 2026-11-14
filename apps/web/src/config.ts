@@ -7,6 +7,20 @@ export function authConfig(env: Record<string, string | undefined>): AuthConfig 
   const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
   if (url.username || url.password || url.pathname !== '/' || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback && env.NODE_ENV !== 'production'))) throw new Error('BETTER_AUTH_URL must be an HTTPS origin (HTTP loopback is allowed for development)');
   if (Boolean(env.SMTP_URL) !== Boolean(env.SMTP_FROM)) throw new Error('Configure both SMTP_URL and SMTP_FROM, or leave both unset');
+  if (env.SMTP_URL) smtpTransportOptions(env.SMTP_URL, url.origin);
   if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) throw new Error("Configure both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or leave both unset");
   return { google: env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } : undefined, secret, baseURL: url.origin, smtpURL: env.SMTP_URL, smtpFrom: env.SMTP_FROM };
+}
+
+/** Remote SMTP must negotiate TLS; unauthenticated loopback Mailpit is local-only. */
+export function smtpTransportOptions(value: string, baseURL: string) {
+  const url = new URL(value);
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  const localApp = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(baseURL).hostname);
+  if (!['smtp:', 'smtps:'].includes(url.protocol) || !url.hostname ||
+      !['', '/'].includes(url.pathname) || url.search || url.hash) {
+    throw new Error('SMTP_URL must be an SMTP or SMTPS server URL without path, query or fragment');
+  }
+  if (loopback && !localApp) throw new Error('Loopback SMTP is only allowed with a local application origin');
+  return { url: value, requireTLS: !loopback };
 }

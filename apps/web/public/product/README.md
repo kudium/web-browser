@@ -1,6 +1,6 @@
 # Product imagery
 
-The supplied Origin logo is copied from `/path/to/user/workspace/Kudium/assets/icon.png`.
+The supplied Origin logo is copied from `/path/to/kudium-assets/assets/icon.png`.
 
 Homepage imagery now uses the fictional Atlas Studio demonstration workspace captured from real Kudium Browser UI. PNG originals, WebP derivatives and a verification manifest are in `demo/`. The capture script runs the production React components in Electron, real native webpage views, real project-file operations and a real terminal test. AI imagery shows an attached brief and an unsent draft; no successful assistant response is invented. Script-menu entries and hook activity are illustrative fixtures.
 

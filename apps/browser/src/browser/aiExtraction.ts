@@ -90,7 +90,7 @@ export function extractAIPage(request: AIExtraction) {
         getComputedStyle(ancestor).opacity === '0'
       )
         return false;
-      const root = ancestor.getRootNode();
+      const root: Node = ancestor.getRootNode();
       ancestor =
         ancestor.assignedSlot ||
         ancestor.parentElement ||

@@ -1,0 +1,51 @@
+# Keep default rules. Exceptions below cover classified public constants only.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "SHA-256 source and dependency evidence hashes, not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)apps/browser/docs/benchmarks/[^/]+\.json$''']
+regexTarget = "secret"
+regexes = ['''^[a-f0-9]{64}$''']
+
+[[allowlists]]
+description = "Keyboard shortcut constants"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)apps/browser/src/browser/shortcuts\.ts$''']
+regexTarget = "secret"
+regexes = ['''^Mod\+Shift\+Key[JS]$''']
+
+[[allowlists]]
+description = "Public PostHog ingestion token embedded in desktop distributions; not a management API key"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)apps/browser/src/browser/posthog\.json$''']
+regexTarget = "secret"
+regexes = ['''^phc_[A-Za-z0-9]+$''']
+
+[[allowlists]]
+description = "Synthetic local disclosure-test password"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)apps/browser/\.erb/scripts/ai-data-disclosure-smoke\.cjs$''']
+regexTarget = "secret"
+regexes = ['''^never-disclose-protected-9831$''']
+
+[[allowlists]]
+description = "Synthetic password-vault unit-test credential"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)apps/browser/src/__tests__/passwordVault\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^unique-secret-123$''']
+
+[[allowlists]]
+description = "Synthetic Better Auth integration-test secret"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)apps/web/test/auth\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^integration-test-secret-at-least-32-characters$''']
