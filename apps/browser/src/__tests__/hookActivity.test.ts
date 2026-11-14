@@ -307,6 +307,8 @@ it('reruns only the selected hook and disposes its previous listeners and CSS', 
   };
   const window: any = {};
   window.top = window;
+  const intervals: ReturnType<typeof setInterval>[] = [];
+  try {
   runInNewContext(developerPreloadSource, {
     require: () => ({ webFrame: css, ipcRenderer: {
       on: (name: string, callback: (...args: any[]) => void) => { listeners[name] = callback; },
@@ -314,7 +316,8 @@ it('reruns only the selected hook and disposes its previous listeners and CSS', 
     } }),
     window, document, location: { href: 'https://example.com' },
     addEventListener: jest.fn(), removeEventListener: jest.fn(),
-    AbortController, setTimeout, clearTimeout, setInterval, clearInterval,
+    AbortController, setTimeout, clearTimeout,
+    setInterval: (...args: Parameters<typeof setInterval>) => { const timer = setInterval(...args); intervals.push(timer); return timer; }, clearInterval,
   });
   const settle = async () => { for (let i = 0; i < 8; i += 1) await new Promise<void>((resolve) => setImmediate(resolve)); };
   await settle();
@@ -329,6 +332,7 @@ it('reruns only the selected hook and disposes its previous listeners and CSS', 
   await settle();
   expect(document.runs).toEqual(['one', 'two', 'one', 'one']);
   listeners['site-developer-stop']();
+  } finally { intervals.forEach(clearInterval); }
 });
 
 it('starts only the selected hook when its previous runtime has stopped', () => {
