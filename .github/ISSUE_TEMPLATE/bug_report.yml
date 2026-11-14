@@ -1,0 +1,64 @@
+name: Bug report
+description: Report a problem with Kudium Browser or the web app.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Kudium. Search existing issues before filing.
+        Issues are public: remove passwords, tokens, recovery keys and personal data from screenshots and logs.
+        Report security vulnerabilities privately using [SECURITY.md](https://github.com/kudium/web-browser/blob/main/SECURITY.md).
+  - type: dropdown
+    id: product
+    attributes:
+      label: Affected product
+      options:
+        - Desktop browser
+        - Web app
+        - Installer or updates
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: For desktop, include the version and stable/beta channel. For the web app, include the URL and when the problem occurred.
+      placeholder: "e.g. 1.0.12 stable, or browser.kudium.com on 2026-11-14"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and environment
+      description: Include OS version, Apple Silicon/Intel where relevant, and browser name/version for web app issues.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the error message and whether the problem happens every time or intermittently.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, logs and additional context
+      description: Optional. Attach relevant screenshots or a short recording and sanitized log excerpts. Mention any workaround. Remove sensitive data before uploading.
