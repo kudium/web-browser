@@ -175,3 +175,26 @@ it('preserves legacy provider opt-outs and supports both choices independently',
     validateSyncSettings({ ...defaultSyncSettings(), icloud: 'yes' })
   ).toThrow('Invalid');
 });
+
+it('keeps native iCloud enabled only when the integration capability is supplied', () => {
+  const settings = {
+    ...defaultSyncSettings(),
+    provider: 'icloud' as const,
+    enabled: true,
+  };
+  expect(validateSyncSettings(settings)).toMatchObject({
+    provider: 'kudiumbrowser',
+    enabled: false,
+  });
+  expect(validateSyncSettings(settings, true)).toMatchObject({
+    provider: 'icloud',
+    enabled: true,
+  });
+  expect(cloudSyncStatus(settings, 'darwin', true)).toMatchObject({
+    icloudAvailable: true,
+    provider: 'icloud',
+  });
+  expect(cloudSyncStatus(settings, 'linux', true)).toMatchObject({
+    icloudAvailable: false,
+  });
+});

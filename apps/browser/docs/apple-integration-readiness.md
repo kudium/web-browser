@@ -2,7 +2,7 @@
 
 ## Current state
 
-Kudium Account sync has a working local implementation and passing two-device backend tests. It still needs the updated backend deployed and a signed desktop release. iCloud browser-data sync has no active CloudKit transport. Apple iCloud Passwords is a separate managed capability; its helper currently rejects Kudium's signing identity.
+Kudium Account sync is deployed at `browser.kudium.com`. Signed and notarized macOS beta `1.0.2-beta.1` was published on November 8 from commit `87ba8afea4a282dee1114d72d0f654ac59ffe181` (release workflow `42510833119`). Both Apple Silicon and Intel beta manifests were verified. Native iCloud integration is isolated in draft PR #2 and is not included in that beta. Apple iCloud Passwords is a separate managed capability; its helper currently rejects Kudium's signing identity.
 
 The browser already declares HTTP/HTTPS URL schemes in `package.json` and handles macOS `open-url` requests in `src/main/main.ts`. The older compatibility investigation's statement that these are missing is superseded.
 
@@ -50,4 +50,18 @@ On November 8, `iCloud.com.kudium.kudiumbrowser` was registered as Kudium Browse
 
 `node .erb/scripts/build-cloudkit.cjs` compiles a universal arm64/x86_64 module into the temporary directory. Both architectures compiled on November 8; the module loaded and rejected invalid argument types without contacting iCloud. Three adapter tests passed with synthetic ciphertext and account-switch fixtures. These are implementation checks, not a real CloudKit round trip.
 
-The bridge is deliberately not loaded by normal builds or exposed through renderer IPC. App-level recovery/key provisioning, the sync scheduler/change-feed adapter, preference/UI connection, CloudKit schema/environment deployment, provisioning and signed two-Mac testing still need completion before the iCloud destination can be enabled. The existing Kudium Account release can proceed independently.
+The bridge is not loaded by normal builds or exposed through renderer IPC. The integration branch now wires native account connection, recovery-key enrollment (stored in the OS-encrypted local store), encrypted periodic snapshots, password transfer, conditional revisions, tombstones, explicit restore and provider selection. It uses a bounded full CloudKit refresh; incremental zone change tokens are not implemented. Native credentials are stored separately from Kudium Account credentials and operations reject account changes. Password sync still requires Personal Data authentication. The existing Kudium Account release proceeds independently.
+
+Explicit integration packaging uses `.erb/configs/electron-builder.icloud.cjs`, which checks a provided production CloudKit profile and requires the universal module. The iCloud entitlement template does not request the unapproved Apple browser credential entitlement. Set `KUDIUM_ICLOUD_INTEGRATION=true` only for provisioned integration testing. Normal releases leave this flag unset and show iCloud unavailable.
+
+Remaining acceptance: obtain the distribution profile, deploy the CloudKit record schema/environment, verify a signed package on two Macs (including native account changes, conflicts, reconnects, deletion and quota errors), and then replace the integration-only flag with a verified release capability. Apple iCloud Passwords remains separately gated by managed entitlement approval and native credential tests.
+
+All browser and storage checks for the native integration PR passed on Linux, Windows and macOS. The user confirmed a second Mac using the same Apple account is available. Follow [the two-Mac acceptance checklist](icloud-two-mac-acceptance.md); no real cross-device result has been recorded yet.
+
+On November 8, Developer ID profile `5M54LAX6UN` was generated for the exact browser App ID and production container. It selects Kudium LTD's existing Developer ID Application certificate (certificate expiry December 8, 2027). The private profile is held in the CI secret `KUDIUM_ICLOUD_PROFILE_BASE64`, not committed. The build accepts Apple's wildcard services encoding only alongside the exact production container and app identity. Production schema deployment was confirmed in CloudKit Console: `KudiumEncryptedSnapshot`, `envelope` String, `revision` Int64, `deleted` Int64, and `recordName` queryable. The bridge uses the private database exclusively.
+
+`.github/workflows/browser-icloud-integration.yml` builds signed/notarized installers for both Mac architectures as private CI artifacts. It does not publish a channel feed. The integration opt-in flag is embedded by the production main-process webpack build; users do not need to set a shell variable. Real signed-app acceptance remains pending.
+
+First integration packaging run `42514783365` was blocked before any job steps ran. GitHub reported failed recent account payments or an Actions spending limit. Resolve organization billing, then rerun the workflow. No signed integration installer was produced by that run. Local universal native compilation, TypeScript, and validation against the actual production profile passed.
+
+The user chose local packaging. The local production build with the iCloud flag passed, as did 10 focused native adapter/enrollment/notarization tests. Signed local releases now run notarization rather than silently skipping it outside CI. This Mac currently has Apple Development and Apple Distribution identities, but no Developer ID Application private key or local notarization credentials. Import the original Developer ID certificate/private-key export and supply notarization credentials privately before packaging; GitHub secrets cannot be retrieved. No local signed installer has been produced yet.

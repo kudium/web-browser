@@ -23,11 +23,13 @@ import { SpaceManager } from '../../../utils/SpaceManager';
 
 export function AccountSyncSettings({
   enabled,
+  provider = 'kudiumbrowser',
   onEnabled,
   passwordsEnabled = false,
   notesEnabled = false,
 }: {
   enabled: boolean;
+  provider?: 'icloud' | 'kudiumbrowser';
   onEnabled: () => void;
   passwordsEnabled: boolean;
   notesEnabled?: boolean;
@@ -93,11 +95,17 @@ export function AccountSyncSettings({
       {!status?.connected ? (
         <section
           className="preference-card sync-account-sign-in"
-          aria-label="Kudium account"
+          aria-label={
+            provider === 'icloud' ? 'iCloud account' : 'Kudium account'
+          }
         >
           <div className="preference-row">
             <div>
-              <p>Sign in to start syncing.</p>
+              <p>
+                {provider === 'icloud'
+                  ? 'Connect the iCloud account on this Mac.'
+                  : 'Sign in to start syncing.'}
+              </p>
             </div>
             <div className="sync-sign-in-actions">
               <Button
@@ -105,16 +113,18 @@ export function AccountSyncSettings({
                 disabled={busy || !status || status.phase === 'connecting'}
                 onClick={() => action('connect', { authMode: 'sign-in' })}
               >
-                Sign in to Kudium
+                {provider === 'icloud' ? 'Connect iCloud' : 'Sign in to Kudium'}
               </Button>
-              <Button
-                size="2"
-                variant="ghost"
-                disabled={busy || !status || status.phase === 'connecting'}
-                onClick={() => action('connect', { authMode: 'sign-up' })}
-              >
-                Create account
-              </Button>
+              {provider !== 'icloud' && (
+                <Button
+                  size="2"
+                  variant="ghost"
+                  disabled={busy || !status || status.phase === 'connecting'}
+                  onClick={() => action('connect', { authMode: 'sign-up' })}
+                >
+                  Create account
+                </Button>
+              )}
             </div>
           </div>
         </section>
@@ -224,7 +234,10 @@ export function AccountSyncSettings({
             <LockKeyhole size={18} />
             Unlock your synced data
           </strong>
-          <p>These older backups need the recovery key from your first device. Signing in cannot decrypt them without that key.</p>
+          <p>
+            These older backups need the recovery key from your first device.
+            Signing in cannot decrypt them without that key.
+          </p>
           <TextField.Root
             type="password"
             autoComplete="off"
@@ -240,10 +253,33 @@ export function AccountSyncSettings({
           </Button>
           <details className="sync-details">
             <summary>I don’t have my recovery key</summary>
-            <p>Reconnect on another device where sync still works; it may still have the key. You can also look in your password manager. You can also check whether your account can unlock the backups automatically.</p>
-            <Button variant="soft" disabled={busy} onClick={() => action('unlock')}>Try account recovery</Button>
-            <p>If the key is lost on every device, the old encrypted backups cannot be recovered. Resetting only deletes cloud backups. Your local tabs, groups, notes and passwords stay intact, ready for a fresh backup when you enable sync again.</p>
-            <Button variant="soft" color="red" disabled={busy} onClick={() => action('reset-sync')}>Reset cloud sync…</Button>
+            <p>
+              Reconnect on another device where sync still works; it may still
+              have the key. You can also look in your password manager. You can
+              also check whether your account can unlock the backups
+              automatically.
+            </p>
+            <Button
+              variant="soft"
+              disabled={busy}
+              onClick={() => action('unlock')}
+            >
+              Try account recovery
+            </Button>
+            <p>
+              If the key is lost on every device, the old encrypted backups
+              cannot be recovered. Resetting only deletes cloud backups. Your
+              local tabs, groups, notes and passwords stay intact, ready for a
+              fresh backup when you enable sync again.
+            </p>
+            <Button
+              variant="soft"
+              color="red"
+              disabled={busy}
+              onClick={() => action('reset-sync')}
+            >
+              Reset cloud sync…
+            </Button>
           </details>
         </div>
       )}

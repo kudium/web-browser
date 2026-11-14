@@ -68,6 +68,7 @@ const configuration: webpack.Configuration = {
       NODE_ENV: 'production',
       DEBUG_PROD: false,
       START_MINIMIZED: false,
+      KUDIUM_ICLOUD_INTEGRATION: 'false',
     }),
 
     new webpack.DefinePlugin({

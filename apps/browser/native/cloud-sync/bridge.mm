@@ -89,6 +89,7 @@ static void Execute(napi_env env, void *data) {
             [database fetchRecordWithID:recordID completionHandler:^(CKRecord *value, NSError *failure) { done(value, failure); }];
           }, &error);
           BOOL missing = error && error.code == CKErrorUnknownItem;
+          if (record && ![record.recordType isEqualToString:@"KudiumEncryptedSnapshot"]) { work->error = "Unexpected CloudKit record type."; return; }
           if (error && !missing) { work->error = "CloudKit record lookup failed."; return; }
           if ([operation isEqualToString:@"get"]) {
             result = record ? Record(record) : @{ @"missing": @YES, @"revision": @0 };

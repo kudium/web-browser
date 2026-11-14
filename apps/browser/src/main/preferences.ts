@@ -13,6 +13,7 @@ import {
 } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { cloudKitAvailable } from './sync/nativeICloudRuntime';
 import { validActivitySound } from '../browser/activitySound';
 import { version as projectVersion } from '../../package.json';
 import { watchIPCRequest } from './ipcRequestBinding';
@@ -61,8 +62,7 @@ const systemLanguages = new WeakMap<Session, string[]>();
 const filename = () =>
   path.join(app.getPath('userData'), 'browser-preferences.json');
 let cachedPreferences:
-  | { file: string; value: Readonly<BrowserPreferences> }
-  | undefined;
+  { file: string; value: Readonly<BrowserPreferences> } | undefined;
 
 function freezePreferences(value: BrowserPreferences) {
   // Own all nested values: defaults and validated patches can share arrays.
@@ -79,14 +79,8 @@ function freezePreferences(value: BrowserPreferences) {
 let openPage:
   | ((
       section?:
-        | 'ai'
-        | 'archive'
-        | 'sync'
-        | 'import'
-        | 'passwords'
-        | 'spaces'
-        | 'hooks',
-      personalDataScope?: string
+        'ai' | 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks',
+      personalDataScope?: string,
     ) => void)
   | undefined;
 let aiSettingsWindow: (contents: WebContents) => boolean = () => false;
@@ -94,7 +88,7 @@ export const isAISettingsWindow = (contents: WebContents) =>
   aiSettingsWindow(contents);
 let trustedPreferenceWindow: (contents: WebContents) => boolean = () => false;
 export function validatePreferences(
-  patch: Partial<BrowserPreferences>
+  patch: Partial<BrowserPreferences>,
 ): Partial<BrowserPreferences> {
   if (!patch || typeof patch !== 'object' || Array.isArray(patch))
     throw new Error('Invalid preferences');
@@ -126,7 +120,7 @@ export function validatePreferences(
         (!Array.isArray(value) ||
           value.length > 256 ||
           value.some(
-            (id) => typeof id !== 'string' || !/^[a-z0-9_-]{1,128}$/i.test(id)
+            (id) => typeof id !== 'string' || !/^[a-z0-9_-]{1,128}$/i.test(id),
           ))
       )
         throw new Error('Invalid extension toolbar order');
@@ -135,37 +129,60 @@ export function validatePreferences(
       return;
     }
     if (key === 'cloudSync') {
-      validated.cloudSync = validateSyncSettings(value);
+      validated.cloudSync = validateSyncSettings(value, cloudKitAvailable());
       return;
     }
     if (key === 'shortcuts') {
       validated.shortcuts = validateShortcuts(
         value,
-        process.platform === 'darwin'
+        process.platform === 'darwin',
       );
       return;
     }
     if (key === 'personalDataAutofillPositions') {
-      if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 200) throw new Error('Invalid autofill positions');
+      if (
+        !value ||
+        typeof value !== 'object' ||
+        Array.isArray(value) ||
+        Object.keys(value).length > 200
+      )
+        throw new Error('Invalid autofill positions');
       const positions: BrowserPreferences['personalDataAutofillPositions'] = {};
       for (const [origin, placement] of Object.entries(value)) {
         const url = new URL(origin);
-        const point = placement as BrowserPreferences['personalDataAutofillPositions'][string];
-        if (url.protocol !== 'https:' || url.origin !== origin || !point || !['left', 'right'].includes(point.side) ||
-            !Number.isFinite(point.x) || Math.abs(point.x) > 128 || !Number.isFinite(point.y) || Math.abs(point.y) > 128) throw new Error('Invalid autofill position');
+        const point =
+          placement as BrowserPreferences['personalDataAutofillPositions'][string];
+        if (
+          url.protocol !== 'https:' ||
+          url.origin !== origin ||
+          !point ||
+          !['left', 'right'].includes(point.side) ||
+          !Number.isFinite(point.x) ||
+          Math.abs(point.x) > 128 ||
+          !Number.isFinite(point.y) ||
+          Math.abs(point.y) > 128
+        )
+          throw new Error('Invalid autofill position');
         positions[origin] = { side: point.side, x: point.x, y: point.y };
       }
       validated.personalDataAutofillPositions = positions;
       return;
     }
     if (key === 'personalDataAutofillExcludedSites') {
-      if (!Array.isArray(value) || value.length > 1000) throw new Error('Invalid autofill website list');
-      validated.personalDataAutofillExcludedSites = [...new Set(value.map((entry) => {
-        if (typeof entry !== 'string') throw new Error('Invalid autofill website');
-        const url = new URL(entry);
-        if (url.protocol !== 'https:') throw new Error('Invalid autofill website');
-        return url.origin;
-      }))];
+      if (!Array.isArray(value) || value.length > 1000)
+        throw new Error('Invalid autofill website list');
+      validated.personalDataAutofillExcludedSites = [
+        ...new Set(
+          value.map((entry) => {
+            if (typeof entry !== 'string')
+              throw new Error('Invalid autofill website');
+            const url = new URL(entry);
+            if (url.protocol !== 'https:')
+              throw new Error('Invalid autofill website');
+            return url.origin;
+          }),
+        ),
+      ];
       return;
     }
     if (key === 'discardExcludedSites') {
@@ -218,7 +235,7 @@ export function getBrowserPreferences(): Readonly<BrowserPreferences> {
     if (saved.shortcuts)
       saved.shortcuts = restoreShortcuts(
         saved.shortcuts,
-        process.platform === 'darwin'
+        process.platform === 'darwin',
       );
     const directory =
       typeof saved.downloadDirectory === 'string'
@@ -250,7 +267,7 @@ export function getBrowserPreferences(): Readonly<BrowserPreferences> {
 function apply(
   contents: WebContents,
   preferences: BrowserPreferences,
-  previous?: BrowserPreferences
+  previous?: BrowserPreferences,
 ) {
   if (contents.isDestroyed()) return;
   if (!previous || previous.zoom !== preferences.zoom)
@@ -260,12 +277,12 @@ function apply(
   if (!systemLanguages.has(contents.session))
     systemLanguages.set(
       contents.session,
-      contents.session.getSpellCheckerLanguages?.() || []
+      contents.session.getSpellCheckerLanguages?.() || [],
     );
   contents.session.setSpellCheckerLanguages?.(
     preferences.spellcheckLanguage
       ? [preferences.spellcheckLanguage]
-      : systemLanguages.get(contents.session)!
+      : systemLanguages.get(contents.session)!,
   );
 }
 export function enablePagePinchZoom(contents: WebContents) {
@@ -310,24 +327,18 @@ export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
 export function showBrowserPreferences(
   _owner: BrowserWindow,
   section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks',
-  personalDataScope?: string
+  personalDataScope?: string,
 ) {
   openPage?.(section, personalDataScope);
 }
 export function registerPreferences(
   opener?: (
     section?:
-      | 'ai'
-      | 'archive'
-      | 'sync'
-      | 'import'
-      | 'passwords'
-      | 'spaces'
-      | 'hooks',
-    personalDataScope?: string
+      'ai' | 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks',
+    personalDataScope?: string,
   ) => void,
   isTrusted: (contents: WebContents) => boolean = () => false,
-  isSettings: (contents: WebContents) => boolean = () => false
+  isSettings: (contents: WebContents) => boolean = () => false,
 ) {
   openPage = opener;
   aiSettingsWindow = isSettings;
@@ -363,13 +374,8 @@ export function registerPreferences(
       action: string,
       patch?: Partial<BrowserPreferences> & {
         section?:
-          | 'archive'
-          | 'sync'
-          | 'import'
-          | 'passwords'
-          | 'spaces'
-          | 'hooks';
-      }
+          'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks';
+      },
     ) => {
       const owner = ownerOf(event);
       if (action === 'open')
@@ -382,20 +388,20 @@ export function registerPreferences(
             patch?.section === 'spaces' ||
             patch?.section === 'hooks'
             ? patch.section
-            : undefined
+            : undefined,
         );
       if (action === 'update') {
         const result = updateBrowserPreferences(patch!);
         return Promise.all(
           [...browsers]
             .filter((contents) => !contents.isDestroyed())
-            .map(waitForBrowserNetwork)
+            .map(waitForBrowserNetwork),
         ).then(() => result);
       }
       if (!['get', 'open'].includes(action))
         throw new Error('Unknown preference action');
       return getBrowserPreferences();
-    }
+    },
   );
   ipcMain.handle(
     'browser-preference-action',
@@ -408,7 +414,7 @@ export function registerPreferences(
           action === 'shortcut-capture-end'
         ) {
           owner.webContents.setIgnoreMenuShortcuts(
-            action === 'shortcut-capture-start'
+            action === 'shortcut-capture-start',
           );
           return null;
         }
@@ -418,7 +424,7 @@ export function registerPreferences(
             !['darwin', 'win32'].includes(process.platform)
           )
             throw new Error(
-              'Login setup is available in the installed browser.'
+              'Login setup is available in the installed browser.',
             );
           app.setLoginItemSettings({ openAtLogin: true });
           return {
@@ -431,7 +437,7 @@ export function registerPreferences(
         if (action === 'reveal-app-for-dock') {
           if (process.platform !== 'darwin' || !app.isPackaged)
             throw new Error(
-              'Dock setup is available in the installed Mac browser.'
+              'Dock setup is available in the installed Mac browser.',
             );
           shell.showItemInFolder(path.resolve(process.execPath, '../../..'));
           return {
@@ -462,13 +468,14 @@ export function registerPreferences(
           return advancedDiagnostic(
             action,
             profileId ? getExtensionProfile(profileId)?.session : undefined,
-            owner
+            owner,
           );
         }
         if (action === 'sync-status')
           return cloudSyncStatus(
             getBrowserPreferences().cloudSync,
-            process.platform
+            process.platform,
+            cloudKitAvailable(),
           );
         if (action === 'info')
           return {
@@ -478,7 +485,7 @@ export function registerPreferences(
               ? app.getLoginItemSettings().openAtLogin
               : false,
             defaultBrowser: ['http', 'https'].every((protocol) =>
-              app.isDefaultProtocolClient(protocol)
+              app.isDefaultProtocolClient(protocol),
             ),
             extensionCatalog: extensionCatalog(),
             profiles: getExtensionProfiles().map((profile) => ({
@@ -513,7 +520,7 @@ export function registerPreferences(
         }
         if (action === 'open-download-directory') {
           await shell.openPath(
-            preferences.downloadDirectory || app.getPath('downloads')
+            preferences.downloadDirectory || app.getPath('downloads'),
           );
           return null;
         }
@@ -563,7 +570,7 @@ export function registerPreferences(
         }
         if (action === 'devtools') {
           const contents = [...browsers].find(
-            (item) => !item.isDestroyed() && item.session === profile.session
+            (item) => !item.isDestroyed() && item.session === profile.session,
           );
           if (!contents) throw new Error('Open a page in this profile first.');
           contents.openDevTools({ mode: 'detach' });
@@ -602,7 +609,7 @@ export function registerPreferences(
       } finally {
         requestBinding.dispose();
       }
-    }
+    },
   );
 }
 

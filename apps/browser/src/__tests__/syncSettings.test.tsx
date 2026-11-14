@@ -129,25 +129,107 @@ it('includes saved passwords in new sync setups and exposes the unlock action', 
 });
 
 it('offers a confirmed reset path when a signed-in user has lost the recovery key', async () => {
-  const { AccountSyncSettings } = await import('../components/View/Settings/AccountSyncSettings');
-  const status = { phase: 'recovery-required', connected: true, email: 'fixture@example.com', message: 'Recovery required', remote: [] };
+  const { AccountSyncSettings } = await import(
+    '../components/View/Settings/AccountSyncSettings'
+  );
+  const status = {
+    phase: 'recovery-required',
+    connected: true,
+    email: 'fixture@example.com',
+    message: 'Recovery required',
+    remote: [],
+  };
   (browser.accountSync as jest.Mock).mockClear().mockResolvedValue(status);
-  render(<Theme><AccountSyncSettings enabled={false} onEnabled={jest.fn()} passwordsEnabled={false} /></Theme>);
+  render(
+    <Theme>
+      <AccountSyncSettings
+        enabled={false}
+        onEnabled={jest.fn()}
+        passwordsEnabled={false}
+      />
+    </Theme>
+  );
   await screen.findByText('I don’t have my recovery key');
   fireEvent.click(screen.getByText('I don’t have my recovery key'));
-  expect(screen.getByText(/old encrypted backups cannot be recovered/)).toBeVisible();
+  expect(
+    screen.getByText(/old encrypted backups cannot be recovered/)
+  ).toBeVisible();
   const reset = screen.getByRole('button', { name: 'Reset cloud sync…' });
   expect(reset).toBeEnabled();
   expect(browser.accountSync).not.toHaveBeenCalledWith('reset-sync', undefined);
   fireEvent.click(reset);
-  await waitFor(() => expect(browser.accountSync).toHaveBeenCalledWith('reset-sync', undefined));
+  await waitFor(() =>
+    expect(browser.accountSync).toHaveBeenCalledWith('reset-sync', undefined)
+  );
 });
 
 it('does not show the recovery prompt for an automatically unlocked account', async () => {
-  const { AccountSyncSettings } = await import('../components/View/Settings/AccountSyncSettings');
-  (browser.accountSync as jest.Mock).mockResolvedValue({ phase: 'ready', connected: true, email: 'fixture@example.com', message: 'Unlocked', remote: [] });
-  render(<Theme><AccountSyncSettings enabled={false} onEnabled={jest.fn()} passwordsEnabled={false} /></Theme>);
+  const { AccountSyncSettings } = await import(
+    '../components/View/Settings/AccountSyncSettings'
+  );
+  (browser.accountSync as jest.Mock).mockResolvedValue({
+    phase: 'ready',
+    connected: true,
+    email: 'fixture@example.com',
+    message: 'Unlocked',
+    remote: [],
+  });
+  render(
+    <Theme>
+      <AccountSyncSettings
+        enabled={false}
+        onEnabled={jest.fn()}
+        passwordsEnabled={false}
+      />
+    </Theme>
+  );
   await screen.findByText('fixture@example.com');
   expect(screen.queryByLabelText('Sync recovery key')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Reset cloud sync…' })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Reset cloud sync…' })
+  ).not.toBeInTheDocument();
+});
+
+it('connects native iCloud in integration builds without offering website signup', async () => {
+  (browser.accountSync as jest.Mock)
+    .mockReset()
+    .mockResolvedValue({
+      phase: 'off',
+      connected: false,
+      message: 'Connect your account',
+      remote: [],
+    });
+  const settings = {
+    ...defaultSyncSettings(),
+    provider: 'icloud' as const,
+    enabled: true,
+    icloud: true,
+  };
+  (browser.preferenceAction as jest.Mock).mockResolvedValue(
+    cloudSyncStatus(settings, 'darwin', true)
+  );
+  const save = jest.fn().mockResolvedValue(true);
+  render(
+    <Theme>
+      <SyncSettings settings={settings} busy={false} save={save} />
+    </Theme>
+  );
+  const connect = await screen.findByRole('button', { name: 'Connect iCloud' });
+  expect(screen.queryByRole('button', { name: 'Create account' })).toBeNull();
+  await waitFor(() => expect(connect).toBeEnabled());
+  fireEvent.click(connect);
+  await waitFor(() =>
+    expect(browser.accountSync).toHaveBeenCalledWith('connect', {
+      authMode: 'sign-in',
+    })
+  );
+  fireEvent.click(screen.getByLabelText('Sync with Kudium Browser Account'));
+  await waitFor(() =>
+    expect(save).toHaveBeenCalledWith({
+      ...settings,
+      provider: 'kudiumbrowser',
+      enabled: true,
+      icloud: false,
+    })
+  );
 });
