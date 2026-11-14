@@ -27,10 +27,10 @@
   resolved "https://registry.npmjs.org/@types/har-format/-/har-format-1.2.16.tgz"
   integrity sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A==
 
-adm-zip@^0.5.16:
-  version "0.5.18"
-  resolved "https://registry.npmjs.org/adm-zip/-/adm-zip-0.5.18.tgz"
-  integrity sha512-ufJnssQGbxzLNS1Ho9bCtX4rQKCCvoVuDLHoJyc3F9dOGDB4BkWs2Ci0kv53lqocAEQ/Cbi+I2XCsNYGqVYqng==
+adm-zip@0.6.1:
+  version "0.6.1"
+  resolved "https://registry.npmjs.org/adm-zip/-/adm-zip-0.6.1.tgz"
+  integrity sha512-Xwrja8nx9e5o2N1my4DsKCeKpdrnACyr1wtbPxBDgGzKzKyE9kRtBFA8mWldI+RVlD7CBZNWY/wQ2+ydwOR6kQ==
 
 debug@^4.3.1, debug@^4.3.7:
   version "4.4.3"

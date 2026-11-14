@@ -38,7 +38,7 @@ it('loads PDF bytes, renders pages, supports zoom and cleans up', async () => {
   expect(getDocument).toHaveBeenCalledWith(
     expect.objectContaining({
       data: expect.any(Uint8Array),
-      isEvalSupported: false,
+      useSystemFonts: true,
     })
   );
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));

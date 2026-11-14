@@ -48,7 +48,7 @@ function text(nodes: ReactNode): string {
     .map((node) => {
       if (typeof node === 'string' || typeof node === 'number')
         return String(node);
-      if (isValidElement(node)) return text(node.props.children);
+      if (isValidElement<{ children?: ReactNode }>(node)) return text(node.props.children);
       return '';
     })
     .join('');

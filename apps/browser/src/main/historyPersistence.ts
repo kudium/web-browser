@@ -148,7 +148,7 @@ export class HistoryPersistence {
           error instanceof Error ? error : new Error(String(error));
       }
     });
-    this.worker.on('error', (error) => this.fail(error));
+    this.worker.on('error', (error) => this.fail(error instanceof Error ? error : new Error(String(error))));
     this.worker.on('exit', (code) =>
       this.fail(new Error(`History worker stopped (${code}).`))
     );

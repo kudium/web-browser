@@ -13,6 +13,7 @@ import {
   Settings2,
   Globe,
   Puzzle,
+  RefreshCw,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { HookIcon } from './HookIcon';
@@ -31,7 +32,8 @@ export type BrowserOption =
   | 'settings'
   | 'site-settings'
   | 'hooks'
-  | 'extensions';
+  | 'extensions'
+  | 'updates';
 const groups: {
   id: BrowserOption;
   label: string;
@@ -56,7 +58,10 @@ const groups: {
     { id: 'extensions', label: 'Extensions', icon: Puzzle },
     { id: 'hooks', label: 'Global hooks', icon: HookIcon },
   ],
-  [{ id: 'settings', label: 'Settings…', icon: Settings2 }],
+  [
+    { id: 'updates', label: 'Check for updates…', icon: RefreshCw },
+    { id: 'settings', label: 'Settings…', icon: Settings2 },
+  ],
 ];
 export function BrowserOptionsMenu({
   onSelect,

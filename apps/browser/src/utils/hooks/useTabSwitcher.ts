@@ -13,10 +13,10 @@ export function useTabSwitcher(
   scope: string
 ) {
   const [shown, setShown] = useState<Session>();
-  const session = useRef<Session>();
+  const session = useRef<Session | undefined>(undefined);
   const history = useRef<string[]>([]);
-  const lastSelected = useRef<string>();
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const lastSelected = useRef<string | undefined>(undefined);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const latest = useRef({ tabs, selectedId, select });
   latest.current = { tabs, selectedId, select };
   useEffect(() => {

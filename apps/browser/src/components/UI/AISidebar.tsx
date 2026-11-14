@@ -149,7 +149,7 @@ export function AISidebar({
   const [pane, setPane] = useAIPagePreference('pane', 'assistant');
 
   const [showStats] = useAIPagePreference('showStats', true);
-  const handledMenuPaneRequest = useRef<number>();
+  const handledMenuPaneRequest = useRef<number | undefined>(undefined);
   const handledDeveloperRequest = useRef(0);
   useEffect(() => {
     if (
@@ -800,7 +800,7 @@ export function AISidebar({
     input.style.height = 'auto';
     input.style.height = `${Math.min(160, Math.max(64, input.scrollHeight))}px`;
   }, [prompt, pane]);
-  const handledPromptRequest = useRef<number>();
+  const handledPromptRequest = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (
       !promptRequest ||
@@ -929,7 +929,7 @@ export function AISidebar({
       );
     });
   };
-  const handledRequest = useRef<number>();
+  const handledRequest = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (
       attaching ||
@@ -953,7 +953,7 @@ export function AISidebar({
   );
   const activeContextGroupId = activeContextGroup?.id;
   const activeChatId = chatState?.selectedId;
-  const autoContext = useRef<{ chatId: string; tabId: string }>();
+  const autoContext = useRef<{ chatId: string; tabId: string } | undefined>(undefined);
   const freshChat =
     !!chatState &&
     !chatState.history.length &&

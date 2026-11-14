@@ -9,7 +9,7 @@ const assert = require('assert');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-password-smoke-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
-  entryPoints: ['src/main/passwordManager/index.ts'],
+  stdin: { contents: "export * from './src/main/passwordManager/index'; export { initializeLocalStorage } from './src/main/localStorage';", resolveDir: process.cwd(), loader: 'ts' },
   bundle: true,
   minify: true,
   platform: 'node',
@@ -48,6 +48,7 @@ fs.writeFileSync(
     },
   });
   const manager = require(path.join(root, 'manager.cjs'));
+  await manager.initializeLocalStorage();
   manager.registerPasswordManager((contents) => contents === ui.webContents, {
     canUseOSAuthentication: async () => false,
   });

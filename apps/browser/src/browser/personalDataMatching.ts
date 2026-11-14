@@ -106,9 +106,21 @@ export function createPersonalDataMatching() {
         .map(normalize)
         .filter(Boolean)
     );
+    if (/\bone-time-code\b/i.test(target.autocomplete || '')) return 0;
+    const fieldHints = (value?: string) => {
+      if (!value) return [];
+      // Framework names often wrap the semantic field: user[email], profile_firstName.
+      const words = value.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z]+/).filter(Boolean);
+      const suffixes = [value];
+      for (let count = 1; count <= Math.min(3, words.length); count++) {
+        const suffix = words.slice(-count).join(' ');
+        if (aliases(suffix).length && !['name', 'password'].includes(suffix)) suffixes.push(suffix);
+      }
+      return suffixes;
+    };
     const hints = [
-      target.name,
-      target.id,
+      ...fieldHints(target.name),
+      ...fieldHints(target.id),
       target.label,
       target.placeholder,
       ...(target.autocomplete || '').split(/\s+/),

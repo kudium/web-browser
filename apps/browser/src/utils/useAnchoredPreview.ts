@@ -11,7 +11,7 @@ export interface AnchoredPreviewTarget {
 /** One popup and one timer for the whole sidebar, regardless of session count. */
 export function useAnchoredPreview() {
   const [target, setTarget] = useState<AnchoredPreviewTarget | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const cancel = useCallback(() => {
     clearTimeout(timer.current);
     timer.current = undefined;

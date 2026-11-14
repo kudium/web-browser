@@ -571,7 +571,7 @@ it('answers an inline question using the existing composer and resumes the waiti
     )
   );
   expect(mock.ai.run).not.toHaveBeenCalled();
-  expect(screen.getByRole('button', { name: 'Read the end' })).toBeDisabled();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Read the end' })).toBeDisabled());
   expect(
     screen.getByRole('button', { name: 'Stop AI task' })
   ).toBeInTheDocument();

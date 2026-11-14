@@ -46,3 +46,14 @@ it('offers Global hooks without an open page and routes to the Hooks preferences
   fireEvent.click(item);
   expect(select).toHaveBeenCalledWith('hooks');
 });
+
+
+it('offers Check for updates without an open page', async () => {
+  const select = jest.fn();
+  render(<Theme><BrowserOptionsMenu onSelect={select} pageAvailable={false} /></Theme>);
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Browser options' }), { key: 'Enter' });
+  const item = await screen.findByRole('menuitem', { name: 'Check for updates…' });
+  expect(item).not.toHaveAttribute('data-disabled');
+  fireEvent.click(item);
+  expect(select).toHaveBeenCalledWith('updates');
+});

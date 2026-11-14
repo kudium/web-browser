@@ -18,6 +18,8 @@ export function installPersonalDataAutofill(
   let suppressClick = false;
   let loginPrompt = false;
   let authenticating = false;
+  let openCurrent: ((quick?: boolean) => Promise<void>) | null = null;
+  const actions = new WeakMap<HTMLButtonElement, () => void>();
   const usable = (element: Element | null): element is HTMLInputElement | HTMLTextAreaElement =>
     (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
     !element.disabled && !element.readOnly && element.getClientRects().length > 0 &&
@@ -29,7 +31,7 @@ export function installPersonalDataAutofill(
   });
   const recognized = (input: HTMLInputElement | HTMLTextAreaElement) =>
     input.type === 'password' || match('username', [], descriptor(input)) > 0 || ['name', 'given-name', 'family-name', 'email', 'tel', 'street-address', 'address-line1', 'address-line2', 'address-level1', 'address-level2', 'postal-code', 'country', 'organization'].some((name) => match(name, [], descriptor(input)) > 0);
-  const close = () => { loginPrompt = false; dragging = false; generation++; host?.remove(); host = null; root = null; };
+  const close = () => { loginPrompt = false; dragging = false; generation++; openCurrent = null; host?.remove(); host = null; root = null; };
   const position = () => {
     if (!host || !target) return;
     const rect = target.getBoundingClientRect();
@@ -45,7 +47,7 @@ export function installPersonalDataAutofill(
   };
   const button = (label: string, run: () => void) => {
     const element = document.createElement('button');
-    element.type = 'button'; element.textContent = label;
+    element.type = 'button'; element.textContent = label; actions.set(element, run);
     element.addEventListener('click', (event) => { if (event.isTrusted) run(); });
     return element;
   };
@@ -73,6 +75,22 @@ export function installPersonalDataAutofill(
       host.addEventListener(type, (event) => { event.stopPropagation(); if (type === 'mousedown' && !(event.composedPath()[0] instanceof HTMLInputElement)) event.preventDefault(); });
     }
 
+    host.addEventListener('keydown', (event) => {
+      if (!event.isTrusted || !root) return;
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); input.focus(); return; }
+      const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('.panel button')).filter((button) =>
+        !button.disabled && !button.closest('[hidden]') && !button.classList.contains('close'));
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) && buttons.length) {
+        event.preventDefault(); event.stopPropagation();
+        const index = buttons.indexOf(root.activeElement as HTMLButtonElement);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 :
+          (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+        buttons[next].focus(); buttons[next].scrollIntoView?.({ block: 'nearest' });
+      } else if (['Enter', ' '].includes(event.key) && root.activeElement instanceof HTMLButtonElement) {
+        event.preventDefault(); event.stopPropagation();
+        if (!root.activeElement.disabled) actions.get(root.activeElement)?.();
+      }
+    });
     root = host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
     style.textContent = panelStyles;
@@ -213,7 +231,7 @@ export function installPersonalDataAutofill(
         for (const control of controls) {
           const info = descriptor(control);
           const candidates = record.fields.map((field) => ({ field, score:
-            match(field.name, field.aliases || [], info) || (control.type === 'password'
+            match(field.name, field.aliases || [], info) || (control.type === 'password' && control.autocomplete !== 'new-password' && !/confirm|repeat/i.test(control.name + control.id + info.label)
               ? match(field.name, field.aliases || [], { ...info, autocomplete: 'current-password' }) : 0) }));
           const best = Math.max(0, ...candidates.map((entry) => entry.score));
           const winners = candidates.filter((entry) => entry.score === best && best > 0);
@@ -373,6 +391,7 @@ export function installPersonalDataAutofill(
         if (!content.hidden) retry.focus();
       } finally { if (watchdog !== undefined) clearInterval(watchdog); }
     };
+    openCurrent = openPicker;
     const trigger = button('▤', () => { if (suppressClick) { suppressClick = false; return; } void openPicker(); });
     let drag: { id: number; x: number; y: number; left: number; top: number } | null = null;
     trigger.addEventListener('pointerdown', (event) => {
@@ -520,7 +539,12 @@ export function installPersonalDataAutofill(
     else close();
   };
   const onPointer = (event: Event) => { if (!loginPrompt && event.target !== host && event.target !== target) close(); };
-  const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+  const onKey = (event: KeyboardEvent) => {
+    if (!event.isTrusted) return;
+    if (event.altKey && ['ArrowDown', 'Enter'].includes(event.key) && target && usable(target) && openCurrent) {
+      event.preventDefault(); event.stopPropagation(); void openCurrent(event.key === 'Enter');
+    } else if (event.key === 'Escape') close();
+  };
   document.addEventListener('focusin', onFocus);
   document.addEventListener('pointerdown', onPointer, true);
   document.addEventListener('keydown', onKey);

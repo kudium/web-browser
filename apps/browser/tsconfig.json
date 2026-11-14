@@ -18,7 +18,14 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "allowJs": true,
-    "outDir": ".erb/dll"
+    "outDir": ".erb/dll",
+    "ignoreDeprecations": "6.0",
+    "rootDir": "../..",
+    "types": [
+      "node",
+      "jest",
+      "@testing-library/jest-dom"
+    ]
   },
   "exclude": [
     "demo",

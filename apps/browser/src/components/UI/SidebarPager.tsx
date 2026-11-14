@@ -20,8 +20,8 @@ export function SidebarPager({
   callback.current = onSwipe;
   const previous = useRef(page);
   const retainChromeFocus = useRef(false);
-  const transition = useRef<{ offset: number; direction: number }>();
-  const touch = useRef<{ x: number; y: number }>();
+  const transition = useRef<{ offset: number; direction: number } | undefined>(undefined);
+  const touch = useRef<{ x: number; y: number } | undefined>(undefined);
   const gesture = useRef({
     x: 0,
     y: 0,
@@ -29,12 +29,12 @@ export function SidebarPager({
     locked: false,
     axis: '',
   });
-  const frame = useRef<number>();
-  const settleTimer = useRef<ReturnType<typeof setTimeout>>();
+  const frame = useRef<number | undefined>(undefined);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const nativeEnabled = useRef(false);
   const nativeGesture = useRef(false);
-  const wheelInput = useRef<(event: WheelEvent, native?: boolean) => void>();
-  const rearmTimer = useRef<ReturnType<typeof setTimeout>>();
+  const wheelInput = useRef<(event: WheelEvent, native?: boolean) => void | undefined>(undefined);
+  const rearmTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const motion = () =>
     !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rearm = () => {

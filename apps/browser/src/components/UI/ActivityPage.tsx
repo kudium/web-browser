@@ -100,7 +100,7 @@ export function ActivityPage({
     };
   }, []);
   const [disabledTriggers, setDisabledTriggers] = useState<string[]>([]);
-  const target = useRef<string>();
+  const target = useRef<string | undefined>(undefined);
   const refresh = useCallback(async () => {
     if (!window.electron.activity) return;
     try {

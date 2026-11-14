@@ -268,3 +268,20 @@ it('runs the shared matcher in the serialized main-frame fill without module acc
   ).toEqual({ filled: 1 });
   jest.restoreAllMocks();
 });
+
+
+it.each([
+  ['email', 'user[email]', 'email'],
+  ['given-name', 'profile_firstName', 'text'],
+  ['family-name', 'account_last_name', 'text'],
+  ['tel', 'checkout.phoneNumber', 'text'],
+])('matches %s in framework field %s', (name, field, type) => {
+  expect(createPersonalDataMatching().score(name, [], { name: field, type })).toBeGreaterThan(0);
+});
+
+it('keeps generic names and one-time codes out of inferred matches', () => {
+  const score = createPersonalDataMatching().score;
+  expect(score('name', [], { name: 'profile_firstName' })).toBe(0);
+  expect(score('tel', [], { type: 'tel', autocomplete: 'one-time-code', name: 'phone' })).toBe(0);
+  expect(score('email', [], { name: 'email_preferences' })).toBe(0);
+});

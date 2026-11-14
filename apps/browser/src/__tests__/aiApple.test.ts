@@ -33,7 +33,7 @@ beforeEach(() => {
     stderr: new PassThrough(),
     kill: jest.fn(),
   });
-  (spawn as jest.Mock).mockReturnValue(child);
+  (spawn as jest.Mock).mockReset().mockReturnValue(child);
 });
 afterEach(() => {
   jest.restoreAllMocks();

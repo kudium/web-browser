@@ -83,7 +83,7 @@ function TerminalSurface({
 }) {
   const { appearance } = useThemeContext();
   const container = useRef<HTMLDivElement>(null);
-  const terminalRef = useRef<Terminal>();
+  const terminalRef = useRef<Terminal | undefined>(undefined);
   const activeRef = useRef(active);
   activeRef.current = active;
   const readyRef = useRef(onReady);
@@ -412,7 +412,7 @@ export function DeveloperTerminal({
   const [name, setName] = useState('');
   const [renameTab, setRenameTab] = useState('');
   const root = useRef<HTMLElement>(null);
-  const drag = useRef<{ y: number; height: number }>();
+  const drag = useRef<{ y: number; height: number } | undefined>(undefined);
   const revision = useRef(0);
   const live = useRef(true);
   const request = async (value: ProjectTerminalRequest) => {

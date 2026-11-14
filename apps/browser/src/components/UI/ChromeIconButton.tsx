@@ -22,9 +22,9 @@ export const ChromeIconButton = forwardRef<
   { label, icon: Icon, className = '', badgeCount = 0, text, ...props },
   ref
 ) {
-  const tooltipId = useRef<string>();
+  const tooltipId = useRef<string | undefined>(undefined);
   if (!tooltipId.current) tooltipId.current = crypto.randomUUID();
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hide = () => {
     clearTimeout(timer.current);
     try {

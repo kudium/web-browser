@@ -147,3 +147,18 @@ it('allows download retry and rejects installation before download', async () =>
   await controller.download();
   expect(driver.downloadUpdate).toHaveBeenCalledTimes(2);
 });
+
+
+it.each(['event', 'throw'])('explains a full disk during installation via %s and permits retry', (method) => {
+  const { driver, controller } = fixture(false);
+  driver.emit('update-available', { version: '1.0.2' });
+  driver.emit('update-downloaded', { version: '1.0.2' });
+  const error = new Error('ditto: app.asar: No space left on device');
+  if (method === 'throw') {
+    driver.quitAndInstall.mockImplementationOnce(() => { throw error; });
+    expect(() => controller.install()).toThrow(error);
+  } else { controller.install(); driver.emit('error', error); }
+  expect(controller.get()).toMatchObject({ status: 'ready', message: 'Not enough disk space to install the update. Free up space on your Mac, then try again.' });
+  controller.install();
+  expect(driver.quitAndInstall).toHaveBeenCalledTimes(2);
+});

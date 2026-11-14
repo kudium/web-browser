@@ -73,7 +73,7 @@ export class AppUpdateController {
         message: undefined,
       });
     });
-    driver.on('error', () => this.failed());
+    driver.on('error', (error) => this.failed(error));
   }
 
   get = (): AppUpdateState => ({ ...this.state });
@@ -83,7 +83,10 @@ export class AppUpdateController {
     this.publish(this.get());
   }
 
-  private failed() {
+  private failed(error?: unknown) {
+    const detail = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+    const diskFull = code === 'ENOSPC' || /no space left on device|ENOSPC|not enough (?:free |disk )?space/i.test(detail);
     const wasInstalling = this.installing;
     this.installing = false;
     // Keep a downloaded update usable, and a known update available to retry.
@@ -92,7 +95,9 @@ export class AppUpdateController {
     else if (this.state.version) status = 'available';
     this.set({
       status,
-      message: wasInstalling
+      message: diskFull
+        ? 'Not enough disk space to install the update. Free up space on your Mac, then try again.'
+        : wasInstalling
         ? 'Unable to install the update. Try again.'
         : 'Unable to reach the update service. Try again.',
       progress: undefined,
@@ -123,8 +128,8 @@ export class AppUpdateController {
           this.set({ checkedAt: Date.now() });
           return this.get();
         },
-        () => {
-          this.failed();
+        (error) => {
+          this.failed(error);
           return this.get();
         }
       )
@@ -142,8 +147,8 @@ export class AppUpdateController {
       .then(() => this.driver.downloadUpdate())
       .then(
         () => this.get(),
-        () => {
-          this.failed();
+        (error) => {
+          this.failed(error);
           return this.get();
         }
       )
@@ -162,7 +167,7 @@ export class AppUpdateController {
     try {
       this.driver.quitAndInstall();
     } catch (error) {
-      this.failed();
+      this.failed(error);
       throw error;
     }
     return this.get();

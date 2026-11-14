@@ -42,7 +42,7 @@ export function HookEditor({
     const preferred = preferredStage(code);
     return preferred === 'actions' ? 'after' : preferred;
   });
-  const selection = useRef<{ key?: string }>();
+  const selection = useRef<{ key?: string } | undefined>(undefined);
   useEffect(() => {
     if (selection.current && selection.current.key === selectionKey) return;
     selection.current = { key: selectionKey };

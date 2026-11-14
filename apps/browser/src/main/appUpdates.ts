@@ -19,6 +19,10 @@ const unavailable = (): AppUpdateState => ({
   message: 'Updates are available in installed release builds.',
 });
 
+export function checkForAppUpdates(): Promise<AppUpdateState> {
+  return controller ? controller.check() : Promise.resolve(unavailable());
+}
+
 export function registerAppUpdates(
   isTrusted: (contents: WebContents) => boolean
 ) {

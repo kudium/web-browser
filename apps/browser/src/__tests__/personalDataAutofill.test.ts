@@ -36,6 +36,13 @@ it('offers autofill on matching fields and passwords, and removes it when disabl
 
 it.each(['picker', 'quick', 'chooser', 'timeout'])('fills a form with secrets through %s after authentication and Retry', async (mode) => {
   if (mode === 'timeout') jest.useFakeTimers();
+  let hostKey: Function | undefined;
+  const nativeHostOn = EventTarget.prototype.addEventListener;
+  Object.defineProperty(HTMLDivElement.prototype, 'addEventListener', { configurable: true, writable: true, value: nativeHostOn });
+  const hostOn = jest.spyOn(HTMLDivElement.prototype, 'addEventListener').mockImplementation(function (this: HTMLElement, type: string, callback: any, options?: any) {
+    if (this instanceof HTMLDivElement && type === 'keydown') hostKey = callback;
+    nativeHostOn.call(this, type, callback, options);
+  });
   let shadow: ShadowRoot | undefined;
   const originalAttach = HTMLElement.prototype.attachShadow;
   const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
@@ -102,9 +109,16 @@ it.each(['picker', 'quick', 'chooser', 'timeout'])('fills a form with secrets th
     await opening; for (let turn = 0; turn < 10; turn++) await Promise.resolve();
     if (mode !== 'quick' && mode !== 'timeout') {
       expect(email.value).toBe('');
-      const fill = Array.from(shadow!.querySelectorAll('.panel button')).find((button) => button.textContent === (mode === 'chooser' ? 'Work' : 'Fill this form'))!;
+      const fill = Array.from(shadow!.querySelectorAll<HTMLButtonElement>('.panel button')).find((button) => button.textContent === (mode === 'chooser' ? 'Work' : 'Fill this form'))!;
       if (mode === 'picker') expect(fill.parentElement?.className).toBe('heading');
-      clicks.get(fill)!({ isTrusted: true });
+      if (mode === 'picker') {
+        const key = (value: string) => hostKey!({ isTrusted: true, key: value, preventDefault: jest.fn(), stopPropagation: jest.fn() });
+        key('Home');
+        expect(shadow!.activeElement).not.toBeNull();
+        key('End');
+        key('ArrowUp'); key('ArrowDown');
+        fill.focus(); key('Enter');
+      } else clicks.get(fill)!({ isTrusted: true });
       await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     }
     expect(email.value).toBe('work@example.com');
@@ -113,7 +127,7 @@ it.each(['picker', 'quick', 'chooser', 'timeout'])('fills a form with secrets th
     expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-secret', { id: 'work', fieldIndex: 2 });
     expect(submit).not.toHaveBeenCalled();
   } finally {
-    dispose(); attach.mockRestore(); on.mockRestore();
+    dispose(); attach.mockRestore(); on.mockRestore(); hostOn.mockRestore(); delete (HTMLDivElement.prototype as any).addEventListener;
     if (mode === 'timeout') jest.useRealTimers();
     window.dispatchEvent(new Event('pagehide'));
     document.body.innerHTML = '';

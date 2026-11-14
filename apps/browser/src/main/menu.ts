@@ -17,6 +17,7 @@ import type { NewWindowParams } from '../types';
 import { shellContextMenu } from './shellContextMenu';
 import { getBrowserWindows } from './browserWindows';
 import { showAboutDialog } from './about';
+import { checkForAppUpdates } from './appUpdates';
 import { createPrivateWindow } from './privateBrowsing';
 
 export default class MenuBuilder {
@@ -308,6 +309,13 @@ export default class MenuBuilder {
                   label: 'About Kudium Browser',
                   click: () => {
                     void showAboutDialog(this.mainWindow);
+                  },
+                },
+                {
+                  label: 'Check for updates…',
+                  click: () => {
+                    showBrowserPreferences(this.mainWindow, 'updates');
+                    void checkForAppUpdates();
                   },
                 },
                 separator,

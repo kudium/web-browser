@@ -23,11 +23,11 @@ export async function extractDocument(name: string, bytes: Buffer) {
     const worker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
     (globalThis as typeof globalThis & { pdfjsWorker?: unknown }).pdfjsWorker =
       worker;
-    const document = await pdfjs.getDocument({
+    const loading = pdfjs.getDocument({
       data: new Uint8Array(bytes),
       useSystemFonts: true,
-      isEvalSupported: false,
-    }).promise;
+    });
+    const document = await loading.promise;
     try {
       if (document.numPages > 1000)
         throw new Error('Choose a document with at most 1000 pages.');
@@ -42,7 +42,7 @@ export async function extractDocument(name: string, bytes: Buffer) {
       );
       text = pages.join('\n\n');
     } finally {
-      await document.destroy();
+      await loading.destroy();
     }
     mime = 'application/pdf';
   } else throw new Error('Choose PDF, DOCX, TXT, or Markdown.');

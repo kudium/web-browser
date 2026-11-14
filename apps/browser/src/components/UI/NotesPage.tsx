@@ -63,7 +63,7 @@ export function NotesPage({
   const panelDocument = useAssistantPanelDocument();
   const [notes, setNotes] = useState<VaultSummary[]>([]);
   const [draft, setDraft] = useState<VaultItem>();
-  const currentDraft = useRef<VaultItem>();
+  const currentDraft = useRef<VaultItem | undefined>(undefined);
   currentDraft.current = draft;
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState(initialScope || 'all');

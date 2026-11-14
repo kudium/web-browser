@@ -801,7 +801,8 @@ const electronHandler = {
           | 'import'
           | 'passwords'
           | 'spaces'
-          | 'hooks';
+          | 'hooks'
+        | 'updates';
       }
     ): Promise<BrowserPreferences> {
       return ipcRenderer.invoke('browser-preferences', action, patch);

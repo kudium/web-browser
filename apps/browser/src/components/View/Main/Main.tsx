@@ -439,7 +439,7 @@ export function Main() {
     token: string;
     handled: boolean;
     cancelled: boolean;
-  }>();
+  } | undefined>(undefined);
   const [states, setStates] = useState<Record<string, BrowserState>>({});
   useEffect(() => {
     setStates((previous) =>
@@ -1910,7 +1910,7 @@ export function Main() {
     const item = appList.find((entry) => entry.id === other);
     if (item) select(item);
   };
-  const dragPreview = useRef<HTMLElement>();
+  const dragPreview = useRef<HTMLElement | undefined>(undefined);
   const previousTabBounds = useRef(new Map<string, DOMRect>());
   const tabMotion = useRef(new Map<string, Animation>());
   const dragMotionPending = useRef(false);
@@ -2722,6 +2722,10 @@ export function Main() {
           else if (option === 'downloads') activateSidebarPage(DOWNLOADS_PAGE);
           else if (option === 'find') setFindOpen(true);
           else if (option === 'print') command('print');
+          else if (option === 'updates') {
+            browser.preferences('open', { section: 'updates' }).catch((error) => setMoveMessage(String(error)));
+            browser.appUpdates('check').catch((error) => setMoveMessage(String(error)));
+          }
           else if (option === 'site-settings') setSiteSettingsOpen(true);
           else if (option === 'extensions') {
             if (addressBarPlacement === 'sidebar') {
@@ -4090,7 +4094,7 @@ export function Main() {
                       // React 18 types do not yet expose the native inert attribute.
                       // eslint-disable-next-line react/jsx-props-no-spreading
                       {...(collapsedFolders.includes(folder.id)
-                        ? { inert: '' }
+                        ? { inert: true }
                         : {})}
                     >
                       <div className="folder-content-inner">

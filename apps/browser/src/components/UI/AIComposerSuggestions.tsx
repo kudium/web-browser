@@ -10,7 +10,7 @@ export function AIComposerSuggestions({
   selectedIndex,
   children,
 }: {
-  input: RefObject<HTMLTextAreaElement>;
+  input: RefObject<HTMLTextAreaElement | null>;
   cursor: number;
   value: string;
   selectedIndex: number;

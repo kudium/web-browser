@@ -116,7 +116,7 @@ export function DeveloperSidebar({
     : '';
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const pendingHook = useRef<{ pageId: string; hookId: string; name: string; acknowledged?: boolean }>();
+  const pendingHook = useRef<{ pageId: string; hookId: string; name: string; acknowledged?: boolean } | undefined>(undefined);
   const [hookFeedback, setHookFeedback] = useState('');
   useEffect(() => browser.onState((state) => {
     const pending = pendingHook.current;

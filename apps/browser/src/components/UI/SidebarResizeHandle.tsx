@@ -28,8 +28,8 @@ export function SidebarResizeHandle({
   onChange: (nextWidth: number) => void;
   onResizingChange: (resizing: boolean) => void;
 }) {
-  const drag = useRef<{ pointer: number; x: number; width: number }>();
-  const removeDragListeners = useRef<() => void>();
+  const drag = useRef<{ pointer: number; x: number; width: number } | undefined>(undefined);
+  const removeDragListeners = useRef<() => void | undefined>(undefined);
   useEffect(() => () => removeDragListeners.current?.(), []);
   const change = (value: number) =>
     onChange(Math.round(Math.max(minWidth, Math.min(maxWidth, value))));

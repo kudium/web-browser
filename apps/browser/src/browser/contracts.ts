@@ -213,7 +213,8 @@ export interface BrowserClient {
         | 'import'
         | 'passwords'
         | 'spaces'
-        | 'hooks';
+        | 'hooks'
+        | 'updates';
     }
   ): Promise<BrowserPreferences>;
   appUpdates(action: AppUpdateAction): Promise<AppUpdateState>;

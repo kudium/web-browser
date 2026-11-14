@@ -11,7 +11,7 @@ export const useAppList = (): {
   setAppList: Dispatch<SetStateAction<IApp[]>>;
   lastIndex: number;
 } => {
-  const initialRaw = useRef<string | null | undefined>();
+  const initialRaw = useRef<string | null | undefined | undefined>(undefined);
   const [appList, setAppList] = useState(() => {
     initialRaw.current = LocalStorage.get(STORAGE_KEY.USER_APPS);
     return AppManager.getAll();

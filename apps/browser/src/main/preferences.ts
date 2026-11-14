@@ -85,7 +85,8 @@ let openPage:
         | 'import'
         | 'passwords'
         | 'spaces'
-        | 'hooks',
+        | 'hooks'
+      | 'updates',
       personalDataScope?: string
     ) => void)
   | undefined;
@@ -309,7 +310,8 @@ export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
 }
 export function showBrowserPreferences(
   _owner: BrowserWindow,
-  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks',
+  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks'
+      | 'updates',
   personalDataScope?: string
 ) {
   openPage?.(section, personalDataScope);
@@ -323,7 +325,8 @@ export function registerPreferences(
       | 'import'
       | 'passwords'
       | 'spaces'
-      | 'hooks',
+      | 'hooks'
+      | 'updates',
     personalDataScope?: string
   ) => void,
   isTrusted: (contents: WebContents) => boolean = () => false,
@@ -368,7 +371,8 @@ export function registerPreferences(
           | 'import'
           | 'passwords'
           | 'spaces'
-          | 'hooks';
+          | 'hooks'
+          | 'updates';
       }
     ) => {
       const owner = ownerOf(event);
@@ -380,7 +384,7 @@ export function registerPreferences(
             patch?.section === 'import' ||
             patch?.section === 'passwords' ||
             patch?.section === 'spaces' ||
-            patch?.section === 'hooks'
+            patch?.section === 'hooks' || patch?.section === 'updates'
             ? patch.section
             : undefined
         );

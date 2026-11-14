@@ -48,7 +48,7 @@ export function AssistantPanelHost({
   const [visited, setVisited] = useState(active);
   const shuttingDown = useRef(false);
   const [error, setError] = useState('');
-  const cleanup = useRef<() => void>();
+  const cleanup = useRef<() => void | undefined>(undefined);
   const placementKey = `kudium-assistant-window-${panel}`;
   const title = ASSISTANT_PANEL_NAMES[panel];
   const dockBack = () => {

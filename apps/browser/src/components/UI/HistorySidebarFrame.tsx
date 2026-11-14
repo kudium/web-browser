@@ -22,7 +22,7 @@ export function HistorySidebarFrame({
   onClose: () => void;
   onNew: () => void;
   children: ReactNode;
-  sidebarRef?: RefObject<HTMLElement>;
+  sidebarRef?: RefObject<HTMLElement | null>;
 }) {
   return (
     <aside ref={sidebarRef} className="ai-chat-history" aria-label={label}>
@@ -76,7 +76,7 @@ export function HistoryToolbar({
   onOpen: () => void;
   onNew: () => void;
   newLabel: string;
-  toggleRef?: RefObject<HTMLButtonElement>;
+  toggleRef?: RefObject<HTMLButtonElement | null>;
 }) {
   if (open) return null;
   return (

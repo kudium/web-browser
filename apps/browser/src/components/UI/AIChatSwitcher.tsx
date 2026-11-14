@@ -30,7 +30,7 @@ export function AIChatSwitcher({
   const panelDocument = useAssistantPanelDocument();
   const history = useRef<HTMLElement>(null);
   const dismissalGeneration = useRef(0);
-  const dismissalTimer = useRef<ReturnType<typeof setTimeout>>();
+  const dismissalTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [dragging, setDragging] = useState<string | null>(null);
   useEffect(
     () => () => {

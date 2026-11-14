@@ -39,7 +39,6 @@ export function DeveloperPDFPreview({ url }: { url: string }) {
         );
         const loading = pdf.getDocument({
           data,
-          isEvalSupported: false,
           useSystemFonts: true,
         });
         task = loading;
@@ -79,6 +78,7 @@ export function DeveloperPDFPreview({ url }: { url: string }) {
         const context = target.getContext('2d');
         if (!context) throw new Error('Canvas unavailable');
         const rendering = pdfPage.render({
+          canvas: target,
           canvasContext: context,
           viewport,
           transform: [ratio, 0, 0, ratio, 0, 0],

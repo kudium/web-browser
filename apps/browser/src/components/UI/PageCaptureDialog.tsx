@@ -32,10 +32,10 @@ export function PageCaptureDialog({
   const [error, setError] = useState('');
   const [selection, setSelection] = useState<Selection>();
   const [copied, setCopied] = useState(false);
-  const currentCapture = useRef<PageCapturePreview>();
+  const currentCapture = useRef<PageCapturePreview | undefined>(undefined);
   const close = useRef(onClose);
   close.current = onClose;
-  const dragStart = useRef<{ x: number; y: number }>();
+  const dragStart = useRef<{ x: number; y: number } | undefined>(undefined);
   const image = useRef<HTMLImageElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
