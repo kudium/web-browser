@@ -27,7 +27,7 @@ async function request(url, options = {}) {
 // Pin the checked commit, so a newer untested push cannot be picked up by the build.
 await request(`${api}/applications/${uuid}`, {
   method: "PATCH",
-  body: JSON.stringify({ git_commit_sha: sha, is_auto_deploy_enabled: false }),
+  body: JSON.stringify({ git_commit_sha: sha }),
 });
 const result = await request(deployUrl.href, { method: "POST" });
 const deployment = result.deployments?.find(

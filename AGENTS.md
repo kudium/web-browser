@@ -32,10 +32,11 @@ defines these commands, run from the repository root on a Mac:
   checksums before pushing/publishing. Do not skip these checks.
 - `release:test` targets the current Mac's architecture; beta/stable target
   macOS arm64 and x64. These commands do not build Windows or Linux installers.
-- The hosted Browser release workflow is manual-only. Other workflows still
-  have automatic push/PR triggers. Do not claim that a local release push means
-  nothing runs on Actions. When the user requires zero Actions usage, inspect
-  and address those triggers before any push; do not dispatch hosted work.
+- All hosted workflows are manual-only. Local builds and release pushes do not
+  require GitHub Actions. Keep automatic push/PR triggers disabled and do not
+  dispatch hosted work unless the user explicitly authorizes it. Website
+  auto-deployment is configured separately in Coolify and does not wait for
+  GitHub checks.
 
 ### Version selection and recovery
 

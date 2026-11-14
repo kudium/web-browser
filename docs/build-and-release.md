@@ -5,18 +5,24 @@ Website: https://browser.kudium.com.
 
 ## Every change
 
-Open a pull request to `main`. Website changes run Bun type checks, API/auth/sync
-integration tests against a dedicated PostgreSQL 18 service, and a Docker build.
-Browser changes run TypeScript and Jest on Windows and Linux. Paid macOS checks are optional when manually running Browser checks with include_macos enabled.
+Build and validate changes locally before pushing to `main`. GitHub Actions
+checks and installer release workflows are manual-only; pushes and pull requests
+do not start hosted jobs. Local installer releases keep their required validation,
+signing, notarization and publication checks.
 
-After website changes reach `main`, successful web checks trigger Coolify. The job
-pins the checked commit, waits for that deployment to finish, verifies its commit,
-and checks public readiness. Superseded commits are skipped. Coolify's direct
-push auto-deploy is disabled, so it cannot bypass these checks. Desktop-only
-changes do not redeploy the website.
+Website deployment no longer runs through GitHub Actions. Configure Coolify's
+website application to auto-deploy `main`, with its commit selector set to `HEAD`
+(rather than a previously pinned SHA). Coolify then builds website pushes directly,
+without waiting for GitHub checks. This setting must also be enabled in the live
+Coolify application; changing this repository does not enable it remotely.
 
-GitHub workflow names: **Web checks and deployment**, **Browser checks**, and
-**Browser release**. Workflows can also be run manually from the Actions tab.
+Run website type checks and tests locally (`npm run check:web`, `npm run test:web`);
+API/auth/sync integration tests require a dedicated PostgreSQL 18 test database.
+Verify the website Docker build before deploying. Desktop installer publication
+and website deployment remain separate operations.
+
+GitHub workflows remain available for explicitly authorized manual fallback use.
+The manual **Web checks (manual)** workflow validates only; it does not deploy.
 
 ## Local builds and releases (recommended)
 

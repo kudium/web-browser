@@ -1,13 +1,5 @@
 name: Storage migration contracts
 on:
-  pull_request:
-    paths:
-      - 'apps/browser/src/main/**'
-      - 'apps/browser/src/__tests__/**'
-      - 'apps/browser/.erb/scripts/**'
-      - 'apps/browser/docs/releases/**'
-      - 'apps/browser/package*.json'
-      - '.github/workflows/storage-migration.yml'
   workflow_dispatch:
     inputs:
       native_checks:

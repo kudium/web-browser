@@ -1,24 +1,5 @@
-name: Web checks and deployment
+name: Web checks (manual)
 on:
-  pull_request:
-    paths:
-      [
-        "apps/web/**",
-        "packages/hooks/**",
-        ".dockerignore",
-        ".github/workflows/web-ci-deploy.yml",
-        "scripts/ci/deploy-website.mjs",
-      ]
-  push:
-    branches: [main]
-    paths:
-      [
-        "apps/web/**",
-        "packages/hooks/**",
-        ".dockerignore",
-        ".github/workflows/web-ci-deploy.yml",
-        "scripts/ci/deploy-website.mjs",
-      ]
   workflow_dispatch:
 permissions:
   contents: read
@@ -52,27 +33,3 @@ jobs:
       - run: bun run check && bun test
         working-directory: apps/web
       - run: docker build -f apps/web/Dockerfile -t kudium-web-check .
-  deploy:
-    name: Deploy website
-    needs: check
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    environment: website-production
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.15.0
-      - name: Skip superseded commits
-        id: current
-        shell: bash
-        run: |
-          latest=$(git ls-remote origin refs/heads/main | cut -f1)
-          if test "$latest" = "$GITHUB_SHA"; then echo "deploy=true" >> "$GITHUB_OUTPUT"; fi
-      - name: Deploy checked commit and wait for Coolify
-        if: steps.current.outputs.deploy == 'true'
-        env:
-          COOLIFY_DEPLOY_URL: ${{ secrets.COOLIFY_DEPLOY_URL }}
-          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
-        run: node scripts/ci/deploy-website.mjs
