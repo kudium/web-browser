@@ -47,6 +47,7 @@ export interface IApp {
 export type IAppAction = IApp & { action: 'update' | 'new' };
 
 export type NewWindowParams = {
+  privateSession?: import('electron').Session;
   options?: BrowserWindowConstructorOptions;
   view: View;
   isChild?: boolean;

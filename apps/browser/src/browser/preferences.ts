@@ -14,9 +14,14 @@ export interface BrowserPreferences {
   shareUsageDiagnostics: boolean;
   writeBrowserInstructions: boolean;
   tabDisplayMode: 'horizontal' | 'hover' | 'click';
+  tabOverflowMode: 'dropdown' | 'scroll';
   folderHoverPreviews: boolean;
   showUnpinnedGroups: boolean;
   addressBarPlacement: 'sidebar' | 'header';
+  personalDataAutofill: boolean;
+  personalDataAutofillExcludedSites: string[];
+  personalDataAutofillPositions: Record<string, { side: 'left' | 'right'; x: number; y: number }>;
+  addressBarFullUrl: boolean;
   addressBarExtensionsExpanded: boolean;
   showExtensionIcons: boolean;
   extensionToolbarOrder: string[] | null;
@@ -53,9 +58,14 @@ export const defaultPreferences: BrowserPreferences = {
   shareUsageDiagnostics: true,
   writeBrowserInstructions: true,
   tabDisplayMode: 'horizontal',
+  tabOverflowMode: 'scroll',
   folderHoverPreviews: true,
   showUnpinnedGroups: false,
   addressBarPlacement: 'sidebar',
+  personalDataAutofill: true,
+  personalDataAutofillExcludedSites: [],
+  personalDataAutofillPositions: {},
+  addressBarFullUrl: false,
   addressBarExtensionsExpanded: true,
   showExtensionIcons: true,
   extensionToolbarOrder: null,
@@ -94,6 +104,13 @@ export interface PreferenceControl {
   options?: { label: string; value: string | number }[];
 }
 export const preferenceControls: PreferenceControl[] = [
+  {
+    key: 'personalDataAutofill',
+    section: 'passwords',
+    title: 'Show Personal Data autofill',
+    description: 'Offer saved profile values in website fields. Filling is manual and never submits the form.',
+    kind: 'toggle',
+  },
   {
     key: 'systemSpaceRetentionDays',
     section: 'privacy',
@@ -163,6 +180,18 @@ export const preferenceControls: PreferenceControl[] = [
     ],
   },
   {
+    key: 'tabOverflowMode',
+    section: 'appearance',
+    title: 'Horizontal tab overflow',
+    description:
+      'Choose how to access tabs that do not fit in the horizontal strip.',
+    kind: 'select',
+    options: [
+      { label: 'Dropdown', value: 'dropdown' },
+      { label: 'Scroll', value: 'scroll' },
+    ],
+  },
+  {
     key: 'folderHoverPreviews',
     section: 'appearance',
     title: 'Preview closed collections on hover',
@@ -175,12 +204,19 @@ export const preferenceControls: PreferenceControl[] = [
     section: 'appearance',
     title: 'Address bar position',
     description:
-      'Keep a compact address in the sidebar, or show the full URL above the tabs.',
+      'Show the address bar in the sidebar or above the tabs.',
     kind: 'select',
     options: [
       { label: 'Sidebar', value: 'sidebar' },
       { label: 'Header above tabs', value: 'header' },
     ],
+  },
+  {
+    key: 'addressBarFullUrl',
+    section: 'appearance',
+    title: 'Show full URL',
+    description: 'Show the complete website address instead of only its domain.',
+    kind: 'toggle',
   },
   {
     key: 'addressBarExtensionsExpanded',

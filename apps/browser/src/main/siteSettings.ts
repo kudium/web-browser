@@ -1,3 +1,4 @@
+import { assertDeveloperSources } from "../browser/hookValidation";
 import { app } from 'electron';
 import fs from 'fs';
 import { EventEmitter } from 'events';
@@ -9,6 +10,13 @@ import {
 } from '../browser/siteDeveloper';
 
 const changes = new EventEmitter();
+const privateSites = new Map<string, SiteSettings>();
+export function clearPrivateSiteSettings(prefix: string) {
+  privateSites.forEach((_value, key) => {
+    const [profile] = JSON.parse(key) as [string, string];
+    if (profile.startsWith(prefix)) privateSites.delete(key);
+  });
+}
 export function onSiteSettingsChanged(
   callback: (profile: string, origin: string) => void
 ) {
@@ -133,7 +141,7 @@ function read(): Record<string, SiteSettings> {
   return sites;
 }
 export function getSiteSettings(profile: string, origin: string): SiteSettings {
-  const site = read()[keyFor(profile, origin)] || {
+  const site = (profile.startsWith('private:') ? privateSites.get(keyFor(profile, origin)) : read()[keyFor(profile, origin)]) || {
     permissions: {},
     muted: false,
   };
@@ -148,10 +156,17 @@ export function updateSiteSettings(
   origin: string,
   patch: Partial<SiteSettings>
 ) {
+  if (profile.startsWith('private:')) {
+    const previous = getSiteSettings(profile, origin);
+    privateSites.set(keyFor(profile, origin), normalize({ ...previous, ...patch }));
+    changes.emit('change', profile, origin);
+    return;
+  }
   const file = filename();
   const sites = read();
   const key = keyFor(profile, origin);
   const previous = sites[key];
+  if (patch.developer) assertDeveloperSources(patch.developer);
   const revisions = [...(previous?.hookRevisions || [])];
   if (
     patch.developer &&

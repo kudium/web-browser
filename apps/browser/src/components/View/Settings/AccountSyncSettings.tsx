@@ -224,7 +224,7 @@ export function AccountSyncSettings({
             <LockKeyhole size={18} />
             Unlock your synced data
           </strong>
-          <p>Enter the recovery key you saved on your first device.</p>
+          <p>These older backups need the recovery key from your first device. Signing in cannot decrypt them without that key.</p>
           <TextField.Root
             type="password"
             autoComplete="off"
@@ -238,6 +238,13 @@ export function AccountSyncSettings({
           >
             Unlock and start sync
           </Button>
+          <details className="sync-details">
+            <summary>I don’t have my recovery key</summary>
+            <p>Reconnect on another device where sync still works; it may still have the key. You can also look in your password manager. You can also check whether your account can unlock the backups automatically.</p>
+            <Button variant="soft" disabled={busy} onClick={() => action('unlock')}>Try account recovery</Button>
+            <p>If the key is lost on every device, the old encrypted backups cannot be recovered. Resetting only deletes cloud backups. Your local tabs, groups, notes and passwords stay intact, ready for a fresh backup when you enable sync again.</p>
+            <Button variant="soft" color="red" disabled={busy} onClick={() => action('reset-sync')}>Reset cloud sync…</Button>
+          </details>
         </div>
       )}
       {status?.connected && (

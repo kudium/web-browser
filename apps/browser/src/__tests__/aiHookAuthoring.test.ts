@@ -480,3 +480,15 @@ it('handles simulated input cancellation and rejects malformed sample answers', 
   ).rejects.toThrow();
   expect(saveGlobalHooks).not.toHaveBeenCalled();
 });
+
+it('rejects malformed authored code before review and checks CSS in validation', async () => {
+  const { execute, review } = fixture();
+  const state = await execute('read_global_hooks', {});
+  await expect(execute('save_global_hook', { hook: { ...hook, after: 'const broken = ;' }, expectedHash: state.expectedHash, reason: 'Broken draft' })).rejects.toThrow('After load, line 1');
+  expect(review).not.toHaveBeenCalled();
+  expect(saveGlobalHooks).not.toHaveBeenCalled();
+  const output = await execute('test_hook', { testAction: 'validate', hook: { ...hook, css: 'p { color: red;' } });
+  expect(output.valid).toBe(false);
+  expect(output.cssChecked).toBe(true);
+  expect(output.syntaxErrors).toEqual(expect.arrayContaining([expect.objectContaining({ stage: 'css' })]));
+});

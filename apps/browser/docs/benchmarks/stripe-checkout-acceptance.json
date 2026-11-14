@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-14",
+  "runtime": {
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48",
+    "arch": "arm64"
+  },
+  "scope": "Production workspace/backend with disposable profiles. Published demo credentials only, fake media devices and controlled file selection; no OS chooser, real accounts, real payment, native passkeys or actual camera/microphone claim.",
+  "inputMode": "Native browser mouse events for main-frame controls; focused input with controlled private/checkout activation.",
+  "outcome": "incomplete",
+  "captures": "/var/folders/5p/m00c119x4dgcdllt_z57m98w0000gn/T/kudiumbrowser-desktop-smoke-Vh3yiO/screenshots",
+  "results": [
+    {
+      "name": "Stripe hosted test checkout entry",
+      "status": "passed",
+      "site": "https://checkout.stripe.dev/",
+      "paymentFields": {
+        "fields": [
+          {
+            "autocomplete": "email",
+            "name": "email",
+            "placeholder": "email@example.com",
+            "type": "text"
+          },
+          {
+            "autocomplete": "shipping name",
+            "name": "shippingName",
+            "placeholder": "Full name",
+            "type": "text"
+          },
+          {
+            "autocomplete": "shipping address-line1",
+            "name": "shippingAddressLine1",
+            "placeholder": "Address",
+            "type": "text"
+          },
+          {
+            "autocomplete": "shipping address-line2",
+            "name": "shippingAddressLine2",
+            "placeholder": "Address line 2",
+            "type": "text"
+          },
+          {
+            "autocomplete": "shipping address-level2",
+            "name": "shippingLocality",
+            "placeholder": "City",
+            "type": "text"
+          },
+          {
+            "autocomplete": "shipping postal-code",
+            "name": "shippingPostalCode",
+            "placeholder": "Postal code",
+            "type": "text"
+          },
+          {
+            "autocomplete": "cc-number",
+            "name": "cardNumber",
+            "placeholder": "1234 1234 1234 1234",
+            "type": "text"
+          },
+          {
+            "autocomplete": "cc-exp",
+            "name": "cardExpiry",
+            "placeholder": "MM / YY",
+            "type": "text"
+          },
+          {
+            "autocomplete": "cc-csc",
+            "name": "cardCvc",
+            "placeholder": "CVC",
+            "type": "text"
+          },
+          {
+            "autocomplete": "",
+            "name": "cardUseShippingAsBilling",
+            "placeholder": "",
+            "type": "checkbox"
+          },
+          {
+            "autocomplete": "",
+            "name": "enableStripePass",
+            "placeholder": "",
+            "type": "checkbox"
+          },
+          {
+            "autocomplete": "off",
+            "name": "link_pay_token",
+            "placeholder": "",
+            "type": "text"
+          }
+        ],
+        "text": "Pure Glow Cream\nChoose currency\nCA$42.43\n$28.80\n1 USD = 1.4733 CAD (includes 3.25% conversion fee)\nPure Glow Cream\nCA$47.14\nSubtotal\nCA$47.14\nSAVE10\n-CA$4.71\n10% off\nTax\nEnter address to calculate\nTotal due\nCA$42.43\nHide\n\nOR\n\nShipping information\nEmail\nShipping address\nAustralia\nBelgium\nBrazil\nBulgaria\nCanada\nChina\nCyprus\nCzechia\nDenmark\nEstonia\nFinland\nFrance\nGermany\nGreece\nHong Kong SAR China\nIndia\nIreland\nItaly\nJapan\nLatvia\nLithuania\nLuxembourg\nMalaysia\nMalta\nMexico\nNetherlands\nNew Zealand\nNorway\nPoland\nPortugal\nRomania\nSingapore\nSlovakia\nSlovenia\nSpain\nSweden\nSwitzerland\nUnited Kingdom\nUnited States\nOptional\nProvince\nAlberta\nBritish Columbia\nManitoba\nNew Brunswick\nNewfoundland and Labrador\nNorthwest Territories\nNova Scotia\nNunavut\nOntario\nPrince Edward Island\nQuebec\nSaskatchewan\nYukon\nEnter address manually\nPayment method\nCard\nCard information\nAccepted card types: Visa, Mastercard, American Express, UnionPay, JCB, Discover, and Diners Club\n3-digit code on back of card\nBilling info is same as shipping\nApple Pay\nSave my information for faster checkout\nPay securely at Powdur and everywhere Link is accepted.\nPay\nProcessing\nFree returns and exchanges\nPowered by \nLegal\nReturns\nContact"
+      },
+      "verified": [
+        "checkout demo document renders",
+        "cross-origin Stripe hosted test session",
+        "real payment form inputs render"
+      ],
+      "limitation": "Hosted test form rendering only; submission is checked separately."
+    },
+    {
+      "name": "Stripe demo test payment confirmation",
+      "status": "incomplete",
+      "error": "Timed out waiting for (()=>{const text=document.body.innerText;return /payment.*successful|thank you|payment complete|paid successfully/i.test(text) && text.slice(0,1000)})()",
+      "diagnostics": [
+        {
+          "site": "https://checkout.stripe.dev/checkout",
+          "text": "Start building\nFeatures\nStyle\nUnited States\nAustralia\nChina\nFrance\nGermany\nJapan\nMexico\nNetherlands\nPoland\nUnited Kingdom\nUnited States\nEmbed your prebuilt form\n\nFollow our Quickstart guide to add a checkout to your website.\n\nPublish a Stripe-hosted page without code\n\nUse the Stripe Dashboard to create a payment link that you can share with your customers.\n\nExplore Stripe's payments integrations",
+          "buttons": []
+        },
+        {
+          "site": "https://js.stripe.com/v3/embedded-checkout-inner.html",
+          "text": "Pure Glow Cream\nChoose currency\nCA$42.43\n$28.80\n1 USD = 1.4733 CAD (includes 3.25% conversion fee)\nPure Glow Cream\nCA$47.14\nSubtotal\nCA$47.14\nSAVE10\n-CA$4.71\n10% off\nTax\nCA$0.00\nTotal due\nCA$42.43\nHide\n\nOR\n\nShipping information\nEmail\nShipping address\nAustralia\nBelgium\nBrazil\nBulgaria\nCanada\nChina\nCyprus\nCzechia\nDenmark\nEstonia\nFinland\nFrance\nGermany\nGreece\nHong Kong SAR China\nIndia\nIreland\nItaly\nJapan\nLatvia\nLithuania\nLuxembourg\nMalaysia\nMalta\nMexico\nNetherlands\nNew Zealand\nNorway\nPoland\nPortugal\nRomania\nSingapore\nSlovakia\nSlovenia\nSpain\nSweden\nSwitzerland\nUnited Kingdom\nUnited States\nClear\nOptional\nProvince\nAlberta\nBritish Columbia\nManitoba\nNew Brunswick\nNewfoundland and Labrador\nNorthwest Territories\nNova Scotia\nNunavut\nOntario\nPrince Edward Island\nQuebec\nSaskatchewan\nYukon\nPayment method\nCard\nCard information\nCurrent card brand is Visa.\n3-digit code on back of card\nBilling info is same as shipping\nApple Pay\nSave my information for faster checkout\nPay securely at Powdur and everywhere Link is accepted.\nPay\nProcessing\nFree returns and exchanges\nPowered by \nLegal\nReturns\nContact",
+          "buttons": [
+            {
+              "disabled": false,
+              "testId": "hosted-payment-submit-button",
+              "text": "Pay\nProcessing"
+            }
+          ]
+        },
+        {
+          "site": "https://js.stripe.com/v3/link-login-inner-659e8ee3f018dd07e41fccdd0530a638.html",
+          "text": "",
+          "buttons": []
+        },
+        {
+          "site": "https://js.stripe.com/v3/controller-135287c35678e032085be460af826d5a.html",
+          "text": "",
+          "buttons": []
+        },
+        {
+          "site": "https://js.stripe.com/v3/checkout-inner-address-autocomplete-fbfb6ea07867908c32d463ed315d5240.html",
+          "text": "",
+          "buttons": []
+        },
+        {
+          "site": "https://js.stripe.com/v3/m-outer-0edadf75b42c6ef7240c043f3272f3f9.html",
+          "text": "",
+          "buttons": []
+        }
+      ]
+    }
+  ],
+  "sourceHashes": {
+    "src/main/electronBrowser.ts": "b1a0b4b4c8ad9cb4061f59552a4ca6338e3666d8034ed6153eeb2c576340a503",
+    "src/main/websitePermissions.ts": "16fb53b7d60eeb4619f9e3f218e0360a86a1017dee0d9758edddff8d6d5ee4df",
+    ".erb/scripts/real-sites-acceptance.cjs": "695c87145bfc5fd452712e93e99805ae0ba4921f96246a90088feaf6b5f802ca",
+    ".erb/scripts/browser-ui-smoke.cjs": "061d5f4d92a700c5d38ba157ea17d83bbd994d9b7c94811802fb43213b0d65c6"
+  }
+}

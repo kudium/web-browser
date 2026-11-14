@@ -159,6 +159,41 @@ export async function prepareExtensionPackage(
       !/^\d{1,5}(?:\.\d{1,5}){0,3}$/.test(manifest.version)
     )
       throw new Error('Extension package identity or manifest is invalid.');
+    let displayName = manifest.name;
+    const localizedName = /^__MSG_([A-Za-z0-9_@]+)__$/.exec(displayName);
+    if (localizedName) {
+      if (
+        typeof manifest.default_locale !== 'string' ||
+        !/^[A-Za-z]{2,3}(?:_[A-Za-z0-9]{2,8})?$/.test(manifest.default_locale)
+      )
+        throw new Error('Extension localized name is invalid.');
+      const relative = path.join(
+        '_locales',
+        manifest.default_locale,
+        'messages.json'
+      );
+      if (!paths.has(relative))
+        throw new Error('Extension localized name is missing.');
+      const messages = JSON.parse(
+        (
+          await readBoundedLocalFile(
+            path.join(directory, relative),
+            1024 * 1024,
+            assertCurrent
+          )
+        ).toString()
+      );
+      const key = Object.keys(messages).find(
+        (name) => name.toLowerCase() === localizedName[1].toLowerCase()
+      );
+      displayName = key && messages[key]?.message;
+      if (
+        typeof displayName !== 'string' ||
+        !displayName.trim() ||
+        displayName.length > 512
+      )
+        throw new Error('Extension localized name is invalid.');
+    }
     const permissions = [
       'permissions',
       'host_permissions',
@@ -242,6 +277,7 @@ export async function prepareExtensionPackage(
     };
     return {
       manifest,
+      displayName,
       permissions,
       dispose,
       validate,

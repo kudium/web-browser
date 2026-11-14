@@ -107,9 +107,11 @@ function patchInstalled() {
     }
   }
   require('./patch-native-boundaries.cjs').patchInstalled();
+  require('./patch-native-host-errors.cjs').patchInstalled();
   require('./patch-extension-transport.cjs').patchInstalled();
   require('./patch-extension-updates.cjs').patchInstalled();
   require('./patch-extension-router.cjs').patchInstalled();
+  require('./patch-extension-webextension-alias.cjs').patchInstalled();
 }
 module.exports = { patchSource, patchInstalled };
 if (require.main === module) patchInstalled();

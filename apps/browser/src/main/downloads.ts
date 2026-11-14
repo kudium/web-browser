@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { isPrivateSession } from './privateSessions';
 import path from 'path';
 import { createHash, randomUUID } from 'crypto';
 import {
@@ -32,7 +33,7 @@ import { loadDownloadImage } from './localImage';
 import { watchIPCRequest } from './ipcRequestBinding';
 import { animateDownload } from './downloadAnimation';
 
-const sessions = new Set<Session>();
+const sessions = new WeakSet<Session>();
 const items = new Map<string, DownloadItem>();
 const owners = new WeakMap<DownloadItem, Session>();
 const savePickers = new WeakSet<DownloadItem>();
@@ -46,6 +47,7 @@ export const bindDownloadSource = (
 };
 const thumbnails = new ThumbnailCache();
 let records: DownloadRecord[] | undefined;
+const privateRecords = new WeakMap<Session, DownloadRecord[]>();
 let recoveryBlocked = false;
 let recoveryFile: string | undefined;
 let recoveryCleared = false;
@@ -125,8 +127,12 @@ function completedFile(record: DownloadRecord) {
     return false;
   }
 }
-export const getDownloadHistory = () =>
-  history()
+const recordsFor = (target?: Session) =>
+  target && isPrivateSession(target)
+    ? privateRecords.get(target) || []
+    : history();
+export const getDownloadHistory = (target?: Session) =>
+  recordsFor(target)
     .map((record) => ({
       ...record,
       active: items.has(record.id),
@@ -139,18 +145,24 @@ export const getDownloadHistory = () =>
     }))
     .sort((a, b) => b.startedAt - a.startedAt);
 export const getDownloadsForContents = (contents: WebContents) =>
-  getDownloadHistory().filter(
+  getDownloadHistory(contents.session).filter(
     (record) =>
       sourceContents.get(record.id) === contents.id ||
       (!!record.sourceKey && record.sourceKey === sourceKeys.get(contents))
   );
 
-function publish() {
+function publish(target?: Session) {
   BrowserWindow.getAllWindows().forEach((window) => {
-    if (!window.isDestroyed() && trusted?.(window.webContents))
+    if (
+      !window.isDestroyed() &&
+      trusted?.(window.webContents) &&
+      (target
+        ? window.webContents.session === target
+        : !isPrivateSession(window.webContents.session))
+    )
       window.webContents.send(
         'browser-downloads-changed',
-        getDownloadHistory()
+        getDownloadHistory(target)
       );
   });
 }
@@ -165,16 +177,24 @@ function saveRecords(next: DownloadRecord[]) {
   });
   fs.renameSync(`${filename()}.tmp`, filename());
 }
-function commitRecords(next: DownloadRecord[]) {
-  saveRecords(next);
-  records = next;
+function commitRecords(next: DownloadRecord[], target?: Session) {
+  const previous = recordsFor(target);
+  if (target && isPrivateSession(target)) {
+    privateRecords.set(target, next);
+  } else {
+    saveRecords(next);
+    records = next;
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+  }
   const retained = new Set(next.map((record) => record.id));
-  sourceContents.forEach((_owner, id) => {
-    if (!retained.has(id)) sourceContents.delete(id);
+  previous.forEach((record) => {
+    if (!retained.has(record.id)) {
+      sourceContents.delete(record.id);
+      thumbnails.delete(record.id);
+    }
   });
-  if (timer) clearTimeout(timer);
-  timer = undefined;
-  publish();
+  publish(target);
 }
 export function pruneDownloadHistory(days: number, now = Date.now()) {
   const cutoff = retentionCutoff(days, now);
@@ -199,7 +219,11 @@ function persist() {
   }
   publish();
 }
-function changed(immediate = false) {
+function changed(immediate = false, target?: Session) {
+  if (target && isPrivateSession(target)) {
+    publish(target);
+    return;
+  }
   if (immediate) {
     if (timer) clearTimeout(timer);
     timer = undefined;
@@ -227,6 +251,10 @@ export function trackDownloads(browserSession: Session) {
   if (sessions.has(browserSession)) return;
   sessions.add(browserSession);
   browserSession.on('will-download', (_, item, contents) => {
+    const privateMode = isPrivateSession(browserSession);
+    if (privateMode && !privateRecords.has(browserSession))
+      privateRecords.set(browserSession, []);
+    const target = privateMode ? browserSession : undefined;
     const downloadPointer = screen.getCursorScreenPoint();
     let animated = false;
     const animate = () => {
@@ -238,7 +266,7 @@ export function trackDownloads(browserSession: Session) {
       )
         return;
       animated = true;
-      changed(true);
+      changed(true, target);
       animateDownload(contents, downloadPointer).catch(() => {});
     };
     const id = randomUUID();
@@ -268,9 +296,12 @@ export function trackDownloads(browserSession: Session) {
       );
       suffix += 1;
     }
-    if (preferences.askDownloadLocation) {
+    if (privateMode || preferences.askDownloadLocation) {
       savePickers.add(item);
-      item.setSaveDialogOptions({ defaultPath: destination });
+      item.setSaveDialogOptions({
+        defaultPath: destination,
+        ...(privateMode && { title: 'Save private download' }),
+      });
     } else item.setSavePath(destination);
     const record: DownloadRecord = {
       id,
@@ -284,7 +315,7 @@ export function trackDownloads(browserSession: Session) {
       state: 'progressing',
       paused: false,
     };
-    history().push(record);
+    recordsFor(target).push(record);
     items.set(id, item);
     owners.set(item, browserSession);
     const update = () => {
@@ -300,7 +331,7 @@ export function trackDownloads(browserSession: Session) {
     };
     item.on('updated', () => {
       update();
-      changed();
+      changed(false, target);
     });
     item.once('done', (_event, state) => {
       update();
@@ -308,10 +339,10 @@ export function trackDownloads(browserSession: Session) {
       record.paused = false;
       record.endedAt = Date.now();
       items.delete(id);
-      changed(true);
+      changed(true, target);
     });
-    changed(true);
-    if (!preferences.askDownloadLocation) animate();
+    changed(true, target);
+    if (!privateMode && !preferences.askDownloadLocation) animate();
   });
 }
 // Register before browser views load so downloads from native viewers and
@@ -323,7 +354,8 @@ export function registerDownloadTracking() {
 
 export async function performDownloadAction(
   action: DownloadAction,
-  id?: string
+  id?: string,
+  target?: Session
 ) {
   if (
     ![
@@ -341,6 +373,8 @@ export async function performDownloadAction(
     (id !== undefined && (typeof id !== 'string' || id.length > 128))
   )
     throw new Error('Invalid download request');
+  if (target && isPrivateSession(target) && action === 'reveal-recovery')
+    throw new Error('Private downloads have no saved recovery history.');
   if (action === 'reveal-recovery') {
     history();
     const target = recoveryBlocked ? filename() : recoveryFile;
@@ -349,24 +383,30 @@ export async function performDownloadAction(
     shell.showItemInFolder(target);
     return getDownloadHistory();
   }
-  if (action === 'get') return getDownloadHistory();
+  if (action === 'get') return getDownloadHistory(target);
   if (action === 'open') {
     opener?.();
-    return getDownloadHistory();
+    return getDownloadHistory(target);
   }
   if (action === 'clear') {
-    commitRecords(history().filter((record) => items.has(record.id)));
-    thumbnails.clear();
-    recoveryCleared = true;
-    return getDownloadHistory();
+    commitRecords(
+      recordsFor(target).filter((record) => items.has(record.id)),
+      target
+    );
+    if (!target) thumbnails.clear();
+    if (!target) recoveryCleared = true;
+    return getDownloadHistory(target);
   }
-  const record = history().find((entry) => entry.id === id);
+  const record = recordsFor(target).find((entry) => entry.id === id);
   if (!record) throw new Error('Download is no longer in history');
   const item = items.get(record.id);
   if (action === 'remove') {
     if (item)
       throw new Error('Finish or cancel this download before removing it');
-    commitRecords(history().filter((entry) => entry.id !== id));
+    commitRecords(
+      recordsFor(target).filter((entry) => entry.id !== id),
+      target
+    );
     thumbnails.delete(record.id);
   } else if (action === 'open-file' || action === 'reveal') {
     if (!completedFile(record))
@@ -385,9 +425,9 @@ export async function performDownloadAction(
     }
     if (action === 'cancel') item.cancel();
     record.paused = item.isPaused();
-    changed(true);
+    changed(true, target);
   } else throw new Error('Unknown download action');
-  return getDownloadHistory();
+  return getDownloadHistory(target);
 }
 export async function controlTabDownload(
   contents: WebContents,
@@ -396,7 +436,11 @@ export async function controlTabDownload(
 ) {
   if (!getDownloadsForContents(contents).some((record) => record.id === id))
     throw new Error('Download does not belong to this tab.');
-  await performDownloadAction(action, id);
+  await performDownloadAction(
+    action,
+    id,
+    isPrivateSession(contents.session) ? contents.session : undefined
+  );
   return getDownloadsForContents(contents);
 }
 
@@ -417,18 +461,33 @@ export function registerDownloadLibrary(
     'browser-downloads',
     async (event, action: DownloadAction, id?: string) => {
       check(event);
-      return performDownloadAction(action, id);
+      const target = isPrivateSession(event.sender.session)
+        ? event.sender.session
+        : undefined;
+      if (target && action === 'open') {
+        BrowserWindow.fromWebContents(event.sender)?.webContents.send(
+          'browser-shortcut',
+          'downloads'
+        );
+        return getDownloadHistory(target);
+      }
+      return performDownloadAction(action, id, target);
     }
   );
   ipcMain.handle('browser-download-recovery', (event) => {
     check(event);
-    return getDownloadRecovery();
+    return isPrivateSession(event.sender.session)
+      ? { status: 'none', canReveal: false }
+      : getDownloadRecovery();
   });
   ipcMain.handle('browser-download-thumbnail', async (event, id: string) => {
     check(event);
     if (typeof id !== 'string' || !id || id.length > 128)
       throw new Error('Invalid download request');
-    const record = history().find((entry) => entry.id === id);
+    const target = isPrivateSession(event.sender.session)
+      ? event.sender.session
+      : undefined;
+    const record = recordsFor(target).find((entry) => entry.id === id);
     if (
       !record ||
       record.state !== 'completed' ||
@@ -439,7 +498,8 @@ export function registerDownloadLibrary(
     const binding = watchIPCRequest(event, isTrusted);
     const assertCurrent = () => {
       binding.assert();
-      if (!history().includes(record)) throw new Error('Download was removed.');
+      if (!recordsFor(target).includes(record))
+        throw new Error('Download was removed.');
     };
     try {
       const file = await fs.promises.lstat(record.path).catch(() => null);
@@ -505,4 +565,15 @@ export function downloadMenu(): MenuItemConstructorOptions[] {
         ],
       })),
   ];
+}
+
+export function clearPrivateDownloads(target: Session) {
+  const current = privateRecords.get(target) || [];
+  privateRecords.delete(target);
+  current.forEach((record) => {
+    items.get(record.id)?.cancel();
+    items.delete(record.id);
+    sourceContents.delete(record.id);
+    thumbnails.delete(record.id);
+  });
 }

@@ -51,7 +51,7 @@ app
               contents:
                 args.path === 'electron-chrome-extensions'
                   ? 'export class ElectronChromeExtensions {static handleCRXProtocol(){} }'
-                  : 'export const installChromeWebStore=async()=>{};export const updateExtensions=async()=>{};',
+                  : 'export const installChromeWebStore=async()=>{};export const updateExtensions=async()=>{};export const downloadExtension=async()=>{throw new Error("Unexpected fixture download")};',
             }));
             build.onLoad({ filter: /\/src\/main\/dialogs\.ts$/ }, () => ({
               contents:

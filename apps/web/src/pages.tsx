@@ -1,3 +1,4 @@
+import { Theme } from "@radix-ui/themes";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -6,10 +7,12 @@ import { serviceOrigin } from "./config";
 import { tutorials, type Tutorial } from "./tutorials";
 import { whatsNew } from "./whats-new";
 import type { groupReleaseHistory, ReleaseHistoryEntry } from "./releases";
+const radixStylesheetVersion = createHash("sha256").update(readFileSync(new URL("../node_modules/@radix-ui/themes/styles.css", import.meta.url))).digest("hex").slice(0, 12);
 const stylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/site.css", import.meta.url))).digest("hex").slice(0, 12);
 const accountDataVersion = createHash("sha256").update(readFileSync(new URL("../public/account-data.js", import.meta.url))).digest("hex").slice(0, 12);
 const authScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/auth.js", import.meta.url))).digest("hex").slice(0, 12);
 const passkeyScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/passkeys.ts", import.meta.url))).digest("hex").slice(0, 12);
+const uiStylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/ui.css", import.meta.url))).digest("hex").slice(0, 12);
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
 export function Layout({
@@ -55,7 +58,10 @@ export function Layout({
         <link rel="icon" href="/assets/product/origin-logo.png" />
         <link rel="stylesheet" href={`/assets/site.css?v=${stylesheetVersion}`} />
         {stylesheet && <link rel="stylesheet" href={stylesheet} />}
+        <link rel="stylesheet" href={`/assets/radix-themes.css?v=${radixStylesheetVersion}`} />
+        <link rel="stylesheet" href={`/assets/ui.css?v=${uiStylesheetVersion}`} />
       </head>
+      <Theme asChild appearance="light" accentColor="teal" grayColor="gray" radius="large" panelBackground="solid" scaling="100%">
       <body className={privatePage ? "account-page" : undefined}>
         <header>
           <a className="brand" href="/" aria-label="Kudium home">
@@ -111,6 +117,7 @@ export function Layout({
           </>
         )}
       </body>
+      </Theme>
     </html>
   );
 }

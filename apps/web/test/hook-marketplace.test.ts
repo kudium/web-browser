@@ -423,3 +423,13 @@ test("website creator exposes shared action templates and retains update handler
   expect(html).toContain('api.passwords.generateAndFill();');
   expect(html).not.toContain('data-action-permission');
 });
+
+test('sort filters validate and trending cursors retain the ranking tie-breaker', () => {
+  expect(hookQuery({}).sort).toBe('newest');
+  expect(hookQuery({ sort: 'trending' }).sort).toBe('trending');
+  expect(() => hookQuery({ sort: 'unknown' })).toThrow();
+  const query = hookQuery({ sort: 'trending', q: 'reading' });
+  const cursor = encodeHookCursor(query, '2026-11-13T12:00:00.000Z', '2026-11-12T12:00:00.000Z', 'hook', 7);
+  expect(decodeHookCursor(cursor, query).score).toBe(7);
+  expect(() => decodeHookCursor(cursor, { ...query, sort: 'newest' })).toThrow();
+});

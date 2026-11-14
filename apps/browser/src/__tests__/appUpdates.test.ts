@@ -54,8 +54,8 @@ it('guards privileged IPC, skips development, starts once and sends status only 
     value: '/resources',
   });
   try {
-    const owner = sender(),
-      website = sender();
+    const owner = sender();
+    const website = sender();
     registerAppUpdates((contents) => contents === (owner as any));
     const handler = (ipcMain.handle as jest.Mock).mock.calls[0][1];
     await expect(
@@ -84,15 +84,16 @@ it('guards privileged IPC, skips development, starts once and sends status only 
     );
     expect(await startAppUpdates()).toBe(false);
     expect(await startAppUpdates()).toBe(false);
+    expect(autoUpdater.allowDowngrade).toBe(false);
     expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
     expect(owner.send).toHaveBeenCalled();
     expect(website.send).not.toHaveBeenCalled();
     expect(onBrowserPreferencesChanged).toHaveBeenCalledTimes(1);
-    let resolve: () => void = () => {};
+    let finishCheck: () => void = () => {};
     (autoUpdater.checkForUpdates as jest.Mock).mockImplementation(
       () =>
-        new Promise<void>((done) => {
-          resolve = done;
+        new Promise<void>((resolve) => {
+          finishCheck = resolve;
         })
     );
     const checking = handler(event, 'check');
@@ -104,7 +105,7 @@ it('guards privileged IPC, skips development, starts once and sends status only 
       false,
       true
     );
-    resolve();
+    finishCheck();
     await expect(checking).rejects.toThrow('access changed');
     expect(owner.listenerCount('did-start-navigation')).toBe(0);
     const dispose = (app.once as jest.Mock).mock.calls.find(

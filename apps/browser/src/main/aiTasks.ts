@@ -74,10 +74,13 @@ export class AITaskStore {
   // eslint-disable-next-line no-useless-constructor, no-empty-function
   constructor(
     private filename: string,
-    private storage: SynchronousSecureStorage
+    private storage: SynchronousSecureStorage,
+    private memoryOnly = false
   ) {
     // Dependencies remain synchronous after OS-key initialization.
   }
+
+  private memory: SavedAITask[] = [];
 
   private available() {
     return (
@@ -88,6 +91,7 @@ export class AITaskStore {
   }
 
   load(): SavedAITask[] {
+    if (this.memoryOnly) return structuredClone(this.memory);
     if (!fs.existsSync(this.filename)) return [];
     if (
       this.storage.isEncryptionAvailable() &&
@@ -147,6 +151,10 @@ export class AITaskStore {
   }
 
   save(tasks: SavedAITask[]) {
+    if (this.memoryOnly) {
+      this.memory = structuredClone(tasks);
+      return;
+    }
     if (!this.available())
       throw new Error(
         'OS encryption is required to save AI tasks. Restart Kudium and allow access to your system’s secure storage if prompted, then try again.'

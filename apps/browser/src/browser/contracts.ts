@@ -121,6 +121,7 @@ export interface BrowserCommand {
     | 'unload-tab'
     | 'open-site-developer'
     | 'toggle-site-hook'
+    | 'run-site-hook'
     | 'set-site-developer'
     | 'ask-hook-ai'
     | 'clear-site-developer-logs'

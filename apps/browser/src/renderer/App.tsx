@@ -130,7 +130,7 @@ export default function App() {
         radius="large"
         scaling="100%"
       >
-        {['main', 'site-developer', 'settings', 'global-hook-editor'].includes(
+        {!new URL(window.location.href).searchParams.has('private') && ['main', 'site-developer', 'settings', 'global-hook-editor'].includes(
           new URL(window.location.href).searchParams.get('view') || ''
         ) && <HookMarketplaceDialog />}
         <MemoryRouter>

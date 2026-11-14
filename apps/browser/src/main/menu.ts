@@ -17,6 +17,7 @@ import type { NewWindowParams } from '../types';
 import { shellContextMenu } from './shellContextMenu';
 import { getBrowserWindows } from './browserWindows';
 import { showAboutDialog } from './about';
+import { createPrivateWindow } from './privateBrowsing';
 
 export default class MenuBuilder {
   mainWindow: BrowserWindow;
@@ -124,6 +125,11 @@ export default class MenuBuilder {
       label: 'File',
       submenu: [
         this.action('New Window', 'new-window'),
+        {
+          label: 'New Private Window',
+          accelerator: 'CommandOrControl+Shift+N',
+          click: () => createPrivateWindow(),
+        },
         this.action('New Tab…', 'command', false),
         this.action('New Group…', 'new-session', false),
         this.action('New Space…', 'new-space', false),

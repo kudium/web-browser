@@ -191,3 +191,22 @@ it('clears committed tab drafts when creation becomes group editing', () => {
     save.mockRestore();
   }
 });
+
+it('includes an address still in the add-tab field when creating a group', () => {
+  const read = jest.spyOn(AppManager, 'getAll').mockReturnValue([]);
+  const save = jest.spyOn(AppManager, 'set').mockImplementation(() => {});
+  const created = jest.fn();
+  try {
+    render(<Theme><GroupEditor item={item} creating close={jest.fn()} onCreated={created} /></Theme>);
+    fireEvent.change(screen.getByLabelText('Group name'), { target: { value: 'Web tools' } });
+    fireEvent.change(screen.getByLabelText('New tab address'), { target: { value: 'example.com/docs' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create group' }));
+    const tabs = save.mock.calls[0][0];
+    expect(tabs).toHaveLength(1);
+    expect(tabs[0]).toMatchObject({ id: item.id, url: 'https://example.com/docs' });
+    expect(created).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://example.com/docs' }));
+  } finally {
+    read.mockRestore();
+    save.mockRestore();
+  }
+});

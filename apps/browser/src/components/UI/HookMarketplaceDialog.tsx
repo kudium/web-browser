@@ -12,6 +12,7 @@ import {
   ArrowUpRight,
   Globe2,
   RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import { HookTestWebsiteField } from './HookTestWebsiteField';
 import { GroupPicker, type GroupOption } from './GroupPicker';
@@ -52,6 +53,9 @@ export function HookMarketplaceDialog() {
   const [savedGlobals, setSavedGlobals] = useState<GlobalHook[]>([]);
   const [url, setURL] = useState('');
   const [preview, setPreview] = useState<HookImportPreview>();
+  const [installation, setInstallation] = useState<{
+    id: string; name: string; global: boolean; scopeEnabled?: boolean; destinationId: string; allGroups: boolean; location: string; updated: boolean;
+  }>();
   const [allGroups, setAllGroups] = useState(false);
   const [updates, setUpdates] = useState<HookUpdate[]>([]);
   const [updatesChecked, setUpdatesChecked] = useState(false);
@@ -121,6 +125,7 @@ export function HookMarketplaceDialog() {
       setMode(detail.mode || 'import');
       setURL(detail.url || '');
       setPreview(undefined);
+      setInstallation(undefined);
       setSelectedUpdate(undefined);
       setUpdates([]);
       setUpdatesChecked(false);
@@ -168,12 +173,12 @@ export function HookMarketplaceDialog() {
     window.addEventListener(OPEN_HOOK_MARKETPLACE, listener);
     const view = new URL(window.location.href).searchParams.get('view');
     const off =
-      view === 'main'
+      (view === 'main' || view === 'settings')
         ? window.electron.hookMarketplace.onInstall((urlValue) => {
             launch({ url: urlValue }).catch(() => {});
           })
         : () => {};
-    if (view === 'main') window.electron.hookMarketplace.ready();
+    if (view === 'main' || view === 'settings') window.electron.hookMarketplace.ready();
     return () => {
       generation.current += 1;
       off();
@@ -306,13 +311,17 @@ export function HookMarketplaceDialog() {
       });
       setState(result);
       setSavedGlobals(result.global.hooks);
+      if (!result.installedHook) throw new Error('Could not confirm installation. Check your hooks list before trying again.');
+      setInstallation({
+        ...result.installedHook, destinationId: id, allGroups,
+        location: allGroups ? 'All groups' : result.installedHook.global ? result.destination.groupName : new URL(result.destination.url).host,
+        updated: replace,
+      });
       window.dispatchEvent(new Event(HOOKS_CHANGED));
       setPreview(undefined);
       setSelectedUpdate(undefined);
       setUpdates([]);
-      setMessage(
-        'Hook saved disabled. Review it in your hooks list, then enable it when ready.'
-      );
+      setMessage('');
     });
   const alreadyInstalled =
     !selectedUpdate &&
@@ -349,6 +358,7 @@ export function HookMarketplaceDialog() {
   ]);
   const changeMode = (value: Mode) => {
     setMode(value);
+    setInstallation(undefined);
     setPreview(undefined);
     setSelectedUpdate(undefined);
     setPublication(undefined);
@@ -440,7 +450,7 @@ export function HookMarketplaceDialog() {
           >
             {groupTargets.map((target) => (
               <option key={target.id} value={target.id}>
-                {new URL(target.url).host} · {target.name}
+                {new URL(target.url).host}
               </option>
             ))}
           </select>
@@ -461,20 +471,22 @@ export function HookMarketplaceDialog() {
         <div className="hook-marketplace-header">
           <div>
             <Dialog.Title mb="1">
-              {mode === 'publish' && listingId
+              {installation ? (installation.updated ? 'Hook updated' : 'Hook installed') : mode === 'publish' && listingId
                 ? 'Republish hook'
                 : modeTitles[mode]}
             </Dialog.Title>
             <Dialog.Description size="2">
-              {mode === 'publish'
+              {installation ? `${installation.name} is ready in ${installation.location}.` : mode === 'publish'
                 ? listingId
                   ? `Update ${publishName || 'your hook'} with a new version.`
                   : 'Share your hook with the community.'
-                : modeDescriptions[mode]}
+                : preview && mode === 'import'
+                  ? 'Choose where to install this hook.'
+                  : modeDescriptions[mode]}
             </Dialog.Description>
           </div>
           <div className="hook-header-actions">
-            {!editorWindow && (
+            {!editorWindow && !preview && !installation && (
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger>
                   <Button
@@ -510,11 +522,28 @@ export function HookMarketplaceDialog() {
             </Dialog.Close>
           </div>
         </div>
-        {mode !== 'import' &&
+        {!installation && mode !== 'import' &&
           !preview &&
           !(mode === 'publish' && fixedPublishHook) &&
           destination}
-        <div className="hook-marketplace-body">
+        {installation && (
+          <section className="hook-install-success" aria-label="Installation complete">
+            <CheckCircle2 size={32} aria-hidden="true" />
+            <p role="status">{installation.updated ? 'Updated successfully.' : 'Installed successfully.'} This hook is disabled.</p>
+            <p>Open Hook Editor to review or customize it. Turn on the hook and save your changes, then reload the website.</p>
+            {installation.scopeEnabled === false && <p>Hooks are also off for {installation.location}. Turn them on in the editor to let this hook run.</p>}
+            <div className="hook-dialog-actions">
+              <Button variant="soft" color="gray" disabled={busy} onClick={() => close(false)}>Done</Button>
+              <Button disabled={busy} onClick={() => run(async () => {
+                await invoke(installation.global
+                  ? { action: 'global-editor-open', id: installation.destinationId, allGroups: installation.allGroups, hookId: installation.id }
+                  : { action: 'site-editor-open', id: installation.destinationId, allGroups: false, hookId: installation.id });
+                setOpen(false);
+              })}>Open Hook Editor</Button>
+            </div>
+          </section>
+        )}
+        {!installation && <div className="hook-marketplace-body">
           {mode === 'import' && !preview && (
             <>
               <button
@@ -875,7 +904,7 @@ export function HookMarketplaceDialog() {
               )}
               <div className="hook-publish-footer">
                 {message && (
-                  <p className="hook-dialog-message" role="status">
+                  <p className="hook-dialog-message" role={preview || installation || message.includes("Fix these code errors") ? "alert" : "status"} style={{ whiteSpace: "pre-line" }}>
                     {message}
                   </p>
                 )}
@@ -951,7 +980,7 @@ export function HookMarketplaceDialog() {
               ))}
             </div>
           )}
-        </div>
+        </div>}
         {preview && (
           <section className="hook-package-preview">
             <Button
@@ -976,35 +1005,6 @@ export function HookMarketplaceDialog() {
               </span>
             </div>
             <p>{preview.package.description}</p>
-            {preview.package.testUrl && (
-              <p>
-                Test website:{' '}
-                <a
-                  href={preview.package.testUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {preview.package.testUrl}
-                </a>
-              </p>
-            )}
-
-            <div className="hook-preview-facts">
-              <span>{preview.package.license}</span>
-              <span>Path: {preview.package.path}</span>
-              <span>
-                {preview.package.applicability === 'general'
-                  ? 'General hook'
-                  : preview.package.sites
-                      .map(
-                        (site) =>
-                          `${site.host}${
-                            site.includeSubdomains ? ' + subdomains' : ''
-                          }`
-                      )
-                      .join(', ')}
-              </span>
-            </div>
             {alreadyInstalled && (
               <p className="hook-update-notice">
                 This hook is already installed here. Saving adds a separate
@@ -1020,8 +1020,37 @@ export function HookMarketplaceDialog() {
             )}
             <details className="hook-source-review" open={!!selectedUpdate}>
               <summary>
-                {selectedUpdate ? 'Review code changes' : 'Review source code'}
+                {selectedUpdate ? 'Review code changes' : 'Details and source code'}
               </summary>
+            {preview.package.testUrl && (
+              <p>
+                Test website:{' '}
+                <a
+                  href={preview.package.testUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {preview.package.testUrl}
+                </a>
+              </p>
+            )}
+
+            <div className="hook-preview-facts">
+              <span>{preview.package.license}</span>
+              {preview.package.path !== '/*' && <span>Path: {preview.package.path}</span>}
+              <span>
+                {preview.package.applicability === 'general'
+                  ? 'General hook'
+                  : preview.package.sites
+                      .map(
+                        (site) =>
+                          `${site.host}${
+                            site.includeSubdomains ? ' + subdomains' : ''
+                          }`
+                      )
+                      .join(', ')}
+              </span>
+            </div>
               <p className="hook-preview-source">Source: {preview.source}</p>
               {!!preview.package.actions?.length && <p>Actions ask for permission when run. Updates do not carry permission grants.</p>}
               {preview.package.actions?.map(action => <details key={action.id}><summary>{action.name} · {action.contexts.join(', ')}</summary><pre>{action.source}</pre></details>)}
@@ -1074,7 +1103,7 @@ export function HookMarketplaceDialog() {
             )}
             {destination}
             <div className="hook-install-footer">
-              <p>Saved disabled. You choose when it runs.</p>
+              <p>Installs disabled. Enable it in Hook Editor when ready.</p>
               <div className="hook-dialog-actions">
                 <Button
                   disabled={busy || !state}
@@ -1096,7 +1125,7 @@ export function HookMarketplaceDialog() {
           </section>
         )}
         {message && mode !== 'publish' && (
-          <p className="hook-dialog-message" role="status">
+          <p className="hook-dialog-message" role={preview || installation || message.includes("Fix these code errors") ? "alert" : "status"} style={{ whiteSpace: "pre-line" }}>
             {message}
           </p>
         )}

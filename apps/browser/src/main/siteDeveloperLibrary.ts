@@ -59,6 +59,7 @@ export function developerPageSummaries(
     const config = origin
       ? getSiteSettings(loginProfileKey(tab), origin).developer
       : undefined;
+    const execution = page && origin ? developerState(page, origin) : undefined;
     return {
       id: tab.id,
       name: tab.customName || tab.name,
@@ -72,6 +73,7 @@ export function developerPageSummaries(
             )
               ? [
                   {
+                    status: execution?.hookStatuses?.[''] || 'waiting',
                     id: '',
                     name: config.name || 'Default hook',
                     path: '/*',
@@ -80,6 +82,7 @@ export function developerPageSummaries(
                 ]
               : []),
             ...(config.hooks || []).map((hook) => ({
+              status: execution?.hookStatuses?.[hook.id] || 'waiting',
               id: hook.id,
               name: hook.name || 'Untitled hook',
               path: hook.path,
@@ -102,7 +105,7 @@ export function developerPageSummaries(
             ]),
           ].some((code) => !!code.trim())),
       enabled: config?.enabled || false,
-      status: page && origin ? developerState(page, origin).status : 'waiting',
+      status: execution?.status || 'waiting',
     };
   });
 }

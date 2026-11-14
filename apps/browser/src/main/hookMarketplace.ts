@@ -1,3 +1,4 @@
+import { hookSourceValidator } from "../browser/hookValidation";
 import { createHookTestWindow, validateHookTest } from './hookTestWindow';
 /* Update checks deliberately fetch one source at a time to bound network work. */
 /* eslint-disable no-await-in-loop, no-restricted-syntax, no-continue */
@@ -35,7 +36,7 @@ import { protectWindowNavigation } from './windowNavigation';
 
 const hosts = new WeakMap<
   WebContents,
-  { destinations: () => HookDestination[] }
+  { destinations: () => HookDestination[]; installInPreferences?: boolean; openSiteEditor?: (target: HookDestination, hookId: string) => void }
 >();
 const globalEditors = new WeakMap<
   WebContents,
@@ -75,20 +76,42 @@ export function deliverHookInstallLinks(host: BrowserWindow) {
     host.isDestroyed()
   )
     return;
+  if (!pendingLinks.length) return;
+  // Native child windows stay above their browser parent. Present the installer
+  // inside visible Preferences rather than opening an obscured parent dialog.
+  const preferences = BrowserWindow.getAllWindows().find(
+    (window) =>
+      !window.isDestroyed() &&
+      window.isVisible() &&
+      window.getParentWindow() === host &&
+      hosts.get(window.webContents)?.installInPreferences &&
+      readyHosts.has(window.webContents)
+  );
+  const destination = preferences || host;
+  destination.show();
+  destination.focus();
   pendingLinks
     .splice(0)
-    .forEach((url) => host.webContents.send('hook-marketplace-install', url));
+    .forEach((url) => destination.webContents.send('hook-marketplace-install', url));
 }
 /** Settings follows its owning browser window’s live, unlocked destinations. */
 export function hookDestinationsFor(contents?: WebContents): HookDestination[] {
   return contents ? hosts.get(contents)?.destinations() || [] : [];
 }
 
+/** Reuse the owning browser's editor and its live tab binding. */
+export function openInstalledSiteHook(contents: WebContents, target: HookDestination, hookId: string) {
+  const open = hosts.get(contents)?.openSiteEditor;
+  if (!open) throw new Error('The website is no longer available.');
+  open(target, hookId);
+}
+
 export function registerHookMarketplace(
   host: BrowserWindow,
-  destinations: () => HookDestination[]
+  destinations: () => HookDestination[],
+  options: { installInPreferences?: boolean; openSiteEditor?: (target: HookDestination, hookId: string) => void } = {}
 ) {
-  hosts.set(host.webContents, { destinations });
+  hosts.set(host.webContents, { destinations, ...options });
   if (registered) return;
   registered = true;
   ipcMain.on('hook-marketplace-ready', (event) => {
@@ -312,6 +335,13 @@ export function registerHookMarketplace(
               })(),
         };
       };
+      if (input.action === 'site-editor-open') {
+        if (input.allGroups || !state().siteHooks.some(hook => hook.id === input.hookId))
+          throw new Error('This hook no longer exists on this website.');
+        const binding = getSiteDeveloperBinding(event.sender);
+        openInstalledSiteHook(binding?.host || event.sender, target, input.hookId);
+        return null;
+      }
       if (input.action === 'global-editor-open') {
         const global = getGlobalHooks(hookScope);
         const hook = input.hookId
@@ -487,7 +517,17 @@ export function registerHookMarketplace(
           });
         }
         previews.delete(input.receipt);
-        return state();
+        return {
+          ...state(),
+          installedHook: {
+            id: input.replaceId || hook.id,
+            name: hook.name,
+            global: input.global,
+            scopeEnabled: input.global
+              ? getGlobalHooks(hookScope).enabled
+              : getSiteSettings(target.profile, origin).developer?.enabled === true,
+          },
+        };
       }
       if (input.action === 'updates') {
         const site = input.allGroups
@@ -600,6 +640,7 @@ export function registerHookMarketplace(
           path: hook.path,
           lifecycle: { before: hook.before, after: hook.after, css: hook.css },
         });
+        hookSourceValidator.assert({ ...pkg.lifecycle, actions: pkg.actions });
         const published = await publish({
           package: pkg,
           ...(input.listingId

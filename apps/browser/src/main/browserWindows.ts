@@ -6,6 +6,7 @@ import type {
   WebContents,
 } from 'electron';
 import { randomUUID } from 'crypto';
+import { isPrivateSession } from './privateSessions';
 import { onWindowClosed } from './windowLifecycle';
 import { presentSnapshots } from './snapshotPresentation';
 import type {
@@ -255,6 +256,7 @@ export class BrowserWindows {
     return {
       id: window.id,
       kind: host.kind,
+      ...(isPrivateSession(window.webContents.session) && { private: true }),
       groupIds: host.groups,
       tabs: host.tabs,
       reservedIds: [...this.reserved.keys(), ...this.dismissed],
@@ -799,11 +801,35 @@ export class BrowserWindows {
 }
 
 let manager: BrowserWindows | undefined;
-export const getBrowserWindows = () => manager;
+const privateManagers = new Map<import('electron').Session, BrowserWindows>();
+export const getBrowserWindows = (window?: BrowserWindow) =>
+  window && isPrivateSession(window.webContents.session)
+    ? privateManagers.get(window.webContents.session)
+    : manager;
+export function registerPrivateBrowserWindow(
+  window: BrowserWindow,
+  create: () => Promise<BrowserWindow>
+) {
+  const target = window.webContents.session;
+  let privateManager = privateManagers.get(target);
+  if (!privateManager) {
+    privateManager = new BrowserWindows(create);
+    privateManagers.set(target, privateManager);
+  }
+  privateManager.register(window, 'temporary');
+  onWindowClosed(window, () => {
+    if (!privateManager!.hasOtherWindows(window))
+      privateManagers.delete(target);
+  });
+  return privateManager;
+}
 export function registerBrowserWindows(create: () => Promise<BrowserWindow>) {
   manager = new BrowserWindows(create);
   ipcMain.handle('browser-window-request', async (event, value: unknown) => {
-    const window = manager!.trusted(event);
+    const owner = [...privateManagers.values(), manager!].find((candidate) =>
+      candidate.trusted(event)
+    );
+    const window = owner?.trusted(event);
     if (
       !window ||
       !value ||
@@ -815,7 +841,7 @@ export function registerBrowserWindows(create: () => Promise<BrowserWindow>) {
     const request = value as BrowserWindowRequest;
     if (!isBrowserWindowRequest(request))
       throw new Error('Unknown window action.');
-    return manager!.request(window, request);
+    return owner!.request(window, request);
   });
   getGroupLocks().subscribe(() => manager?.locksChanged());
   return manager;

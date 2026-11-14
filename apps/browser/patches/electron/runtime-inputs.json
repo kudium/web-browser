@@ -1,0 +1,12 @@
+{
+  "electronVersion": "45.0.0",
+  "electronCommit": "54f961b44b83e4ece81065ab60a182fd0c38c01e",
+  "electronRepository": "https://github.com/electron/electron.git",
+  "chromiumVersion": "156.0.8078.48",
+  "chromiumCommit": "d0c02bfad08ec92a6ffcf989e53cd995e6381a4c",
+  "nodeVersion": "v24.22.0",
+  "nodeModuleVersion": 150,
+  "depotToolsRepository": "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
+  "depotToolsCommit": "ec77017fb3e090ff02bffb9c6980ebcdd3006ddc",
+  "minimumFreeGiB": 100
+}

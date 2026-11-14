@@ -23,7 +23,10 @@ function fixture(autoDownload = true, autoInstall = true) {
   );
   return { driver, preferences, controller, publish };
 }
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const flush = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
 
 it('downloads by default but never restarts on discovery or download', async () => {
   const { driver, controller } = fixture();
@@ -67,6 +70,7 @@ it('applies live download policy, leaves an existing download running', async ()
 
 it('honors install-on-quit changes after download and does not relaunch on normal quit', () => {
   const { driver, controller, preferences } = fixture();
+  driver.emit('update-available', { version: '1.0.2' });
   driver.emit('update-downloaded', { version: '1.0.2' });
   preferences.automaticallyInstallUpdates = false;
   controller.applyPreferences();
@@ -78,6 +82,29 @@ it('honors install-on-quit changes after download and does not relaunch on norma
   expect(controller.installOnQuit()).toBe(false);
   expect(driver.autoRunAppAfterInstall).toBe(false);
   expect(driver.quitAndInstall).toHaveBeenCalledTimes(1);
+});
+
+it('ignores unsolicited or mismatched archives and late or malformed progress', async () => {
+  const { driver, controller } = fixture(false);
+  driver.emit('update-downloaded', { version: '0.9.0' });
+  driver.emit('download-progress', { percent: 50 });
+  expect(controller.get().status).toBe('idle');
+  driver.emit('update-available', { version: '1.0.2' });
+  await controller.download();
+  [NaN, Infinity, -Infinity].forEach((percent) =>
+    driver.emit('download-progress', { percent })
+  );
+  expect(controller.get().progress).toBe(0);
+  driver.emit('update-downloaded', { version: '1.0.3' });
+  expect(controller.get().status).toBe('downloading');
+  expect(() => controller.install()).toThrow('Download');
+  driver.emit('update-downloaded', { version: '1.0.2' });
+  driver.emit('download-progress', { percent: 5 });
+  expect(controller.get()).toMatchObject({
+    status: 'ready',
+    version: '1.0.2',
+    progress: 100,
+  });
 });
 
 it('coalesces checks, preserves available and downloaded updates after errors', async () => {

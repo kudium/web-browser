@@ -38,9 +38,10 @@ jest.mock('../utils/groupAccess', () => ({
   useGroupAccess: () => mockAccess,
   lockedGroup: () => false,
 }));
+const mockStateListeners = new Set<(state: any) => void>();
 jest.mock('../browser/client', () => ({
   browser: {
-    onState: () => () => {},
+    onState: (listener: (state: any) => void) => { mockStateListeners.add(listener); return () => mockStateListeners.delete(listener); },
     command: jest.fn(),
     preferences: jest.fn(async () => undefined),
   },
@@ -115,7 +116,7 @@ it('reuses the group picker, reports saved hooks, searches pages and opens the e
     })),
   ]);
   const view = render(content(true));
-  await screen.findByRole('button', { name: 'Manage hooks for Home' });
+  await screen.findByRole('button', { name: 'Focus tab Home' });
   expect(pages).toHaveBeenCalledWith('home');
   expect(screen.getByRole('button', { name: 'Developer group' })).toBeTruthy();
   expect(screen.queryByText('No hooks')).toBeNull();
@@ -126,10 +127,10 @@ it('reuses the group picker, reports saved hooks, searches pages and opens the e
     target: { value: 'other' },
   });
   expect(
-    screen.queryByRole('button', { name: 'Manage hooks for Home' })
+    screen.queryByRole('button', { name: 'Focus tab Home' })
   ).toBeNull();
   fireEvent.click(
-    screen.getByRole('button', { name: 'Manage hooks for Other page' })
+    screen.getByRole('button', { name: 'Focus tab Other page' })
   );
   fireEvent.click(
     screen.getByRole('button', { name: 'Add hook for Other page' })
@@ -152,7 +153,7 @@ it('reuses the group picker, reports saved hooks, searches pages and opens the e
     },
   ]);
   act(() => change());
-  await screen.findByRole('button', { name: 'Manage hooks for Other page' });
+  await screen.findByRole('button', { name: 'Focus tab Other page' });
   await waitFor(() =>
     expect(screen.queryByLabelText('Search developer pages')).toBeNull()
   );
@@ -198,7 +199,7 @@ it('routes page and group context menus without opening the page editor', async 
     </Theme>
   );
   const page = await screen.findByRole('button', {
-    name: 'Manage hooks for Home',
+    name: 'Focus tab Home',
   });
   fireEvent.contextMenu(page);
   expect(tabMenu).toHaveBeenCalledWith('home');
@@ -237,7 +238,7 @@ it('follows browser focus and fetches saved hooks again when reopening Developer
         <DeveloperSidebar active focusedTabId="home" />
       </Theme>
     );
-    await screen.findByRole('button', { name: 'Manage hooks for Home' });
+    await screen.findByRole('button', { name: 'Focus tab Home' });
     view.rerender(
       <Theme>
         <DeveloperSidebar active={false} focusedTabId="home" />
@@ -259,7 +260,7 @@ it('follows browser focus and fetches saved hooks again when reopening Developer
         <DeveloperSidebar active focusedTabId="focused-other" />
       </Theme>
     );
-    await screen.findByRole('button', { name: 'Manage hooks for Other page' });
+    await screen.findByRole('button', { name: 'Focus tab Other page' });
     expect(pages).toHaveBeenLastCalledWith('focused-other');
     view.rerender(
       <Theme>
@@ -315,7 +316,7 @@ it('manages the current group and restores exclusive views independently across 
     expect(manage).toHaveBeenCalledWith('home');
     fireEvent.click(screen.getByRole('button', { name: 'Files' }));
     expect(
-      screen.queryByRole('button', { name: 'Manage hooks for Home' })
+      screen.queryByRole('button', { name: 'Focus tab Home' })
     ).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Files' }).getAttribute('aria-pressed')
@@ -343,7 +344,7 @@ it('manages the current group and restores exclusive views independently across 
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: 'Pages' })
     );
-    await screen.findByRole('button', { name: 'Manage hooks for Home' });
+    await screen.findByRole('button', { name: 'Focus tab Home' });
     fireEvent.keyDown(document.activeElement!, { key: 'End' });
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: 'Files' })
@@ -385,7 +386,12 @@ it('indexes saved hooks and opens the selected hook directly', async () => {
       ],
     },
   ]);
-  render(content(true));
+  const focus = jest.fn();
+  render(<Theme><DeveloperSidebar active focusedTabId="home" onFocusTab={focus} /></Theme>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Focus tab Home' }));
+  expect(focus).toHaveBeenCalledWith('home');
+  expect(screen.queryByRole('button', { name: 'Edit Clean page for Home' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Expand hooks for Home' }));
   const hook = await screen.findByRole('button', {
     name: 'Edit Clean page for Home',
   });
@@ -416,11 +422,11 @@ it('indexes saved hooks and opens the selected hook directly', async () => {
     hookId: 'clean',
   });
   fireEvent.click(
-    screen.getByRole('button', { name: 'Manage hooks for Home' })
+    screen.getByRole('button', { name: 'Focus tab Home' })
   );
-  expect(
-    screen.queryByRole('button', { name: 'Edit Clean page for Home' })
-  ).toBeNull();
+  expect(screen.getByRole('button', { name: 'Edit Clean page for Home' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Collapse hooks for Home' }));
+  expect(screen.queryByRole('button', { name: 'Edit Clean page for Home' })).toBeNull();
 });
 
 it('puts add-hook on the site row without an empty expandable list', async () => {
@@ -438,7 +444,7 @@ it('puts add-hook on the site row without an empty expandable list', async () =>
   ]);
   render(content(true));
   const row = await screen.findByRole('button', {
-    name: 'Manage hooks for Empty site',
+    name: 'Focus tab Empty site',
   });
   expect(row.hasAttribute('aria-expanded')).toBe(false);
   expect(
@@ -467,4 +473,33 @@ it('puts add-hook on the site row without an empty expandable list', async () =>
     action: 'open-site-developer',
     url: 'https://empty.com',
   });
+});
+
+ it('focuses a page tab when its list item is clicked, including internal pages', async () => {
+  pages.mockResolvedValue([{ id: 'home', name: 'Home', url: 'kudium://home', hasHooks: false, enabled: false, status: 'waiting' }]);
+  const focus = jest.fn();
+  render(<Theme><DeveloperSidebar active focusedTabId="home" onFocusTab={focus} /></Theme>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Focus tab Home' }));
+  expect(focus).toHaveBeenCalledWith('home');
+});
+
+it('shows separate running, successful and failed indicators in an expanded page', async () => {
+  pages.mockResolvedValue([{ id: 'home', name: 'Home', url: 'https://example.com/home', origin: 'https://example.com', hasHooks: true, enabled: true, status: 'error', hooks: [
+    { id: 'one', name: 'Watcher', path: '/*', enabled: true, status: 'running' },
+    { id: 'two', name: 'Cleaner', path: '/*', enabled: true, status: 'success' },
+    { id: 'three', name: 'Notifier', path: '/*', enabled: true, status: 'error' },
+  ] }]);
+  render(content(true));
+  fireEvent.click(await screen.findByRole('button', { name: 'Expand hooks for Home' }));
+  expect(screen.getByRole('status', { name: 'Watcher: Running' }).getAttribute('data-status')).toBe('running');
+  expect(screen.getByRole('status', { name: 'Watcher: Running' }).textContent).toBe('Running');
+  expect(screen.getByRole('status', { name: 'Cleaner: Success' }).getAttribute('data-status')).toBe('success');
+  expect(screen.getByRole('status', { name: 'Notifier: Failed' }).getAttribute('data-status')).toBe('error');
+  expect((screen.getByRole('button', { name: 'Run Watcher for Home' }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Run Notifier for Home' }));
+  expect(screen.queryByText('Notifier: Running…')).toBeNull();
+  expect(screen.getByRole('status', { name: 'Notifier: Running' })).toBeTruthy();
+  act(() => mockStateListeners.forEach((listener) => listener({ id: 'home', siteSettings: { developer: { hookStatuses: { three: 'success' }, logs: [] } } })));
+  expect(screen.queryByText('Notifier: Completed successfully')).toBeNull();
+  expect(browser.command).toHaveBeenLastCalledWith({ id: 'home', action: 'run-site-hook', url: 'https://example.com', hookId: 'three' });
 });

@@ -9,6 +9,7 @@ import { parseHookPackage } from '../../../../packages/hooks/package';
 import {
   registerHookMarketplace,
   queueHookInstallLink,
+  deliverHookInstallLinks,
   setHookPublisher,
   setHookAccountStatus,
 } from '../main/hookMarketplace';
@@ -28,7 +29,7 @@ let mockFolder: string;
 jest.mock('electron', () => ({
   app: { getPath: () => mockFolder, getVersion: () => '1.0.0' },
   ipcMain: { handle: jest.fn(), on: jest.fn(), removeListener: jest.fn() },
-  BrowserWindow: { fromWebContents: () => mockHost },
+  BrowserWindow: { fromWebContents: () => mockHost, getAllWindows: () => mockWindows },
   shell: { openExternal: jest.fn() },
 }));
 jest.mock('../main/preferences', () => ({
@@ -56,7 +57,8 @@ const mockSender = {
   mainFrame: {},
   send: jest.fn(),
 };
-const mockHost = { webContents: mockSender, isDestroyed: () => false };
+const mockHost = { webContents: mockSender, isDestroyed: () => false, show: jest.fn(), focus: jest.fn() };
+const mockWindows: any[] = [];
 const mockEditorContents = {
   once: jest.fn(),
   id: 303,
@@ -145,7 +147,7 @@ it('imports a disabled hook with a fresh local ID while preserving existing hook
   updateSiteSettings('profile-one', 'https://example.com', {
     developer: {
       enabled: true,
-      before: 'default code',
+      before: 'log("default code")',
       after: '',
       css: '',
       hooks: [
@@ -173,7 +175,7 @@ it('imports a disabled hook with a fresh local ID while preserving existing hook
   });
   const config = getSiteSettings('profile-one', 'https://example.com')
     .developer!;
-  expect(config.before).toBe('default code');
+  expect(config.before).toBe('log("default code")');
   expect(config.hooks).toHaveLength(2);
   expect(config.hooks?.[0].enabled).toBe(true);
   expect(config.hooks?.[1].enabled).toBe(false);
@@ -239,7 +241,7 @@ it('tracks local edits and applies reviewed updates with optimistic checks and p
   const hook = global.hooks[0];
   global.hooks[0] = {
     ...hook,
-    css: 'local CSS',
+    css: 'p { color: red; }',
     exclusions: ['private.example.com'],
   };
   saveGlobalHooks(
@@ -249,12 +251,12 @@ it('tracks local edits and applies reviewed updates with optimistic checks and p
   );
   (fetchHookPackage as jest.Mock).mockResolvedValue({
     source: 'https://example.org/package',
-    package: { ...pkg, lifecycle: { ...pkg.lifecycle, css: 'new CSS' } },
+    package: { ...pkg, lifecycle: { ...pkg.lifecycle, css: 'p { color: blue; }' } },
     verified: false,
   });
   const [update] = await handler(event, { action: 'updates', id: 'tab' });
   expect(update.modified).toBe(true);
-  expect(update.localPackage.lifecycle.css).toBe('local CSS');
+  expect(update.localPackage.lifecycle.css).toBe('p { color: red; }');
   await expect(
     handler(event, {
       action: 'install',
@@ -275,7 +277,7 @@ it('tracks local edits and applies reviewed updates with optimistic checks and p
   });
   expect(getGlobalHooks('profile-one').hooks[0]).toMatchObject({
     id: hook.id,
-    css: 'new CSS',
+    css: 'p { color: blue; }',
     enabled: false,
     exclusions: ['private.example.com'],
   });
@@ -611,4 +613,44 @@ it('publishes and installs actions-only packages without transferring grants', a
   const installed = await handler(event,{action:'install',id:'tab',allGroups:true,global:true,receipt:preview.receipt});
   expect(installed.global.hooks[1].actions).toEqual([action]);
   expect(installed.global.hooks[1].enabled).toBe(false);
+});
+
+it('presents external installs inside visible Preferences above their owning browser', () => {
+  const contents = { ...mockSender, id: 404, mainFrame: {}, send: jest.fn() };
+  const preferences = {
+    webContents: contents,
+    isDestroyed: () => false,
+    isVisible: () => true,
+    getParentWindow: () => mockHost,
+    show: jest.fn(),
+    focus: jest.fn(),
+  };
+  registerHookMarketplace(preferences as any, () => targets, { installInPreferences: true });
+  const ready = (ipcMain.on as jest.Mock).mock.calls.find(
+    ([channel]) => channel === 'hook-marketplace-ready'
+  )[1];
+  ready({ sender: contents, senderFrame: contents.mainFrame });
+  mockWindows.push(preferences);
+  mockSender.send.mockClear();
+  queueHookInstallLink('https://example.org/package');
+  deliverHookInstallLinks(mockHost as any);
+  expect(contents.send).toHaveBeenCalledWith('hook-marketplace-install', 'https://example.org/package');
+  expect(preferences.focus).toHaveBeenCalled();
+  expect(mockSender.send).not.toHaveBeenCalled();
+  mockWindows.length = 0;
+});
+
+it('returns the installed identity and opens only a saved site hook in its trusted owner editor', async () => {
+  const openSiteEditor = jest.fn();
+  registerHookMarketplace(mockHost as any, () => targets, { openSiteEditor });
+  const preview = await handler(event, { action: 'preview', url: 'https://example.org/package' });
+  const result = await handler(event, { action: 'install', id: 'tab', receipt: preview.receipt, global: false });
+  expect(result.installedHook).toMatchObject({ name: pkg.name, global: false });
+  const installed = result.siteHooks.find((hook: any) => hook.id === result.installedHook.id);
+  expect(installed.enabled).toBe(false);
+  await handler(event, { action: 'site-editor-open', id: 'tab', hookId: installed.id });
+  expect(openSiteEditor).toHaveBeenCalledWith(targets[0], installed.id);
+  openSiteEditor.mockClear();
+  await expect(handler(event, { action: 'site-editor-open', id: 'tab', hookId: 'missing' })).rejects.toThrow('no longer exists');
+  expect(openSiteEditor).not.toHaveBeenCalled();
 });

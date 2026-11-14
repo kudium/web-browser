@@ -1,4 +1,13 @@
 (() => {
+  document.addEventListener('error', event => {
+    if (event.target instanceof HTMLImageElement && event.target.hasAttribute('data-hook-site-icon')) event.target.hidden = true;
+  }, true);
+  // Clone server-rendered Radix controls for dynamically loaded comments/reports.
+  const makeButton = () => document.querySelector('[data-hook-button-template]').content.firstElementChild.cloneNode(true);
+  const makeTextarea = () => {
+    const root = document.querySelector('[data-hook-textarea-template]').content.firstElementChild.cloneNode(true);
+    return root.querySelector('textarea');
+  };
   const feedback = (message) => {
     const target = document.querySelector("[data-hook-feedback]");
     if (target) target.textContent = message;
@@ -127,7 +136,7 @@
           text.textContent = comment.body;
           article.append(meta, text);
           const action = (label, callback) => {
-            const button = document.createElement("button");
+            const button = makeButton();
             button.type = "button";
             button.textContent = label;
             button.addEventListener("click", async () => {
@@ -146,14 +155,15 @@
             action("Edit", () => {
               if (article.querySelector("form")) return;
               const form = document.createElement("form");
-              const input = document.createElement("textarea");
+              const input = makeTextarea();
               input.value = comment.body;
               input.maxLength = 2000;
               input.required = true;
               input.setAttribute("aria-label", "Edit comment");
-              const save = document.createElement("button");
+              const save = makeButton();
+              save.type = "submit";
               save.textContent = "Save changes";
-              form.append(input, save);
+              form.append(input.parentElement, save);
               form.addEventListener("submit", async (event) => {
                 event.preventDefault();
                 save.disabled = true;
@@ -223,16 +233,16 @@
       label.textContent = commentId
         ? "Report this comment"
         : "Report this hook";
-      const input = document.createElement("textarea");
+      const input = makeTextarea();
       input.required = true;
       input.maxLength = 2000;
       input.placeholder = "Explain what needs review…";
-      label.append(input);
+      label.append(input.parentElement);
       const actions = document.createElement("div");
-      const submit = document.createElement("button");
+      const submit = makeButton();
       submit.type = "submit";
       submit.textContent = "Submit report";
-      const cancel = document.createElement("button");
+      const cancel = makeButton();
       cancel.type = "button";
       cancel.textContent = "Cancel";
       cancel.addEventListener("click", () => form.remove());
@@ -306,7 +316,11 @@
       try { const choice = actionsSection.querySelector('[data-action-example]').value; addAction(choice === 'custom' ? undefined : templates[Number(choice)]); }
       catch (e) { feedback(e.message); }
     });
-    actionList.addEventListener('click', event => { if (event.target.closest('[data-remove-action]')) event.target.closest('[data-hook-action]').remove(); });
+    actionList.addEventListener('click', event => { if (event.target.closest('[data-remove-action]')) {
+      const card = event.target.closest('[data-hook-action]');
+      card.querySelectorAll('[data-code-editor]').forEach(field => field.dispatchEvent(new Event('hook-editor-destroy')));
+      card.remove();
+    } });
     actionList.addEventListener('input', event => { if (event.target.matches('[data-action-name]')) event.target.closest('[data-hook-action]').querySelector('[data-action-title]').textContent = event.target.value || 'Untitled action'; });
     const collectActions = () => [...actionList.querySelectorAll('[data-hook-action]')].map(card => ({
       id: card.querySelector('[data-action-id]').value || crypto.randomUUID(),
@@ -341,7 +355,7 @@
         path: data.path,
         lifecycle: { before: data.before, after: data.after, css: data.css },
       };
-      const button = publish.querySelector("button[type=submit],.hook-primary");
+      const button = publish.querySelector(".hook-publish-actions button[type=submit]");
       button.disabled = true;
       feedback("Publishing…");
       try {
@@ -388,8 +402,10 @@
           for (const phase of ["before", "after", "css"]) {
             const field = publish.elements.namedItem(phase);
             field.value = pkg.lifecycle[phase] || "";
+            field.dispatchEvent(new Event("hook-source-replaced"));
             field.closest("details").open = !!field.value.trim();
           }
+          actionList.querySelectorAll("[data-code-editor]").forEach(field => field.dispatchEvent(new Event("hook-editor-destroy")));
           actionList.replaceChildren();
           (pkg.actions || []).forEach(addAction);
           updateTargets();
@@ -417,7 +433,7 @@
             : "Reported hook";
           const reason = document.createElement("p");
           reason.textContent = report.reason;
-          const resolve = document.createElement("button");
+          const resolve = makeButton();
           resolve.textContent = "Mark resolved";
           resolve.addEventListener("click", async () => {
             try {

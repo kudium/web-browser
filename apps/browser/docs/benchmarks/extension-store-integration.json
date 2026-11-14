@@ -80,21 +80,21 @@
     "scope": "Actual installed electron-chrome-extensions/electron-chrome-web-store engines, native main/child IPC, local Manifest V3 extension loaded in three real sessions and catalog/native unload effects. Local HTTPS protocol and controlled review; fixture-only subframe preload enables attacks. No remote store download/install, signed package or physical input claim."
   },
   "after": {
-    "sourceSha256": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
+    "sourceSha256": "7658a93ef56a329cf80fd90c91dbdbadccc86ac923861bc796d3a2fa6bc7eb79",
     "dependencies": {
       "electron-chrome-extensions": {
         "version": "4.10.0",
-        "entrySha256": "e67fb477ca9167709856203a1b217464abccfb027be9134f8fbd8021f6ca8d46",
-        "preloadSha256": "03a5eecb3532bb6bd494c50d4e0360c3e6ef7895552bec3a8d96b0c986573849"
+        "entrySha256": "7dcead15592f4b242edc537e2ad25ba1c6c0f24f89f85e84f51dcd63e87fb2d6",
+        "preloadSha256": "0a5c47ec19c6a0f83a9e11169fd3e8b9afe4474f03243a6fb5b7fd351fe3782b"
       },
       "electron-chrome-web-store": {
         "version": "0.13.0",
-        "entrySha256": "1067d84b8bd8010cae96239b188dcbc77265fd37cf6f7dd7bcd8814d94471b27",
+        "entrySha256": "6bd1be07ed55d227cf65db4252913b54b76fdb2b688d8875645fb0961601028b",
         "preloadSha256": "46dc49be10c911cce297de9d1e706bf251e374220b0a9c71d198a1eae0bb78ea"
       }
     },
     "electron": "45.0.0",
-    "probeSha256": "b51e75de5a501eab05b4225c3e4916796a67bda7abd434abe88a1d7719457095",
+    "probeSha256": "a9f0aa640954e34e8f193b52efacbc9afa02271243f95773c82c893a6fe646b9",
     "bindingSha256": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
     "results": [
       {

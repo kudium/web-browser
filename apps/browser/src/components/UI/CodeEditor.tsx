@@ -1,3 +1,6 @@
+import { tabCompletion } from '../../utils/editorCompletion';
+import { linter } from "@codemirror/lint";
+import { hookSourceValidator } from "../../browser/hookValidation";
 /* Optional props use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import { useMemo, useEffect, useState } from 'react';
@@ -47,7 +50,17 @@ export function CodeEditor({
   const { appearance } = useAppearance();
   const extensions = useMemo(
     () => [
+      tabCompletion,
       hookLanguageMode.of(mode),
+      linter(current => {
+        const source = current.state.doc.toString();
+        const errors = hookSourceValidator.errors({ before: language === 'javascript' && mode === 'lifecycle' ? source : '', after: '', css: language === 'css' ? source : '', ...(mode === 'action' ? { actions: [{ name: label, source }] } : {}) });
+        return errors.map(error => {
+          const line = current.state.doc.line(Math.min(error.line, current.state.doc.lines));
+          const from = Math.min(line.to, line.from + error.column - 1);
+          return { from, to: Math.min(current.state.doc.length, from + 1), severity: 'error' as const, message: error.message };
+        });
+      }, { delay: 400 }),
       language === 'css' ? css() : javascript(),
       ...(language === 'javascript'
         ? [

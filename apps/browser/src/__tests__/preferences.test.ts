@@ -562,3 +562,11 @@ it('upgrades saved seven-day retention without resetting other preferences', () 
     location.mockRestore();
   }
 });
+
+it('defaults tab overflow to scroll and preserves an explicit dropdown choice', () => {
+  expect(defaultPreferences.tabOverflowMode).toBe('scroll');
+  expect(() => validatePreferences({ tabOverflowMode: 'invalid' } as any)).toThrow('Invalid preference');
+  updateBrowserPreferences({ tabOverflowMode: 'dropdown' });
+  expect(getBrowserPreferences().tabOverflowMode).toBe('dropdown');
+  updateBrowserPreferences({ tabOverflowMode: 'scroll' });
+});

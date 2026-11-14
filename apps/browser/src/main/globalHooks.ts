@@ -1,3 +1,4 @@
+import { hookSourceValidator } from "../browser/hookValidation";
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
@@ -155,6 +156,7 @@ export function saveGlobalHooks(
     throw new Error('Invalid global hook settings (maximum 20 hooks).');
   if (globalHookHash(getGlobalHooks(profile)) !== expectedHash)
     throw new Error('Global hooks changed. Reload before saving.');
+  config.hooks.forEach(hook => hookSourceValidator.assert(hook));
   const next = { ...profiles, [profile]: config };
   persistProfiles(next);
   events.emit('change', profile);

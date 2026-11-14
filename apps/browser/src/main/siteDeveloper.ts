@@ -1,3 +1,5 @@
+import { installPersonalDataAutofill } from '../browser/personalDataAutofill';
+import { createPersonalDataMatching } from '../browser/personalDataMatching';
 import { app, ipcMain, WebContents } from 'electron';
 import fs from 'fs';
 import { EventEmitter } from 'events';
@@ -29,16 +31,19 @@ import {
 export const developerPreloadSource = String.raw`
 const { ipcRenderer, webFrame } = require('electron');
 if (window === window.top) {
+  (${installPersonalDataAutofill.toString()})(ipcRenderer, (${createPersonalDataMatching.toString()})().score);
   let generation = 0;
+  let rerun;
   const owned = new Set();
   const stop = () => {
     generation++;
+    rerun = undefined;
     for (const dispose of [...owned]) { try { dispose(); } catch (_) {} }
     owned.clear();
   };
   ipcRenderer.on('site-developer-stop', stop);
   addEventListener('pagehide', stop);
-  const start = async (route = false) => {
+  const start = async (route = false, onlyHook) => {
     stop();
     const current = generation;
     const config = ipcRenderer.sendSync('site-developer-config');
@@ -47,9 +52,16 @@ if (window === window.top) {
     const active = () => current === generation;
     const send = (kind, value, detail = {}) => { if (active()) ipcRenderer.send('site-developer-event', { token, kind, value, ...detail }); };
     const format = value => { try { return typeof value === 'string' ? value : JSON.stringify(value); } catch (_) { return String(value); } };
-    const hooks = [...(config.hooks || []).filter(hook => hook.id?.startsWith('global:')), {...config, id: undefined, name: config.name || 'Default hook'}, ...(config.hooks || []).filter(hook => !hook.id?.startsWith('global:'))];
+    const allHooks = [...(config.hooks || []).filter(hook => hook.id?.startsWith('global:')), {...config, id: undefined, name: config.name || 'Default hook'}, ...(config.hooks || []).filter(hook => !hook.id?.startsWith('global:'))];
+    const hooks = onlyHook === undefined ? allHooks : allHooks.filter(hook => (hook.id || '') === onlyHook);
     let failed = false;
     const failedHooks = new Set();
+    const hookOwned = new Map();
+    const own = (hook, cleanup) => {
+      owned.add(cleanup);
+      if (!hookOwned.has(hook.id)) hookOwned.set(hook.id, new Set());
+      hookOwned.get(hook.id).add(cleanup);
+    };
     const run = async (hook, phase) => {
       if (!active() || !hook[phase].trim()) return;
       const detail = {hookId: hook.id || '', phase, runId: token + ':' + (hook.id || 'default') + ':' + phase};
@@ -60,7 +72,7 @@ if (window === window.top) {
         for (const cleanup of [...cleanups].reverse()) { try { cleanup(); } catch (_) {} }
         cleanups.clear(); owned.delete(dispose);
       };
-      owned.add(dispose);
+      own(hook, dispose);
       const alive = () => active() && !controller.signal.aborted;
       const report = error => {
         if (alive()) { failed = true; failedHooks.add(hook.id); send('error', hook.name + ' · ' + phase + ': ' + String(error?.stack || error).slice(0, 1800), detail); }
@@ -91,7 +103,7 @@ if (window === window.top) {
         setTimeout: (callback, delay, ...args) => { let id; const cleanup = () => clearTimeout(id); id = setTimeout(() => { cleanups.delete(cleanup); guarded(callback, ...args); }, delay); onCleanup(cleanup); return id; },
         listen: (target, type, callback, options) => { const listener = event => guarded(callback, event); target.addEventListener(type, listener, options); onCleanup(() => target.removeEventListener(type, listener, options)); },
         get content() { return document.documentElement?.outerHTML || ''; }, page, log});
-      send('running', hook.name + ' · ' + phase);
+      send('running', hook.name + ' · ' + phase, detail);
       let timer;
       try {
         const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
@@ -103,6 +115,24 @@ if (window === window.top) {
         dispose();
       } finally { clearTimeout(timer); }
     };
+    const rerunning = new Set();
+    rerun = async (id) => {
+      const hook = hooks.find(hook => (hook.id || '') === id);
+      if (!hook || rerunning.has(id) || !active()) return;
+      rerunning.add(id);
+      for (const cleanup of hookOwned.get(hook.id) || []) { try { cleanup(); } catch (_) {} owned.delete(cleanup); }
+      hookOwned.delete(hook.id);
+      failedHooks.delete(hook.id);
+      try {
+        await run(hook, 'before');
+        if (active() && hook.css.trim()) {
+          try { const key = await webFrame.insertCSS(hook.css); if (active()) own(hook, () => webFrame.removeInsertedCSS(key).catch(() => {})); else webFrame.removeInsertedCSS(key).catch(() => {}); }
+          catch (error) { failedHooks.add(hook.id); send('error', hook.name + ' · CSS: ' + String(error), {hookId: id, phase: 'css'}); }
+        }
+        await run(hook, 'after');
+        if (active() && !failedHooks.has(hook.id)) send('hook-success', id);
+      } finally { rerunning.delete(id); }
+    };
     // Start before-load callbacks synchronously, before CSS IPC can yield to the page.
     const before = route ? Promise.resolve() : (async () => {
       for (const hook of hooks) await run(hook, 'before');
@@ -110,8 +140,9 @@ if (window === window.top) {
     for (const hook of hooks) {
       if (!active()) return;
       if (hook.css.trim()) {
-        try { const key = await webFrame.insertCSS(hook.css); if (active()) owned.add(() => webFrame.removeInsertedCSS(key).catch(() => {})); else webFrame.removeInsertedCSS(key).catch(() => {}); }
-        catch (error) { failed = true; failedHooks.add(hook.id); send('error', hook.name + ' · CSS: ' + String(error)); }
+        send('running', hook.name + ' · CSS', {hookId: hook.id || '', phase: 'css'});
+        try { const key = await webFrame.insertCSS(hook.css); if (active()) own(hook, () => webFrame.removeInsertedCSS(key).catch(() => {})); else webFrame.removeInsertedCSS(key).catch(() => {}); }
+        catch (error) { failed = true; failedHooks.add(hook.id); send('error', hook.name + ' · CSS: ' + String(error), {hookId: hook.id || '', phase: 'css'}); }
       }
     }
     await before;
@@ -127,6 +158,8 @@ if (window === window.top) {
     const applicable = hooks.some(hook => hook.css.trim() || hook.after.trim() || (!route && hook.before.trim()));
     if (active() && !failed) send(applicable ? 'success' : 'idle', applicable ? 'Hooks completed' : 'No hooks match this page and stage');
   };
+  ipcRenderer.on('site-developer-start-hook', (_event, id) => { if (typeof id === 'string') void start(false, id); });
+  ipcRenderer.on('site-developer-rerun', (_event, id) => { if (typeof id === 'string') void rerun?.(id); });
   ipcRenderer.on('site-developer-route', () => { void start(true); });
   void start();
 }
@@ -193,6 +226,7 @@ export function developerState(contents: WebContents, origin: string) {
       ? []
       : getSiteSettings(page?.profile || '', origin).hookRevisions,
     status: previous?.status || 'waiting',
+    hookStatuses: previous?.hookStatuses || {},
     logs: previous?.logs || [],
     notifications: page?.scope()
       ? hookNotifications().permissions({
@@ -204,6 +238,35 @@ export function developerState(contents: WebContents, origin: string) {
       : [],
   } as SiteDeveloperState;
 }
+/** Rerun only an enabled, currently loaded hook using its existing reviewed runtime. */
+export function rerunDeveloperHook(contents: WebContents, origin: string, hookId: string) {
+  const page = pages.get(contents);
+  if (!page || siteOrigin(contents.getURL()) !== origin) return;
+  const identity = page.scope();
+  if (identity && getGroupLocks().locked(identity.groupId)) return;
+  const state = page.states.get(origin) || developerState(contents, origin);
+  const reject = (message: string) => {
+    state.hookStatuses ||= {};
+    state.hookStatuses[hookId] = 'error';
+    state.status = 'error';
+    state.logs = [...state.logs.slice(-99), { time: Date.now(), level: 'error' as const, hookId, message }];
+    page.states.set(origin, state);
+    page.publish();
+  };
+  const config = pageConfig(page, contents.getURL());
+  const hook = hookId ? config.hooks?.find((entry) => entry.id === hookId && entry.enabled) : config;
+  if (!config.enabled || !hook) return reject('This hook is disabled or does not match the current page.');
+  if (![hook.before, hook.after, hook.css].some((code) => code.trim())) return reject('This hook has no JavaScript or CSS to run.');
+  if (page.token && hookScriptHash(config) !== page.scriptHash) return reject('The hook changed. Save it before running again.');
+  if (state.hookStatuses?.[hookId] === 'running') return;
+  state.hookStatuses ||= {};
+  state.hookStatuses[hookId] = 'running';
+  state.status = 'running';
+  page.states.set(origin, state);
+  page.publish();
+  contents.send(page.token ? 'site-developer-rerun' : 'site-developer-start-hook', hookId);
+}
+
 export function resetDeveloperState(contents: WebContents, origin: string) {
   const page = pages.get(contents);
   if (!page) return;
@@ -505,9 +568,10 @@ export function registerDeveloperPage(
     page.origin = origin;
     const state = developerState(event.sender, origin);
     state.status = 'running';
+    state.hookStatuses = {};
     state.logs = [
       ...state.logs.slice(-99),
-      { time: Date.now(), level: 'info', message: 'Page load started' },
+      { time: Date.now(), level: 'info', category: 'execution', message: 'Page load started' },
     ];
     page.states.set(origin, state);
     if (page.states.size > 20) {
@@ -618,6 +682,13 @@ export function registerDeveloperPage(
         }
       }
       if (kind === 'hook-success') {
+        const id = value;
+        if (id === '' || state.config.hooks?.some((hook) => hook.id === id)) {
+          state.hookStatuses ||= {};
+          if (state.hookStatuses[id] !== 'error') state.hookStatuses[id] = 'success';
+        }
+        const statuses = Object.values(state.hookStatuses || {});
+        state.status = statuses.includes('error') ? 'error' : statuses.includes('running') ? 'running' : 'success';
         page.publish();
         return;
       }
@@ -664,6 +735,12 @@ export function registerDeveloperPage(
           }
         }
       }
+      if (typeof hookId === 'string' && (hookId === '' || triggeringHook)) {
+        state.hookStatuses ||= {};
+        if (kind === 'error') state.hookStatuses[hookId] = 'error';
+        if (kind === 'running' && state.hookStatuses[hookId] !== 'error')
+          state.hookStatuses[hookId] = 'running';
+      }
       if (kind === 'idle') state.status = 'waiting';
       if (kind === 'error') state.status = 'error';
       if (kind === 'running' && state.status !== 'error')
@@ -672,6 +749,7 @@ export function registerDeveloperPage(
         state.status = 'success';
       state.logs.push({
         time: Date.now(),
+        category: ['running', 'success', 'idle'].includes(String(kind)) ? 'execution' : 'output',
         level: kind === 'error' ? 'error' : 'info',
         message: value.slice(0, 2000),
         hookId: triggeringHook?.id,

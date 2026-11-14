@@ -328,3 +328,14 @@ and Dockerfile location to `apps/web/Dockerfile`. The release-assets volume path
 remains `/app/release-assets`. Website deployment is separate from a browser
 installer release. The new `kudium://install-hook` protocol needs a newly packaged
 browser; URL import remains available inside the hooks workspace.
+
+### Local sample hooks
+
+With the local database migrated and at least one local account created, run
+`bun run seed:hooks` from `apps/web`. This adds six validated examples for CSS,
+lifecycle scripts and context-menu actions, with sample likes and publication
+dates for trying Trending and Newest. Open <http://localhost:3000/hooks>.
+
+The script only accepts a localhost database and skips samples already added.
+It uses the most recently created local account (excluding sample voters) as the
+owner; use `bun run seed:hooks --owner=<account-id>` to choose a specific account.

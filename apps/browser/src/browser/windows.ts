@@ -2,6 +2,7 @@ import type { IApp } from '../types';
 
 export type BrowserWindowKind = 'workspace' | 'groups' | 'temporary';
 export interface BrowserWindowState {
+  private?: boolean;
   id: number;
   kind: BrowserWindowKind;
   groupIds: string[];

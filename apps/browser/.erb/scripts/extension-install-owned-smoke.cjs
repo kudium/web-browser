@@ -15,6 +15,13 @@ const root = path.resolve(__dirname, '../..'),
   phase = process.argv[2] || 'after',
   scenario = process.argv[3] || 'selected';
 assert(['before', 'after'].includes(phase));
+const nativeFailure = [
+  'native identity changed',
+  'navigation after native load',
+  'native load failed',
+  'all native failure',
+].includes(scenario);
+assert(!nativeFailure || phase === 'after');
 const temporary = fs.mkdtempSync(
   path.join(os.tmpdir(), 'kudiumbrowser-owned-install-')
 );
@@ -207,7 +214,11 @@ app
           manager.setExtensionInstallTarget('store', 'a');
         });
       return {
-        response: scenario === 'all' ? 2 : scenario === 'decline' ? 0 : 1,
+        response: ['all', 'all native failure'].includes(scenario)
+          ? 2
+          : scenario === 'decline'
+          ? 0
+          : 1,
       };
     };
     storeSession.protocol.handle(
@@ -226,7 +237,11 @@ app
         channel === 'chromeWebstore.beginInstall' ? observe(handler) : handler
       );
     manager.configureExtensionStore(view.webContents, 'store');
-    await view.webContents.loadURL('https://chromewebstore.google.com/fixture');
+    await view.webContents.loadURL(
+      scenario === 'native menu'
+        ? `https://chromewebstore.google.com/detail/fixture/${id}`
+        : 'https://chromewebstore.google.com/fixture'
+    );
     const details = {
       id,
       localizedName: manifest.name,
@@ -239,23 +254,60 @@ app
         path.join(extensionPath, 'manifest.json'),
         JSON.stringify({ ...manifest, permissions: ['tabs'] })
       );
-    const rendererReply = view.webContents
-      .executeJavaScript(
-        `window.fixture.begin(${JSON.stringify(
-          details
-        )}).then(result=>({result}),error=>({error:error.message}))`
-      )
-      .catch((error) => ({ error: error.message }));
+    const nativeLoad = a.extensions.loadExtension.bind(a.extensions);
+    const siblingLoad = b.extensions.loadExtension.bind(b.extensions);
+    if (scenario === 'all native failure')
+      b.extensions.loadExtension = async () => {
+        throw new Error('Controlled sibling load failure');
+      };
+    if (nativeFailure) {
+      a.extensions.loadExtension = async (packagePath) => {
+        if (scenario === 'native load failed')
+          throw new Error('Controlled native load failure');
+        if (scenario === 'native identity changed') {
+          const changedKey = crypto
+            .generateKeyPairSync('rsa', { modulusLength: 1024 })
+            .publicKey.export({ type: 'spki', format: 'der' })
+            .toString('base64');
+          fs.writeFileSync(
+            path.join(packagePath, 'manifest.json'),
+            JSON.stringify({ ...manifest, key: changedKey })
+          );
+        }
+        const extension = await nativeLoad(packagePath);
+        if (scenario === 'navigation after native load')
+          await view.webContents.loadURL(
+            'https://chromewebstore.google.com/changed'
+          );
+        return extension;
+      };
+    }
+    const rendererReply =
+      scenario === 'native menu'
+        ? manager.installStoreExtension(view.webContents, owner).then(
+            (result) => ({ result }),
+            (error) => ({ error: error.message })
+          )
+        : view.webContents
+            .executeJavaScript(
+              `window.fixture.begin(${JSON.stringify(
+                details
+              )}).then(result=>({result}),error=>({error:error.message}))`
+            )
+            .catch((error) => ({ error: error.message }));
+    if (scenario === 'native menu') handlerCompletion = rendererReply;
     for (let attempt = 0; attempt < 100 && !handlerCompletion; attempt++)
       await new Promise((resolve) => setTimeout(resolve, 10));
     assert(handlerCompletion);
     const reply = await handlerCompletion;
-    if (scenario !== 'navigation') await rendererReply;
+    if (!['navigation', 'navigation after native load'].includes(scenario))
+      await rendererReply;
     const shouldSucceed =
       scenario !== 'decline' &&
       (phase === 'before' ||
         [
           'selected',
+          'native menu',
           'all',
           'actual permissions',
           'source changed',
@@ -272,7 +324,15 @@ app
     )
       await new Promise((resolve) => setTimeout(resolve, 10));
     assert.equal(reply.result?.result === 'success', shouldSucceed);
-    if (!shouldSucceed) assert.equal(loads.length, 0);
+    if (!shouldSucceed)
+      assert.equal(
+        loads.length,
+        ['navigation after native load', 'all native failure'].includes(
+          scenario
+        )
+          ? 1
+          : 0
+      );
     else {
       assert(loads.includes('a'));
       assert.equal(
@@ -292,6 +352,48 @@ app
         ),
         phase === 'before'
       );
+    let retry;
+    if (nativeFailure) {
+      for (const target of [a, b, storeSession])
+        assert.equal(
+          target.extensions.getAllExtensions().length,
+          0,
+          'Failed install must leave no native extension'
+        );
+      const recovered = JSON.parse(
+        fs.readFileSync(path.join(temporary, 'extensions.json'))
+      );
+      assert.equal(recovered.length, 1);
+      assert.equal(recovered[0].id, id);
+      assert.equal(recovered[0].path, extensionPath);
+      assert.equal(recovered[0].enabled, false);
+      assert.deepEqual(fs.readdirSync(path.join(temporary, 'Extensions', id)), [
+        '1.0.0_0',
+      ]);
+      a.extensions.loadExtension = nativeLoad;
+      b.extensions.loadExtension = siblingLoad;
+      await view.webContents.loadURL(
+        'https://chromewebstore.google.com/fixture'
+      );
+      retry = await view.webContents.executeJavaScript(
+        `window.fixture.begin(${JSON.stringify(details)})`
+      );
+      assert.equal(
+        retry.result,
+        'success',
+        'Failed native load must permit a clean retry'
+      );
+      assert(a.extensions.getExtension(id));
+      assert.equal(
+        !!b.extensions.getExtension(id),
+        scenario === 'all native failure'
+      );
+      assert.equal(
+        !!storeSession.extensions.getExtension(id),
+        scenario === 'all native failure'
+      );
+      assert.equal(reviews.length, 2);
+    }
     const report = {
       phase,
       scenario,
@@ -310,6 +412,7 @@ app
         )
       ),
       reply,
+      retry,
       reviews,
       nativeLoadOrder: loads,
       finalLoaded: {
@@ -324,11 +427,13 @@ app
         .readdirSync(temporary)
         .filter((name) => name.startsWith('.extension-install-')),
       scope:
-        'Actual native beginInstall IPC and installed engines. Local cached MV3 package with controlled review/perturbations. Counts first native loads and final state. No remote store download, physical native-ack interruption or cross-platform claim.',
+        'Actual native beginInstall IPC and installed engines. Local cached MV3 package with controlled review/perturbations. Counts first native loads and final state. Recovery cases perturb the native loader response or navigate after an actual load, and verify cleanup followed by retry. No remote store download, hung native-ack/crash interruption or cross-platform claim.',
     };
     const output = path.join(
         root,
-        'docs/benchmarks/extension-install-owned.json'
+        nativeFailure
+          ? 'docs/benchmarks/extension-install-recovery.json'
+          : 'docs/benchmarks/extension-install-owned.json'
       ),
       accumulated = fs.existsSync(output)
         ? JSON.parse(fs.readFileSync(output))

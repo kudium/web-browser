@@ -35,7 +35,13 @@ export const eventBus = {
         return;
       }
       Object.values(windowsList).forEach((win) => {
-        if (win && !win.isDestroyed())
+        if (
+          win &&
+          !win.isDestroyed() &&
+          ((source.webContents.session?.isPersistent?.() !== false &&
+            win.webContents.session?.isPersistent?.() !== false) ||
+            source.webContents.session === win.webContents.session)
+        )
           win.webContents.send('ipc-event-bus', content);
       });
     });

@@ -9,6 +9,8 @@ import {
   scryptSync,
 } from 'crypto';
 import { PasswordVault } from '../main/passwordManager/vault';
+import { saveWebsiteFields } from '../main/passwordManager/websiteFields';
+import { hasSavedWebsiteLogin } from '../main/passwordManager/websiteLogin';
 import {
   entryForEditor,
   entryForSave,
@@ -137,4 +139,60 @@ it('does not enable missing/false legacy record, override or global consent', ()
   expect(vault.edit('missing').allowAI).toBe(false);
   expect(vault.edit(record.id, 'group').allowAI).toBe(false);
   expect(vault.status().ai).toBe(false);
+});
+
+
+it.each(['login', 'knowledge'] as const)('recognizes saved %s credentials only for the matching website, values and group', (kind) => {
+  vault.save({ ...record, kind, origin: 'https://fixture.example', username: kind === 'login' ? 'sam@example.test' : '', password: kind === 'login' ? 'saved-secret' : '', fields: kind === 'login' ? [] : [
+    { name: 'Email address', aliases: ['email'], value: 'sam@example.test', secret: false },
+    { name: 'Account secret', aliases: ['current-password'], value: 'saved-secret', secret: true },
+  ] });
+  const check = (url = 'https://fixture.example/account', scope?: string, user = 'sam@example.test', secret = 'saved-secret') => hasSavedWebsiteLogin(vault, url, scope, user, secret);
+  expect(check()).toBe(true);
+  expect(check('https://other.example')).toBe(false);
+  expect(check(undefined, undefined, 'another@example.test')).toBe(false);
+  expect(check(undefined, undefined, undefined, 'changed-secret')).toBe(false);
+  vault.save({ ...vault.edit(record.id), username: 'group-user', password: 'group-secret', fields: [] }, 'group');
+  expect(check(undefined, 'group')).toBe(false);
+  expect(check()).toBe(true);
+});
+
+it('does not combine credentials from separate records or treat a general profile as a website login', () => {
+  vault.save({ ...record, fields: [{ name: 'Username', value: 'sam', secret: false }, { name: 'Password', value: 'secret', secret: true }] });
+  expect(hasSavedWebsiteLogin(vault, 'https://fixture.example', undefined, 'sam', 'secret')).toBe(false);
+  vault.save({ ...record, origin: 'https://fixture.example', fields: [{ name: 'Username', value: 'sam', secret: false }] });
+  vault.save({ ...record, id: 'other', origin: 'https://fixture.example', fields: [{ name: 'Password', value: 'secret', secret: true }] });
+  expect(hasSavedWebsiteLogin(vault, 'https://fixture.example', undefined, 'sam', 'secret')).toBe(false);
+});
+
+
+it('saves separate website accounts and updates only the matching identity after confirmation', () => {
+  const url = 'https://fixture.example/login';
+  const fields = (user: string, secret: string) => [
+    { name: 'Username', value: user, secret: false, aliases: ['email'] },
+    { name: 'Password', value: secret, secret: true },
+  ];
+  expect(saveWebsiteFields(vault, url, undefined, fields('first', 'first-secret')).saved).toBe(true);
+  expect(saveWebsiteFields(vault, url, undefined, fields('second', 'second-secret')).saved).toBe(true);
+  expect(vault.matching(url)).toHaveLength(2);
+  expect(hasSavedWebsiteLogin(vault, url, undefined, 'first', 'first-secret')).toBe(true);
+  expect(hasSavedWebsiteLogin(vault, url, undefined, 'second', 'second-secret')).toBe(true);
+  expect(saveWebsiteFields(vault, url, undefined, fields('second', 'changed'))).toEqual({ needsUpdate: true, saved: false });
+  expect(hasSavedWebsiteLogin(vault, url, undefined, 'second', 'second-secret')).toBe(true);
+  expect(saveWebsiteFields(vault, url, undefined, fields('second', 'changed'), true)).toEqual({ saved: true, updated: true });
+  expect(hasSavedWebsiteLogin(vault, url, undefined, 'first', 'first-secret')).toBe(true);
+  expect(hasSavedWebsiteLogin(vault, url, undefined, 'second', 'changed')).toBe(true);
+  expect(vault.matching(url)).toHaveLength(2);
+});
+
+
+it('updates a legacy saved login without creating another record or silently replacing its password', () => {
+  const url = 'https://fixture.example';
+  vault.save({ ...record, kind: 'login', origin: url, username: 'sam', password: 'old', fields: [] });
+  const incoming = [{ name: 'Username', value: 'sam', secret: false }, { name: 'Password', value: 'new', secret: true }];
+  expect(saveWebsiteFields(vault, url, undefined, incoming)).toEqual({ needsUpdate: true, saved: false });
+  expect(vault.edit(record.id).password).toBe('old');
+  saveWebsiteFields(vault, url, undefined, incoming, true);
+  expect(vault.edit(record.id).password).toBe('new');
+  expect(vault.matching(url)).toHaveLength(1);
 });

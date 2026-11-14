@@ -1,3 +1,4 @@
+import { assertDeveloperSources } from "../../browser/hookValidation";
 import { SiteGlobalHookList } from './SiteGlobalHookList';
 import { FormTextField } from './FormTextField';
 import { EditorWindowFooter } from './EditorWindowChrome';
@@ -10,17 +11,15 @@ import { createPortal } from 'react-dom';
 import {
   AlertDialog,
   Button,
+  Checkbox,
   DropdownMenu,
   IconButton,
-  Popover,
   Switch,
-  TextField,
 } from '@radix-ui/themes';
 import {
   RotateCw,
+  Play,
   Plus,
-  Settings2,
-  Trash2,
   Store,
   MoreHorizontal,
 } from 'lucide-react';
@@ -49,7 +48,7 @@ const labels = {
 export function SiteDeveloperPanel({
   developer,
   disabled,
-  send,
+  send: sendCommand,
   origin = '',
   selectedHookId = '',
   toolbarTarget,
@@ -64,6 +63,18 @@ export function SiteDeveloperPanel({
     patch?: Partial<BrowserCommand>
   ) => void;
 }) {
+  const [saveError, setSaveError] = useState('');
+  const send = (action: BrowserCommand['action'], patch?: Partial<BrowserCommand>) => {
+    try {
+      if (patch?.developer) assertDeveloperSources(patch.developer);
+      setSaveError('');
+      Promise.resolve(sendCommand(action, patch)).catch(error => setSaveError(String(error).replace(/^Error: /, '')));
+      return true;
+    } catch (error) {
+      setSaveError((error as Error).message);
+      return false;
+    }
+  };
   const saved = developer?.config || emptyDeveloperConfig;
   const serialized = JSON.stringify(saved);
   const [draft, setDraft] = useState(saved);
@@ -95,6 +106,10 @@ export function SiteDeveloperPanel({
           }
         : { ...previous, ...patch }
     );
+  const [showExecutionDetails, setShowExecutionDetails] = useState(false);
+  const visibleLogs = (developer?.logs || []).filter((entry) =>
+    showExecutionDetails || entry.level === 'error' || entry.category !== 'execution'
+  );
   const [importError, setImportError] = useState('');
   const [editor, setEditor] = useState<'before' | 'after' | 'css'>('after');
   const hasDeveloper = !!developer;
@@ -127,6 +142,32 @@ export function SiteDeveloperPanel({
   }, [serialized, hasDeveloper, selectedHookId]);
   const [jumpLine, setJumpLine] = useState<{ line: number; token: number }>();
   const dirty = JSON.stringify(draft) !== serialized;
+  const [pendingRun, setPendingRun] = useState<string>();
+  useEffect(() => {
+    if (pendingRun !== undefined && developer?.hookStatuses?.[pendingRun])
+      setPendingRun(undefined);
+  }, [developer]);
+  const runControls = (id: string, name: string, enabled: boolean, source: SiteDeveloperConfig | NonNullable<SiteDeveloperConfig['hooks']>[number]) => {
+    const status = !enabled ? 'disabled' : pendingRun === id ? 'running' : developer?.hookStatuses?.[id] || 'waiting';
+    const label = status === 'error' ? 'Failed' : status === 'success' ? 'Success' : status === 'running' ? 'Running' : status === 'disabled' ? 'Disabled' : 'Waiting';
+    const hasCode = [source.before, source.after, source.css].some((value) => value.trim());
+    return (
+      <span className="hook-run-controls">
+        <span className="developer-hook-status" data-status={status} role="status" aria-label={`${name}: ${label}`}>
+          <span className="developer-hook-status-dot" aria-hidden="true" />
+          <span>{label}</span>
+        </span>
+        <IconButton size="1" variant="ghost" color="gray"
+          aria-label={`Run ${name}`} title={dirty ? 'Save changes before running' : 'Run this hook without reloading'}
+          disabled={disabled || dirty || !enabled || !hasCode || status === 'running'}
+          onClick={() => {
+            setPendingRun(id);
+            if (!send('run-site-hook', { hookId: id, url: new URL(origin).origin })) setPendingRun(undefined);
+          }}
+        ><Play size={13} /></IconButton>
+      </span>
+    );
+  };
   const askAI = (repair = false, outcome = 'Ask me what outcome I want.') => {
     const error = repair
       ? developer?.logs.filter((entry) => entry.level === 'error').at(-1)
@@ -362,11 +403,7 @@ export function SiteDeveloperPanel({
                 </button>
                 <div className="site-hook-list-controls">
                   <span className="site-hook-list-meta">All pages</span>
-                  <span className="site-hook-list-status">
-                    {draft.enabled && draft.defaultEnabled !== false
-                      ? 'Enabled'
-                      : 'Disabled'}
-                  </span>
+                  {runControls('', draft.name || 'Default hook', draft.enabled && draft.defaultEnabled !== false, draft)}
                   <Switch
                     size="1"
                     aria-label="Enable default hook"
@@ -437,9 +474,7 @@ export function SiteDeveloperPanel({
                     <span className="site-hook-list-meta">
                       {hook.path === '/*' ? 'All pages' : hook.path}
                     </span>
-                    <span className="site-hook-list-status">
-                      {draft.enabled && hook.enabled ? 'Enabled' : 'Disabled'}
-                    </span>
+                    {runControls(hook.id, hook.name || 'Untitled hook', draft.enabled && hook.enabled, hook)}
                     <Switch
                       size="1"
                       aria-label={`Enable ${hook.name}`}
@@ -555,66 +590,7 @@ export function SiteDeveloperPanel({
                       origin={origin}
                       onChange={(path) => updateCode({ path })}
                     />
-                    <label className="site-hook-enabled">
-                      <Switch
-                        size="1"
-                        aria-label="Enable selected hook"
-                        checked={selectedHook.enabled}
-                        disabled={disabled}
-                        onCheckedChange={(enabled) => updateCode({ enabled })}
-                      />
-                      Enabled
-                    </label>
-                    <Popover.Root>
-                      <Popover.Trigger>
-                        <IconButton
-                          size="1"
-                          color="gray"
-                          variant="ghost"
-                          disabled={disabled}
-                          aria-label="Hook settings"
-                        >
-                          <Settings2 size={15} />
-                        </IconButton>
-                      </Popover.Trigger>
-                      <Popover.Content
-                        width="280px"
-                        className="site-hook-popover"
-                      >
-                        <div className="site-hook-popover-title">
-                          Hook settings
-                        </div>
-                        <label htmlFor="site-hook-name">Name</label>
-                        <TextField.Root
-                          id="site-hook-name"
-                          size="2"
-                          maxLength={120}
-                          value={selectedHook.name}
-                          disabled={disabled}
-                          onChange={(event) =>
-                            updateCode({ name: event.target.value })
-                          }
-                        />
-                      </Popover.Content>
-                    </Popover.Root>
-                    <IconButton
-                      size="1"
-                      color="gray"
-                      variant="ghost"
-                      className="site-hook-delete"
-                      aria-label="Delete hook"
-                      title="Delete selected hook"
-                      disabled={disabled}
-                      onClick={() =>
-                        setListAction({
-                          id: selectedHook.id,
-                          name: selectedHook.name,
-                          action: 'delete',
-                        })
-                      }
-                    >
-                      <Trash2 size={15} />
-                    </IconButton>
+
                   </>
                 ) : null}
               </div>
@@ -712,6 +688,10 @@ export function SiteDeveloperPanel({
                           Fix with AI
                         </Button>
                       )}
+                      <label className="hook-execution-details-toggle">
+                        <Checkbox size="1" checked={showExecutionDetails} onCheckedChange={(checked) => setShowExecutionDetails(checked === true)} />
+                        Show execution details
+                      </label>
                       <Button
                         size="1"
                         variant="ghost"
@@ -728,8 +708,8 @@ export function SiteDeveloperPanel({
                       aria-label="Hook activity"
                       aria-live="polite"
                     >
-                      {developer?.logs.length ? (
-                        developer.logs.map((entry, index) => (
+                      {visibleLogs.length ? (
+                        visibleLogs.map((entry, index) => (
                           <div
                             className="site-hook-log"
                             data-level={entry.level}
@@ -780,7 +760,7 @@ export function SiteDeveloperPanel({
                           </div>
                         ))
                       ) : (
-                        <p>Run a hook to see its logs here.</p>
+                        <p>Hook output and errors appear here.</p>
                       )}
                     </div>
                   </section>
@@ -837,11 +817,12 @@ export function SiteDeveloperPanel({
           ))}
         </section>
       )}
+      {saveError && <p role="alert" className="site-hook-import-error" style={{ whiteSpace: "pre-line" }}>{saveError}</p>}
       <EditorWindowFooter
         status={
           dirty
             ? 'Unsaved changes · Save before publishing'
-            : 'Saved · Run reloads this page'
+            : 'Saved · Play runs one hook without reloading'
         }
       >
         <Button
@@ -849,7 +830,7 @@ export function SiteDeveloperPanel({
           color="gray"
           disabled={disabled || !dirty || !validDeveloperConfig(draft)}
           onClick={() => {
-            send('set-site-developer', { developer: draft });
+            if (!send('set-site-developer', { developer: draft })) return;
             if (
               !draft.enabled ||
               (selectedHook
@@ -893,6 +874,7 @@ export function SiteDeveloperPanel({
             developer?.status === 'running'
           }
           onClick={() => {
+            try { assertDeveloperSources(draft); } catch (error) { setSaveError((error as Error).message); return; }
             if (
               !draft.enabled ||
               (selectedHook

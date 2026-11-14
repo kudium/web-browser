@@ -1,0 +1,81 @@
+{
+  "runtime": {
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "extension": {
+    "id": "ddkjiahejlhfcafbddmgiahcphecmpfh",
+    "name": "uBlock Origin Lite",
+    "version": "2026.1110.1816",
+    "manifestName": "__MSG_extName__",
+    "reviewedName": "uBlock Origin Lite"
+  },
+  "verified": [
+    "live store install action",
+    "actual native DNR filtering with enabled static rules and regular/private unblocked controls",
+    "uBlock worker startup and shared browser/chrome APIs",
+    "remote CRX download",
+    "selected profile install",
+    "toolbar popup and placement",
+    "All Groups enablement",
+    "separate storage",
+    "reload and selected-profile removal"
+  ],
+  "workerErrors": [],
+  "installVia": "extensions-menu",
+  "removeVia": "extensions-menu-group-access",
+  "contentBlocking": [
+    {
+      "profile": "a",
+      "result": {
+        "ok": true,
+        "text": "\n",
+        "url": "chrome-extension://ddkjiahejlhfcafbddmgiahcphecmpfh/web_accessible_resources/noop.txt",
+        "redirected": true
+      },
+      "failures": [],
+      "requests": 0
+    },
+    {
+      "profile": "b",
+      "result": {
+        "ok": true,
+        "text": "controlled tracker fixture",
+        "url": "http://ad.doubleclick.net:50391/advertising.js?profile=b",
+        "redirected": false
+      },
+      "failures": [],
+      "requests": 1
+    },
+    {
+      "profile": "private",
+      "result": {
+        "ok": true,
+        "text": "controlled tracker fixture",
+        "url": "http://ad.doubleclick.net:50391/advertising.js?profile=private",
+        "redirected": false
+      },
+      "failures": [],
+      "requests": 1
+    }
+  ],
+  "rulesets": [
+    "ublock-filters",
+    "easylist",
+    "easyprivacy",
+    "pgl",
+    "ublock-badware",
+    "urlhaus-full"
+  ],
+  "scope": "Live uBlock installation, worker, native DNR filtering and isolated storage; controlled permission review and disposable profiles. Native messaging and real account autofill are not tested.",
+  "sourceHashes": {
+    "src/main/extensions.ts": "7658a93ef56a329cf80fd90c91dbdbadccc86ac923861bc796d3a2fa6bc7eb79",
+    "src/main/extensionPackage.ts": "c0d64110af8f0c40145fe905d3343c31920551f0caada0ee707db97f6f673fa7",
+    "src/main/extensionStoreCompatibility.ts": "367ee69906fd11f7a965930840a648f25d94a95acb3e51f07e093c4a376ae580",
+    "src/main/requestHeaderRules.ts": "f822b154a0faeab251f99a6f30748c94046a26b74f2b490ee49fc9184233f286",
+    "src/main/advancedPreferences.ts": "28a31f7b1307c94895fd1b5ef6b5709db35d6f1cda63d080a2276ab8a1793fc6",
+    ".erb/scripts/extensions-smoke.cjs": "527aef390cac3f59edce643c39dd4bdd8487c51318d27ab9dbbc7b90301d9e08"
+  }
+}

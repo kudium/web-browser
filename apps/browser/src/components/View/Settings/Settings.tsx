@@ -1,3 +1,4 @@
+import { AddressBarSetting } from '../../UI/AddressBarSetting';
 import { HookIcon } from '../../UI/HookIcon';
 import { useEffect, useState } from 'react';
 import {
@@ -214,22 +215,26 @@ export const preferenceSections = sectionOrder.map(
 );
 export function Settings() {
   const [section, setSection] = useState(() => {
-    const requested = window.location.hash.slice(1);
+    const requested = window.location.hash.slice(1).split('?')[0];
     if (['spaces', 'archive'].includes(requested)) return 'apps';
     return preferenceSections.some((item) => item.id === requested)
       ? requested
       : 'search';
   });
+  const [personalDataScope, setPersonalDataScope] = useState(() =>
+    new URLSearchParams(window.location.hash.split('?')[1] || '').get('scope') || 'browser');
   const [query, setQuery] = useState('');
   const [workspaceTab, setWorkspaceTab] = useState(() => {
-    const requested = window.location.hash.slice(1);
+    const requested = window.location.hash.slice(1).split('?')[0];
     return ['apps', 'spaces', 'archive'].includes(requested)
       ? requested
       : 'apps';
   });
   useEffect(
     () =>
-      window.electron?.browser?.onPreferenceSection?.((next) => {
+      window.electron?.browser?.onPreferenceSection?.((request) => {
+        const [next, params] = request.split('?');
+        if (next === 'passwords') setPersonalDataScope(new URLSearchParams(params || '').get('scope') || 'browser');
         if (['apps', 'spaces', 'archive'].includes(next)) {
           setWorkspaceTab(next);
           setSection('apps');
@@ -489,7 +494,7 @@ export function Settings() {
               </AISettingsPage>
             )}
             {item.id === 'passwords' && (
-              <PasswordManager tabs={AppManager.getAll()} />
+              <PasswordManager tabs={AppManager.getAll()} initialScope={personalDataScope} />
             )}
             <div
               className={
@@ -529,7 +534,10 @@ export function Settings() {
                       </div>
                       {item.id === 'ai' && <p>{control.description}</p>}
                     </div>
-                    {control.kind === 'toggle' && (
+                    {(control.key === 'addressBarPlacement' || control.key === 'addressBarFullUrl') && (
+                      <AddressBarSetting setting={control.key} value={preferences[control.key]} disabled={!ready || busy} onChange={save} />
+                    )}
+                    {control.kind === 'toggle' && control.key !== 'addressBarFullUrl' && (
                       <Switch
                         checked={Boolean(preferences[control.key])}
                         aria-label={control.title}
@@ -573,7 +581,7 @@ export function Settings() {
                         }}
                       />
                     )}
-                    {control.kind === 'select' && (
+                    {control.kind === 'select' && control.key !== 'addressBarPlacement' && (
                       <Select.Root
                         value={String(preferences[control.key])}
                         disabled={!ready || busy}

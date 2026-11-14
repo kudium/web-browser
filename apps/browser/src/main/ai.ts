@@ -1,4 +1,5 @@
 import { AILoopGuard } from './aiLoopGuard';
+import { isPrivateSession } from './privateSessions';
 import {
   aiContextManagement,
   aiContextModelKey,
@@ -10,12 +11,12 @@ import {
   app,
   BrowserWindow,
   dialog,
-  ipcMain,
   webContents,
   WebContents,
   IpcMainInvokeEvent,
   MessageBoxOptions,
 } from 'electron';
+import { scopedAIIPC } from './aiIpc';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
@@ -197,11 +198,7 @@ import type { DownloadRecord } from '../browser/downloads';
 // Embedders and isolated desktop fixtures prepare storage before registering AI.
 export { initializeLocalStorage } from './localStorage';
 
-// Configuration outlives the browsing window so Preferences remains usable.
-let externalShutdown = Promise.resolve();
-let humanControl = false;
-let externalRecovery: AIRecoveryObservation | undefined;
-let activeConfiguration:
+let sharedConfiguration:
   | {
       settings: typeof AI_DEFAULTS & {
         thinking?: import('../browser/aiThinking').AIThinking;
@@ -212,24 +209,8 @@ let activeConfiguration:
     }
   | undefined;
 
-// Paused context survives window recreation and encrypted process restart.
-let activeCheckpoint: AICheckpoint | undefined;
-let checkpointLoaded = false;
-let conversationHistory: AIConversationEvent[] = [];
-let conversationStore: AIConversationStore | undefined;
-const rememberEvent = (event: AIConversationEvent) => {
-  if (
-    event.type === 'status' ||
-    event.type === 'partial' ||
-    event.type === 'done' ||
-    event.type === 'activity' ||
-    event.type === 'feedback'
-  )
-    return;
-  conversationHistory.push({ ...event, text: event.text.slice(0, 12000) });
-  if (conversationHistory.length > 100) conversationHistory.splice(1, 1);
-  conversationStore?.save();
-};
+type AIConfiguration = NonNullable<typeof sharedConfiguration>;
+const configurationListeners = new Set<() => void>();
 
 // Fixed page programs: model output is data, never executable JavaScript.
 export function readAIPage(maxText = 18000, wantedLabel = '', wantedRole = '') {
@@ -929,7 +910,34 @@ export function actAIPage(
   return 'Entered text.';
 }
 
-export function registerAI(
+function createAIRegistrar(initialConfiguration?: AIConfiguration) {
+  // Configuration outlives the browsing window so Preferences remains usable.
+  let externalShutdown = Promise.resolve();
+  let humanControl = false;
+  let externalRecovery: AIRecoveryObservation | undefined;
+  let activeConfiguration = initialConfiguration;
+
+  // Paused context survives window recreation and encrypted process restart.
+  let activeCheckpoint: AICheckpoint | undefined;
+  let checkpointLoaded = false;
+  let conversationHistory: AIConversationEvent[] = [];
+  let conversationStore: AIConversationStore | undefined;
+  const rememberEvent = (event: AIConversationEvent) => {
+    if (
+      event.type === 'status' ||
+      event.type === 'partial' ||
+      event.type === 'done' ||
+      event.type === 'activity' ||
+      event.type === 'feedback'
+    )
+      return;
+    conversationHistory.push({ ...event, text: event.text.slice(0, 12000) });
+    if (conversationHistory.length > 100) conversationHistory.splice(1, 1);
+    conversationStore?.save();
+  };
+
+  let scopedIPC: ReturnType<typeof scopedAIIPC> | undefined;
+return function registerScopedAI(
   host: BrowserWindow,
   access: {
     settingsWindow?: (contents: WebContents) => boolean;
@@ -949,9 +957,16 @@ export function registerAI(
     contents: (id: string) => WebContents | undefined;
   }
 ) {
+  const privateMode = isPrivateSession(host.webContents.session);
+  const ipcMain = (scopedIPC ||= scopedAIIPC(
+    privateMode ? host.webContents.session : undefined
+  ));
+  const dataRoot = privateMode
+    ? fs.mkdtempSync(path.join(app.getPath('temp'), 'kudium-private-ai-'))
+    : app.getPath('userData');
   const hostContents = host.webContents;
   const sendUI = (channel: string, ...args: unknown[]) => {
-    const windows = getBrowserWindows();
+    const windows = getBrowserWindows(host);
     if (windows && channel === 'browser-tab-request') {
       const request =
         args[0] as import('../browser/contracts').BrowserTabRequest;
@@ -968,13 +983,14 @@ export function registerAI(
   let skillsError = '';
   try {
     skills = new AISkillsStore(
-      path.join(app.getPath('userData'), 'ai-skills.json')
+      path.join(dataRoot, 'ai-skills.json'),
+      privateMode
     );
   } catch (reason) {
     skillsError = String(reason);
   }
   const externalPauseFile = path.join(
-    app.getPath('userData'),
+    dataRoot,
     'ai-external-paused'
   );
   let controlRevision = 0;
@@ -983,6 +999,7 @@ export function registerAI(
   const setHumanControl = (paused: boolean) => {
     controlRevision += 1;
     humanControl = paused;
+    if (privateMode) return;
     try {
       if (paused)
         fs.writeFileSync(externalPauseFile, 'paused', { mode: 0o600 });
@@ -992,19 +1009,21 @@ export function registerAI(
     }
   };
   const checkpointStore = new AICheckpointStore(
-    path.join(app.getPath('userData'), 'ai-checkpoint.bin'),
-    safeStorage
+    path.join(dataRoot, 'ai-checkpoint.bin'),
+    safeStorage,
+    privateMode
   );
   if (!checkpointLoaded) {
     activeCheckpoint = checkpointStore.load();
-    humanControl = fs.existsSync(externalPauseFile);
+    humanControl = !privateMode && fs.existsSync(externalPauseFile);
     if (humanControl) externalRecovery = new AIRecoveryObservation();
     checkpointLoaded = true;
   }
   if (!conversationStore) {
     conversationStore = new AIConversationStore(
-      path.join(app.getPath('userData'), 'ai-conversations.bin'),
-      safeStorage
+      path.join(dataRoot, 'ai-conversations.bin'),
+      safeStorage,
+      privateMode
     );
     if (
       !conversationStore.current().history.length &&
@@ -1017,6 +1036,7 @@ export function registerAI(
   conversationHistory = conversationStore.current().history;
   activeCheckpoint = conversationStore.current().checkpoint;
   const saveCheckpoint = () => {
+    if (configurationDisposed) return;
     try {
       checkpointStore.save(activeCheckpoint);
       conversationStore!.current().checkpoint = activeCheckpoint;
@@ -1026,7 +1046,7 @@ export function registerAI(
     }
   };
   const composerPreferences = new AIComposerPreferences(
-    path.join(app.getPath('userData'), 'ai-composer.json')
+    path.join(dataRoot, 'ai-composer.json'), privateMode
   );
   const privateInputs = new Map<
     string,
@@ -1052,9 +1072,9 @@ export function registerAI(
   const composerAttachments = new AIComposerAttachments();
   let composerRevision = 0;
   const originalUploads = new AIOriginalUploads(
-    path.join(app.getPath('userData'), 'ai-upload-cache')
+    path.join(dataRoot, 'ai-upload-cache')
   );
-  const settingsFile = path.join(app.getPath('userData'), 'ai-settings.json');
+  const settingsFile = path.join(dataRoot, 'ai-settings.json');
   let settings: typeof AI_DEFAULTS & {
     thinking?: import('../browser/aiThinking').AIThinking;
     contextManagementByModel?: Record<string, boolean>;
@@ -1063,7 +1083,10 @@ export function registerAI(
   let remembered = activeConfiguration?.remembered || false;
   if (!activeConfiguration) {
     try {
-      const saved = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+      const saved = JSON.parse(fs.readFileSync(
+        privateMode ? path.join(app.getPath('userData'), 'ai-settings.json') : settingsFile,
+        'utf8'
+      ));
       settings = {
         endpoint: aiProviderURL(saved.endpoint).replace(/\/$/, ''),
         model: String(saved.model).slice(0, 120),
@@ -1088,6 +1111,10 @@ export function registerAI(
     }
   }
   activeConfiguration = { settings, key, remembered };
+  if (!privateMode) {
+    sharedConfiguration = activeConfiguration;
+    configurationListeners.forEach((changed) => changed());
+  }
   let mcp: ReturnType<typeof createMCPController>;
   let run: AbortController | undefined;
   let composerQueue:
@@ -1481,7 +1508,7 @@ export function registerAI(
     });
   const notifyMCP = (status: MCPStatus) => {
     BrowserWindow.getAllWindows().forEach((window) => {
-      if (window === host || access.settingsWindow?.(window.webContents))
+      if (window === host || (!privateMode && access.settingsWindow?.(window.webContents)))
         window.webContents.send('ai-mcp-changed', {
           ...status,
           paused: humanControl,
@@ -1493,7 +1520,7 @@ export function registerAI(
       event.sender.isDestroyed() ||
       ((host.isDestroyed() ||
         (event.sender !== hostContents &&
-          !getBrowserWindows()?.trusted(event))) &&
+          !getBrowserWindows(host)?.trusted(event))) &&
         !(configuration && access.settingsWindow?.(event.sender))) ||
       event.senderFrame !== event.sender.mainFrame
     )
@@ -1560,6 +1587,7 @@ export function registerAI(
     });
   };
   const emit = (event: AIEvent) => {
+    if (configurationDisposed) return;
     if (event.type === 'error' || event.type === 'handoff')
       composerQueue?.pause();
     if (event.type === 'done') setImmediate(() => composerQueue?.pump());
@@ -1637,6 +1665,8 @@ export function registerAI(
     );
   const interrupts = new Map<WebContents, () => void>();
   const watchInput = (contents: WebContents) => {
+    if (isPrivateSession(contents.session) !== privateMode ||
+      (privateMode && contents.session !== hostContents.session)) return;
     if (contents.isDestroyed() || interrupts.has(contents)) return;
     const detach = attachAIInputGuard(
       contents,
@@ -1687,6 +1717,21 @@ export function registerAI(
     hasKey: !!key,
     remembered,
   });
+  let privateConfigurationCustomized = false;
+  let inheritedConfiguration = sharedConfiguration;
+  const refreshConfiguration = () => {
+    if (!privateMode || privateConfigurationCustomized || configurationDisposed ||
+      run || externalRun || taskDraftRun || composerQueue?.hasPending ||
+      !sharedConfiguration || inheritedConfiguration === sharedConfiguration) return;
+    inheritedConfiguration = sharedConfiguration;
+    const configured = structuredClone(sharedConfiguration);
+    settings = configured.settings;
+    key = configured.key;
+    remembered = configured.remembered;
+    activeConfiguration = configured;
+    sendUI('ai-settings-changed', info());
+  };
+  if (privateMode) configurationListeners.add(refreshConfiguration);
   const wait = (signal: AbortSignal) =>
     new Promise<void>((resolve, reject) => {
       let timer: ReturnType<typeof setTimeout>;
@@ -5030,8 +5075,9 @@ export function registerAI(
   try {
     tasks = new AITaskManager(
       new AITaskStore(
-        path.join(app.getPath('userData'), 'ai-tasks.bin'),
-        safeStorage
+        path.join(dataRoot, 'ai-tasks.bin'),
+        safeStorage,
+        privateMode
       ),
       async (task, scheduled) => {
         if (
@@ -5065,6 +5111,7 @@ export function registerAI(
     taskStoreError = (error as Error).message;
   }
   const taskTimer = setInterval(() => {
+    refreshConfiguration();
     privateInputs.forEach((entry, inputId) => {
       if (entry.expires <= Date.now()) removePrivateInput(inputId);
     });
@@ -5172,6 +5219,7 @@ export function registerAI(
   ipcMain.removeHandler('ai-recover-storage');
   let storageRecoveryBusy = false;
   ipcMain.handle('ai-recover-storage', async (event) => {
+    if (privateMode) throw new Error('Private chats use temporary memory and do not need storage recovery.');
     trusted(event, true);
     if (run || externalRun || taskDraftRun || storageRecoveryBusy)
       throw new Error('Stop the current AI run before recovering saved data.');
@@ -5221,6 +5269,7 @@ export function registerAI(
   });
   ipcMain.removeHandler('ai-restart-for-storage');
   ipcMain.handle('ai-restart-for-storage', (event) => {
+    if (privateMode) throw new Error('Close the private window to clear its temporary chats.');
     trusted(event, true);
     if (run || externalRun || taskDraftRun)
       throw new Error('Stop the current AI run before restarting Kudium.');
@@ -5251,7 +5300,7 @@ export function registerAI(
         (contents) =>
           !host.isDestroyed() &&
           (contents === hostContents ||
-            !!getBrowserWindows()?.isChrome(contents) ||
+            !!getBrowserWindows(host)?.isChrome(contents) ||
             !!access.settingsWindow?.(contents))
       );
       skillImportBusy = true;
@@ -5343,6 +5392,7 @@ export function registerAI(
   });
   ipcMain.handle('ai-settings', (event, patch) => {
     trusted(event, true);
+    refreshConfiguration();
     if (
       (run || externalRun || taskDraftRun || composerQueue?.hasPending) &&
       patch
@@ -5401,7 +5451,7 @@ export function registerAI(
         !safeStorage.isFileAvailable(settingsFile)
       )
         throw new Error(storageRecoveryMessage('your saved AI settings'));
-      fs.writeFileSync(
+      if (!privateMode) fs.writeFileSync(
         settingsFile,
         JSON.stringify({
           ...nextConfiguration,
@@ -5415,10 +5465,15 @@ export function registerAI(
       key = nextKey;
       remembered = nextRemembered;
       activeConfiguration = { settings, key, remembered };
+      if (privateMode) privateConfigurationCustomized = true;
+      else {
+        sharedConfiguration = activeConfiguration;
+        configurationListeners.forEach((changed) => changed());
+      }
     }
     if (patch) {
       BrowserWindow.getAllWindows().forEach((window) => {
-        if (window === host || access.settingsWindow?.(window.webContents))
+        if (window === host || (!privateMode && access.settingsWindow?.(window.webContents)))
           window.webContents.send('ai-settings-changed', info());
       });
     }
@@ -5847,6 +5902,7 @@ export function registerAI(
     input: string | AIComposerTask,
     queued = false
   ) => {
+    refreshConfiguration();
     const prompt = typeof input === 'string' ? input : input?.prompt;
     const ids = typeof input === 'string' ? [] : input?.attachmentIds;
 
@@ -6136,7 +6192,8 @@ export function registerAI(
     emit({ type: 'done', source: 'external', text: '' });
   });
   mcp = createMCPController({
-    filename: path.join(app.getPath('userData'), 'mcp-settings.json'),
+    filename: path.join(dataRoot, 'mcp-settings.json'),
+    defaultEnabled: !privateMode,
     beforeStart: externalShutdown,
     approveConnector: async () => {
       if (host.isDestroyed()) return false;
@@ -6234,7 +6291,7 @@ export function registerAI(
   const personalAgents = new PersonalAgentConnections({
     home: app.getPath('home'),
     filename: path.join(
-      app.getPath('userData'),
+      dataRoot,
       'personal-agent-connections.json'
     ),
     hermesHome: process.env.HERMES_HOME,
@@ -6386,7 +6443,7 @@ export function registerAI(
       if (action === 'stdio') {
         const connection = mcp.connection();
         const configPath = path.join(
-          app.getPath('userData'),
+          dataRoot,
           'mcp-client.json'
         );
         fs.writeFileSync(configPath, JSON.stringify(connection), {
@@ -6427,6 +6484,7 @@ export function registerAI(
   });
   return () => {
     configurationDisposed = true;
+    configurationListeners.delete(refreshConfiguration);
     composerQueue?.dispose();
     composerRevision += 1;
     clearPrivateInputs();
@@ -6447,6 +6505,16 @@ export function registerAI(
     externalRun?.abort();
     dialogs.stop().catch(() => {});
     externalShutdown = mcp.dispose();
+    if (privateMode) {
+      ipcMain.dispose();
+      conversationStore = undefined;
+      conversationHistory = [];
+      activeCheckpoint = undefined;
+      activeConfiguration = undefined;
+      externalShutdown.finally(() => {
+        fs.rmSync(dataRoot, { recursive: true, force: true });
+      }).catch(() => {});
+    }
     [
       'ai-permissions',
       'ai-groups',
@@ -6471,4 +6539,14 @@ export function registerAI(
       'ai-personal-agents',
     ].forEach((channel) => ipcMain.removeHandler(channel));
   };
+};
+}
+
+const regularRegisterAI = createAIRegistrar();
+
+export function registerAI(...args: Parameters<typeof regularRegisterAI>) {
+  const register = isPrivateSession(args[0].webContents.session)
+    ? createAIRegistrar(sharedConfiguration && structuredClone(sharedConfiguration))
+    : regularRegisterAI;
+  return register(...args);
 }

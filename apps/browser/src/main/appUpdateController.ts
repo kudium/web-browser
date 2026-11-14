@@ -16,8 +16,11 @@ export interface UpdateDriver {
 /** Own update policy without letting a background check restart the browser. */
 export class AppUpdateController {
   private state: AppUpdateState;
+
   private installing = false;
+
   private checking?: Promise<AppUpdateState>;
+
   private downloading?: Promise<AppUpdateState>;
 
   constructor(
@@ -38,7 +41,7 @@ export class AppUpdateController {
         version: info.version,
         message: undefined,
       });
-      if (this.preferences().automaticallyDownloadUpdates) void this.download();
+      if (this.preferences().automaticallyDownloadUpdates) this.download();
     });
     driver.on('update-not-available', () => {
       if (['ready', 'downloading', 'available'].includes(this.state.status))
@@ -46,6 +49,11 @@ export class AppUpdateController {
       this.set({ status: 'idle', version: undefined, message: undefined });
     });
     driver.on('download-progress', (progress: { percent: number }) => {
+      if (
+        this.state.status !== 'downloading' ||
+        !Number.isFinite(progress?.percent)
+      )
+        return;
       this.set({
         status: 'downloading',
         progress: Math.max(0, Math.min(100, progress.percent)),
@@ -53,6 +61,11 @@ export class AppUpdateController {
       });
     });
     driver.on('update-downloaded', (info: { version: string }) => {
+      if (
+        !['available', 'downloading'].includes(this.state.status) ||
+        info?.version !== this.state.version
+      )
+        return;
       this.set({
         status: 'ready',
         version: info.version,
@@ -74,12 +87,9 @@ export class AppUpdateController {
     const wasInstalling = this.installing;
     this.installing = false;
     // Keep a downloaded update usable, and a known update available to retry.
-    const status =
-      this.state.status === 'ready'
-        ? 'ready'
-        : this.state.version
-        ? 'available'
-        : 'error';
+    let status: AppUpdateState['status'] = 'error';
+    if (this.state.status === 'ready') status = 'ready';
+    else if (this.state.version) status = 'available';
     this.set({
       status,
       message: wasInstalling
@@ -97,7 +107,7 @@ export class AppUpdateController {
       this.state.status === 'available' &&
       this.preferences().automaticallyDownloadUpdates
     )
-      void this.download();
+      this.download();
   }
 
   check(): Promise<AppUpdateState> {

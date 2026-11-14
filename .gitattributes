@@ -11,3 +11,5 @@
 *.woff  binary
 *.woff2 binary
 *.webp  binary
+# Unified patches contain single-space context lines for blank source lines.
+apps/browser/patches/electron/*.patch whitespace=-blank-at-eol

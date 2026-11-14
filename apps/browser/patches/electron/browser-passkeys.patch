@@ -1,0 +1,100 @@
+diff --git a/docs/api/app.md b/docs/api/app.md
+index baebb95..131f522 100644
+--- a/docs/api/app.md
++++ b/docs/api/app.md
+@@ -1368,6 +1368,17 @@ This API must be called after the `ready` event is emitted.
+ [doh-providers]: https://source.chromium.org/chromium/chromium/src/+/main:net/dns/public/doh_provider_entry.cc;l=31?q=%22DohProviderEntry::GetList()%22&ss=chromium%2Fchromium%2Fsrc
+ [RFC8484 § 3]: https://datatracker.ietf.org/doc/html/rfc8484#section-3
+ 
++### `app.isBrowserPasskeySupported()` _macOS_
++
++Returns `boolean` - Whether Chromium's macOS browser passkey API is available
++to this application. Requires macOS 13.5 or later and Apple's browser public-key
++credential entitlement. Call after the `ready` event.
++
++This method does not enable the authenticator. When it returns `true`, enable
++platform passkeys with `app.configureWebAuthn({ platformPasskeys: true })`.
++Browser passkeys use the operating system's credential provider for arbitrary
++relying parties; the application's Associated Domains configuration is not used.
++
+ ### `app.configureWebAuthn(options)` _macOS_
+ 
+ <!--
+diff --git a/shell/browser/api/electron_api_app.cc b/shell/browser/api/electron_api_app.cc
+index 0ba712c..4b05b75 100644
+--- a/shell/browser/api/electron_api_app.cc
++++ b/shell/browser/api/electron_api_app.cc
+@@ -112,6 +112,7 @@
+ #include "base/no_destructor.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "content/browser/mac_helpers.h"
++#include "device/fido/mac/icloud_keychain.h"
+ #include "device/fido/strings/grit/fido_strings.h"
+ #include "shell/browser/electron_child_process_host_flags.h"
+ #include "shell/browser/ui/cocoa/electron_bundle_mover.h"
+@@ -2124,6 +2125,8 @@ gin::ObjectTemplateBuilder App::GetObjectTemplateBuilder(v8::Isolate* isolate) {
+       .SetMethod("isInApplicationsFolder", &App::IsInApplicationsFolder)
+       .SetMethod("setActivationPolicy", &App::SetActivationPolicy)
+       .SetMethod("configureWebAuthn", &App::ConfigureWebAuthn)
++      .SetMethod("isBrowserPasskeySupported",
++                 &device::fido::icloud_keychain::IsSupported)
+       .SetMethod("startAppShimServer", &App::StartAppShimServer)
+       .SetMethod("stopAppShimServer", &App::StopAppShimServer)
+ #endif
+diff --git a/shell/browser/webauthn/electron_authenticator_request_client_delegate.cc b/shell/browser/webauthn/electron_authenticator_request_client_delegate.cc
+index 4f92bbb..a02ee19 100644
+--- a/shell/browser/webauthn/electron_authenticator_request_client_delegate.cc
++++ b/shell/browser/webauthn/electron_authenticator_request_client_delegate.cc
+@@ -34,6 +34,8 @@
+ #include "third_party/blink/public/mojom/devtools/console_message.mojom.h"
+ 
+ #if BUILDFLAG(IS_MAC)
++#include "device/fido/mac/icloud_keychain.h"
++#include "shell/browser/native_window.h"
+ #include "shell/browser/webauthn/electron_authenticator_request_delegate.h"
+ #include "shell/browser/webauthn/electron_platform_passkeys_discovery.h"
+ #include "url/origin.h"
+@@ -511,6 +513,21 @@ ElectronAuthenticatorRequestClientDelegate::CreatePlatformDiscoveries() {
+ #if BUILDFLAG(IS_MAC)
+   if (ElectronWebAuthenticationDelegate::IsPlatformPasskeysEnabled()) {
+     auto* rfh = content::RenderFrameHost::FromID(render_frame_host_id_);
++    // Browser-entitled applications use Chromium's browser API path. It
++    // supplies Chromium's clientDataHash and supports arbitrary relying parties,
++    // without Associated Domains or rewriting the initiating origin.
++    if (device::fido::icloud_keychain::IsSupported()) {
++      auto* contents = rfh ? content::WebContents::FromRenderFrameHost(rfh)
++                           : nullptr;
++      auto* relay = contents ? NativeWindowRelay::FromWebContents(contents)
++                             : nullptr;
++      if (relay && relay->GetNativeWindow() &&
++          !relay->GetNativeWindow()->IsInAppShim()) {
++        discoveries.push_back(device::fido::icloud_keychain::NewDiscovery(
++            relay->GetNativeWindow()->GetNativeWindow()));
++      }
++      return discoveries;
++    }
+     if (rfh && IsSameOriginWithAncestors(rfh)) {
+       discoveries.push_back(
+           std::make_unique<ElectronPlatformPasskeysDiscovery>(rfh));
+diff --git a/shell/browser/webauthn/electron_authenticator_request_delegate.cc b/shell/browser/webauthn/electron_authenticator_request_delegate.cc
+index 1e704d5..315f1ac 100644
+--- a/shell/browser/webauthn/electron_authenticator_request_delegate.cc
++++ b/shell/browser/webauthn/electron_authenticator_request_delegate.cc
+@@ -13,6 +13,7 @@
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "device/fido/mac/credential_metadata.h"
++#include "device/fido/mac/icloud_keychain.h"
+ #include "shell/browser/electron_browser_context.h"
+ #include "shell/browser/webauthn/electron_platform_passkeys_authenticator.h"
+ #include "shell/common/electron_constants.h"
+@@ -102,7 +103,8 @@ void ElectronWebAuthenticationDelegate::
+   // isUserVerifyingPlatformAuthenticatorAvailable() reflects the passkey
+   // authenticator, not just Touch ID. Otherwise defer to the default (nullopt).
+   if (IsPlatformPasskeysEnabled() &&
+-      ElectronPlatformPasskeysAuthenticator::IsAvailable()) {
++      (device::fido::icloud_keychain::IsSupported() ||
++       ElectronPlatformPasskeysAuthenticator::IsAvailable())) {
+     std::move(callback).Run(true);
+     return;
+   }

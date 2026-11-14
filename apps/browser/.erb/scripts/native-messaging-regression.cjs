@@ -33,7 +33,7 @@ async function run(mode) {
   const sender = {
     ipc: new EventEmitter(),
     send(channel, message) {
-      if (message) received.push(message);
+      if (message && !channel.endsWith('-disconnect')) received.push(message);
     },
   };
   const context = vm.createContext({
@@ -46,7 +46,7 @@ async function run(mode) {
     import_node_fs2: {
       promises: { stat: async () => ({ isFile: () => true }) },
     },
-    import_node_child_process: { spawn: () => child },
+    import_node_child_process: { spawn: () => { queueMicrotask(() => child.emit('spawn')); return child; } },
   });
   vm.runInContext(source.slice(start, end), context);
   const host = new context.NativeMessagingHost(

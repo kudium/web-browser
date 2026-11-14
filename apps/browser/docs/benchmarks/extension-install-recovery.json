@@ -1,0 +1,276 @@
+{
+  "after": {
+    "native identity changed": {
+      "phase": "after",
+      "scenario": "native identity changed",
+      "runtime": {
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "node": "24.22.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "probeSha256": "48244af86de41462a795bf4cbc2dbe0b6ae2cf7d9ba57ab8e3ef34f8d857b70d",
+      "sourceSha256": "7658a93ef56a329cf80fd90c91dbdbadccc86ac923861bc796d3a2fa6bc7eb79",
+      "currentDependencySourceHashes": {
+        "src/main/extensionPackage.ts": "c0d64110af8f0c40145fe905d3343c31920551f0caada0ee707db97f6f673fa7",
+        "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e"
+      },
+      "reply": {
+        "result": {
+          "result": "install_error",
+          "message": "Extension could not be installed. Try again or review local extension settings."
+        }
+      },
+      "retry": {
+        "result": "success"
+      },
+      "reviews": [
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        },
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        }
+      ],
+      "nativeLoadOrder": [
+        "a"
+      ],
+      "finalLoaded": {
+        "a": true,
+        "b": false,
+        "store": false
+      },
+      "navigationListeners": 0,
+      "stagingDirectories": [],
+      "scope": "Actual native beginInstall IPC and installed engines. Local cached MV3 package with controlled review/perturbations. Counts first native loads and final state. Recovery cases perturb the native loader response or navigate after an actual load, and verify cleanup followed by retry. No remote store download, hung native-ack/crash interruption or cross-platform claim."
+    },
+    "navigation after native load": {
+      "phase": "after",
+      "scenario": "navigation after native load",
+      "runtime": {
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "node": "24.22.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "probeSha256": "48244af86de41462a795bf4cbc2dbe0b6ae2cf7d9ba57ab8e3ef34f8d857b70d",
+      "sourceSha256": "7658a93ef56a329cf80fd90c91dbdbadccc86ac923861bc796d3a2fa6bc7eb79",
+      "currentDependencySourceHashes": {
+        "src/main/extensionPackage.ts": "c0d64110af8f0c40145fe905d3343c31920551f0caada0ee707db97f6f673fa7",
+        "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e"
+      },
+      "reply": {
+        "result": {
+          "result": "install_error",
+          "message": "Extension could not be installed. Try again or review local extension settings."
+        }
+      },
+      "retry": {
+        "result": "success"
+      },
+      "reviews": [
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        },
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        }
+      ],
+      "nativeLoadOrder": [
+        "a",
+        "a"
+      ],
+      "finalLoaded": {
+        "a": true,
+        "b": false,
+        "store": false
+      },
+      "navigationListeners": 0,
+      "stagingDirectories": [],
+      "scope": "Actual native beginInstall IPC and installed engines. Local cached MV3 package with controlled review/perturbations. Counts first native loads and final state. Recovery cases perturb the native loader response or navigate after an actual load, and verify cleanup followed by retry. No remote store download, hung native-ack/crash interruption or cross-platform claim."
+    },
+    "native load failed": {
+      "phase": "after",
+      "scenario": "native load failed",
+      "runtime": {
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "node": "24.22.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "probeSha256": "48244af86de41462a795bf4cbc2dbe0b6ae2cf7d9ba57ab8e3ef34f8d857b70d",
+      "sourceSha256": "7658a93ef56a329cf80fd90c91dbdbadccc86ac923861bc796d3a2fa6bc7eb79",
+      "currentDependencySourceHashes": {
+        "src/main/extensionPackage.ts": "c0d64110af8f0c40145fe905d3343c31920551f0caada0ee707db97f6f673fa7",
+        "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e"
+      },
+      "reply": {
+        "result": {
+          "result": "install_error",
+          "message": "Extension could not be installed. Try again or review local extension settings."
+        }
+      },
+      "retry": {
+        "result": "success"
+      },
+      "reviews": [
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        },
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        }
+      ],
+      "nativeLoadOrder": [
+        "a"
+      ],
+      "finalLoaded": {
+        "a": true,
+        "b": false,
+        "store": false
+      },
+      "navigationListeners": 0,
+      "stagingDirectories": [],
+      "scope": "Actual native beginInstall IPC and installed engines. Local cached MV3 package with controlled review/perturbations. Counts first native loads and final state. Recovery cases perturb the native loader response or navigate after an actual load, and verify cleanup followed by retry. No remote store download, hung native-ack/crash interruption or cross-platform claim."
+    },
+    "all native failure": {
+      "phase": "after",
+      "scenario": "all native failure",
+      "runtime": {
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "node": "24.22.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "probeSha256": "48244af86de41462a795bf4cbc2dbe0b6ae2cf7d9ba57ab8e3ef34f8d857b70d",
+      "sourceSha256": "7658a93ef56a329cf80fd90c91dbdbadccc86ac923861bc796d3a2fa6bc7eb79",
+      "currentDependencySourceHashes": {
+        "src/main/extensionPackage.ts": "c0d64110af8f0c40145fe905d3343c31920551f0caada0ee707db97f6f673fa7",
+        "src/main/ipcRequestBinding.ts": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e"
+      },
+      "reply": {
+        "result": {
+          "result": "install_error",
+          "message": "Extension could not be installed. Try again or review local extension settings."
+        }
+      },
+      "retry": {
+        "result": "success"
+      },
+      "reviews": [
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        },
+        {
+          "message": "Install Permissionless owned fixture?",
+          "scopes": [
+            {
+              "label": "All groups, including future groups",
+              "response": 2
+            },
+            {
+              "label": "Approved Target A",
+              "response": 1
+            }
+          ],
+          "permissions": []
+        }
+      ],
+      "nativeLoadOrder": [
+        "a",
+        "a",
+        "b",
+        "store"
+      ],
+      "finalLoaded": {
+        "a": true,
+        "b": true,
+        "store": true
+      },
+      "navigationListeners": 0,
+      "stagingDirectories": [],
+      "scope": "Actual native beginInstall IPC and installed engines. Local cached MV3 package with controlled review/perturbations. Counts first native loads and final state. Recovery cases perturb the native loader response or navigate after an actual load, and verify cleanup followed by retry. No remote store download, hung native-ack/crash interruption or cross-platform claim."
+    }
+  }
+}

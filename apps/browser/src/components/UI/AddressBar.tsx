@@ -48,6 +48,24 @@ export function AddressBar({
   mediaControl?: ReactNode;
 }) {
   const extensionsId = useId();
+  const hasHookContent = (hook: {
+    before: string;
+    after: string;
+    css: string;
+    actions?: unknown[];
+  }) =>
+    !!hook.actions?.length ||
+    [hook.before, hook.after, hook.css].some((code) => !!code.trim());
+  const hasEnabledHooks =
+    !!developer?.globalHookCount ||
+    !!(
+      developer?.config.enabled &&
+      ((developer.config.defaultEnabled !== false &&
+        hasHookContent(developer.config)) ||
+        developer.config.hooks?.some(
+          (hook) => hook.enabled && hasHookContent(hook)
+        ))
+    );
   return (
     <div
       className="address-bar form-control-surface"
@@ -93,17 +111,17 @@ export function AddressBar({
             <ChromeIconButton
               icon={SlidersHorizontal}
               label={
-                developer?.config.enabled
+                hasEnabledHooks
                   ? `Site settings — developer hooks ${developer.status}`
                   : 'Site settings'
               }
               onClick={onSiteSettings}
               disabled={toolsDisabled}
             />
-            {developer?.config.enabled && (
+            {hasEnabledHooks && (
               <span
                 className="address-developer-badge"
-                data-status={developer.status}
+                data-status={developer?.status}
                 aria-hidden="true"
               />
             )}

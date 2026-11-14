@@ -50,6 +50,7 @@ function GroupEditorContent({
     added: [],
     removed: [],
   });
+  const [pendingTabAddress, setPendingTabAddress] = useState('');
   const referenceId = useId();
   const nameId = useId();
   const [showPersonalData, setShowPersonalData] = useState(false);
@@ -177,6 +178,17 @@ function GroupEditorContent({
             });
             if (!approved) return;
           }
+          const pendingUrl = pendingTabAddress.trim()
+            ? websiteAddress(pendingTabAddress)
+            : undefined;
+          const addedTabs = [
+            ...tabChanges.added,
+            ...(pendingUrl ? [{
+              id: crypto.randomUUID(),
+              name: new URL(pendingUrl).hostname,
+              url: pendingUrl,
+            }] : []),
+          ];
           let source =
             creating && droppedProject
               ? (
@@ -187,7 +199,7 @@ function GroupEditorContent({
                   })
                 ).tab
               : item;
-          const additions = tabChanges.added.map((tab) => ({
+          const additions = addedTabs.map((tab) => ({
             ...source,
             ...tab,
             name: tab.name.trim() || new URL(websiteAddress(tab.url)).hostname,
@@ -249,7 +261,7 @@ function GroupEditorContent({
                 updated.find(
                   (tab) =>
                     tab.id ===
-                    (creating && id === tabChanges.added[0]?.id
+                    (creating && id === addedTabs[0]?.id
                       ? source.id
                       : id)
                 )
@@ -267,6 +279,7 @@ function GroupEditorContent({
               .map((tab, position) => ({ ...tab, position: position + 1 }));
           }
           AppManager.set(updated);
+          setPendingTabAddress('');
           if (creating) {
             const created = updated.find((tab) => tab.id === source.id)!;
             if (projectFolder && projectFolder !== droppedProject?.folder) {
@@ -408,6 +421,8 @@ function GroupEditorContent({
                   (tab) => !tab.archived
                 )
           }
+          pendingAddress={pendingTabAddress}
+          onPendingAddressChange={setPendingTabAddress}
           changes={tabChanges}
           onChange={setTabChanges}
         />

@@ -8,10 +8,13 @@ const { patchSource } = require('./patch-native-boundaries.cjs');
 const entry = require.resolve('electron-chrome-extensions');
 const source = fs.readFileSync(process.argv.includes('--esm') ? entry.replace('dist/cjs/index.js', 'dist/esm/index.mjs') : entry, 'utf8');
 assert.equal(patchSource(source), source);
+const patchFailures = require('./patch-native-host-errors.cjs').patchSource;
+assert.equal(patchFailures(source), source, 'Native failure patch must be idempotent');
+assert.throws(() => patchFailures('unreviewed dependency layout'), /dependency review/);
 const hostStart = source.indexOf('var NativeMessagingHost = class');
 const runtimeEnd = source.indexOf('// src/browser/api/cookies.ts', hostStart);
 let cases = 0;
-function fixture({ stalled = false } = {}) {
+function fixture({ stalled = false, timeout = false } = {}) {
   let release;
   let spawns = 0;
   let kills = 0;
@@ -31,14 +34,15 @@ function fixture({ stalled = false } = {}) {
     stdin: input, stdout: new EventEmitter(), stderr: new EventEmitter(), kill() { kills++; },
   });
   const context = vm.createContext({
-    Buffer, setTimeout, clearTimeout, kudiumbrowserNativeCrypto: { randomUUID }, d7() {}, getExtensionManifest: () => extension.manifest,
+    Buffer, setTimeout: timeout ? callback => { queueMicrotask(callback); return {unref() {}}; } : setTimeout,
+    clearTimeout: timeout ? () => {} : clearTimeout, kudiumbrowserNativeCrypto: { randomUUID }, d7() {}, getExtensionManifest: () => extension.manifest,
     EventEmitter3: EventEmitter, fs2: { stat: async () => ({ isFile: () => true }) },
-    spawn2() { spawns++; return child; },
+    spawn2() { spawns++; queueMicrotask(() => child.emit('spawn')); return child; },
     import_node_events3: { EventEmitter }, import_node_crypto: { randomUUID },
     readNativeMessagingHostConfig: () => stalled ? new Promise(resolve => { release = resolve; }) :
       Promise.resolve({ path: '/host', allowed_origins: ['chrome-extension://test/'] }),
     import_node_fs2: { promises: { stat: async () => ({ isFile: () => true }) } },
-    import_node_child_process: { spawn() { spawns++; return child; } },
+    import_node_child_process: { spawn() { spawns++; queueMicrotask(() => child.emit('spawn')); return child; } },
   });
   vm.runInContext(source.slice(hostStart, runtimeEnd), context);
   const runtime = new context.RuntimeAPI({ session: { extensions, serviceWorkers: workers }, router: { apiHandler: () => () => {} } });
@@ -77,7 +81,7 @@ async function test(name, operation) { await operation(); cases++; console.log('
     await test(signal + ' cancels pending launch and clears listeners', async () => {
       const f = fixture({ stalled: true });
       const pending = f.runtime.connectNative(f.event, 'owned', 'host');
-      const rejected = assert.rejects(pending, /unavailable/);
+      const rejected = assert.rejects(pending, /disconnected/);
       if (signal === 'extension-unloaded') f.extensions.emit(signal, {}, f.extension);
       else f.sender.emit(signal, {}, { isSameDocument: false });
       await rejected;
@@ -93,6 +97,14 @@ async function test(name, operation) { await operation(); cases++; console.log('
     f.extensions.emit('extension-unloaded', {}, f.extension);
     assert.equal(f.counts().kills, 1); assert.equal(f.runtime.hostMap.size, 0);
   });
+  await test('launch deadline reports timeout and clears authority', async () => {
+    const f = fixture({stalled: true, timeout: true});
+    await assert.rejects(f.runtime.connectNative(f.event, 'owned', 'host'), /timed out/);
+    f.release(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(f.counts().spawns, 0);
+    assert.equal(f.runtime.hostMap.size, 0);
+    assert.equal(f.sender.ipc.listenerCount('crx-native-msg-owned'), 0);
+  });
   await test('one-shot reply terminates process and connection', async () => {
     const f = fixture(); const response = f.runtime.sendNativeMessage(f.event, 'host', { text: 'hello' });
     await new Promise(resolve => setImmediate(resolve));
@@ -104,9 +116,9 @@ async function test(name, operation) { await operation(); cases++; console.log('
   });
   await test('one-shot disconnect rejects pending reply', async () => {
     const f = fixture(); const response = f.runtime.sendNativeMessage(f.event, 'host', {});
-    const rejected = assert.rejects(response, /disconnected/);
+    const rejected = assert.rejects(response, /exited with an error/);
     await new Promise(resolve => setImmediate(resolve));
-    f.child.emit('exit', 1); await rejected;
+    f.child.emit('close', 1); await rejected;
     assert.equal(f.runtime.hostMap.size, 0);
   });
   await test('stopped worker cannot continue native transport', async () => {

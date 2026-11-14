@@ -50,7 +50,8 @@ export class AICheckpointStore {
   // eslint-disable-next-line no-useless-constructor, no-empty-function
   constructor(
     private filename: string,
-    private storage: SynchronousSecureStorage
+    private storage: SynchronousSecureStorage,
+    private memoryOnly = false
   ) {
     // Dependencies remain synchronous after OS-key initialization.
   }
@@ -63,12 +64,20 @@ export class AICheckpointStore {
     );
   }
 
+  private checkpoint?: AICheckpoint;
+
   clear() {
+    this.checkpoint = undefined;
+    if (this.memoryOnly) return;
     if (this.storage.isFileAvailable?.(this.filename) === false) return;
     fs.rmSync(this.filename, { force: true });
   }
 
   save(checkpoint?: AICheckpoint) {
+    if (this.memoryOnly) {
+      this.checkpoint = checkpoint;
+      return;
+    }
     if (!checkpoint || !this.available()) {
       this.clear();
       return;
@@ -90,6 +99,7 @@ export class AICheckpointStore {
   }
 
   load(): AICheckpoint | undefined {
+    if (this.memoryOnly) return this.checkpoint;
     try {
       if (!this.available()) return undefined;
       if (fs.statSync(this.filename).size > 16 * 1024 * 1024)

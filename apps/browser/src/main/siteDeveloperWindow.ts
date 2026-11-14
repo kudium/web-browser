@@ -82,6 +82,7 @@ export function createHookEditorWindow(
 ) {
   const editor = new BrowserWindow({
     title,
+    ...(themeOwner && !themeOwner.isDestroyed() && { parent: themeOwner }),
     ...editorSize(),
     minWidth: 400,
     minHeight: 480,
@@ -237,6 +238,7 @@ export function registerSiteDeveloperWindows(
         !isBrowserCommand(request) ||
         ![
           'set-site-developer',
+          'run-site-hook',
           'ask-hook-ai',
           'clear-site-developer-logs',
           'reload',
@@ -252,6 +254,7 @@ export function registerSiteDeveloperWindows(
         url: origin,
         action: request.action,
         ...(request.action === 'ask-hook-ai' ? { prompt: request.prompt } : {}),
+        ...(request.action === 'run-site-hook' ? { hookId: request.hookId } : {}),
         ...(request.grantId ? { grantId: request.grantId } : {}),
         ...(request.action === 'set-site-developer'
           ? { developer: request.developer, run: request.run }

@@ -42,8 +42,8 @@
     "scope": "Actual native main/child frame IPC and filesystem catalog policy mutations. HTTPS origin served by local session protocol. Extension engine/web-store initialization and native review are fixture adapters; synthetic extension is not installed. Subframe-enabled fixture preload solely exposes IPC attacks. No live store install, dependency router, signed packaging or physical input claim."
   },
   "after": {
-    "sourceSha256": "48b3e6d68c46e814a19d413871bf698b79b19b6c101fee19baf39b37439ddfbb",
-    "probeSha256": "f4376e3301bb64a941f1d3ad1911edf2cba7d27e0f74dcaabbea8695fb6fb837",
+    "sourceSha256": "7658a93ef56a329cf80fd90c91dbdbadccc86ac923861bc796d3a2fa6bc7eb79",
+    "probeSha256": "bbfddd6d6c80c0f4c28e0eb00972f945db63f421650f3bf2d7c258356293f990",
     "bindingSha256": "fe7528f92ab41b08e7ca1b634eade878ac692abc6ed473e8517b5a3b5a50e72e",
     "results": [
       {

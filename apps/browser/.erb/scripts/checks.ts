@@ -57,6 +57,9 @@ if (check === 'storage-migration') {
   const jestArgs = args.filter((arg) => arg !== '--desktop');
   run(process.execPath, [path.join(__dirname, 'patch-native-messaging.cjs')]);
   run(process.execPath, [
+    path.join(__dirname, 'extension-webextension-alias-regression.cjs'),
+  ]);
+  run(process.execPath, [
     path.join(__dirname, 'native-messaging-regression.cjs'),
   ]);
   run(process.execPath, [
@@ -116,6 +119,14 @@ if (check === 'storage-migration') {
     '.erb/scripts/ai-private-recovery-smoke.cjs',
     '--control',
   ]);
+  run(require('electron'), [
+    '.erb/scripts/extension-worker-smoke.cjs',
+    '--before',
+  ]);
+  run(require('electron'), ['.erb/scripts/extension-worker-smoke.cjs']);
+  run(require('electron'), ['.erb/scripts/extension-runtime-smoke.cjs']);
+  if (process.platform !== 'win32')
+    run(require('electron'), ['.erb/scripts/extension-native-host-smoke.cjs']);
   run(require('electron'), ['.erb/scripts/browser-identity-smoke.cjs']);
   if (process.platform === 'darwin')
     run(process.execPath, [path.join(__dirname, 'import-session-smoke.cjs')]);
@@ -170,6 +181,7 @@ if (check === 'storage-migration') {
   ]);
   [
     'selected',
+    'native menu',
     'all',
     'decline',
     'actual permissions',
@@ -181,6 +193,10 @@ if (check === 'storage-migration') {
     'queued target restored',
     'package changed',
     'file added',
+    'native identity changed',
+    'navigation after native load',
+    'native load failed',
+    'all native failure',
   ].forEach((scenario) =>
     run(require('electron'), [
       '.erb/scripts/extension-install-owned-smoke.cjs',

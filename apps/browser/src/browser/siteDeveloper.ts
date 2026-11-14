@@ -48,6 +48,7 @@ export interface SiteDeveloperConfig {
   css: string;
 }
 export interface SiteDeveloperLog {
+  category?: 'execution' | 'output';
   time: number;
   level: 'info' | 'error';
   hookId?: string;
@@ -62,6 +63,7 @@ export interface HookRevision {
   workingHooks?: string[];
 }
 export interface SiteDeveloperState {
+  hookStatuses?: Record<string, SiteDeveloperState['status']>;
   globalHookCount?: number;
   config: SiteDeveloperConfig;
   status: 'waiting' | 'running' | 'success' | 'error';
@@ -162,7 +164,7 @@ export interface SiteDeveloperPageSummary {
   name: string;
   url: string;
   origin?: string;
-  hooks?: Array<{ id: string; name: string; path: string; enabled: boolean }>;
+  hooks?: Array<{ id: string; name: string; path: string; enabled: boolean; status?: SiteDeveloperState['status'] }>;
   hasHooks: boolean;
   enabled: boolean;
   status: SiteDeveloperState['status'];

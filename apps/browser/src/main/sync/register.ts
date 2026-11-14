@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { setHookPublisher, setHookAccountStatus } from '../hookMarketplace';
@@ -88,6 +88,7 @@ export function registerAccountSync(
         throw new Error('Invalid sync request');
       const instance = get();
       let operationMessage: string | undefined;
+      if (action === 'status' && !main(owner)) await instance.autoUnlock();
       if (action === 'sync-notes' || action === 'restore-notes') {
         if (
           action === 'sync-notes' &&
@@ -177,6 +178,20 @@ export function registerAccountSync(
         await instance.connect(input.authMode);
       } else if (action === 'cancel') instance.cancel();
       else if (action === 'enable') await instance.enable(input);
+      else if (action === 'unlock') await instance.recoverAccountKey();
+      else if (action === 'reset-sync') {
+        const revision = instance.connectionRevision();
+        const answer = await dialog.showMessageBox(owner, {
+          type: 'warning', buttons: ['Cancel', 'Reset cloud sync'], defaultId: 0, cancelId: 0, noLink: true,
+          message: 'Reset cloud backups only?',
+          detail: 'This permanently deletes the cloud backups for this account and prepares cloud sync for a fresh backup. Local tabs, groups, notes, passwords and browsing data will not be changed or deleted. Your current local data can be uploaded when you enable sync again. Other devices must reconnect. Backups encrypted with a lost key cannot be recovered.',
+        });
+        if (answer.response !== 1) return instance.status();
+        if (owner.isDestroyed() || !trusted(owner) || client !== instance || revision !== instance.connectionRevision()) throw new Error('Your account changed. Try resetting again.');
+        passwordScheduler.reset();
+        updateBrowserPreferences({ cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false } });
+        await instance.resetSync(true);
+      }
       else if (action === 'disconnect') {
         passwordScheduler.reset();
         updateBrowserPreferences({

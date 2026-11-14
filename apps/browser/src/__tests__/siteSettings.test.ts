@@ -142,3 +142,21 @@ it('ignores malformed grants instead of treating them as permissions', () => {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+it('blocks malformed site hook code and preserves the saved settings', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-site-syntax-'));
+  (app.getPath as jest.Mock).mockReturnValue(directory);
+  updateSiteSettings('syntax-profile', 'https://example.com', { developer: { enabled: true, before: '', after: 'log("valid")', css: '' } });
+  expect(() => updateSiteSettings('syntax-profile', 'https://example.com', { developer: { enabled: true, before: '', after: 'const broken = ;', css: '' } })).toThrow('After load, line 1');
+  expect(getSiteSettings('syntax-profile', 'https://example.com').developer?.after).toBe('log("valid")');
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+it('keeps private site decisions in memory without creating a settings file', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-private-settings-'));
+  (app.getPath as jest.Mock).mockReturnValue(directory);
+  updateSiteSettings('private:fixture:profile', 'https://private.example', { permissions: { geolocation: 'allow' }, muted: true });
+  expect(getSiteSettings('private:fixture:profile', 'https://private.example').permissions.geolocation).toBe('allow');
+  expect(fs.existsSync(path.join(directory, 'site-settings.json'))).toBe(false);
+  fs.rmdirSync(directory);
+});

@@ -1,3 +1,4 @@
+import { HookSourceValidationError } from "../../../packages/hooks/source-validation";
 import { hookRoutes } from './hook-routes';
 import { releasePublishing, type PublishingConfig } from './release-publishing';
 import { registerReleases } from './releases';
@@ -20,22 +21,30 @@ import { whatsNewPage } from './pages';
 import { privacyPage } from './privacy';
 import { managedSync, managedKeyRecord } from './managed-sync';
 export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey, hookAdminIds }: { hookAdminIds?: string[]; syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
-  const app = new Hono<{ Variables: { account: string } }>();
+  const app = new Hono<{ Variables: { account: string; styleNonce: string } }>();
   const store = syncStore(db);
   const managed = syncMasterKey ? managedSync(store, syncMasterKey) : undefined;
   const authenticate = auth ? authenticateSession(auth) : testAuthenticate;
-  app.use('*', (c, next) => secureHeaders({
+  app.use('*', (c, next) => {
+    const nonce = crypto.randomUUID().replaceAll('-', '');
+    c.set('styleNonce', nonce);
+    return secureHeaders({
     xFrameOptions: c.req.path === '/' ? false : 'SAMEORIGIN',
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+      imgSrc: ["'self'", "https://www.google.com", "https://t0.gstatic.com", "https://t1.gstatic.com", "https://t2.gstatic.com", "https://t3.gstatic.com"],
+      styleSrc: ["'self'", 'https://fonts.googleapis.com', `'nonce-${nonce}'`],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       frameAncestors: c.req.path === '/' ? ["'self'", 'file:', 'http://localhost:1212'] : ["'none'"],
       baseUri: ["'none'"], formAction: ["'self'"],
     },
-  })(c, next));
+  })(c, next);
+  });
   app.onError((error, c) => {
-    if (error instanceof HTTPException) return c.json({ error: error.message }, error.status);
+    if (error instanceof HTTPException) {
+      if (error.cause instanceof HookSourceValidationError) return c.json({ error: error.message, diagnostics: error.cause.diagnostics }, error.status);
+      return c.json({ error: error.message }, error.status);
+    }
     // Deliberately avoid logging credentials, encrypted payloads or database query parameters.
     console.error('Service request failed');
     return c.json({ error: 'internal_error' }, 500);
@@ -87,6 +96,8 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/assets/download.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/download.js', import.meta.url)).text()); });
   app.get('/assets/whats-new-fab.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/whats-new-fab.js', import.meta.url)).text()); });
   app.get('/assets/showcase.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/showcase.js', import.meta.url)).text()); });
+  app.get('/assets/radix-themes.css', async c => { c.header('Cache-Control', 'public, max-age=300'); c.header('Content-Type', 'text/css; charset=utf-8'); return c.body(await Bun.file(new URL('../node_modules/@radix-ui/themes/styles.css', import.meta.url)).text()); });
+  app.get('/assets/ui.css', async c => { c.header('Cache-Control', 'public, max-age=300'); c.header('Content-Type', 'text/css; charset=utf-8'); return c.body(await Bun.file(new URL('../public/ui.css', import.meta.url)).text()); });
   app.get('/assets/site.css', async c => { c.header('Cache-Control', 'public, max-age=300'); c.header('Content-Type', 'text/css; charset=utf-8'); return c.body(await Bun.file(new URL('../public/site.css', import.meta.url)).text()); });
   app.use('/api/auth/*', bodyLimit({ maxSize: 64 * 1024, onError: c => c.json({ error: 'body_too_large' }, 413) }));
   app.use('/api/auth/*', async (c, next) => {

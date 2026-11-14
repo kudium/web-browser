@@ -491,15 +491,17 @@ it('keeps all hooks visible and preserves drafts while switching, adding and rem
   expect(screen.getByRole('textbox', { name: 'After load code' })).toHaveValue(
     'research draft'
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Hook settings' }));
-  fireEvent.change(screen.getByLabelText('Name'), {
+  expect(screen.queryByRole('button', { name: 'Hook settings' })).toBeNull();
+  expect(screen.queryByRole('switch', { name: 'Enable selected hook' })).toBeNull();
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Options for Research updates' }), { key: 'ArrowDown' });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+  fireEvent.change(screen.getByLabelText('Hook name'), {
     target: { value: 'Renamed research' },
   });
-  expect(
-    screen.getByRole('button', { name: /^Renamed research/ })
-  ).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete hook' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+  expect(screen.getByRole('button', { name: /^Renamed research/ })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Options for Renamed research' }), { key: 'ArrowDown' });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   expect(
     screen.queryByRole('button', { name: /^Renamed research/ })
@@ -556,7 +558,8 @@ it('lets users delete a custom hook directly and save the removal', () => {
     screen.queryByRole('button', { name: 'Delete hook' })
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /^Dark mode/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Delete hook' }));
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Options for Dark mode' }), { key: 'ArrowDown' });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   expect(
     screen.queryByRole('button', { name: /^Dark mode/ })
@@ -732,4 +735,39 @@ it('opens a new hook draft from the page tree without saving until requested', (
   );
   expect(screen.getAllByText('New hook').length).toBeGreaterThan(0);
   expect(send).not.toHaveBeenCalled();
+});
+
+it('shows individual hook status and reruns only the requested saved hook', () => {
+  const send = jest.fn();
+  const config = {
+    ...emptyDeveloperConfig, enabled: true, after: 'log("default")',
+    hooks: [{ id: 'watch', name: 'Watcher', path: '/*', enabled: true, before: '', after: 'log("watch")', css: '' }],
+  };
+  const developer = { config, status: 'error' as const, logs: [], hookStatuses: { '': 'success' as const, watch: 'error' as const } };
+  const view = render(<Theme><SiteDeveloperPanel origin="https://example.com/page" developer={developer} disabled={false} send={send} /></Theme>);
+  expect(screen.getByRole('status', { name: 'Default hook: Success' })).toBeTruthy();
+  expect(screen.getByRole('status', { name: 'Watcher: Failed' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Run Watcher' }));
+  expect(send).toHaveBeenLastCalledWith('run-site-hook', { hookId: 'watch', url: 'https://example.com' });
+  expect(screen.getByRole('status', { name: 'Watcher: Running' })).toBeTruthy();
+  view.rerender(<Theme><SiteDeveloperPanel origin="https://example.com/page" developer={{ ...developer, hookStatuses: { '': 'success', watch: 'running' } }} disabled={false} send={send} /></Theme>);
+  expect(screen.getByRole('button', { name: 'Run Watcher' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Run Default hook' }));
+  expect(send).toHaveBeenLastCalledWith('run-site-hook', { hookId: '', url: 'https://example.com' });
+});
+
+it('shows hook output and errors by default, with execution details available on demand', () => {
+  render(<Theme><SiteDeveloperPanel disabled={false} send={jest.fn()} developer={{ config: emptyDeveloperConfig, status: 'success', logs: [
+    { time: 0, level: 'info', category: 'execution', message: 'Page load started' },
+    { time: 1, level: 'info', category: 'output', message: 'hello world' },
+    { time: 2, level: 'error', category: 'execution', message: 'Failed callback' },
+    { time: 3, level: 'info', category: 'execution', message: 'Hooks completed' },
+  ] }} /></Theme>);
+  expect(screen.queryByText('Page load started')).toBeNull();
+  expect(screen.queryByText('Hooks completed')).toBeNull();
+  expect(screen.getByText('hello world')).toBeTruthy();
+  expect(screen.getByText('Failed callback')).toBeTruthy();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Show execution details' }));
+  expect(screen.getByText('Page load started')).toBeTruthy();
+  expect(screen.getByText('Hooks completed')).toBeTruthy();
 });

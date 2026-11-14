@@ -270,3 +270,15 @@ it('lets related values have their own autofill mappings and a shared item name'
     )
   );
 });
+
+it('allows Preferences to browse website data saved in a tab group', async () => {
+  request.mockImplementation(async (input) => input.action === 'status'
+    ? { ...status, items: input.scope === 'group:studio' ? [{ ...saved, title: 'Website fields', fieldCount: 1 }] : [] }
+    : []);
+  render(<Theme><PasswordManager tabs={[{ id: 'tab', sessionId: 'studio', sessionName: 'Studio', name: 'Example', url: 'https://example.com' } as any]} /></Theme>);
+  await screen.findByText('No saved items yet');
+  fireEvent.click(screen.getByRole('button', { name: 'Personal Data group' }));
+  fireEvent.click(await screen.findByText('Studio'));
+  await screen.findByRole('button', { name: 'Website fields' });
+  expect(request).toHaveBeenCalledWith({ action: 'status', scope: 'group:studio' });
+});

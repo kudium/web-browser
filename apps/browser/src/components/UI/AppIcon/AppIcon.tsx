@@ -10,11 +10,14 @@ export function AppIcon({ icon, title }: Props) {
       setLoadedIcon(undefined);
       return undefined;
     }
+    setLoadedIcon(undefined);
     const image = new Image();
     image.onload = () => setLoadedIcon(icon);
+    image.onerror = () => setLoadedIcon(undefined);
     image.src = icon;
     return () => {
       image.onload = null;
+      image.onerror = null;
     };
   }, [icon]);
   const symbol = imageSymbol(icon);
@@ -27,7 +30,7 @@ export function AppIcon({ icon, title }: Props) {
     );
   return (
     <span className="app-icon">
-      {icon && loadedIcon ? (
+      {icon && loadedIcon === icon ? (
         <img src={loadedIcon} alt={title || ''} />
       ) : (
         <Globe2 aria-hidden="true" size={22} />

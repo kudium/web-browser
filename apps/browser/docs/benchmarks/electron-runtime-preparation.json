@@ -1,0 +1,42 @@
+{
+  "inputs": {
+    "electronVersion": "45.0.0",
+    "electronCommit": "54f961b44b83e4ece81065ab60a182fd0c38c01e",
+    "electronRepository": "https://github.com/electron/electron.git",
+    "chromiumVersion": "156.0.8078.48",
+    "chromiumCommit": "d0c02bfad08ec92a6ffcf989e53cd995e6381a4c",
+    "nodeVersion": "v24.22.0",
+    "nodeModuleVersion": 150,
+    "depotToolsRepository": "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
+    "depotToolsCommit": "ec77017fb3e090ff02bffb9c6980ebcdd3006ddc",
+    "minimumFreeGiB": 100
+  },
+  "patchSha256": "deaa6ce24e736c2712cd7bf959cb717b3c0e5bccb4375d77e8a4a6158884408f",
+  "source": "/path/to/kudium-browser/release-artifacts/electron-runtime/45.0.0/src/electron",
+  "depotToolsCommit": "ec77017fb3e090ff02bffb9c6980ebcdd3006ddc",
+  "toolchain": {
+    "node": "22.23.1",
+    "python": "Python 3.14.5",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "developerDirectory": "/Applications/Xcode.app/Contents/Developer",
+    "hostArch": "arm64",
+    "memoryBytes": 68719476736
+  },
+  "preparedAt": "2026-11-14T15:53:27.292Z",
+  "availableBytes": 12271534080,
+  "dependencySyncReady": false,
+  "compiled": false,
+  "verification": [
+    "full pinned Electron source checkout",
+    "patch applies to clean pinned worktree",
+    "patch application is idempotent",
+    "source changes exactly match reviewed patch",
+    "arm64/x64 GN configurations prepared",
+    "stock runtime correctly rejected by API probe",
+    "low-disk gate prevents dependency sync",
+    "5 preparation tests and 4 existing local-release tests passed",
+    "12 browser passkey contract tests passed"
+  ],
+  "scope": "Source/runtime preparation only. Chromium dependencies have not been synced, no custom binary compiled, no native passkey success verified, no release published.",
+  "preparationScriptSha256": "936af744d5be85aeea9a68669667f748172551d1e223922986351fbba82a2369"
+}

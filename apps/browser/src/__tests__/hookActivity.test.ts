@@ -3,6 +3,9 @@ import { ipcMain } from 'electron';
 import {
   registerDeveloperPage,
   developerPreloadSource,
+  developerState,
+  rerunDeveloperHook,
+  resetDeveloperState,
 } from '../main/siteDeveloper';
 import { browserActivity } from '../main/activity';
 import { saveNoteWithActivity } from '../main/noteActivity';
@@ -267,4 +270,70 @@ it('runs a preview draft through the normal runtime without writing notes or act
     })
   ).toThrow('Unauthorized');
   expect(saveNoteWithActivity).not.toHaveBeenCalled();
+});
+
+it('tracks each hook independently, preserves failure, and resets on a fresh run', () => {
+  const receive = (ipcMain.on as jest.Mock).mock.calls.find(([name]) => name === 'site-developer-event')![1];
+  receive(event, { token, kind: 'running', value: 'Starting', hookId: 'prices' });
+  expect(developerState(event.sender, 'https://example.com').hookStatuses?.prices).toBe('running');
+  receive(event, { token, kind: 'error', value: 'Failed', hookId: 'prices' });
+  receive(event, { token, kind: 'hook-success', value: '' });
+  receive(event, { token, kind: 'hook-success', value: 'prices' });
+  expect(developerState(event.sender, 'https://example.com').hookStatuses).toEqual({ prices: 'error', '': 'success' });
+  const configure = (ipcMain.on as jest.Mock).mock.calls.find(([name]) => name === 'site-developer-config')![1];
+  configure(event);
+  expect(developerState(event.sender, 'https://example.com').hookStatuses).toEqual({});
+});
+
+it('reruns one loaded hook without reloading and rejects disabled or duplicate runs', () => {
+  rerunDeveloperHook(event.sender, 'https://example.com', 'prices');
+  expect(event.sender.send).toHaveBeenLastCalledWith('site-developer-rerun', 'prices');
+  expect(developerState(event.sender, 'https://example.com').hookStatuses?.prices).toBe('running');
+  const calls = event.sender.send.mock.calls.length;
+  rerunDeveloperHook(event.sender, 'https://example.com', 'prices');
+  rerunDeveloperHook(event.sender, 'https://foreign.com', 'prices');
+  rerunDeveloperHook(event.sender, 'https://example.com', 'missing');
+  expect(event.sender.send).toHaveBeenCalledTimes(calls);
+});
+
+it('reruns only the selected hook and disposes its previous listeners and CSS', async () => {
+  const { runInNewContext } = jest.requireActual('node:vm');
+  const listeners: Record<string, (...args: any[]) => void> = {};
+  const document = { addEventListener: jest.fn(), readyState: 'complete', runs: [] as string[], cleaned: [] as string[] };
+  const css = { insertCSS: jest.fn(async () => 'css-key'), removeInsertedCSS: jest.fn(async () => {}) };
+  const config = {
+    token: 'runtime-token', before: '', after: '', css: '',
+    hooks: ['one', 'two'].map((id) => ({ id, name: id, before: '', css: 'body {}', after: `document.runs.push('${id}'); onCleanup(() => document.cleaned.push('${id}'));` })),
+  };
+  const window: any = {};
+  window.top = window;
+  runInNewContext(developerPreloadSource, {
+    require: () => ({ webFrame: css, ipcRenderer: {
+      on: (name: string, callback: (...args: any[]) => void) => { listeners[name] = callback; },
+      sendSync: () => config, send: jest.fn(), invoke: jest.fn(async () => false),
+    } }),
+    window, document, location: { href: 'https://example.com' },
+    addEventListener: jest.fn(), removeEventListener: jest.fn(),
+    AbortController, setTimeout, clearTimeout, setInterval, clearInterval,
+  });
+  const settle = async () => { for (let i = 0; i < 8; i += 1) await new Promise<void>((resolve) => setImmediate(resolve)); };
+  await settle();
+  expect(document.runs).toEqual(['one', 'two']);
+  listeners['site-developer-rerun']({}, 'one');
+  await settle();
+  expect(document.runs).toEqual(['one', 'two', 'one']);
+  expect(document.cleaned).toEqual(['one']);
+  expect(css.removeInsertedCSS).toHaveBeenCalledTimes(1);
+  listeners['site-developer-stop']();
+  listeners['site-developer-start-hook']({}, 'one');
+  await settle();
+  expect(document.runs).toEqual(['one', 'two', 'one', 'one']);
+  listeners['site-developer-stop']();
+});
+
+it('starts only the selected hook when its previous runtime has stopped', () => {
+  resetDeveloperState(event.sender, 'https://example.com');
+  rerunDeveloperHook(event.sender, 'https://example.com', 'prices');
+  expect(event.sender.send).toHaveBeenLastCalledWith('site-developer-start-hook', 'prices');
+  expect(developerState(event.sender, 'https://example.com').hookStatuses?.prices).toBe('running');
 });

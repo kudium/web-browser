@@ -25,6 +25,7 @@ import log from 'electron-log';
 import fs from 'fs';
 import {
   registerHookMarketplace,
+  openInstalledSiteHook,
   hookDestinationsFor,
   queueHookInstallLink,
   deliverHookInstallLinks,
@@ -47,6 +48,12 @@ import { configureDNS, registerAdvancedLifecycle } from './advancedPreferences';
 import { getBrowserPreferences, registerPreferences } from './preferences';
 import { browserUserAgent } from './browserIdentity';
 import { registerPasswordManager } from './passwordManager';
+import { registerPasskeys } from './passkeys';
+import {
+  configurePrivateWindowFactory,
+  attachPrivateWindow,
+} from './privateBrowsing';
+import { registerPrivateBrowserWindow } from './browserWindows';
 import { isSiteDeveloperEditor } from './siteDeveloperWindow';
 import { registerHookLanguage } from './hookLanguage';
 import { registerActivity } from './activity';
@@ -193,6 +200,7 @@ export const createNewWindow = async ({
   intent,
   preferencesSection,
   additional = false,
+  privateSession,
 }: NewWindowParams) => {
   await app.whenReady();
   if (view === 'add-app' && intent !== 'edit') {
@@ -267,7 +275,7 @@ export const createNewWindow = async ({
 
   const newWindow = new BrowserWindow({
     show: false,
-    title: 'Kudium Browser',
+    title: privateSession ? 'Private — Kudium Browser' : 'Kudium Browser',
     width: savedSize?.width ?? 1160,
     height: savedSize?.height ?? 950,
     center: true,
@@ -283,6 +291,7 @@ export const createNewWindow = async ({
     ...(parentWindow && { parent: parentWindow }),
     icon: getAssetPath('app-icon.png'),
     webPreferences: {
+      ...(privateSession && { session: privateSession }),
       spellcheck: true,
       webSecurity: true,
       contextIsolation: true,
@@ -307,7 +316,11 @@ export const createNewWindow = async ({
       return owner && !owner.isDestroyed()
         ? hookDestinationsFor(owner.webContents)
         : [];
-    });
+    }, { installInPreferences: true, openSiteEditor: (target, hookId) => {
+      const owner = newWindow.getParentWindow();
+      if (!owner || owner.isDestroyed()) throw new Error('The browser window was closed.');
+      openInstalledSiteHook(owner.webContents, target, hookId);
+    } });
   }
   const windowKey = additional ? `browser-${newWindow.id}` : view;
   activeWindows[windowKey] = newWindow;
@@ -326,6 +339,27 @@ export const createNewWindow = async ({
         newWindow.webContents.send('browser-shortcut', 'find');
       }
     });
+  if (privateSession) {
+    const privateWindows = registerPrivateBrowserWindow(newWindow, async () => {
+      const created = await createNewWindow({
+        view: 'main',
+        additional: true,
+        privateSession,
+      });
+      if (!created) throw new Error('Could not create a private window.');
+      return created;
+    });
+    attachPrivateWindow(newWindow, privateSession);
+    if (!privateWindows.hasOtherWindows(newWindow)) {
+      registerBrowser(newWindow, storageReady);
+      newWindow.on('close', (event) => {
+        if (!quitting && privateWindows.hasOtherWindows(newWindow)) {
+          event.preventDefault();
+          newWindow.hide();
+        }
+      });
+    }
+  }
   if (view === 'main' && !additional) {
     browserWindows.register(newWindow);
     tabRequestsReady = false;
@@ -349,7 +383,9 @@ export const createNewWindow = async ({
     );
   }
 
-  const documentURL = resolveHtmlPath('index.html', view);
+  const documentURL = `${resolveHtmlPath('index.html', view)}${
+    privateSession ? '&private=1' : ''
+  }`;
   const initialURL = preferencesSection
     ? `${documentURL}#${preferencesSection}`
     : documentURL;
@@ -403,6 +439,15 @@ createAdditionalWindow = async () => {
   if (!created) throw new Error('Could not create a browser window.');
   return created;
 };
+configurePrivateWindowFactory(async (privateSession) => {
+  const created = await createNewWindow({
+    view: 'main',
+    additional: true,
+    privateSession,
+  });
+  if (!created) throw new Error('Could not create a private window.');
+  return created;
+});
 
 const openExternalLink = (value: string) => {
   try {
@@ -482,7 +527,9 @@ registerDownloadLibrary(
     )
 );
 registerPreferences(
-  (preferencesSection) => {
+  (section, personalDataScope) => {
+    const preferencesSection = section === 'passwords' && personalDataScope
+      ? `${section}?scope=${encodeURIComponent(personalDataScope)}` : section;
     createNewWindow({
       view: 'settings',
       preferencesSection,
@@ -567,6 +614,7 @@ app
 
     // createNewWindow(ADD_APP_WINDOW);
     if (!hasInstanceLock) return;
+    registerPasskeys();
     const { advanced } = getBrowserPreferences();
     configureDNS(advanced);
     if (advanced.startupMode === 'pages')

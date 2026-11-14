@@ -1,3 +1,4 @@
+import { hookSourceValidator } from "./hook-validation";
 import { createHash, randomUUID } from 'node:crypto';
 import { and, desc, eq, lt, or, sql, count } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
@@ -16,25 +17,37 @@ import {
   parseHookPackage,
   type HookPackage,
 } from '../../../packages/hooks/package';
+function validatedPackage(input: unknown): HookPackage {
+  try {
+    const pkg = parseHookPackage(input);
+    hookSourceValidator.assert({ ...pkg.lifecycle, actions: pkg.actions });
+    return pkg;
+  } catch (error) {
+    throw new HTTPException(400, { message: (error as Error).message, cause: error });
+  }
+}
 export const packageHash = (pkg: HookPackage) =>
   createHash('sha256').update(JSON.stringify(pkg)).digest('hex');
 export type HookQuery = {
   q: string;
   kind: 'all' | 'site' | 'general';
   site: string;
+  sort?: 'newest' | 'trending';
 };
 export function hookQuery(raw: Record<string, string | undefined>): HookQuery {
   const q = (raw.q || '').trim();
   const site = (raw.site || '').trim().toLowerCase();
   const kind = raw.kind || 'all';
+  const sort = raw.sort || 'newest';
   if (
+    !['newest', 'trending'].includes(sort) ||
     q.length > 120 ||
     site.length > 253 ||
     !['all', 'site', 'general'].includes(kind) ||
     (site && !/^[a-z0-9.-]+$/.test(site))
   )
     throw new HTTPException(400, { message: 'invalid_filters' });
-  return { q, site, kind: kind as HookQuery['kind'] };
+  return { q, site, kind: kind as HookQuery['kind'], sort: sort as HookQuery['sort'] };
 }
 const fingerprint = (query: unknown) =>
   createHash('sha256').update(JSON.stringify(query)).digest('hex');
@@ -42,10 +55,11 @@ export function encodeHookCursor(
   query: unknown,
   boundary: string,
   time: string,
-  id: string
+  id: string,
+  score?: number
 ) {
   return Buffer.from(
-    JSON.stringify({ filter: fingerprint(query), boundary, time, id })
+    JSON.stringify({ filter: fingerprint(query), boundary, time, id, score })
   ).toString('base64url');
 }
 export function decodeHookCursor(value: string, query: unknown) {
@@ -53,6 +67,7 @@ export function decodeHookCursor(value: string, query: unknown) {
     if (value.length > 1500) throw new Error();
     const c = JSON.parse(Buffer.from(value, 'base64url').toString());
     if (
+      (c.score !== undefined && (!Number.isSafeInteger(c.score) || c.score < 0)) ||
       typeof c.time !== 'string' ||
       typeof c.boundary !== 'string' ||
       new Date(c.time).toISOString() !== c.time ||
@@ -65,7 +80,7 @@ export function decodeHookCursor(value: string, query: unknown) {
       c.time > c.boundary
     )
       throw new Error();
-    return c as { boundary: string; time: string; id: string };
+    return c as { boundary: string; time: string; id: string; score?: number };
   } catch {
     throw new HTTPException(400, { message: 'invalid_cursor' });
   }
@@ -113,16 +128,18 @@ export function marketplaceStore(db: Database) {
         conditions.push(
           sql`exists (select 1 from hook_targets t where t.hook_id = ${hookListings.id} and (t.host = ${query.site} or (t.include_subdomains and ${query.site} like '%.' || t.host)))`
         );
-      if (after)
-        conditions.push(
-          or(
-            lt(hookListings.publishedAt, new Date(after.time)),
-            and(
-              eq(hookListings.publishedAt, new Date(after.time)),
-              lt(hookListings.id, after.id)
-            )
-          )!
-        );
+      const trending = query.sort === 'trending';
+      if (after) {
+        const older = or(
+          lt(hookListings.publishedAt, new Date(after.time)),
+          and(eq(hookListings.publishedAt, new Date(after.time)), lt(hookListings.id, after.id))
+        )!;
+        if (trending && after.score === undefined)
+          throw new HTTPException(400, { message: 'invalid_cursor' });
+        conditions.push(trending
+          ? or(lt(hookListings.likes, after.score!), and(eq(hookListings.likes, after.score!), older))!
+          : older);
+      }
       const rows = await db
         .select({
           hook: hookListings,
@@ -139,7 +156,7 @@ export function marketplaceStore(db: Database) {
           )
         )
         .where(and(...conditions))
-        .orderBy(desc(hookListings.publishedAt), desc(hookListings.id))
+        .orderBy(...(trending ? [desc(hookListings.likes)] : []), desc(hookListings.publishedAt), desc(hookListings.id))
         .limit(25);
       const items = rows.slice(0, 24);
       const last = items.at(-1);
@@ -151,7 +168,8 @@ export function marketplaceStore(db: Database) {
                 scope,
                 boundary,
                 last.hook.publishedAt.toISOString(),
-                last.hook.id
+                last.hook.id,
+                trending ? last.hook.likes : undefined
               )
             : null,
       };
@@ -217,12 +235,7 @@ export function marketplaceStore(db: Database) {
       id?: string,
       expected?: number
     ) {
-      let pkg: HookPackage;
-      try {
-        pkg = parseHookPackage(input);
-      } catch (e) {
-        throw new HTTPException(400, { message: (e as Error).message });
-      }
+      const pkg = validatedPackage(input);
       const hookId = id || randomUUID();
       return db.transaction(async (tx) => {
         let version = 1;
@@ -438,6 +451,11 @@ export function marketplaceStore(db: Database) {
           .from(hookListings)
           .where(eq(hookListings.id, id))
           .for('update');
+        if (status === 'approved') {
+          const [version] = await tx.select().from(hookVersions).where(and(eq(hookVersions.hookId, id), eq(hookVersions.version, listing.version)));
+          if (!version) throw new HTTPException(404, { message: 'version_not_found' });
+          validatedPackage(version.package);
+        }
         await tx
           .update(hookListings)
           .set({ status, statusReason: reason || null, updatedAt: new Date() })

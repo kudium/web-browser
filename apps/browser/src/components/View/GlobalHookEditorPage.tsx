@@ -1,3 +1,4 @@
+import { hookSourceValidator } from "../../browser/hookValidation";
 import { OPEN_HOOK_MARKETPLACE } from '../UI/HookMarketplaceDialog';
 import { FormDisclosure } from '../UI/FormDisclosure';
 import { FormTextField } from '../UI/FormTextField';
@@ -88,6 +89,7 @@ export function GlobalHookEditorPage() {
         sites: draft.sites?.filter((site) => site.host),
         exclusions: draft.exclusions.filter(Boolean),
       };
+      hookSourceValidator.assert(hook);
       const exists = state.global.hooks.some((item) => item.id === hook.id);
       const result = await window.electron.hookMarketplace.request({
         action: 'global-save',
@@ -149,7 +151,7 @@ export function GlobalHookEditorPage() {
         </IconButton>
       </EditorWindowHeader>
       {error && (
-        <p role="alert" className="site-hook-import-error">
+        <p role="alert" className="site-hook-import-error" style={{ whiteSpace: "pre-line" }}>
           {error}
         </p>
       )}

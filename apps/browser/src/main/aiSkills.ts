@@ -114,7 +114,8 @@ export function loadSkillFolder(folder: string): AISkill {
 export class AISkillsStore {
   private skills: AISkill[] = [];
 
-  constructor(private file: string) {
+  constructor(private file: string, private memoryOnly = false) {
+    if (memoryOnly) return;
     if (!fs.existsSync(file)) return;
     const raw = fs.readFileSync(file, 'utf8');
     if (Buffer.byteLength(raw) > 12 * 1024 * 1024)
@@ -157,6 +158,10 @@ export class AISkillsStore {
   }
 
   private save(next: AISkill[]) {
+    if (this.memoryOnly) {
+      this.skills = next;
+      return;
+    }
     fs.writeFileSync(`${this.file}.tmp`, JSON.stringify(next), { mode: 0o600 });
     fs.renameSync(`${this.file}.tmp`, this.file);
     this.skills = next;

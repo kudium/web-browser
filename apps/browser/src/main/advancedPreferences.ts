@@ -19,6 +19,7 @@ import {
 } from '../browser/advancedPreferences';
 import { browserUserAgent } from './browserIdentity';
 import { addRequestRule } from './requestRules';
+import { addRequestHeaderRule } from './requestHeaderRules';
 import { clearSessionSiteData } from './siteData';
 import { flushHistory, hasPendingHistory, setHistoryQuitting } from './history';
 
@@ -229,43 +230,38 @@ export function applyAdvancedContents(
           blockedTracker(details.url));
       return block;
     });
-    target.webRequest.onBeforeSendHeaders(
-      { urls: ['http://*/*', 'https://*/*'] },
-      (details, callback) => {
-        const settings = configurations.get(target)!;
-        const page = pageURL(details);
-        const headers = { ...details.requestHeaders };
-        Object.keys(headers).forEach((name) => {
-          if (
-            name.toLowerCase() === 'cookie' &&
-            cookieBlocked(settings, details.url, page)
-          )
-            delete headers[name];
-          if (
-            name.toLowerCase() === 'referer' &&
-            settings.referrer !== 'default'
-          ) {
-            if (settings.referrer === 'none') delete headers[name];
-            else {
-              try {
-                headers[name] = `${new URL(headers[name]).origin}/`;
-              } catch {
-                delete headers[name];
-              }
+    addRequestHeaderRule(target, (details, headers) => {
+      const settings = configurations.get(target)!;
+      const page = pageURL(details);
+      Object.keys(headers).forEach((name) => {
+        if (
+          name.toLowerCase() === 'cookie' &&
+          cookieBlocked(settings, details.url, page)
+        )
+          delete headers[name];
+        if (
+          name.toLowerCase() === 'referer' &&
+          settings.referrer !== 'default'
+        ) {
+          if (settings.referrer === 'none') delete headers[name];
+          else {
+            try {
+              headers[name] = `${new URL(headers[name]).origin}/`;
+            } catch {
+              delete headers[name];
             }
           }
-        });
-        headers['User-Agent'] = identity(
-          settings,
-          profiles.get(target)!,
-          page,
-          fallback
-        );
-        if (settings.acceptLanguages)
-          headers['Accept-Language'] = settings.acceptLanguages;
-        callback({ requestHeaders: headers });
-      }
-    );
+        }
+      });
+      headers['User-Agent'] = identity(
+        settings,
+        profiles.get(target)!,
+        page,
+        fallback
+      );
+      if (settings.acceptLanguages)
+        headers['Accept-Language'] = settings.acceptLanguages;
+    });
     target.webRequest.onHeadersReceived(
       { urls: ['http://*/*', 'https://*/*'] },
       (details, callback) => {
@@ -406,7 +402,10 @@ export async function advancedDiagnostic(
     if (target.netLog.currentlyLogging)
       throw new Error('This session is already logging.');
     const result = await dialog.showSaveDialog(owner, {
-      defaultPath: path.join(app.getPath('downloads'), 'kudiumbrowser-network.json'),
+      defaultPath: path.join(
+        app.getPath('downloads'),
+        'kudiumbrowser-network.json'
+      ),
       filters: [{ name: 'JSON network log', extensions: ['json'] }],
       title: 'Save network log (contains visited URLs)',
     });

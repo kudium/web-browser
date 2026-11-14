@@ -1,3 +1,4 @@
+import { hookSourceValidator } from "../browser/hookValidation";
 /* Shared portable source contract; both apps build this module directly. */
 /* eslint-disable import/no-relative-packages */
 import { lookup } from 'dns/promises';
@@ -145,6 +146,7 @@ export async function fetchHookPackage(value: string, browserVersion: string) {
   const response = await load(initial, 0);
   const envelope = response.data as any;
   const pkg = parseHookPackage(envelope?.package || envelope);
+  hookSourceValidator.assert({ ...pkg.lifecycle, actions: pkg.actions });
   if (!browserSupportsPackage(pkg, browserVersion))
     throw new Error(
       `This hook requires Kudium ${pkg.minimumBrowserVersion} or later.`

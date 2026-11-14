@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-14T14:04:02.608Z",
+  "site": "https://kuditrust.com/",
+  "runtime": {
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48"
+  },
+  "outcome": "passed",
+  "results": [
+    {
+      "name": "Public entry inspection",
+      "status": "passed"
+    },
+    {
+      "name": "Test account password sign-in",
+      "status": "passed",
+      "path": "/dashboard"
+    },
+    {
+      "name": "Authenticated reload retains sign-in",
+      "status": "passed"
+    },
+    {
+      "name": "Shared-group authenticated session",
+      "status": "passed"
+    },
+    {
+      "name": "Isolated-group authentication rejection",
+      "status": "passed"
+    },
+    {
+      "name": "Private sign-in, final-window cleanup and regular-session preservation",
+      "status": "passed"
+    },
+    {
+      "name": "Regular sign-out propagates to shared profile",
+      "status": "passed"
+    }
+  ],
+  "scope": "Disposable production browser profiles; user-provided test account only. No transfers, purchases, messages or account changes.",
+  "entry": {
+    "url": "https://kuditrust.com/",
+    "title": "KudiTrust",
+    "hasLoginControl": true
+  },
+  "loginControls": {
+    "password": true,
+    "google": true,
+    "passkey": true
+  },
+  "sourceHashes": {
+    ".erb/scripts/kuditrust-acceptance.cjs": "d824a0fdfbf98d944a7c16e990594a1c69be23b2fbf34849013546b7b6b7ed2a",
+    ".erb/scripts/browser-ui-smoke.cjs": "061d5f4d92a700c5d38ba157ea17d83bbd994d9b7c94811802fb43213b0d65c6",
+    "src/main/electronBrowser.ts": "b1a0b4b4c8ad9cb4061f59552a4ca6338e3666d8034ed6153eeb2c576340a503",
+    "src/main/privateSessions.ts": "4bd65f9f3727740dc42ece76249ef8125433c523eda960368d4bec402a8d575f"
+  }
+}

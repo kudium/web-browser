@@ -32,14 +32,10 @@ export function registerAppUpdates(
       )
         throw new Error('Unknown update action.');
       if (!controller) return unavailable();
-      const result =
-        action === 'check'
-          ? await controller.check()
-          : action === 'download'
-          ? await controller.download()
-          : action === 'install'
-          ? controller.install()
-          : controller.get();
+      let result = controller.get();
+      if (action === 'check') result = await controller.check();
+      else if (action === 'download') result = await controller.download();
+      else if (action === 'install') result = controller.install();
       if (action !== 'install') request.assert();
       return result;
     } finally {
@@ -58,22 +54,27 @@ export async function startAppUpdates() {
   }
   log.transports.file.level = 'info';
   autoUpdater.logger = log;
+  // Changing updater channels can enable downgrades in electron-updater.
+  // Browser releases always advance versions, including beta graduation.
+  autoUpdater.allowDowngrade = false;
   autoUpdater.on('error', (error) => log.warn('Update service error', error));
   controller = new AppUpdateController(
     autoUpdater,
     app.getVersion(),
     getBrowserPreferences,
     (state) => {
-      for (const contents of webContents.getAllWebContents()) {
+      webContents.getAllWebContents().forEach((contents) => {
         if (!contents.isDestroyed() && trusted(contents))
           contents.send('browser-app-updates-changed', state);
-      }
+      });
     }
   );
   const unsubscribe = onBrowserPreferencesChanged(() =>
     controller?.applyPreferences()
   );
-  const timer = setInterval(() => void controller?.check(), 4 * 60 * 60 * 1000);
+  const timer = setInterval(() => {
+    controller?.check();
+  }, 4 * 60 * 60 * 1000);
   timer.unref();
   app.on('before-quit', (event) => {
     if (

@@ -1,0 +1,124 @@
+{
+  "date": "2026-11-14",
+  "scope": "User-authorized cleanup of old local browser build outputs. Current workspace and latest verified v1.0.10 artifacts preserved; historical installers, manifests, logs and source files retained. Generated dependencies/builds of earlier release clones can be rebuilt.",
+  "removedLogicalBytes": 6339502080,
+  "availableBytesAfter": 14521360384,
+  "removed": [
+    {
+      "path": "release-artifacts/local/v1.0.9-failed-drag-test-20261112/source/apps/browser/.erb/dll",
+      "logicalBytes": 303104
+    },
+    {
+      "path": "release-artifacts/local/v1.0.2.failed-20261109T013753Z/source/apps/browser/.erb/dll",
+      "logicalBytes": 278528
+    },
+    {
+      "path": "release-artifacts/local/v1.0.4.failed-tests-20261109/source/apps/browser/.erb/dll",
+      "logicalBytes": 286720
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9.failed-disk-20261113T041344Z/builds",
+      "logicalBytes": 1346568192
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9.failed-disk-20261113T041344Z/installers",
+      "logicalBytes": 350801920
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9.failed-disk-20261113T041344Z/source/apps/browser/.erb/dll",
+      "logicalBytes": 303104
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9.failed-disk-20261113T041344Z/source/apps/browser/release/app/dist",
+      "logicalBytes": 40476672
+    },
+    {
+      "path": "release-artifacts/local/v1.0.8/source/apps/browser/.erb/dll",
+      "logicalBytes": 303104
+    },
+    {
+      "path": "release-artifacts/local/v1.0.8/source/apps/browser/release/app/dist",
+      "logicalBytes": 40484864
+    },
+    {
+      "path": "release-artifacts/local/v1.0.6/source/apps/browser/.erb/dll",
+      "logicalBytes": 294912
+    },
+    {
+      "path": "release-artifacts/local/v1.0.6/source/apps/browser/release/app/dist",
+      "logicalBytes": 32985088
+    },
+    {
+      "path": "release-artifacts/local/v1.0.7/source/apps/browser/.erb/dll",
+      "logicalBytes": 299008
+    },
+    {
+      "path": "release-artifacts/local/v1.0.7/source/apps/browser/release/app/dist",
+      "logicalBytes": 40144896
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9/builds",
+      "logicalBytes": 1713672192
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9/source/apps/browser/node_modules",
+      "logicalBytes": 1049092096
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9/source/apps/browser/.erb/dll",
+      "logicalBytes": 307200
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9/source/apps/browser/release/app/dist",
+      "logicalBytes": 40857600
+    },
+    {
+      "path": "release-artifacts/local/v1.0.9.failed-fixtures-20261113T042032Z/source/apps/browser/.erb/dll",
+      "logicalBytes": 307200
+    },
+    {
+      "path": "release-artifacts/local/v1.0.10-failed-apple-agreement/builds",
+      "logicalBytes": 495833088
+    },
+    {
+      "path": "release-artifacts/local/v1.0.10-failed-apple-agreement/source/apps/browser/node_modules",
+      "logicalBytes": 1049137152
+    },
+    {
+      "path": "release-artifacts/local/v1.0.10-failed-apple-agreement/source/apps/browser/.erb/dll",
+      "logicalBytes": 319488
+    },
+    {
+      "path": "release-artifacts/local/v1.0.10-failed-apple-agreement/source/apps/browser/release/app/dist",
+      "logicalBytes": 41582592
+    },
+    {
+      "path": "release-artifacts/local/v1.0.5/source/apps/browser/.erb/dll",
+      "logicalBytes": 294912
+    },
+    {
+      "path": "release-artifacts/local/v1.0.5/source/apps/browser/release/app/dist",
+      "logicalBytes": 32968704
+    },
+    {
+      "path": "release-artifacts/local/v1.0.4/source/apps/browser/.erb/dll",
+      "logicalBytes": 286720
+    },
+    {
+      "path": "release-artifacts/local/v1.0.4/source/apps/browser/release/app/dist",
+      "logicalBytes": 31805440
+    },
+    {
+      "path": "release-artifacts/local/v1.0.3/source/apps/browser/.erb/dll",
+      "logicalBytes": 278528
+    },
+    {
+      "path": "release-artifacts/local/v1.0.3/source/apps/browser/release/app/dist",
+      "logicalBytes": 28925952
+    },
+    {
+      "path": "release-artifacts/local/v1.0.8-failed-tests-20261112/source/apps/browser/.erb/dll",
+      "logicalBytes": 303104
+    }
+  ]
+}

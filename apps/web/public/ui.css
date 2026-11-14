@@ -1,0 +1,55 @@
+/* Radix Themes owns control appearance. Kudium supplies layout and code typography. */
+.radix-themes { --default-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.hooks-library .rt-TextFieldRoot { width: 100%; min-width: 0; }
+.hooks-library .rt-TextFieldInput { width: 100%; min-width: 0; }
+.hooks-library .rt-TextAreaRoot { width: 100%; resize: vertical; }
+.hooks-library .hook-source-label .rt-TextAreaInput,
+.hooks-library [data-action-source].rt-TextAreaInputRoot { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.7; }
+.ui-native-select { position: relative; }
+.ui-native-select select { appearance: none; cursor: pointer; padding-right: 40px; }
+.ui-select-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--gray-11); pointer-events: none; }
+.hooks-library .ui-checkbox { appearance: auto; width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; flex-shrink: 0; accent-color: var(--accent-9); }
+.hooks-library [data-hook-action] fieldset { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; margin: 0; }
+.hooks-library [data-hook-action] fieldset legend { float: none; font-size: 12px; margin-bottom: 10px; }
+.hooks-library [data-hook-action] fieldset label { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--gray-5); border-radius: var(--radius-2); background: var(--color-panel-solid); }
+.hooks-library [data-hook-action] { background: var(--color-panel-solid); padding: 0; margin: 0 0 12px; }
+.hooks-library [data-remove-action] { margin: 0 12px 12px; }
+.hooks-library .rt-Button { font-family: var(--default-font-family); cursor: pointer; }
+.hooks-library .rt-Button[hidden] { display: none; }
+.hooks-library .hook-action-toolbar .rt-Button { height: var(--space-7); }
+.hooks-library .hook-license-confirm { display: flex; flex-direction: row; align-items: flex-start; }
+.hooks-library .hook-import-file input[type=file] { display: none; }
+
+.hooks-library .hook-publish-actions > .rt-Button { margin-left: auto; flex-shrink: 0; }
+.hooks-library .hook-install-card > .rt-Button { width: 100%; }
+.hooks-library .rt-Button[aria-pressed="true"] { color: var(--accent-11); background: var(--accent-3); }
+@media (max-width: 650px) {
+  .hooks-library .hook-publish-actions > .rt-Button { width: 100%; margin-left: 0; }
+  .hooks-library .rt-Button { min-height: 44px; }
+}
+
+/* CodeMirror: the same editing engine as the desktop app. */
+.hook-code-editor { min-width: 0; border: 1px solid var(--gray-6); border-radius: var(--radius-3); overflow: hidden; background: #fff; }
+.hook-code-toolbar, .hook-code-status { background: var(--gray-2); color: var(--gray-11); font-size: 11px; padding: 10px 12px; }
+.hook-code-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--gray-5); }
+.hook-code-status { border-top: 1px solid var(--gray-5); }
+.hook-code-editor .cm-editor { font-size: 12px; color: #24272d; }
+.hook-code-editor .cm-scroller { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.7; min-height: 250px; max-height: 480px; overflow: auto; }
+.hook-code-editor .cm-content { padding: 12px 0; }
+.hook-code-editor .cm-gutters { background: var(--gray-2); color: var(--gray-9); border-right: 1px solid var(--gray-5); }
+.hook-code-editor .cm-activeLine, .hook-code-editor .cm-activeLineGutter { background: #edf6f5; }
+.hook-code-editor:focus-within { outline: 2px solid var(--accent-8); outline-offset: 2px; }
+.hook-code-editor .cm-focused { outline: none; }
+.hook-stage-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.hooks-library .hook-stage-tabs [aria-selected=true] { background: var(--accent-3); color: var(--accent-11); box-shadow: inset 0 0 0 1px var(--accent-7); }
+.hook-stage-hint, .hook-code-help { margin: 0; color: var(--gray-11); font-size: 12px; line-height: 1.6; }
+.hooks-library .hook-stage-panel { border: 0; overflow: visible; }
+.hooks-library .hook-stage-panel > summary { display: none; }
+.hooks-library .hook-stage-panel > label { padding: 0; }
+.hooks-library [data-hook-action] .hook-code-editor { margin: 0; }
+.hooks-library [hidden] { display: none !important; }
+
+.hook-edit-status { color: var(--gray-11); font-size: 12px; }
+
+.hook-code-errors { border: 1px solid var(--red-7); border-radius: var(--radius-3); background: var(--red-2); color: var(--red-11); padding: 16px; white-space: pre-line; font-size: 13px; line-height: 1.7; }
+[data-hook-feedback] { white-space: pre-line; }

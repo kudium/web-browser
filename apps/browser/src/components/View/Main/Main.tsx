@@ -48,6 +48,7 @@ import {
   Square,
   X,
 } from 'lucide-react';
+import { HorizontalTabList } from '../../UI/HorizontalTabList';
 import { FindBar } from '../../UI/FindBar';
 import { useSidebarPaneToggle } from '../../../utils/hooks/useSidebarPaneToggle';
 import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
@@ -332,6 +333,9 @@ export function Main() {
   const [translucentChrome, setTranslucentChrome] = useState(true);
   const [translucentAI, setTranslucentAI] = useState(false);
   const [showExtensionIcons, setShowExtensionIcons] = useState(true);
+  const [tabOverflowMode, setTabOverflowMode] = useState<'dropdown' | 'scroll'>(
+    'scroll'
+  );
   const [tabDisplayMode, setTabDisplayMode] = useState<
     'horizontal' | 'hover' | 'click'
   >('horizontal');
@@ -342,6 +346,8 @@ export function Main() {
   const [preferredAddressBarPlacement, setAddressBarPlacement] = useState<
     'sidebar' | 'header'
   >('sidebar');
+  const [addressBarFullUrl, setAddressBarFullUrl] = useState(false);
+  const [autofillExcludedSites, setAutofillExcludedSites] = useState<string[]>([]);
   const [addressBarExtensionsExpanded, setAddressBarExtensionsExpanded] =
     useState(false);
   const [extensionToolbarOrder, setExtensionToolbarOrder] = useState<
@@ -504,7 +510,7 @@ export function Main() {
   }, [closedGroupUndo]);
   const [renameTarget, setRenameTarget] = useState<{
     id: string;
-    axis: 'vertical' | 'horizontal';
+    axis: 'vertical' | 'horizontal' | 'folder';
   }>();
   const [findOpen, setFindOpen] = useState(false);
   const [aiPromptRequest, setAIPromptRequest] = useState<{
@@ -826,6 +832,38 @@ export function Main() {
     [appList, selected]
   );
   useEffect(() => {
+    const scrollTabs = (event: WheelEvent) => {
+      if (event.ctrlKey || !(event.target instanceof Element)) return;
+      const list = event.target.closest<HTMLElement>('.horizontal-tabs');
+      if (!list || list.scrollWidth <= list.clientWidth) return;
+      if (list.dataset.overflow === 'dropdown') {
+        event.preventDefault();
+        return;
+      }
+      const delta =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY)
+          ? event.deltaX
+          : event.deltaY;
+      const scale =
+        event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+          ? list.clientWidth
+          : 1;
+      event.preventDefault();
+      event.stopPropagation();
+      list.scrollLeft = Math.max(
+        0,
+        Math.min(
+          list.scrollWidth - list.clientWidth,
+          list.scrollLeft + delta * scale
+        )
+      );
+    };
+    document.addEventListener('wheel', scrollTabs, { passive: false });
+    return () => document.removeEventListener('wheel', scrollTabs);
+  }, []);
+  useEffect(() => {
     const ids = split
       ? [`left-${split.left}`, `right-${split.right}`]
       : [selected?.id];
@@ -834,7 +872,7 @@ export function Main() {
       const tab = id
         ? document.getElementById(`page-tab-${id}`)?.closest('.horizontal-tab')
         : null;
-      if (!tab) return;
+      if (!tab || tabOverflowMode === 'dropdown') return;
       const reveal = () =>
         tab.scrollIntoView?.({
           block: 'nearest',
@@ -849,7 +887,7 @@ export function Main() {
       }
     });
     return () => observers.forEach((observer) => observer.disconnect());
-  }, [selected?.id, split, activeGroupTabs.length]);
+  }, [selected?.id, split, activeGroupTabs.length, tabOverflowMode]);
   const select = useCallback(
     (item: IApp, side?: SplitSide) => {
       if (lockedGroup(item)) {
@@ -1199,14 +1237,18 @@ export function Main() {
       translucentChrome?: boolean;
       translucentAI?: boolean;
       showExtensionIcons?: boolean;
+      tabOverflowMode?: 'dropdown' | 'scroll';
       tabDisplayMode?: 'horizontal' | 'hover' | 'click';
       folderHoverPreviews?: boolean;
       showUnpinnedGroups?: boolean;
       addressBarPlacement?: 'sidebar' | 'header';
+      addressBarFullUrl?: boolean;
+      personalDataAutofillExcludedSites?: string[];
       addressBarExtensionsExpanded?: boolean;
       extensionToolbarOrder?: string[] | null;
     }) => {
       setShowExtensionIcons(preferences.showExtensionIcons !== false);
+      setTabOverflowMode(preferences.tabOverflowMode || 'scroll');
       setTabDisplayMode(preferences.tabDisplayMode || 'horizontal');
       setFolderHoverPreviews(preferences.folderHoverPreviews !== false);
       setShowUnpinnedGroups(
@@ -1214,6 +1256,8 @@ export function Main() {
           windowWorkspace.state()?.kind === 'temporary'
       );
       setAddressBarPlacement(preferences.addressBarPlacement || 'sidebar');
+      setAddressBarFullUrl(preferences.addressBarFullUrl === true);
+      setAutofillExcludedSites(preferences.personalDataAutofillExcludedSites || []);
       setAddressBarExtensionsExpanded(
         preferences.addressBarExtensionsExpanded !== false
       );
@@ -1750,7 +1794,7 @@ export function Main() {
   ) => {
     if (selected) browser.command({ id: selected.id, action, url });
   };
-  const rename = (item: IApp, axis: 'vertical' | 'horizontal' = 'vertical') => {
+  const rename = (item: IApp, axis: 'vertical' | 'horizontal' | 'folder' = 'vertical') => {
     if (axis === 'vertical' && item.favorite) {
       setFavoriteName(item.sessionName || item.name);
       setFavoriteRename(item);
@@ -1761,7 +1805,7 @@ export function Main() {
   };
   const saveName = (
     item: IApp,
-    axis: 'vertical' | 'horizontal',
+    axis: 'vertical' | 'horizontal' | 'folder',
     name: string
   ) => {
     AppManager.set(
@@ -1777,7 +1821,7 @@ export function Main() {
             sessionNameCustom: Boolean(name),
             sessionNameGenerated: false,
           };
-        if (axis === 'horizontal' && entry.id === item.id)
+        if (axis !== 'vertical' && entry.id === item.id)
           return { ...entry, customName: name || undefined };
         return entry;
       })
@@ -2370,6 +2414,7 @@ export function Main() {
       <ContextMenu.Root key={item.id} onOpenChange={setMenuOpen}>
         <div
           className="sidebar-group"
+          data-folder-view={folderView || undefined}
           data-expanded={
             (folderView && expanded && !locked && !item.favorite) || undefined
           }
@@ -2585,7 +2630,7 @@ export function Main() {
                       onContextMenu={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
-                        showTabContextMenu(tab.id, false);
+                        showTabContextMenu(tab.id, false, 'folder');
                       }}
                       onKeyDown={(event) => {
                         if (
@@ -2594,28 +2639,46 @@ export function Main() {
                         ) {
                           event.preventDefault();
                           event.stopPropagation();
-                          showTabContextMenu(tab.id, false);
+                          showTabContextMenu(tab.id, false, 'folder');
                         }
                       }}
                     >
-                      <button
-                        type="button"
+                      <div
                         className="sidebar-group-tab-select"
+                        role={renameTarget?.id === tab.id && renameTarget.axis === 'folder' ? undefined : 'button'}
                         tabIndex={expanded ? 0 : -1}
                         aria-current={
                           selected?.id === tab.id ? 'page' : undefined
                         }
                         onClick={() => {
+                          if (renameTarget?.id === tab.id && renameTarget.axis === 'folder') return;
                           closePreview();
                           select(tab);
+                        }}
+                        onDoubleClick={() => rename(tab, 'folder')}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return;
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            closePreview();
+                            select(tab);
+                          }
                         }}
                       >
                         <AppIcon
                           icon={tab.icon}
                           title={tab.customName || tab.name}
                         />
-                        <span>{tab.customName || tab.name}</span>
-                      </button>
+                        {renameTarget?.id === tab.id && renameTarget.axis === 'folder' ? (
+                          <InlineTabName
+                            name={tab.customName || tab.name}
+                            save={(name) => saveName(tab, 'folder', name)}
+                            cancel={() => setRenameTarget(undefined)}
+                          />
+                        ) : (
+                          <span>{tab.customName || tab.name}</span>
+                        )}
+                      </div>
                       <button
                         type="button"
                         className="sidebar-group-tab-close"
@@ -2641,6 +2704,12 @@ export function Main() {
   };
   const renderBrowserTools = () => (
     <>
+      {windowWorkspace.state()?.private && (
+        <span className="private-browsing-badge" role="status" title="Private browsing — temporary browsing data and chats">
+          <LockKeyhole size={14} aria-hidden="true" />
+          <span>Private</span>
+        </span>
+      )}
       <BrowserOptionsMenu
         pageAvailable={!!selected && !lockedGroup(selected)}
         onSelect={(option) => {
@@ -2844,6 +2913,7 @@ export function Main() {
           : (() => {
               if (selected && lockedGroup(selected)) return 'Locked group';
               const url = state?.url || selected?.url || '';
+              if (addressBarFullUrl) return url;
               try {
                 return new URL(url).hostname.replace(/^www\./, '');
               } catch {
@@ -2927,7 +2997,8 @@ export function Main() {
   const renderTabMenu = (
     item: IApp,
     side?: SplitSide,
-    fromDeveloper = false
+    fromDeveloper = false,
+    renameAxis: 'horizontal' | 'folder' = 'horizontal'
   ) => (
     <ContextMenu.Content>
       {fromDeveloper && (
@@ -3031,7 +3102,7 @@ export function Main() {
       </ContextMenu.Item>
       <ContextMenu.Item
         onSelect={() => {
-          rename(item, 'horizontal');
+          rename(item, renameAxis);
         }}
       >
         {nativeMenuLabels.renameTab}
@@ -3068,12 +3139,12 @@ export function Main() {
       </ContextMenu.Item>
     </ContextMenu.Content>
   );
-  const showTabContextMenu = (id: string, fromDeveloper = true) => {
+  const showTabContextMenu = (id: string, fromDeveloper = true, renameAxis: 'horizontal' | 'folder' = 'horizontal') => {
     const item = AppManager.getAll().find(
       (tab) => tab.id === id && !tab.archived
     );
     if (!item || lockedGroup(item)) return;
-    showNativeContextMenu(renderTabMenu(item, undefined, fromDeveloper), () => {
+    showNativeContextMenu(renderTabMenu(item, undefined, fromDeveloper, renameAxis), () => {
       const current = AppManager.getAll().find(
         (tab) => tab.id === id && !tab.archived
       );
@@ -3218,7 +3289,17 @@ export function Main() {
             paneSelected.name
           }
         />
-        <div
+        <HorizontalTabList
+          mode={tabOverflowMode}
+          tabs={paneTabs.map((item) => ({
+            id: item.id,
+            title: labels.get(item.id) || item.name,
+            icon: item.icon,
+          }))}
+          onSelect={(id) => {
+            const item = paneTabs.find((tab) => tab.id === id);
+            if (item) select(item, side);
+          }}
           className="horizontal-tabs"
           role="tablist"
           tabIndex={-1}
@@ -3380,7 +3461,7 @@ export function Main() {
               </ContextMenu.Root>
             );
           })}
-        </div>
+        </HorizontalTabList>
         {side && (
           <ChromeIconButton
             icon={X}
@@ -3425,6 +3506,7 @@ export function Main() {
       data-website-space={active.useWebsiteColors || undefined}
       data-glass={translucentChrome}
       data-ai-glass={translucentAI}
+      data-private={windowWorkspace.state()?.private || undefined}
       style={
         {
           '--sidebar-width': `${sidebarWidth}px`,
@@ -4146,7 +4228,7 @@ export function Main() {
           )}
         </SidebarPager>
         <AccountSyncPublisher tabs={appList} states={states} />
-        <BrowserImportSuggestion />
+        {!windowWorkspace.state()?.private && <BrowserImportSuggestion />}
         <FirstGroupSyncSuggestion tabs={appList} />
         <AppUpdateBanner compact={compact} onWhatsNew={openWhatsNew} />
         <div
@@ -4326,7 +4408,7 @@ export function Main() {
         {addressBarPlacement === 'header' && (
           <div className="browser-address-header">{renderAddressBar()}</div>
         )}
-        <StorageRecoveryBanner />
+        {!windowWorkspace.state()?.private && <StorageRecoveryBanner />}
         {hasStorageRecovery() && !recoveryDismissed && (
           <div className="tab-move-message" role="status">
             Some saved layout data needed recovery. Your original data is kept
@@ -4552,7 +4634,7 @@ export function Main() {
                 <span aria-hidden="true" />
               </GroupAccessGate>
             )}
-            {!selected && <BrowserWelcome />}
+            {!selected && <BrowserWelcome privateMode={windowWorkspace.state()?.private} />}
           </div>
           {aiMounted && (
             <div
@@ -4605,6 +4687,27 @@ export function Main() {
       <SiteSettingsDialog
         open={siteSettingsOpen}
         onOpenChange={setSiteSettingsOpen}
+        addressBarPlacement={preferredAddressBarPlacement}
+        onAddressBarPlacementChange={(placement) => {
+          setAddressBarPlacement(placement);
+          browser.preferences('update', { addressBarPlacement: placement })
+            .catch((error) => setMoveMessage(String(error)));
+        }}
+        siteAutofillEnabled={!autofillExcludedSites.includes(state?.siteSettings?.origin || '')}
+        onSiteAutofillChange={(enabled) => {
+          const origin = state?.siteSettings?.origin;
+          if (!origin?.startsWith('https:')) return;
+          const next = enabled ? autofillExcludedSites.filter((site) => site !== origin) : [...new Set([...autofillExcludedSites, origin])];
+          setAutofillExcludedSites(next);
+          browser.preferences('update', { personalDataAutofillExcludedSites: next })
+            .catch((error) => setMoveMessage(String(error)));
+        }}
+        fullUrl={addressBarFullUrl}
+        onFullUrlChange={(enabled) => {
+          setAddressBarFullUrl(enabled);
+          browser.preferences('update', { addressBarFullUrl: enabled })
+            .catch((error) => setMoveMessage(String(error)));
+        }}
         state={state || undefined}
         command={browser.command}
         onCapture={(mode) => {

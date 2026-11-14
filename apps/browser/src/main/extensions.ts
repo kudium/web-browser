@@ -20,6 +20,13 @@ import { nativeMenuLabels } from '../browser/menuLabels';
 import { showBrowserDialog } from './dialogs';
 import { watchIPCRequest } from './ipcRequestBinding';
 import { prepareExtensionPackage } from './extensionPackage';
+import { configureExtensionStoreCompatibility } from './extensionStoreCompatibility';
+
+function packageName(
+  prepared: Awaited<ReturnType<typeof prepareExtensionPackage>>
+) {
+  return prepared.displayName || prepared.manifest.name;
+}
 
 let toolbar = {
   getOrder: (): string[] | null => null,
@@ -50,6 +57,17 @@ interface Profile {
   handlers: Partial<ConstructorParameters<typeof ElectronChromeExtensions>[0]>;
 }
 const profiles = new Map<string, Profile>();
+const storeInstallers = new WeakMap<
+  WebContents,
+  {
+    profileId: string;
+    install: (
+      event: IpcMainInvokeEvent,
+      details: unknown
+    ) => Promise<{ result: string; message?: string }>;
+  }
+>();
+
 let catalogRevision = 0;
 const installing = new Set<string>();
 const active = new Map<number, string>();
@@ -139,6 +157,10 @@ async function reconcileProfiles(targets: Profile[]) {
             const extension = await profile.session.extensions.loadExtension(
               item.path
             );
+            if (extension && extension.id !== item.id) {
+              profile.session.extensions.removeExtension(extension.id);
+              throw new Error('Loaded extension identity changed.');
+            }
             if (extension) {
               byId.set(extension.id, extension);
               byPath.set(extension.path, extension);
@@ -201,10 +223,14 @@ export function extensionRemoteAuthority(
     )
   );
 }
-Object.defineProperty(global, Symbol.for('kudiumbrowser.extensionRemoteAuthority'), {
-  configurable: true,
-  value: extensionRemoteAuthority,
-});
+Object.defineProperty(
+  global,
+  Symbol.for('kudiumbrowser.extensionRemoteAuthority'),
+  {
+    configurable: true,
+    value: extensionRemoteAuthority,
+  }
+);
 export async function updateInstalledExtensions() {
   const scope = getExtensionProfiles().map((profile) => ({
     profile,
@@ -289,7 +315,7 @@ export async function updateInstalledExtensions() {
         const answer = await showBrowserDialog(owner, {
           signal: cancellation.signal,
           title: 'Update extension',
-          message: `Update ${prepared.manifest.name}?`,
+          message: `Update ${packageName(prepared)}?`,
           detail: `Version ${prepared.manifest.version}\nApplies to: ${targets
             .map((target) => target.name)
             .join(', ')}\nReview all requested permissions before updating.`,
@@ -307,7 +333,7 @@ export async function updateInstalledExtensions() {
         const next = {
           ...original,
           path: packagePath,
-          name: prepared.manifest.name,
+          name: packageName(prepared),
         };
         save(read().map((item) => (item.id === update.id ? next : item)));
         published = next;
@@ -321,11 +347,12 @@ export async function updateInstalledExtensions() {
           // The authority check and native dispatch are synchronous.
           const load = target.session.extensions.loadExtension(packagePath);
           const loaded = await load;
-          check();
           if (loaded.id !== update.id) {
             target.session.extensions.removeExtension(loaded.id);
             throw new Error('Updated extension identity changed.');
           }
+          check();
+          failures.delete(`${target.id}:${update.id}`);
         }
         prepared.retain();
       } catch (error) {
@@ -463,6 +490,15 @@ export async function applyExtensions(
     const old = items.find(
       (item) => item.id === extension.id || item.path === extension.path
     );
+    if (old && old.id !== extension.id) {
+      // A load acknowledgment must never rewrite a reviewed package's identity.
+      failures.set(
+        `${profileId}:${old.id}`,
+        'Loaded extension identity changed.'
+      );
+      browserSession.extensions.removeExtension(extension.id);
+      return;
+    }
     if (!old) {
       items.push({
         id: extension.id,
@@ -549,6 +585,7 @@ export function configureExtensionStore(
   contents: WebContents,
   profileId: string
 ) {
+  configureExtensionStoreCompatibility(contents);
   const target = () => {
     const profile = profiles.get(profileId);
     return profiles.get(profile?.installTarget || '') || profile;
@@ -567,112 +604,128 @@ export function configureExtensionStore(
   };
   const validId = (id: unknown) =>
     typeof id === 'string' && id.length > 0 && id.length <= 128;
-  contents.ipc.handle(
-    'chromeWebstore.beginInstall',
-    async (event, details: unknown) => {
-      if (!trusted(event)) throw new Error('Untrusted extension store request');
-      if (!details || typeof details !== 'object' || Array.isArray(details))
-        throw new Error('Invalid extension installation request');
-      const { id } = details as { id?: unknown };
-      if (typeof id !== 'string' || !/^[a-p]{32}$/.test(id))
-        throw new Error('Invalid extension identifier');
-      if (installing.has(id) || installing.size >= 4)
-        return { result: 'install_in_progress' };
-      const source = profiles.get(profileId)!;
-      const destination = target();
-      if (!destination?.owner || destination.owner.isDestroyed())
-        return { result: 'user_cancelled' };
-      if (
-        destination.session.extensions.getExtension(id) &&
-        read().some(
-          (entry) => entry.id === id && extensionAllowed(entry, destination.id)
-        )
+  const install = async (event: IpcMainInvokeEvent, details: unknown) => {
+    if (!trusted(event)) throw new Error('Untrusted extension store request');
+    if (!details || typeof details !== 'object' || Array.isArray(details))
+      throw new Error('Invalid extension installation request');
+    const { id } = details as { id?: unknown };
+    if (typeof id !== 'string' || !/^[a-p]{32}$/.test(id))
+      throw new Error('Invalid extension identifier');
+    if (installing.has(id) || installing.size >= 4)
+      return { result: 'install_in_progress' };
+    const source = profiles.get(profileId)!;
+    const destination = target();
+    if (!destination?.owner || destination.owner.isDestroyed())
+      return { result: 'user_cancelled' };
+    if (
+      destination.session.extensions.getExtension(id) &&
+      read().some(
+        (entry) => entry.id === id && extensionAllowed(entry, destination.id)
       )
-        return { result: 'success' };
-      const sourceRevision = source.revision;
-      const destinationRevision = destination.revision;
-      const { owner } = destination;
-      let expectedCatalogRevision = catalogRevision;
-      const original = read().find((entry) => entry.id === id);
-      let expectedEntry = JSON.stringify(original);
-      let installActive = true;
-      const cancellation = new AbortController();
-      const request = watchIPCRequest(
-        event,
-        () =>
-          installActive &&
-          trusted(event) &&
-          profiles.get(profileId) === source &&
-          source.revision === sourceRevision &&
-          target() === destination &&
-          destination.revision === destinationRevision &&
-          destination.owner === owner &&
-          !owner.isDestroyed() &&
-          catalogRevision === expectedCatalogRevision &&
-          JSON.stringify(read().find((entry) => entry.id === id)) ===
-            expectedEntry
-      );
-      installing.add(id);
-      let timer: ReturnType<typeof setTimeout>;
-      const expired = new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          installActive = false;
-          cancellation.abort();
-          reject(new Error('Extension installation timed out. Try again.'));
-        }, 120000);
-      });
-      let prepared:
-        | Awaited<ReturnType<typeof prepareExtensionPackage>>
-        | undefined;
-      let published: InstalledExtension | undefined;
-      const loaded: Profile[] = [];
-      try {
-        prepared = await Promise.race([
-          prepareExtensionPackage(
-            id,
-            extensionFiles(),
-            app.getPath('userData'),
-            request.assert,
-            original?.path
-          ).then(async (value) => {
-            if (!installActive) {
-              await value.dispose();
-              throw new Error('Extension installation stopped.');
-            }
-            return value;
-          }),
-          expired,
+    )
+      return { result: 'success' };
+    const sourceRevision = source.revision;
+    const destinationRevision = destination.revision;
+    const { owner } = destination;
+    let expectedCatalogRevision = catalogRevision;
+    const original = read().find((entry) => entry.id === id);
+    let expectedEntry = JSON.stringify(original);
+    let installActive = true;
+    const cancellation = new AbortController();
+    const request = watchIPCRequest(
+      event,
+      () =>
+        installActive &&
+        trusted(event) &&
+        profiles.get(profileId) === source &&
+        source.revision === sourceRevision &&
+        target() === destination &&
+        destination.revision === destinationRevision &&
+        destination.owner === owner &&
+        !owner.isDestroyed() &&
+        catalogRevision === expectedCatalogRevision &&
+        JSON.stringify(read().find((entry) => entry.id === id)) ===
+          expectedEntry
+    );
+    installing.add(id);
+    let timer: ReturnType<typeof setTimeout>;
+    const expired = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        installActive = false;
+        cancellation.abort();
+        reject(new Error('Extension installation timed out. Try again.'));
+      }, 120000);
+    });
+    let prepared:
+      | Awaited<ReturnType<typeof prepareExtensionPackage>>
+      | undefined;
+    let published: InstalledExtension | undefined;
+    const loaded: Profile[] = [];
+    const rollback = () => {
+      for (const profile of loaded) {
+        for (const extension of profile.session.extensions.getAllExtensions()) {
+          if (extension.path === prepared?.path())
+            profile.session.extensions.removeExtension(extension.id);
+        }
+      }
+      if (
+        published &&
+        JSON.stringify(read().find((entry) => entry.id === id)) ===
+          JSON.stringify(published)
+      )
+        save([
+          ...read().filter((entry) => entry.id !== id),
+          ...(original ? [original] : []),
         ]);
-        request.assert();
-        const answer = await Promise.race([
-          showBrowserDialog(owner, {
-            signal: cancellation.signal,
-            title: 'Install extension',
-            message: `Install ${prepared.manifest.name}?`,
-            permissions: prepared.permissions,
-            technicalDetail: `Extension: ${id}\nVersion: ${
-              prepared.manifest.version
-            }\n${prepared.permissions.join('\n')}`,
-            detail: 'Each group keeps separate extension data.',
-            scope: [
-              { label: 'All groups, including future groups', response: 2 },
-              {
-                label: destination.name
-                  .replace(/(?: \(new session\))+$/g, '')
-                  .slice(0, 80),
-                response: 1,
-              },
-            ],
-            buttons: ['Cancel', 'Install extension', 'Install extension'],
-            defaultId: 2,
-            cancelId: 0,
-          }),
-          expired,
-        ]);
-        if (![1, 2].includes(answer.response) || !request.active())
-          return { result: 'user_cancelled' };
-        const packageToLoad = prepared;
-        await queueMutation(async () => {
+    };
+    try {
+      prepared = await Promise.race([
+        prepareExtensionPackage(
+          id,
+          extensionFiles(),
+          app.getPath('userData'),
+          request.assert,
+          original?.path
+        ).then(async (value) => {
+          if (!installActive) {
+            await value.dispose();
+            throw new Error('Extension installation stopped.');
+          }
+          return value;
+        }),
+        expired,
+      ]);
+      request.assert();
+      const answer = await Promise.race([
+        showBrowserDialog(owner, {
+          signal: cancellation.signal,
+          title: 'Install extension',
+          message: `Install ${packageName(prepared)}?`,
+          permissions: prepared.permissions,
+          technicalDetail: `Extension: ${id}\nVersion: ${
+            prepared.manifest.version
+          }\n${prepared.permissions.join('\n')}`,
+          detail: 'Each group keeps separate extension data.',
+          scope: [
+            { label: 'All groups, including future groups', response: 2 },
+            {
+              label: destination.name
+                .replace(/(?: \(new session\))+$/g, '')
+                .slice(0, 80),
+              response: 1,
+            },
+          ],
+          buttons: ['Cancel', 'Install extension', 'Install extension'],
+          defaultId: 2,
+          cancelId: 0,
+        }),
+        expired,
+      ]);
+      if (![1, 2].includes(answer.response) || !request.active())
+        return { result: 'user_cancelled' };
+      const packageToLoad = prepared;
+      await queueMutation(async () => {
+        try {
           request.assert();
           await packageToLoad.validate();
           request.assert();
@@ -683,7 +736,7 @@ export function configureExtensionStore(
             policy = {
               id,
               path: packagePath,
-              name: packageToLoad.manifest.name,
+              name: packageName(packageToLoad),
               enabled: true,
               scope: 'all',
               profiles: [destination.id],
@@ -693,7 +746,7 @@ export function configureExtensionStore(
             policy = {
               ...original,
               path: packagePath,
-              name: packageToLoad.manifest.name,
+              name: packageName(packageToLoad),
               profiles: [...new Set([...original.profiles, destination.id])],
               excluded: original.excluded.filter(
                 (profile) => profile !== destination.id
@@ -703,7 +756,7 @@ export function configureExtensionStore(
             policy = {
               id,
               path: packagePath,
-              name: packageToLoad.manifest.name,
+              name: packageName(packageToLoad),
               enabled: true,
               scope: 'selected',
               profiles: [destination.id],
@@ -731,81 +784,85 @@ export function configureExtensionStore(
                 profile.session.extensions.loadExtension(packagePath);
               loaded.push(profile);
               const extension = await load;
-              request.assert();
-              if (extension.id !== id)
+              if (extension.id !== id) {
+                profile.session.extensions.removeExtension(extension.id);
                 throw new Error('Loaded extension identity changed.');
+              }
+              request.assert();
+              failures.delete(`${profile.id}:${id}`);
             }
           }
           packageToLoad.retain();
+        } catch (error) {
+          // Restore policy and native state before the next mutation dispatches.
+          try {
+            rollback();
+          } catch (recoveryError) {
+            // Do not delete a package that native recovery could still need.
+            packageToLoad.retain();
+            throw new Error(
+              `${String(error)}; Recovery failed: ${String(recoveryError)}`
+            );
+          }
+          throw error;
+        }
+      });
+      if (request.active())
+        event.senderFrame?.send('chrome.management.onInstalled', {
+          id,
+          name: packageName(prepared),
+          shortName: packageName(prepared),
+          version: prepared.manifest.version,
+          enabled: true,
+          type: 'extension',
+          installType: 'normal',
+          mayDisable: true,
+          permissions: prepared.manifest.permissions || [],
+          hostPermissions: prepared.manifest.host_permissions || [],
+          icons: [],
         });
-        if (request.active())
-          event.senderFrame?.send('chrome.management.onInstalled', {
-            id,
-            name: prepared.manifest.name,
-            shortName: prepared.manifest.name,
-            version: prepared.manifest.version,
-            enabled: true,
-            type: 'extension',
-            installType: 'normal',
-            mayDisable: true,
-            permissions: prepared.manifest.permissions || [],
-            hostPermissions: prepared.manifest.host_permissions || [],
-            icons: [],
-          });
-        return { result: 'success' };
+      return { result: 'success' };
+    } catch (error) {
+      failures.set(`${destination.id}:${id}`, String(error));
+      return {
+        result: 'install_error',
+        message:
+          'Extension could not be installed. Try again or review local extension settings.',
+      };
+    } finally {
+      installActive = false;
+      clearTimeout(timer!);
+      request.dispose();
+      installing.delete(id);
+      try {
+        await prepared?.dispose();
       } catch (error) {
         failures.set(`${destination.id}:${id}`, String(error));
-        try {
-          for (const profile of loaded)
-            profile.session.extensions.removeExtension(id);
-          if (
-            published &&
-            JSON.stringify(read().find((entry) => entry.id === id)) ===
-              JSON.stringify(published)
-          ) {
-            save([
-              ...read().filter((entry) => entry.id !== id),
-              ...(original ? [original] : []),
-            ]);
-          }
-        } catch (recoveryError) {
-          failures.set(`${destination.id}:${id}`, String(recoveryError));
-        }
-        return {
-          result: 'install_error',
-          message:
-            'Extension could not be installed. Try again or review local extension settings.',
-        };
-      } finally {
-        installActive = false;
-        clearTimeout(timer!);
-        request.dispose();
-        installing.delete(id);
-        try {
-          await prepared?.dispose();
-        } catch (error) {
-          failures.set(`${destination.id}:${id}`, String(error));
-        }
       }
     }
-  );
+  };
+  contents.ipc.handle('chromeWebstore.beginInstall', install);
+  storeInstallers.set(contents, { profileId, install });
   contents.ipc.handle(
     'chromeWebstore.getExtensionStatus',
-    (event, id: string, manifestJson: string) => {
+    (event, id: string, manifestJson?: string | null) => {
       if (!trusted(event)) throw new Error('Untrusted extension store request');
       if (
         !validId(id) ||
-        typeof manifestJson !== 'string' ||
-        Buffer.byteLength(manifestJson) > 1024 * 1024
+        (manifestJson != null &&
+          (typeof manifestJson !== 'string' ||
+            Buffer.byteLength(manifestJson) > 1024 * 1024))
       )
         throw new Error('Invalid extension store request');
-      const manifest = JSON.parse(manifestJson);
+      const manifest =
+        manifestJson == null ? undefined : JSON.parse(manifestJson);
       if (
-        !manifest ||
-        typeof manifest !== 'object' ||
-        Array.isArray(manifest) ||
-        !Number.isSafeInteger(manifest.manifest_version) ||
-        manifest.manifest_version < 1
+        manifestJson != null &&
+        (!manifest ||
+          typeof manifest !== 'object' ||
+          Array.isArray(manifest) ||
+          !Number.isSafeInteger(manifest.manifest_version) ||
+          manifest.manifest_version < 1)
       )
         throw new Error('Invalid extension manifest');
       const item = read().find((entry) => entry.id === id);
@@ -818,7 +875,8 @@ export function configureExtensionStore(
           : extensionAllowed(item, destination.id))
       )
         return 'enabled';
-      if (manifest.manifest_version < 3) return 'deprecated_manifest_version';
+      if (manifest && manifest.manifest_version < 3)
+        return 'deprecated_manifest_version';
       return 'installable';
     }
   );
@@ -904,13 +962,48 @@ export function configureExtensionStore(
     }
   );
 }
+export function storeExtensionId(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.origin !== 'https://chromewebstore.google.com') return undefined;
+    return /^\/detail\/(?:[^/]+\/)?([a-p]{32})\/?$/.exec(parsed.pathname)?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
+/** Native menu action reuses the same document-bound installer as store IPC. */
+export async function installStoreExtension(
+  contents: WebContents,
+  owner: BrowserWindow
+) {
+  const registered = storeInstallers.get(contents);
+  const profile = registered && profiles.get(registered.profileId);
+  if (
+    !registered ||
+    contents.isDestroyed() ||
+    owner.isDestroyed() ||
+    profile?.owner !== owner ||
+    profile.session !== contents.session
+  )
+    throw new Error('This extension store tab is no longer available.');
+  const id = storeExtensionId(contents.getURL());
+  if (!id || contents.mainFrame.origin !== 'https://chromewebstore.google.com')
+    throw new Error('Open an extension detail page in the Chrome Web Store.');
+  return registered.install(
+    { sender: contents, senderFrame: contents.mainFrame } as IpcMainInvokeEvent,
+    { id }
+  );
+}
+
 /** UI metadata only; never expose installation paths to the workspace. */
 export function extensionCatalog() {
   return read().map(({ id, name }) => ({ id, name }));
 }
 
 export function extensionMenu(
-  owner: BrowserWindow
+  owner: BrowserWindow,
+  contents?: WebContents
 ): MenuItemConstructorOptions[] {
   const current =
     getExtensionProfile(active.get(owner.id) || '') ||
@@ -929,7 +1022,39 @@ export function extensionMenu(
     change(async () => {
       toolbar.saveOrder(order);
     }, owner);
+  const store = contents && storeInstallers.get(contents);
+  const canInstall = Boolean(
+    contents &&
+      !contents.isDestroyed() &&
+      store &&
+      profiles.get(store.profileId)?.owner === owner &&
+      storeExtensionId(contents.getURL())
+  );
   return [
+    ...(canInstall
+      ? [
+          {
+            label: 'Install this extension…',
+            click: async () => {
+              try {
+                const result = await installStoreExtension(contents!, owner);
+                if (result.result === 'install_error')
+                  throw new Error(result.message);
+              } catch (error) {
+                await showBrowserDialog(owner, {
+                  title: 'Install extension',
+                  message: 'Extension could not be installed',
+                  detail:
+                    'Try again or review the error details in extension settings.',
+                  technicalDetail: String(error),
+                  buttons: ['Done'],
+                });
+              }
+            },
+          },
+          { type: 'separator' as const },
+        ]
+      : []),
     {
       label: 'Chrome Web Store…',
       enabled: Boolean(current),

@@ -57,7 +57,9 @@ it('owns a bounded package copy, reviews actual permissions and rejects changed 
 });
 
 it('rejects a package with another identity and removes rejected staging data', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'kudiumbrowser-package-id-'));
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'kudiumbrowser-package-id-')
+  );
   const source = path.join(root, 'source');
   await fs.mkdir(source);
   await fs.writeFile(
@@ -113,6 +115,69 @@ it('rejects symlinks and revoked ownership before committing a package', async (
     allowed = false;
     await expect(prepared.commit()).rejects.toThrow('Revoked');
     expect(await fs.readdir(root)).not.toContain('cache');
+  } finally {
+    await prepared.dispose();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+it('reviews the copied default-locale name and rejects locale traversal or changed translations', async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'kudiumbrowser-package-locale-')
+  );
+  const source = path.join(root, 'source');
+  await fs.mkdir(path.join(source, '_locales', 'en'), { recursive: true });
+  const key = generateKeyPairSync('rsa', { modulusLength: 1024 })
+    .publicKey.export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const manifest = {
+    manifest_version: 3,
+    name: '__MSG_extName__',
+    default_locale: 'en',
+    version: '1',
+    key,
+  };
+  await fs.writeFile(
+    path.join(source, 'manifest.json'),
+    JSON.stringify(manifest)
+  );
+  await fs.writeFile(
+    path.join(source, '_locales', 'en', 'messages.json'),
+    JSON.stringify({ extname: { message: 'Localized fixture' } })
+  );
+  const prepared = await prepareExtensionPackage(
+    extensionKeyId(key),
+    path.join(root, 'cache'),
+    root,
+    () => {},
+    source
+  );
+  try {
+    expect(prepared.displayName).toBe('Localized fixture');
+    expect(prepared.manifest.name).toBe('__MSG_extName__');
+    await fs.writeFile(
+      path.join(source, '_locales', 'en', 'messages.json'),
+      '{}'
+    );
+    await expect(prepared.validate()).resolves.toBeUndefined();
+    await fs.writeFile(
+      path.join(prepared.path(), '_locales', 'en', 'messages.json'),
+      '{}'
+    );
+    await expect(prepared.validate()).rejects.toThrow('changed after review');
+    await fs.writeFile(
+      path.join(source, 'manifest.json'),
+      JSON.stringify({ ...manifest, default_locale: '../../escape' })
+    );
+    await expect(
+      prepareExtensionPackage(
+        extensionKeyId(key),
+        path.join(root, 'cache'),
+        root,
+        () => {},
+        source
+      )
+    ).rejects.toThrow('localized name');
   } finally {
     await prepared.dispose();
     await fs.rm(root, { recursive: true, force: true });

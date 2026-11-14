@@ -85,7 +85,8 @@ let openPage:
         | 'import'
         | 'passwords'
         | 'spaces'
-        | 'hooks'
+        | 'hooks',
+      personalDataScope?: string
     ) => void)
   | undefined;
 let aiSettingsWindow: (contents: WebContents) => boolean = () => false;
@@ -142,6 +143,29 @@ export function validatePreferences(
         value,
         process.platform === 'darwin'
       );
+      return;
+    }
+    if (key === 'personalDataAutofillPositions') {
+      if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 200) throw new Error('Invalid autofill positions');
+      const positions: BrowserPreferences['personalDataAutofillPositions'] = {};
+      for (const [origin, placement] of Object.entries(value)) {
+        const url = new URL(origin);
+        const point = placement as BrowserPreferences['personalDataAutofillPositions'][string];
+        if (url.protocol !== 'https:' || url.origin !== origin || !point || !['left', 'right'].includes(point.side) ||
+            !Number.isFinite(point.x) || Math.abs(point.x) > 128 || !Number.isFinite(point.y) || Math.abs(point.y) > 128) throw new Error('Invalid autofill position');
+        positions[origin] = { side: point.side, x: point.x, y: point.y };
+      }
+      validated.personalDataAutofillPositions = positions;
+      return;
+    }
+    if (key === 'personalDataAutofillExcludedSites') {
+      if (!Array.isArray(value) || value.length > 1000) throw new Error('Invalid autofill website list');
+      validated.personalDataAutofillExcludedSites = [...new Set(value.map((entry) => {
+        if (typeof entry !== 'string') throw new Error('Invalid autofill website');
+        const url = new URL(entry);
+        if (url.protocol !== 'https:') throw new Error('Invalid autofill website');
+        return url.origin;
+      }))];
       return;
     }
     if (key === 'discardExcludedSites') {
@@ -285,9 +309,10 @@ export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
 }
 export function showBrowserPreferences(
   _owner: BrowserWindow,
-  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks'
+  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks',
+  personalDataScope?: string
 ) {
-  openPage?.(section);
+  openPage?.(section, personalDataScope);
 }
 export function registerPreferences(
   opener?: (
@@ -298,7 +323,8 @@ export function registerPreferences(
       | 'import'
       | 'passwords'
       | 'spaces'
-      | 'hooks'
+      | 'hooks',
+    personalDataScope?: string
   ) => void,
   isTrusted: (contents: WebContents) => boolean = () => false,
   isSettings: (contents: WebContents) => boolean = () => false

@@ -14,13 +14,17 @@ it('clears the previous website icon on an explicit reset', () => {
     const view = render(<AppIcon icon="old.png" title="Website" />);
     act(() => images[0].dispatchEvent(new Event('load')));
     expect(screen.getByRole('img').getAttribute('src')).toBe('old.png');
+    view.rerender(<AppIcon icon="failed-replacement.png" title="Website" />);
+    expect(screen.queryByRole('img')).toBeNull();
+    act(() => images[1].dispatchEvent(new Event('error')));
+    expect(screen.queryByRole('img')).toBeNull();
     view.rerender(<AppIcon icon="" title="Website" />);
     expect(screen.queryByRole('img')).toBeNull();
     view.rerender(<AppIcon icon="failed.png" title="Website" />);
-    act(() => images[1].dispatchEvent(new Event('error')));
+    act(() => images[2].dispatchEvent(new Event('error')));
     expect(screen.queryByRole('img')).toBeNull();
     view.rerender(<AppIcon icon="new.png" title="Website" />);
-    act(() => images[2].dispatchEvent(new Event('load')));
+    act(() => images[3].dispatchEvent(new Event('load')));
     expect(screen.getByRole('img').getAttribute('src')).toBe('new.png');
   } finally {
     window.Image = Original;

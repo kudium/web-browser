@@ -51,9 +51,13 @@ export class AIConversationStore {
 
   private preserveOriginal = false;
 
-  constructor(private file: string, private storage: SynchronousSecureStorage) {
+  constructor(
+    private file: string,
+    private storage: SynchronousSecureStorage,
+    private memoryOnly = false
+  ) {
     try {
-      if (this.available() && fs.existsSync(this.file)) {
+      if (!memoryOnly && this.available() && fs.existsSync(this.file)) {
         if (fs.statSync(file).size > 20 * 1024 * 1024)
           throw new Error('History is too large');
         const saved = JSON.parse(storage.decryptString(fs.readFileSync(file)));
@@ -135,7 +139,7 @@ export class AIConversationStore {
       this.storageNotice =
         'Saved chats could not be restored. New chats remain available in this session.';
     }
-    if (!this.available() && fs.existsSync(this.file))
+    if (!memoryOnly && !this.available() && fs.existsSync(this.file))
       this.storageNotice = storageRecoveryMessage('your saved chats');
     if (!this.chats.length) this.chats.push(AIConversationStore.blank());
     if (!this.chats.some((chat) => chat.id === this.selectedId))
@@ -177,7 +181,7 @@ export class AIConversationStore {
     const first = chat.history.find((event) => event.type === 'user');
     if (first && !chat.titleSource)
       chat.title = first.text.replace(/\s+/g, ' ').slice(0, 70) || 'New chat';
-    if (this.preserveOriginal) return;
+    if (this.memoryOnly || this.preserveOriginal) return;
     const temporary = `${this.file}.tmp`;
     try {
       if (!this.available()) {

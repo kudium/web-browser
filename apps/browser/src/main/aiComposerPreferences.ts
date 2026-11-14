@@ -8,7 +8,8 @@ export class AIComposerPreferences {
     groupId: null,
   };
 
-  constructor(private file: string) {
+  constructor(private file: string, private memoryOnly = false) {
+    if (memoryOnly) return;
     try {
       const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (['ask', 'standard', 'full'].includes(saved.accessMode))
@@ -25,6 +26,10 @@ export class AIComposerPreferences {
 
   save(patch: Partial<typeof this.value>) {
     const value = { ...this.value, ...patch };
+    if (this.memoryOnly) {
+      this.value = value;
+      return;
+    }
     fs.writeFileSync(`${this.file}.tmp`, JSON.stringify(value), {
       mode: 0o600,
     });

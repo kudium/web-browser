@@ -1,3 +1,5 @@
+import { AddressBarSetting } from './AddressBarSetting';
+import { preferenceControls } from '../../browser/preferences';
 import {
   Dialog,
   Button,
@@ -7,7 +9,7 @@ import {
   DropdownMenu,
 } from '@radix-ui/themes';
 import {
-  SquareArrowOutUpRight,
+  Code2,
   LockKeyhole,
   ShieldAlert,
   MapPin,
@@ -44,12 +46,24 @@ export function SiteSettingsDialog({
   state,
   command,
   onCapture,
+  fullUrl,
+  siteAutofillEnabled,
+  onSiteAutofillChange,
+  onFullUrlChange,
+  addressBarPlacement,
+  onAddressBarPlacementChange,
 }: {
   open: boolean;
   onOpenChange: (nextOpen: boolean) => void;
   state: BrowserState | undefined;
   command: (request: BrowserCommand) => void;
   onCapture?: (mode: PageCaptureMode) => void;
+  addressBarPlacement?: 'sidebar' | 'header';
+  onAddressBarPlacementChange?: (placement: 'sidebar' | 'header') => void;
+  fullUrl?: boolean;
+  siteAutofillEnabled?: boolean;
+  onSiteAutofillChange?: (enabled: boolean) => void;
+  onFullUrlChange?: (enabled: boolean) => void;
 }) {
   const site = state?.siteSettings;
   const send = (
@@ -112,13 +126,13 @@ export function SiteSettingsDialog({
           aria-labelledby="site-hooks-intro"
         >
           <div className="site-hooks-intro">
-            <h2 id="site-hooks-intro">Do more with site hooks</h2>
+            <h2 id="site-hooks-intro">Site hooks</h2>
             <p>
-              Test, debug, extract page data, and customize this site with
-              JavaScript and CSS.
+              Customize with JavaScript and CSS.
             </p>
           </div>
           <Button
+            size="2"
             variant="soft"
             color="gray"
             disabled={!site}
@@ -127,8 +141,8 @@ export function SiteSettingsDialog({
               onOpenChange(false);
             }}
           >
-            <SquareArrowOutUpRight size={15} />
-            Developer
+            <Code2 size={15} />
+            Manage Site Hooks
           </Button>
         </section>
         <div className="site-settings-tab-content">
@@ -186,6 +200,39 @@ export function SiteSettingsDialog({
                 Save PDF
               </Button>
             </div>
+            {onFullUrlChange && onAddressBarPlacementChange && (
+              <section aria-labelledby="address-customize-heading">
+                <div className="site-section-heading">
+                  <h2 id="address-customize-heading">Customize</h2>
+                </div>
+                <div className="site-settings-group">
+                  {onSiteAutofillChange && (
+                    <div className="site-setting-row">
+                      <span className="site-setting-icon"><Settings2 size={18} /></span>
+                      <span className="site-setting-label">Autofill on this website</span>
+                      <Switch aria-label="Autofill on this website" checked={!!siteAutofillEnabled}
+                        disabled={!site?.origin.startsWith('https:')} onCheckedChange={onSiteAutofillChange} />
+                    </div>
+                  )}
+                  {(['addressBarPlacement', 'addressBarFullUrl'] as const).map((key) => (
+                    <div className="site-setting-row" key={key}>
+                      <span className="site-setting-icon"><Settings2 size={18} /></span>
+                      <span className="site-setting-label">
+                        {preferenceControls.find((control) => control.key === key)?.title}
+                      </span>
+                      <AddressBarSetting
+                        setting={key}
+                        value={key === 'addressBarPlacement' ? addressBarPlacement || 'sidebar' : !!fullUrl}
+                        onChange={(patch) => {
+                          if (patch.addressBarPlacement) onAddressBarPlacementChange(patch.addressBarPlacement);
+                          if (patch.addressBarFullUrl !== undefined) onFullUrlChange(patch.addressBarFullUrl);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
             <section aria-labelledby="site-permissions-heading">
               <div className="site-section-heading">
                 <h2 id="site-permissions-heading">Permissions</h2>

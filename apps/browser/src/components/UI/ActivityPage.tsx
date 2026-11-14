@@ -22,6 +22,7 @@ import { browser } from '../../browser/client';
 import { AppIcon } from './AppIcon/AppIcon';
 import { AppManager } from '../../utils/AppManager';
 import { loginProfileKey } from '../../utils/groups';
+import { savedSiteIcon } from '../../utils/siteIcon';
 import type {
   BrowserActivity,
   HookActivityTrigger,
@@ -40,12 +41,11 @@ function hookSource(trigger: HookActivityTrigger) {
 function activitySiteIcon(entry: BrowserActivity) {
   const source = entry.trigger ? hookSource(entry.trigger) : undefined;
   if (source?.icon) return source.icon;
-  try {
-    const { origin } = new URL(entry.trigger?.origin || entry.url || '');
-    return /^https?:\/\//i.test(origin) ? `${origin}/favicon.ico` : undefined;
-  } catch {
-    return undefined;
-  }
+  return savedSiteIcon(
+    AppManager.getAll(),
+    entry.trigger?.origin || entry.url || '',
+    entry.trigger?.profile
+  );
 }
 
 function activityTime(timestamp: number) {

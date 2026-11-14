@@ -1,3 +1,4 @@
+import { tabCompletion } from '../../utils/editorCompletion';
 import { useMemo, useRef } from 'react';
 import CodeMirror, {
   EditorView,
@@ -60,6 +61,7 @@ export function DeveloperFileEditor({
   const { appearance } = useAppearance();
   const extensions = useMemo(() => {
     return [
+      tabCompletion,
       ...developerFileLanguage(name),
       ...(wrap ? [EditorView.lineWrapping] : []),
       EditorView.contentAttributes.of({ 'aria-label': `Editor for ${name}` }),

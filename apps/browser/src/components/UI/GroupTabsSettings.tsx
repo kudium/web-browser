@@ -15,14 +15,23 @@ export function GroupTabsSettings({
   tabs,
   changes,
   onChange,
+  pendingAddress,
+  onPendingAddressChange,
 }: {
   tabs: IApp[];
   changes: GroupTabChanges;
   onChange: (next: GroupTabChanges) => void;
+  pendingAddress?: string;
+  onPendingAddressChange?: (address: string) => void;
 }) {
   const [textMode, setTextMode] = useState(false);
   const [text, setText] = useState('');
-  const [address, setAddress] = useState('');
+  const [localAddress, setLocalAddress] = useState('');
+  const address = pendingAddress ?? localAddress;
+  const setAddress = (next: string) => {
+    setLocalAddress(next);
+    onPendingAddressChange?.(next);
+  };
   const [error, setError] = useState('');
   const rows: { id: string; name: string; url: string; customName?: string }[] =
     [

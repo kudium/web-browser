@@ -34,6 +34,7 @@ import { StorageRecoveryAction } from '../../UI/StorageRecoveryAction';
 import { isStorageRecoveryError } from '../../../browser/storageRecovery';
 import { PanelPopoverContent, PanelDialogHeader } from '../../UI/PanelDialog';
 import { NotesPage } from '../../UI/NotesPage';
+import { GroupPicker } from '../../UI/GroupPicker';
 import { GroupIcon } from '../../UI/GroupIcon';
 import type { IApp } from '../../../types';
 import { personalDataScope } from '../../../utils/groups';
@@ -1104,7 +1105,11 @@ function PersonalDataRecords({
 }
 
 /** Compatibility export; all entry points share the same manager. */
-export function PersonalData({ group, tabs }: { group?: IApp; tabs?: IApp[] }) {
+export function PersonalData({ group, tabs, initialScope = 'browser' }: { group?: IApp; tabs?: IApp[]; initialScope?: string }) {
+  const [selectedScope, setSelectedScope] = useState(initialScope);
+  useEffect(() => { setSelectedScope(initialScope); setPage('data'); }, [initialScope]);
+  const groups = Array.from(new Map((tabs || []).filter((tab) => !tab.archived).map((tab) => [personalDataScope(tab), tab])).entries());
+  const selectedGroup = group || groups.find(([id]) => id === selectedScope)?.[1];
   const [page, setPage] = useState('data');
   const [notesMounted, setNotesMounted] = useState(false);
   return (
@@ -1123,15 +1128,27 @@ export function PersonalData({ group, tabs }: { group?: IApp; tabs?: IApp[] }) {
           </SegmentedControl.Item>
           <SegmentedControl.Item value="notes">Notes</SegmentedControl.Item>
         </SegmentedControl.Root>
+        {!group && groups.length > 0 && (
+          <GroupPicker
+            label="Personal Data group"
+            disabled={false}
+            value={selectedScope}
+            onChange={setSelectedScope}
+            options={[
+              { id: 'browser', name: 'Browser-wide' },
+              ...groups.map(([id, tab]) => ({ id, name: tab.sessionName || tab.name, group: tab })),
+            ]}
+          />
+        )}
       </div>
       <div hidden={page !== 'data'}>
-        <PersonalDataRecords group={group} tabs={tabs} />
+        <PersonalDataRecords key={selectedGroup ? personalDataScope(selectedGroup) : 'browser'} group={selectedGroup} tabs={tabs} />
       </div>
       {notesMounted && (
         <div className="personal-page-body" hidden={page !== 'notes'}>
           <NotesPage
             tabs={tabs}
-            initialScope={group ? personalDataScope(group) : undefined}
+            initialScope={selectedGroup ? personalDataScope(selectedGroup) : undefined}
           />
         </div>
       )}

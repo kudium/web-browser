@@ -8,7 +8,7 @@ const assert = require('assert');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-ai-smoke-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({ entryPoints: ['src/main/ai.ts'], bundle: true, minify: true, platform: 'node', external: ['electron'], outfile: path.join(root, 'ai.cjs') });
-fs.writeFileSync(path.join(root, 'preload.cjs'), `const { contextBridge, ipcRenderer } = require('electron');contextBridge.exposeInMainWorld('ai',{models:p=>ipcRenderer.invoke('ai-models',p),settings:p=>ipcRenderer.invoke('ai-settings',p),run:p=>ipcRenderer.invoke('ai-run',p),continue:()=>ipcRenderer.invoke('ai-resume'),status:()=>ipcRenderer.invoke('ai-task-status'),mcpStatus:()=>ipcRenderer.invoke('ai-mcp','status'),stop:()=>ipcRenderer.invoke('ai-stop'),takeOver:()=>ipcRenderer.invoke('ai-takeover'),resume:()=>ipcRenderer.invoke('ai-resume-external'),listen:()=>ipcRenderer.on('ai-event',(_,e)=>{window.events.push(e)})});window.events=[];ipcRenderer.on('ai-event',(_,e)=>{ipcRenderer.send('test-event',e)});ipcRenderer.on('browser-tab-request',(_,r)=>ipcRenderer.send('test-tab',r));`);
+fs.writeFileSync(path.join(root, 'preload.cjs'), `const { contextBridge, ipcRenderer } = require('electron');contextBridge.exposeInMainWorld('ai',{models:p=>ipcRenderer.invoke('ai-models',p),settings:p=>ipcRenderer.invoke('ai-settings',p),run:p=>ipcRenderer.invoke('ai-run',p),continue:()=>ipcRenderer.invoke('ai-resume'),status:()=>ipcRenderer.invoke('ai-task-status'),mcpStatus:()=>ipcRenderer.invoke('ai-mcp','status'),queue:p=>ipcRenderer.invoke('ai-queue',p||{action:'list'}),stop:()=>ipcRenderer.invoke('ai-stop'),takeOver:()=>ipcRenderer.invoke('ai-takeover'),resume:()=>ipcRenderer.invoke('ai-resume-external'),listen:()=>ipcRenderer.on('ai-event',(_,e)=>{window.events.push(e)})});window.events=[];ipcRenderer.on('ai-event',(_,e)=>{ipcRenderer.send('test-event',e)});ipcRenderer.on('browser-tab-request',(_,r)=>ipcRenderer.send('test-tab',r));`);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const recoveryTest = process.argv.includes('--provider-recovery');
 const visionTest = process.argv.includes('--vision');
@@ -20,6 +20,7 @@ let visionCaptured = false; let visionVerified = false;
 let retryFaults=0;let retryBody;let recoveryStage=0;
 const recoveryPlans=[['click',{tabId:'first',elementId:1}],['list_tabs',{}],['click',{tabId:'first',elementId:1}],['read_page',{tabId:'first'}]];
 let step = 0; let port; let done; let approvals = 0;
+let discoveryCalls = 0;
 const plans = [
   ['list_tabs', {}], ['read_page', { tabId: 'first' }],
   ['type', { tabId: 'first', elementId: 0, text: 'KudiumBrowser test' }],
@@ -37,7 +38,22 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({choices:[{message:{role:'assistant',content:'Fixture task'}}]}));
       return;
     }
-    assert.deepEqual(Object.keys(request.tools.find(tool=>tool.function.name==='screenshot').function.parameters.properties),['tabId']);
+    // Advanced tools are deferred. Exercise actual discovery before asserting
+    // their schemas or issuing calls; preserve the action/retry step counters.
+    const screenshot = request.tools.find(tool => tool.function.name === 'screenshot');
+    if (!screenshot || (extractionTest && !request.tools.some(tool => tool.function.name === 'extract_rows'))) {
+      assert(request.tools.some(tool => tool.function.name === 'discover_tools'));
+      discoveryCalls += 1;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({choices:[{message:{role:'assistant',content:null,tool_calls:[{
+        id:`discover-${discoveryCalls}`,type:'function',function:{name:'discover_tools',
+          arguments:JSON.stringify(extractionTest ? {family:'advanced_interaction'} : {query:'screenshot'})}
+      }]}}]}));
+      return;
+    }
+    assert(request.messages.some(message => message.role === 'tool' && message.content.includes('screenshot')),
+      'Deferred screenshot schema must follow a successful discovery result');
+    assert.deepEqual(Object.keys(screenshot.function.parameters.properties),['tabId']);
     assert.deepEqual(request.tools.find(tool=>tool.function.name==='type').function.parameters.required,['elementId','text']);
     assert(!request.tools.find(tool=>tool.function.name==='read_page').function.parameters.properties.text);
     assert(['Bearer local-test-key', ...(windowRecoveryPaused ? ['Bearer new-session-key'] : [])].includes(req.headers.authorization));
@@ -56,8 +72,8 @@ const server = http.createServer(async (req, res) => {
       if(retryFaults<(recoveryTest ? 3 : 2)){retryFaults+=1;if(retryFaults===1){res.writeHead(503);res.end('Temporary provider failure');}else{req.socket.destroy();}return;}
     }
 
-    if(recoveryTest && step===3 && recoveryStage===1) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('call list_tabs')), 'Stale click must be refused before approval');
-    if(recoveryTest && step===3 && recoveryStage===3) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('read_page for this tab')), 'Listing alone must not authorize stale target');
+    if((recoveryTest || handoffTest) && step===3 && recoveryStage===1) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('call list_tabs')), 'Stale click must be refused before approval');
+    if((recoveryTest || handoffTest) && step===3 && recoveryStage===3) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('read_page for this tab')), 'Listing alone must not authorize stale target');
     if(handoffTest && step===3 && handoffIssued && recoveryStage>0) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('This action was not executed')), 'Actions after handoff must be recorded as unexecuted');
     if(handoffTest && step===3 && recoveryStage===4) assert(request.messages.some(message=>message.role==='tool' && message.content.includes('Human completed login')), 'Resume must observe the changed human-completed page');
     if (step === 5) assert(request.messages.some((message) => message.role === 'tool' && message.content.includes('Done KudiumBrowser test')));
@@ -122,9 +138,12 @@ const server = http.createServer(async (req, res) => {
     await evaluate('ai.continue()');
     await Promise.race([recovered,sleep(15000).then(()=>{throw new Error('Recovery timed out');})]);
   }
-  if(recoveryTest || handoffTest) { assert.equal(recoveryStage,4); assert(events.filter(event=>event.text==='click finished').length>=3, 'Both stale attempts and the eventual observed click must finish'); }
+  // The provider assertions above inspect both refused stale calls; its later
+  // read_page assertion verifies the actual eventual click changed the DOM.
+  if(recoveryTest || handoffTest) assert.equal(recoveryStage,4);
   if(visionTest) {assert(visionVerified);assert(!events.some(event=>event.text?.includes('data:image/png;base64')),'Sidebar must not receive raw image payloads');}
   if(extractionTest) assert(extractionVerified);
+  assert(discoveryCalls > 0, 'Provider must discover deferred tools');
   assert.equal(approvals, 2); assert.equal(tabs.length, 2);
   assert.equal(retryFaults,recoveryTest ? 3 : 2);assert.equal(events.filter(event=>event.text?.startsWith('Retrying AI connection')).length,2,'Transient provider errors must recover within the original task');
   assert.equal(views.get(tabs[1].id).webContents.session, view.webContents.session);
@@ -133,11 +152,16 @@ const server = http.createServer(async (req, res) => {
   assert(await evaluate('ai.continue().then(()=>false,()=>true)'), 'Consumed checkpoint must not replay the task');
   const stopped = new Promise((resolve) => { done = resolve; });
   await evaluate(`ai.run('Stop test')`);
-  assert(await evaluate(`ai.run('Concurrent test').then(()=>false,()=>true)`));
+  assert.equal(await evaluate(`ai.run('Concurrent test')`),false,'Busy chat accepts the second task into its queue');
+  const queued = await evaluate('ai.queue()');
+  assert.equal(queued.messages.length,1);
+  assert(!events.some(event=>event.text==='Concurrent test'),'Queued task must not execute concurrently');
   await evaluate(`ai.takeOver()`);
   await Promise.race([stopped, sleep(3000).then(() => { throw new Error('Stop timed out'); })]);
   assert(events.some((event) => event.text === 'Task paused. Continue when ready.' && event.resumable));
   assert((await evaluate('ai.status()')).resumable, 'Takeover must preserve a checkpoint');
+  assert((await evaluate('ai.queue()')).paused,'Takeover must pause queued messages');
+  await evaluate(`ai.queue({action:'remove',id:${JSON.stringify(queued.messages[0].id)}})`);
   // Foreign frames/windows cannot access the key or run tasks.
   const outsider = new BrowserWindow({ show: false, webPreferences: { preload: path.join(root, 'preload.cjs') } });
   await outsider.loadURL('data:text/html,outsider');

@@ -6,6 +6,8 @@ export type AccountSyncAction =
   | 'connect'
   | 'cancel'
   | 'enable'
+  | 'unlock'
+  | 'reset-sync'
   | 'disconnect'
   | 'sync'
   | 'snapshot'

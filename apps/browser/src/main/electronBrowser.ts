@@ -30,12 +30,8 @@ import {
   registerGroupRemoval,
   sameRemovalGroup,
 } from './groupRemoval';
-import {
-  FaviconLoader,
-  faviconCandidates,
-  faviconSiteChanged,
-} from './faviconLoader';
-import { FaviconDecoder } from './faviconDecoder';
+import { faviconSiteChanged } from './faviconLoader';
+import { FaviconResolver } from './faviconResolver';
 import { hookNotifications } from './hookNotifications';
 import {
   authenticatePersonalData,
@@ -49,6 +45,7 @@ import {
   developerSaveError,
   registerDeveloperPage,
   resetDeveloperState,
+  rerunDeveloperHook,
   siteDeveloperPreload,
 } from './siteDeveloper';
 import { registerSiteDeveloperLibrary } from './siteDeveloperLibrary';
@@ -57,7 +54,7 @@ import {
   groupKey,
   personalDataScope,
   newGroupName,
-  loginProfileKey,
+  loginProfileKey as storedProfileKey,
 } from '../utils/groups';
 
 import {
@@ -66,6 +63,7 @@ import {
 } from './advancedPreferences';
 import { siteRule } from '../browser/advancedPreferences';
 import { registerAI } from './ai';
+import { isPrivateSession } from './privateSessions';
 import { registerPageCapture } from './pageCapture';
 import { AINewTabs } from './aiTabs';
 import { getBrowserWindows } from './browserWindows';
@@ -113,6 +111,7 @@ import {
 } from './extensions';
 import {
   getSiteSettings,
+  clearPrivateSiteSettings,
   updateSiteSettings,
   saveSiteHooks,
   siteOrigin,
@@ -127,7 +126,12 @@ export function registerElectronBrowser(
   storageReady?: Promise<void>
 ) {
   const removals = getGroupRemovalJournal();
-  const windows = getBrowserWindows();
+  const windows = getBrowserWindows(window);
+  const privateMode = isPrivateSession(window.webContents.session);
+  const privateProfilePrefix = `private:${window.id}:`;
+  const loginProfileKey = (item: IApp) => privateMode
+    ? `${privateProfilePrefix}${storedProfileKey(item)}`
+    : storedProfileKey(item);
   const hostFor = (id: string) => windows?.host(id) || window;
   const removeView = (view: WebContentsView) =>
     windows ? windows.remove(view) : window.contentView.removeChildView(view);
@@ -138,6 +142,16 @@ export function registerElectronBrowser(
   let developerWindows: ReturnType<typeof registerSiteDeveloperWindows>;
   let synchronizingExtensions = false;
   const retiringTabs = new Set<number>();
+  const closingHosts = new WeakSet<BrowserWindow>();
+  const watchClosing = (host: BrowserWindow) => {
+    host.on('close', (event) => {
+      closingHosts.add(host);
+      queueMicrotask(() => {
+        if (event.defaultPrevented) closingHosts.delete(host);
+      });
+    });
+  };
+  watchClosing(window);
   const aiNewTabs = new AINewTabs();
   const approvedAIClose = new WeakSet<WebContents>();
   const tabWaiters = new Map<string, (tab: WebContents) => void>();
@@ -173,7 +187,7 @@ export function registerElectronBrowser(
     contents: WebContents,
     dataScope: () => string | undefined = () => undefined
   ) => {
-    if (contents !== window.webContents)
+    if (!privateMode && contents !== window.webContents)
       registerPasswordPage(contents, dataScope);
     const listener = (event: Event, input: Input) => {
       const target = [...views].find(
@@ -293,8 +307,7 @@ export function registerElectronBrowser(
   const playingMedia = new Set<string>();
   const icons = new Map<string, string>();
   const themeColors = new WeakMap<WebContents, string>();
-  const faviconLoader = new FaviconLoader();
-  const faviconDecoder = new FaviconDecoder();
+  const faviconResolver = new FaviconResolver();
   const publish = (id: string, view: WebContentsView, error?: string) => {
     const contents = view.webContents;
     if (window.isDestroyed() || !contents || contents.isDestroyed()) return;
@@ -319,7 +332,9 @@ export function registerElectronBrowser(
             certificateError: certificateErrorFor(contents.session, origin),
             permissions: getSiteSettings(profile, origin).permissions,
             blocked: getBrowserPreferences().permissions === 'block',
-            developer: developerState(contents, origin),
+            developer: privateMode
+              ? undefined
+              : developerState(contents, origin),
           }
         : undefined,
       url: contents.getURL(),
@@ -337,7 +352,9 @@ export function registerElectronBrowser(
         tab: String(contents.id),
       },
       discarded: false,
-      loading: contents.isLoading(),
+      // Late advertising/embedded frame navigation must not make a loaded
+      // tab look as though its main document is reloading.
+      loading: contents.isLoadingMainFrame(),
       canGoBack: contents.navigationHistory.canGoBack(),
       canGoForward: contents.navigationHistory.canGoForward(),
       error: failure?.message,
@@ -381,7 +398,7 @@ export function registerElectronBrowser(
         waitForBeforeUnload: approvedAIClose.has(view.webContents),
       });
       views.delete(id);
-      faviconLoader.cancel(id);
+      faviconResolver.cancel(id);
       icons.delete(id);
       playingMedia.delete(id);
       pictureInPicture.get(id)?.dispose();
@@ -568,8 +585,12 @@ export function registerElectronBrowser(
           adopted?.view ||
           new WebContentsView({
             webPreferences: {
-              preload: siteDeveloperPreload(),
-              partition: `persist:kudiumbrowser-${loginProfileKey(item)}`,
+              ...(!privateMode && { preload: siteDeveloperPreload() }),
+              ...(privateMode
+                ? { session: window.webContents.session }
+                : {
+                    partition: `persist:kudiumbrowser-${loginProfileKey(item)}`,
+                  }),
               sandbox: true,
               contextIsolation: true,
               nodeIntegration: false,
@@ -594,21 +615,22 @@ export function registerElectronBrowser(
         allowWebsiteCertificateErrors(contents, () =>
           publish(item.id, browserView)
         );
-        registerDeveloperPage(
-          contents,
-          loginProfileKey(item),
-          () => publish(item.id, browserView),
-          () => {
-            const current = configurations.get(item.id);
-            return current && !isGroupLocked(current)
-              ? {
-                  groupId: groupKey(current),
-                  sourceId: current.id,
-                  scope: personalDataScope(current),
-                }
-              : undefined;
-          }
-        );
+        if (!privateMode)
+          registerDeveloperPage(
+            contents,
+            loginProfileKey(item),
+            () => publish(item.id, browserView),
+            () => {
+              const current = configurations.get(item.id);
+              return current && !isGroupLocked(current)
+                ? {
+                    groupId: groupKey(current),
+                    sourceId: current.id,
+                    scope: personalDataScope(current),
+                  }
+                : undefined;
+            }
+          );
         if ((adopted || item.restorationId) && !contents.isLoadingMainFrame())
           loaded.add(item.id);
         contents.once('destroyed', () => {
@@ -633,7 +655,7 @@ export function registerElectronBrowser(
           (contents as unknown as EventEmitter).on(
             'close',
             (closeEvent: { preventDefault(): void }) => {
-              if (retiringTabs.has(contents.id)) return;
+              if (retiringTabs.has(contents.id) || closingHosts.has(hostFor(item.id))) return;
               // Website window.close must archive only its tab, not its host window.
               closeEvent.preventDefault();
               if (!window.isDestroyed())
@@ -663,7 +685,10 @@ export function registerElectronBrowser(
             .executeJavaScript(`window.scrollTo(${saved.x}, ${saved.y})`)
             .catch(() => {});
         });
-        if (new URL(item.url).origin === 'https://chromewebstore.google.com')
+        if (
+          !privateMode &&
+          new URL(item.url).origin === 'https://chromewebstore.google.com'
+        )
           configureExtensionStore(contents, loginProfileKey(item));
         applyBrowserPreferences(contents, loginProfileKey(item));
         bindDownloadSource(
@@ -672,147 +697,152 @@ export function registerElectronBrowser(
         );
         trackDownloads(contents.session);
         const profileId = loginProfileKey(item);
-        const ready = applyExtensions(
-          contents.session,
-          profileId,
-          item.sessionName || item.name,
-          window,
-          {
-            createTab: async (details) => {
-              if (removals.blocks(item))
-                throw new Error('This group is being removed.');
-              if (isGroupLocked(configurations.get(item.id) || item))
-                throw new Error('Unlock this group before opening tabs.');
-              const url = details.url || item.url;
-              const extensionPage = url.startsWith('chrome-extension://');
-              if (!extensionPage && !validURL(url))
-                throw new Error(
-                  'This extension requested an unsupported page address.'
-                );
-              if (
-                extensionPage ||
-                new URL(url).origin !== new URL(item.url).origin
-              ) {
-                if (
-                  extensionPage &&
-                  !contents.session.extensions.getExtension(
-                    new URL(url).hostname
-                  )
-                )
-                  throw new Error('Extension is unavailable in this group.');
-                const popup = new BrowserWindow({
-                  parent: window,
-                  show: false,
-                  width: 960,
-                  height: 720,
-                  webPreferences: {
-                    session: contents.session,
-                    sandbox: true,
-                    contextIsolation: true,
-                    nodeIntegration: false,
-                  },
-                });
-                applyBrowserPreferences(popup.webContents);
-                const api = getExtensionProfile(profileId)?.api;
-                api?.addTab(popup.webContents, popup);
-                const owned = popups.get(item.id) || new Set<BrowserWindow>();
-                popupSources.set(popup, { ...item });
-                owned.add(popup);
-                popups.set(item.id, owned);
-                popup.on('closed', () => owned.delete(popup));
-                try {
-                  await popup.loadURL(url);
+        const ready = privateMode
+          ? Promise.resolve()
+          : applyExtensions(
+              contents.session,
+              profileId,
+              item.sessionName || item.name,
+              window,
+              {
+                createTab: async (details) => {
+                  if (removals.blocks(item))
+                    throw new Error('This group is being removed.');
+                  if (isGroupLocked(configurations.get(item.id) || item))
+                    throw new Error('Unlock this group before opening tabs.');
+                  const url = details.url || item.url;
+                  const extensionPage = url.startsWith('chrome-extension://');
+                  if (!extensionPage && !validURL(url))
+                    throw new Error(
+                      'This extension requested an unsupported page address.'
+                    );
                   if (
-                    removals.blocks(item) ||
-                    isGroupLocked(configurations.get(item.id) || item) ||
-                    popup.isDestroyed()
-                  )
-                    throw new Error('Group access was revoked.');
-                  if (details.active === false) popup.showInactive();
-                  else {
-                    popup.show();
-                    popup.webContents.focus();
+                    extensionPage ||
+                    new URL(url).origin !== new URL(item.url).origin
+                  ) {
+                    if (
+                      extensionPage &&
+                      !contents.session.extensions.getExtension(
+                        new URL(url).hostname
+                      )
+                    )
+                      throw new Error(
+                        'Extension is unavailable in this group.'
+                      );
+                    const popup = new BrowserWindow({
+                      parent: window,
+                      show: false,
+                      width: 960,
+                      height: 720,
+                      webPreferences: {
+                        session: contents.session,
+                        sandbox: true,
+                        contextIsolation: true,
+                        nodeIntegration: false,
+                      },
+                    });
+                    applyBrowserPreferences(popup.webContents);
+                    const api = getExtensionProfile(profileId)?.api;
+                    api?.addTab(popup.webContents, popup);
+                    const owned =
+                      popups.get(item.id) || new Set<BrowserWindow>();
+                    popupSources.set(popup, { ...item });
+                    owned.add(popup);
+                    popups.set(item.id, owned);
+                    popup.on('closed', () => owned.delete(popup));
+                    try {
+                      await popup.loadURL(url);
+                      if (
+                        removals.blocks(item) ||
+                        isGroupLocked(configurations.get(item.id) || item) ||
+                        popup.isDestroyed()
+                      )
+                        throw new Error('Group access was revoked.');
+                      if (details.active === false) popup.showInactive();
+                      else {
+                        popup.show();
+                        popup.webContents.focus();
+                      }
+                      return [popup.webContents, popup];
+                    } catch (error) {
+                      if (!popup.isDestroyed()) popup.destroy();
+                      throw error;
+                    }
                   }
-                  return [popup.webContents, popup];
-                } catch (error) {
-                  if (!popup.isDestroyed()) popup.destroy();
-                  throw error;
-                }
-              }
-              const id = randomUUID();
-              const tab = new Promise<WebContents>((resolve, reject) => {
-                let timeout: ReturnType<typeof setTimeout>;
-                const cancel = () => {
-                  clearTimeout(timeout);
-                  pendingTabCleanup.delete(cancel);
-                  tabWaiters.delete(id);
-                  reject(
-                    new Error('Browser detached or tab creation timed out')
-                  );
-                };
-                timeout = setTimeout(cancel, 10000);
-                pendingTabCleanup.add(cancel);
-                tabWaiters.set(id, (created) => {
-                  clearTimeout(timeout);
-                  pendingTabCleanup.delete(cancel);
-                  resolve(created);
-                  tabWaiters.delete(id);
-                });
-              });
-              window.webContents.send('browser-tab-request', {
-                action: 'create',
-                app: {
-                  ...item,
-                  id,
-                  url,
-                  favorite: false,
-                  pinned: false,
-                  customName: undefined,
+                  const id = randomUUID();
+                  const tab = new Promise<WebContents>((resolve, reject) => {
+                    let timeout: ReturnType<typeof setTimeout>;
+                    const cancel = () => {
+                      clearTimeout(timeout);
+                      pendingTabCleanup.delete(cancel);
+                      tabWaiters.delete(id);
+                      reject(
+                        new Error('Browser detached or tab creation timed out')
+                      );
+                    };
+                    timeout = setTimeout(cancel, 10000);
+                    pendingTabCleanup.add(cancel);
+                    tabWaiters.set(id, (created) => {
+                      clearTimeout(timeout);
+                      pendingTabCleanup.delete(cancel);
+                      resolve(created);
+                      tabWaiters.delete(id);
+                    });
+                  });
+                  window.webContents.send('browser-tab-request', {
+                    action: 'create',
+                    app: {
+                      ...item,
+                      id,
+                      url,
+                      favorite: false,
+                      pinned: false,
+                      customName: undefined,
+                    },
+                  });
+                  return [await tab, window];
                 },
-              });
-              return [await tab, window];
-            },
-            selectTab: (tab) => {
-              if (synchronizingExtensions || window.isDestroyed()) return;
-              const entry = [...views].find(
-                ([, candidate]) => candidate.webContents === tab
-              );
-              if (entry)
-                window.webContents.send('browser-tab-request', {
-                  action: 'select',
-                  id: entry[0],
-                });
-            },
-            removeTab: (tab) => {
-              if (retiringTabs.has(tab.id) || window.isDestroyed()) return;
-              const entry = [...views].find(
-                ([, candidate]) => candidate.webContents === tab
-              );
-              if (entry)
-                window.webContents.send('browser-tab-request', {
-                  action: 'close',
-                  id: entry[0],
-                });
-            },
-            requestPermissions: async (extension, permissions) => {
-              const answer = await showBrowserDialog(window, {
-                message: `${extension.name} requests additional access`,
-                detail: permissionSummary([
-                  ...(permissions.permissions || []),
-                  ...(permissions.origins || []),
-                ]),
-                technicalDetail: [
-                  ...(permissions.permissions || []),
-                  ...(permissions.origins || []),
-                ].join('\n'),
-                buttons: ['Deny', 'Allow'],
-                defaultId: 0,
-                cancelId: 0,
-              });
-              return answer.response === 1;
-            },
-          }
-        );
+                selectTab: (tab) => {
+                  if (synchronizingExtensions || window.isDestroyed()) return;
+                  const entry = [...views].find(
+                    ([, candidate]) => candidate.webContents === tab
+                  );
+                  if (entry)
+                    window.webContents.send('browser-tab-request', {
+                      action: 'select',
+                      id: entry[0],
+                    });
+                },
+                removeTab: (tab) => {
+                  if (retiringTabs.has(tab.id) || window.isDestroyed()) return;
+                  const entry = [...views].find(
+                    ([, candidate]) => candidate.webContents === tab
+                  );
+                  if (entry)
+                    window.webContents.send('browser-tab-request', {
+                      action: 'close',
+                      id: entry[0],
+                    });
+                },
+                requestPermissions: async (extension, permissions) => {
+                  const answer = await showBrowserDialog(window, {
+                    message: `${extension.name} requests additional access`,
+                    detail: permissionSummary([
+                      ...(permissions.permissions || []),
+                      ...(permissions.origins || []),
+                    ]),
+                    technicalDetail: [
+                      ...(permissions.permissions || []),
+                      ...(permissions.origins || []),
+                    ].join('\n'),
+                    buttons: ['Deny', 'Allow'],
+                    defaultId: 0,
+                    cancelId: 0,
+                  });
+                  return answer.response === 1;
+                },
+              }
+            );
         contents.setWindowOpenHandler(({ url, disposition }) => {
           const window = hostFor(item.id);
           const behavior = siteRule(
@@ -835,7 +865,7 @@ export function registerElectronBrowser(
             overrideBrowserWindowOptions: {
               webPreferences: {
                 session: contents.session,
-                preload: siteDeveloperPreload(),
+                ...(!privateMode && { preload: siteDeveloperPreload() }),
                 sandbox: true,
                 contextIsolation: true,
                 nodeIntegration: false,
@@ -867,24 +897,25 @@ export function registerElectronBrowser(
               };
               const childContents = child.webContents;
               enablePagePinchZoom(childContents);
-              registerDeveloperPage(
-                childContents,
-                profileId,
-                () => {
-                  const current = views.get(id);
-                  if (current) publish(id, current);
-                },
-                () => {
-                  const current = configurations.get(id);
-                  return current && !isGroupLocked(current)
-                    ? {
-                        groupId: groupKey(current),
-                        sourceId: current.id,
-                        scope: personalDataScope(current),
-                      }
-                    : undefined;
-                }
-              );
+              if (!privateMode)
+                registerDeveloperPage(
+                  childContents,
+                  profileId,
+                  () => {
+                    const current = views.get(id);
+                    if (current) publish(id, current);
+                  },
+                  () => {
+                    const current = configurations.get(id);
+                    return current && !isGroupLocked(current)
+                      ? {
+                          groupId: groupKey(current),
+                          sourceId: current.id,
+                          scope: personalDataScope(current),
+                        }
+                      : undefined;
+                  }
+                );
               bindDownloadSource(
                 childContents,
                 JSON.stringify([loginProfileKey(item), id])
@@ -918,6 +949,7 @@ export function registerElectronBrowser(
                   childContents.close();
               };
               onClose = (closeEvent) => {
+                if (closingHosts.has(window)) return;
                 closeEvent.preventDefault();
                 // The intercepted close was cancelled; finish closing after
                 // removing our listener so the pending page cannot stay alive.
@@ -1012,7 +1044,7 @@ export function registerElectronBrowser(
               params
             ) || [],
             pip.contextAction(params),
-            hookActionMenu(window, contents, params, profileId, () => {
+            privateMode ? [] : hookActionMenu(window, contents, params, profileId, () => {
               const current = configurations.get(item.id);
               return current && !isGroupLocked(current)
                 ? {
@@ -1051,7 +1083,7 @@ export function registerElectronBrowser(
         contents.on('did-navigate', applySiteMute);
 
         contents.on('did-navigate-in-page', (_, url, mainFrame) => {
-          if (mainFrame)
+          if (!privateMode && mainFrame)
             recordVisit(url, contents.getTitle(), permissionProfile);
         });
         contents.on('audio-state-changed', () => publish(item.id, browserView));
@@ -1071,7 +1103,7 @@ export function registerElectronBrowser(
         });
         contents.on('did-start-navigation', (_, _url, inPlace, mainFrame) => {
           if (mainFrame && !inPlace) {
-            faviconLoader.cancel(item.id);
+            faviconResolver.cancel(item.id);
             themeColors.delete(contents);
             failures.delete(item.id);
             publish(item.id, browserView);
@@ -1086,11 +1118,12 @@ export function registerElectronBrowser(
         contents.on('did-finish-load', () => {
           if (!failures.has(item.id)) {
             loaded.add(item.id);
-            recordVisit(
-              contents.getURL(),
-              contents.getTitle(),
-              permissionProfile
-            );
+            if (!privateMode)
+              recordVisit(
+                contents.getURL(),
+                contents.getTitle(),
+                permissionProfile
+              );
           }
           publish(item.id, browserView);
         });
@@ -1130,25 +1163,12 @@ export function registerElectronBrowser(
         });
         let declaredFavicons: string[] = [];
         const refreshFavicon = (urls: string[]) => {
-          const candidates = faviconCandidates(urls, contents.getURL());
-          if (!candidates.length) {
-            faviconLoader.cancel(item.id);
-            return;
-          }
           // eslint-disable-next-line no-void
-          void faviconLoader
-            .load(
-              item.id,
-              candidates,
-              (address, options) => contents.session.fetch(address, options),
-              async (buffer, signal) => {
-                const icon = await faviconDecoder.decode(buffer, signal);
-                if (contents.isDestroyed()) return;
-                signal.throwIfAborted();
-                icons.set(item.id, icon);
-                publish(item.id, browserView);
-              }
-            )
+          void faviconResolver
+            .resolve(item.id, contents, urls, (icon) => {
+              icons.set(item.id, icon);
+              publish(item.id, browserView);
+            })
             .catch((error) => {
               if (error?.name !== 'AbortError')
                 log.debug('Favicon candidates failed', {
@@ -1376,7 +1396,7 @@ export function registerElectronBrowser(
       edited.delete(id);
       playingMedia.delete(id);
       loaded.delete(id);
-      faviconLoader.cancel(id);
+      faviconResolver.cancel(id);
       const current = configurations.get(id) || item;
       if (!retainTabHistory(current, manual)) {
         resetUnloadedHistory(id, current, state);
@@ -1403,6 +1423,13 @@ export function registerElectronBrowser(
   };
   const rootWindow = window;
   const command = (event: IpcMainEvent, incoming: BrowserCommand) => {
+    if (
+      privateMode &&
+      /hook|developer|extension|personal|notification/i.test(
+        String(incoming?.action)
+      )
+    )
+      return;
     let request = incoming;
     const requestWindow =
       windows?.trusted(event) ||
@@ -1456,7 +1483,9 @@ export function registerElectronBrowser(
     if (request.action === 'extensions') {
       const item = configurations.get(request.id);
       if (item) setActiveExtensionProfile(window, loginProfileKey(item));
-      Menu.buildFromTemplate(extensionMenu(window)).popup({ window });
+      Menu.buildFromTemplate(
+        extensionMenu(window, views.get(request.id)?.webContents)
+      ).popup({ window });
       return;
     }
     const contents = views.get(request.id)?.webContents;
@@ -1543,6 +1572,11 @@ export function registerElectronBrowser(
           if (!window.isDestroyed()) developerWindows.update();
         })
         .catch(() => {});
+      return;
+    }
+    if (request.action === 'run-site-hook') {
+      if (contents && request.url && typeof request.hookId === 'string')
+        rerunDeveloperHook(contents, request.url, request.hookId);
       return;
     }
     if (request.action === 'toggle-site-hook') {
@@ -1647,7 +1681,7 @@ export function registerElectronBrowser(
       request.action === 'settings'
     ) {
       Menu.buildFromTemplate([
-        { label: 'Extensions', submenu: extensionMenu(window) },
+        { label: 'Extensions', submenu: extensionMenu(window, contents) },
         {
           label: 'Downloads',
           submenu: downloadMenu().length
@@ -1968,7 +2002,7 @@ export function registerElectronBrowser(
             ],
           },
           { type: 'separator' },
-          { label: 'Extensions', submenu: extensionMenu(window) },
+          { label: 'Extensions', submenu: extensionMenu(window, contents) },
           {
             label: 'Downloads',
             submenu: downloadMenu().length
@@ -2206,95 +2240,110 @@ export function registerElectronBrowser(
       ? views.get(id)?.webContents
       : undefined;
   });
-  registerHookMarketplace(window, () =>
-    [...configurations].flatMap(([id, item]) => {
-      if (item.archived || isGroupLocked(item) || removals.blocks(item))
-        return [];
-      const url = views.get(id)?.webContents.getURL() || item.url;
-      if (!siteOrigin(url)) return [];
-      return [
-        {
-          id,
-          name: item.name,
-          groupName: item.sessionName || item.name,
-          groupId: aiGroupId(item),
-          profile: loginProfileKey(item),
-          url,
+  if (!privateMode)
+    registerHookMarketplace(window, () =>
+      [...configurations].flatMap(([id, item]) => {
+        if (item.archived || isGroupLocked(item) || removals.blocks(item))
+          return [];
+        const url = views.get(id)?.webContents.getURL() || item.url;
+        if (!siteOrigin(url)) return [];
+        return [
+          {
+            id,
+            name: item.name,
+            groupName: item.sessionName || item.name,
+            groupId: aiGroupId(item),
+            profile: loginProfileKey(item),
+            url,
+          },
+        ];
+      }),
+      { openSiteEditor: (target, hookId) => {
+        developerWindows.open({ sender: window.webContents } as IpcMainEvent, target.id, new URL(target.url).origin, hookId);
+      } }
+    );
+  developerWindows = privateMode
+    ? ({ update() {}, dispose() {}, open() {} } as unknown as ReturnType<
+        typeof registerSiteDeveloperWindows
+      >)
+    : registerSiteDeveloperWindows(
+        (id) => {
+          const contents = views.get(id)?.webContents;
+          const config = configurations.get(id);
+          if (!config || isGroupLocked(config)) return undefined;
+          const live =
+            contents && !contents.isDestroyed() ? contents : undefined;
+          const pageURL = live?.getURL() || config.url;
+          const origin = siteOrigin(pageURL);
+          if (!origin) return undefined;
+          return {
+            contents: live,
+            profile: loginProfileKey(config),
+            groupId: groupKey(config),
+            state: {
+              origin,
+              groupName: config.sessionName || config.name,
+              pageURL,
+              available: true,
+              developer: live
+                ? developerState(live, origin)
+                : {
+                    config: getSiteSettings(loginProfileKey(config), origin)
+                      .developer || {
+                      enabled: false,
+                      before: '',
+                      after: '',
+                      css: '',
+                    },
+                    revisions: getSiteSettings(loginProfileKey(config), origin)
+                      .hookRevisions,
+                    notifications: hookNotifications().permissions({
+                      groupId: groupKey(config),
+                      profile: loginProfileKey(config),
+                      scope: personalDataScope(config),
+                      origin,
+                      config: effectiveHookConfig(
+                        loginProfileKey(config),
+                        pageURL
+                      ),
+                    }),
+                    status: savedDeveloperErrors.has(id) ? 'error' : 'waiting',
+                    logs: savedDeveloperErrors.has(id)
+                      ? [
+                          {
+                            time: savedDeveloperErrors.get(id)!.time,
+                            level: 'error',
+                            message: savedDeveloperErrors.get(id)!.message,
+                          },
+                        ]
+                      : [],
+                  },
+            },
+          };
         },
-      ];
-    })
-  );
-  developerWindows = registerSiteDeveloperWindows(
-    (id) => {
-      const contents = views.get(id)?.webContents;
-      const config = configurations.get(id);
-      if (!config || isGroupLocked(config)) return undefined;
-      const live = contents && !contents.isDestroyed() ? contents : undefined;
-      const pageURL = live?.getURL() || config.url;
-      const origin = siteOrigin(pageURL);
-      if (!origin) return undefined;
-      return {
-        contents: live,
-        profile: loginProfileKey(config),
-        groupId: groupKey(config),
-        state: {
-          origin,
-          groupName: config.sessionName || config.name,
-          pageURL,
-          available: true,
-          developer: live
-            ? developerState(live, origin)
-            : {
-                config: getSiteSettings(loginProfileKey(config), origin)
-                  .developer || {
-                  enabled: false,
-                  before: '',
-                  after: '',
-                  css: '',
-                },
-                revisions: getSiteSettings(loginProfileKey(config), origin)
-                  .hookRevisions,
-                notifications: hookNotifications().permissions({
-                  groupId: groupKey(config),
-                  profile: loginProfileKey(config),
-                  scope: personalDataScope(config),
-                  origin,
-                  config: effectiveHookConfig(loginProfileKey(config), pageURL),
-                }),
-                status: savedDeveloperErrors.has(id) ? 'error' : 'waiting',
-                logs: savedDeveloperErrors.has(id)
-                  ? [
-                      {
-                        time: savedDeveloperErrors.get(id)!.time,
-                        level: 'error',
-                        message: savedDeveloperErrors.get(id)!.message,
-                      },
-                    ]
-                  : [],
-              },
-        },
-      };
-    },
-    command,
-    (id, sourceGroup, destination) => {
-      if (window.isDestroyed()) return;
-      // Renderer-held group metadata survives unloading browser contents.
-      window.webContents.send(
-        'browser-tab-request',
-        destination === 'group'
-          ? { action: 'select-group', groupId: sourceGroup }
-          : { action: 'select', id }
+        command,
+        (id, sourceGroup, destination) => {
+          if (window.isDestroyed()) return;
+          // Renderer-held group metadata survives unloading browser contents.
+          window.webContents.send(
+            'browser-tab-request',
+            destination === 'group'
+              ? { action: 'select-group', groupId: sourceGroup }
+              : { action: 'select', id }
+          );
+          if (window.isMinimized()) window.restore();
+          window.show();
+          window.focus();
+        }
       );
-      if (window.isMinimized()) window.restore();
-      window.show();
-      window.focus();
-    }
-  );
-  const disposeDeveloperLibrary = registerSiteDeveloperLibrary(
-    window,
-    () => [...configurations.values()].filter((item) => !removals.blocks(item)),
-    (id) => views.get(id)?.webContents
-  );
+  const disposeDeveloperLibrary = privateMode
+    ? () => {}
+    : registerSiteDeveloperLibrary(
+        window,
+        () =>
+          [...configurations.values()].filter((item) => !removals.blocks(item)),
+        (id) => views.get(id)?.webContents
+      );
   const releaseGroupLocks = getGroupLocks().subscribe(() => {
     [...configurations.entries()].forEach(([id, item]) => {
       if (!isGroupLocked(item)) return;
@@ -2336,6 +2385,7 @@ export function registerElectronBrowser(
     view: (id) => views.get(id),
     state: (id) => lastStates.get(id),
     chrome: (host) => {
+      watchClosing(host);
       const stopGestures = registerSpaceGestures(host);
       gestureCleanup.add(stopGestures);
       onWindowClosed(host, () => {
@@ -2346,15 +2396,17 @@ export function registerElectronBrowser(
       const capture = registerPageCapture(host, (id) =>
         windows.allows(host, id) ? views.get(id)?.webContents : undefined
       );
-      const library = registerSiteDeveloperLibrary(
-        host,
-        () =>
-          [...configurations.values()].filter((item) =>
-            windows.allows(host, item.id)
-          ),
-        (id) =>
-          windows.allows(host, id) ? views.get(id)?.webContents : undefined
-      );
+      const library = privateMode
+        ? () => {}
+        : registerSiteDeveloperLibrary(
+            host,
+            () =>
+              [...configurations.values()].filter((item) =>
+                windows.allows(host, item.id)
+              ),
+            (id) =>
+              windows.allows(host, id) ? views.get(id)?.webContents : undefined
+          );
       onWindowClosed(host, () => {
         capture();
         library();
@@ -2363,62 +2415,68 @@ export function registerElectronBrowser(
   });
   ipcMain.on('browser-sync', sync);
   ipcMain.on('browser-command', command);
-  const disposeGroupRemoval = registerGroupRemoval(
-    window,
-    (id) => configurations.get(id),
-    (source) => {
-      return (
-        [...views.entries()].every(([id, view]) => {
-          const item = configurations.get(id);
+  const disposeGroupRemoval = privateMode
+    ? () => {}
+    : registerGroupRemoval(
+        window,
+        (id) => configurations.get(id),
+        (source) => {
           return (
-            !item ||
-            !sameRemovalGroup(item, source) ||
-            view.webContents.isDestroyed()
+            [...views.entries()].every(([id, view]) => {
+              const item = configurations.get(id);
+              return (
+                !item ||
+                !sameRemovalGroup(item, source) ||
+                view.webContents.isDestroyed()
+              );
+            }) &&
+            [...popups.entries()].every(([id, entries]) => {
+              return [...entries].every((popup) => {
+                const item = popupSources.get(popup) || configurations.get(id);
+                return (
+                  !item ||
+                  !sameRemovalGroup(item, source) ||
+                  popup.isDestroyed()
+                );
+              });
+            }) &&
+            [...websiteTabs.values()].every(
+              (entry) =>
+                !sameRemovalGroup(entry.source, source) ||
+                entry.contents.isDestroyed()
+            )
           );
-        }) &&
-        [...popups.entries()].every(([id, entries]) => {
-          return [...entries].every((popup) => {
-            const item = popupSources.get(popup) || configurations.get(id);
-            return (
-              !item || !sameRemovalGroup(item, source) || popup.isDestroyed()
-            );
-          });
-        }) &&
-        [...websiteTabs.values()].every(
-          (entry) =>
-            !sameRemovalGroup(entry.source, source) ||
-            entry.contents.isDestroyed()
-        )
+        },
+        (profile) => {
+          return (
+            [...views.entries()].every(
+              ([id, view]) =>
+                loginProfileKey(configurations.get(id) || ({} as IApp)) !==
+                  profile || view.webContents.isDestroyed()
+            ) &&
+            [...popups.entries()].every(([id, entries]) =>
+              [...entries].every((popup) => {
+                const item = popupSources.get(popup) || configurations.get(id);
+                return (
+                  !item ||
+                  loginProfileKey(item) !== profile ||
+                  popup.isDestroyed()
+                );
+              })
+            ) &&
+            [...websiteTabs.values()].every(
+              (entry) =>
+                loginProfileKey(entry.source) !== profile ||
+                entry.contents.isDestroyed()
+            )
+          );
+        }
       );
-    },
-    (profile) => {
-      return (
-        [...views.entries()].every(
-          ([id, view]) =>
-            loginProfileKey(configurations.get(id) || ({} as IApp)) !==
-              profile || view.webContents.isDestroyed()
-        ) &&
-        [...popups.entries()].every(([id, entries]) =>
-          [...entries].every((popup) => {
-            const item = popupSources.get(popup) || configurations.get(id);
-            return (
-              !item || loginProfileKey(item) !== profile || popup.isDestroyed()
-            );
-          })
-        ) &&
-        [...websiteTabs.values()].every(
-          (entry) =>
-            loginProfileKey(entry.source) !== profile ||
-            entry.contents.isDestroyed()
-        )
-      );
-    }
-  );
   const dispose = () => {
     if (disposed) return;
     disposed = true;
-    faviconLoader.clear();
-    faviconDecoder.clear();
+    if (privateMode) clearPrivateSiteSettings(privateProfilePrefix);
+    faviconResolver.clear();
     disposeGroupRemoval();
     stopWindows?.();
     stopRuntime?.();

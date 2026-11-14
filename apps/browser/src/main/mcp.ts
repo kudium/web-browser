@@ -313,6 +313,7 @@ export function mcpArguments(
 
 export function createMCPController(options: {
   filename: string;
+  defaultEnabled?: boolean;
   beforeStart?: Promise<void>;
   approveConnector?: () => Promise<boolean>;
   execute: (
@@ -323,7 +324,7 @@ export function createMCPController(options: {
   stop: () => void;
   changed: (status: MCPStatus) => void;
 }) {
-  let enabled = true;
+  let enabled = options.defaultEnabled ?? true;
   let port = 43187;
   let token = randomBytes(32).toString('hex');
   let connectorToken: string | undefined;

@@ -18,6 +18,8 @@ import {
   getExtensionProfiles,
   updateInstalledExtensions,
   extensionRemoteAuthority,
+  storeExtensionId,
+  installStoreExtension,
 } from '../main/extensions';
 
 jest.mock('../main/dialogs', () => ({
@@ -105,6 +107,7 @@ it.each([
   'owner restored',
   'package changed',
   'load failed',
+  'identity changed',
 ])(
   'owns update permissions, immutable package and rollback: %s',
   async (scenario) => {
@@ -128,8 +131,15 @@ it.each([
       loadExtension: jest.fn(async (filename: string) => {
         if (filename === '/fixture/new' && scenario === 'load failed')
           throw new Error('Native load failed');
-        const extension = { ...old, path: filename };
-        loaded.set(id, extension);
+        const extension = {
+          ...old,
+          id:
+            filename === '/fixture/new' && scenario === 'identity changed'
+              ? 'b'.repeat(32)
+              : id,
+          path: filename,
+        };
+        loaded.set(extension.id, extension);
         extensions.emit('extension-loaded', {}, extension);
         return extension;
       }),
@@ -204,7 +214,12 @@ it.each([
         (error: unknown) => error
       );
       expect(Boolean(failure)).toBe(
-        ['owner restored', 'package changed', 'load failed'].includes(scenario)
+        [
+          'owner restored',
+          'package changed',
+          'load failed',
+          'identity changed',
+        ].includes(scenario)
       );
       expect(showBrowserDialog).toHaveBeenLastCalledWith(
         owner,
@@ -216,6 +231,7 @@ it.each([
       const updateCalls: Record<string, string[]> = {
         approved: ['/fixture/new'],
         'load failed': ['/fixture/new', '/fixture/old'],
+        'identity changed': ['/fixture/new', '/fixture/old'],
       };
       expect(
         extensions.loadExtension.mock.calls.map(([filename]) => filename)
@@ -225,6 +241,14 @@ it.each([
       );
       expect(loaded.get(id)?.path).toBe(
         scenario === 'approved' ? '/fixture/new' : '/fixture/old'
+      );
+      expect(loaded.has('b'.repeat(32))).toBe(false);
+      const policy = JSON.parse(
+        fs.readFileSync('/extension-test/extensions.json', 'utf8')
+      );
+      expect(policy.map((entry: any) => entry.id)).toEqual([id]);
+      expect(policy[0].path).toBe(
+        scenario === 'approved' ? '/fixture/new' : old.path
       );
       expect(prepared.dispose).toHaveBeenCalled();
     } finally {
@@ -393,13 +417,41 @@ it('requires install consent, persists per-app scope and exposes worker failures
     isDestroyed: () => false,
     mainFrame: storeFrame,
     session: getExtensionProfile('store')!.session,
-    getURL: () => 'https://chromewebstore.google.com/',
+    getURL: (): string => 'https://chromewebstore.google.com/',
     send: jest.fn(),
     ipc: {
       handle: (channel: string, handler: any) => handlers.set(channel, handler),
     },
   });
   configureExtensionStore(storeContents as any, 'store');
+  Object.assign(owner, { isDestroyed: () => false });
+  expect(
+    extensionMenu(owner, storeContents as any).some(
+      (item) => item.label === 'Install this extension…'
+    )
+  ).toBe(false);
+  const originalURL = storeContents.getURL;
+  storeContents.getURL = () =>
+    `https://chromewebstore.google.com/detail/fixture/${'a'.repeat(32)}`;
+  expect(
+    extensionMenu(owner, storeContents as any).some(
+      (item) => item.label === 'Install this extension…'
+    )
+  ).toBe(true);
+  const otherOwner = { id: 999, isDestroyed: () => false } as any;
+  expect(
+    extensionMenu(otherOwner, storeContents as any).some(
+      (item) => item.label === 'Install this extension…'
+    )
+  ).toBe(false);
+  await expect(
+    installStoreExtension(storeContents as any, otherOwner)
+  ).rejects.toThrow('no longer available');
+  storeContents.getURL = originalURL;
+  await expect(
+    installStoreExtension(storeContents as any, owner)
+  ).rejects.toThrow('detail page');
+
   const status = handlers.get('chromeWebstore.getExtensionStatus')!;
   const storeEvent = {
     sender: storeContents,
@@ -431,6 +483,16 @@ it('requires install consent, persists per-app scope and exposes worker failures
   expect(status(storeEvent, 'unknown', '{"manifest_version":3}')).toBe(
     'installable'
   );
+  expect(status(storeEvent, 'targeted', null)).toBe('enabled');
+  expect(status(storeEvent, 'targeted')).toBe('enabled');
+  expect(status(storeEvent, 'unknown', null)).toBe('installable');
+  expect(() => status(storeEvent, 'unknown', false)).toThrow(
+    'Invalid extension store request'
+  );
+  expect(() => status(storeEvent, 'unknown', 'null')).toThrow(
+    'Invalid extension manifest'
+  );
+
   expect(() =>
     status({ senderFrame: { origin: 'https://example.com' } }, 'targeted', '{}')
   ).toThrow('Untrusted');
@@ -513,5 +575,29 @@ it('requires install consent, persists per-app scope and exposes worker failures
       message: 'Test · Account A',
       technicalDetail: 'Unsupported API',
     })
+  );
+});
+
+it('accepts only exact secure store detail URLs for the native install action', async () => {
+  const id = 'a'.repeat(32);
+  expect(
+    storeExtensionId(
+      `https://chromewebstore.google.com/detail/name/${id}?hl=en`
+    )
+  ).toBe(id);
+  expect(
+    storeExtensionId(`https://chromewebstore.google.com/detail/${id}`)
+  ).toBe(id);
+  [
+    `http://chromewebstore.google.com/detail/${id}`,
+    `https://chromewebstore.google.com.evil.test/detail/${id}`,
+    `https://chromewebstore.google.com:444/detail/${id}`,
+    `https://chromewebstore.google.com/detail/name/${id}/extra`,
+    `https://chromewebstore.google.com/detail/${'z'.repeat(32)}`,
+    'https://chromewebstore.google.com/',
+    'invalid',
+  ].forEach((url) => expect(storeExtensionId(url)).toBeUndefined());
+  await expect(installStoreExtension({} as any, {} as any)).rejects.toThrow(
+    'no longer available'
   );
 });

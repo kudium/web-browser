@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Dialog } from '@radix-ui/themes';
 import { Globe } from 'lucide-react';
+import { AppIcon } from './AppIcon/AppIcon';
 import type { BrowserSnapshot, IApp } from '../../types';
 
 export function TabSwitcher({
@@ -77,11 +78,7 @@ export function TabSwitcher({
                   )}
                 </div>
                 <span className="tab-switcher-label">
-                  {tab.icon ? (
-                    <img src={tab.icon} alt="" />
-                  ) : (
-                    <Globe size={16} />
-                  )}
+                  <AppIcon icon={tab.icon} title="" />
                   <span>{tab.name || tab.url}</span>
                 </span>
               </button>

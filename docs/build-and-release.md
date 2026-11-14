@@ -35,6 +35,15 @@ build the selected commit in an isolated local clone. Your working checkout and
 its version files are preserved. Versions are embedded in the build checkout,
 using the same preparation script as hosted releases.
 
+Custom Electron runtime preparation is separate from installer releases. The
+`runtime:prepare`, `runtime:sync`, `runtime:build` and `runtime:verify` commands
+prepare pinned source and local Mac distributions without pushing, signing or
+publishing. See [browser passkeys](../apps/browser/docs/passkeys.md) for disk
+requirements, target architectures and replay instructions. Current installer
+release commands still select stock Electron; verified custom distributions and
+Apple-approved provisioning must be integrated before releasing native passkey
+support.
+
 Starting from stable `1.0.1`, beta commands create `1.0.2-beta.1`, then
 `1.0.2-beta.2`. Stable releases that pending version as `1.0.2`; the next beta
 starts `1.0.3-beta.1`. With no pending beta, stable increments the patch. For a

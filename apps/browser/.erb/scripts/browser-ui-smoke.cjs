@@ -6,6 +6,9 @@ const path = require('path'),
   assert = require('assert'),
   ts = require('typescript'),
   http = require('http');
+if (process.argv.includes('--private-only') || process.argv.includes('--real-sites-only')) app.commandLine.appendSwitch('use-fake-device-for-media-stream');
+if ((process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) && process.argv.includes('--inspect')) app.commandLine.appendSwitch('remote-debugging-port','9222');
+const nativePrivateDialogs=process.argv.includes('--native-private-dialogs');
 let idleCheck;
 const realInterval = global.setInterval;
 if (process.argv.includes('--tab-discard-only')) global.setInterval = (callback, milliseconds, ...args) => {
@@ -41,10 +44,15 @@ for (const [source, target] of [
     }).outputText
   );
 require('esbuild').buildSync({entryPoints:['src/main/siteSettings.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(runtimeDir,'siteSettings.js')});
-require('esbuild').buildSync({entryPoints:['src/main/downloads.ts'],bundle:true,platform:'node',external:['electron','./preferences'],outfile:path.join(runtimeDir,'downloads.js')});
+require('esbuild').buildSync({entryPoints:['src/main/dialogs.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(runtimeDir,'dialogs-production.js')});
+// esbuild exposes getter-only exports. Use a writable fixture facade so the
+// controlled dialog responses below actually replace the production function.
+fs.writeFileSync(path.join(runtimeDir,'dialogs.js'),"module.exports={...require('./dialogs-production.js')};");
+require('esbuild').buildSync({entryPoints:['src/main/privateSessions.ts'],bundle:true,platform:'node',outfile:path.join(runtimeDir,'privateSessions.js')});
+require('esbuild').buildSync({entryPoints:['src/main/downloads.ts'],bundle:true,platform:'node',external:['electron','./preferences','./privateSessions'],outfile:path.join(runtimeDir,'downloads.js')});
 require('esbuild').buildSync({entryPoints:['src/main/websitePermissions.ts'],bundle:true,platform:'node',external:['electron','./preferences','./dialogs','./siteSettings'],outfile:path.join(runtimeDir,'websitePermissions.js')});
-fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};`);
-require('esbuild').buildSync({entryPoints:[path.join(runtimeDir,'browser-entry.ts')],bundle:true,platform:'node',external:['electron','./extensions','./preferences','./downloads','./dialogs','./siteSettings','./history'],outfile:path.join(runtimeDir,'electronBrowser.js')});
+fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};export * from ${JSON.stringify(path.resolve('src/main/privateBrowsing'))};export {safeStorage as fixtureSecureStorage} from ${JSON.stringify(path.resolve('src/main/localStorage'))};`);
+require('esbuild').buildSync({entryPoints:[path.join(runtimeDir,'browser-entry.ts')],bundle:true,platform:'node',external:['electron','./extensions','./preferences','./downloads','./dialogs','./siteSettings','./history','./privateSessions'],outfile:path.join(runtimeDir,'electronBrowser.js')});
 require('fs').copyFileSync(require.resolve('electron-chrome-extensions/preload'),path.join(runtimeDir,'chrome-extension-api.preload.js'));
 require('fs').copyFileSync(require.resolve('electron-chrome-web-store/preload'),path.join(runtimeDir,'chrome-web-store.preload.js'));
 require('esbuild').buildSync({entryPoints:['src/main/extensions.ts'],bundle:true,platform:'node',external:['electron','./dialogs',require.resolve('electron-chrome-extensions'),require.resolve('electron-chrome-web-store')],alias:{'electron-chrome-extensions':require.resolve('electron-chrome-extensions'),'electron-chrome-web-store':require.resolve('electron-chrome-web-store')},outfile:path.join(runtimeDir,'extensions.js')});
@@ -56,7 +64,7 @@ let nativeContextMenu;
 let nativeMenuClosedCount=0;
 const buildNativeMenu=Menu.buildFromTemplate.bind(Menu);
 Menu.buildFromTemplate=(template)=>{const menu=buildNativeMenu(template);const closePopup=menu.closePopup.bind(menu);menu.closePopup=(...args)=>{nativeMenuClosedCount+=1;return closePopup(...args);};const popup=menu.popup.bind(menu);menu.popup=(options)=>{nativeContextMenu=menu;popup(options);};return menu;};
-require(path.join(runtimeDir,'dialogs.js')).showBrowserDialog=async()=>({response:1});
+if(!nativePrivateDialogs) require(path.join(runtimeDir,'dialogs.js')).showBrowserDialog=async()=>({response:1});
 require(path.join(runtimeDir, 'preferences.js')).registerPreferences((section)=>{ if(windows.settings) {windows.settings.show(); windows.settings.webContents.send('preferences-section',section);} },contents=>Object.values(windows).some(win=>!win.isDestroyed()&&win.webContents===contents),contents=>windows.settings?.webContents===contents);
 require('esbuild').buildSync({entryPoints:['src/main/history.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(runtimeDir,'history.js')});
 require(path.join(runtimeDir,'history.js')).registerHistory(contents=>Object.values(windows).some(win=>win.webContents===contents));
@@ -64,7 +72,7 @@ if(process.argv.includes('--developer-sidebar-only')) {
   const mainDir=path.join(runtimeDir,'dist/main');fs.mkdirSync(mainDir,{recursive:true});
   fs.renameSync(path.join(runtimeDir,'electronBrowser.js'),path.join(mainDir,'electronBrowser.js'));
   fs.writeFileSync(path.join(runtimeDir,'electronBrowser.js'),"module.exports=require('./dist/main/electronBrowser.js');");
-  for(const name of ['extensions','preferences','downloads','dialogs','siteSettings','history']) fs.writeFileSync(path.join(mainDir,name+'.js'),`module.exports=require('../../${name}.js');`);
+  for(const name of ['extensions','preferences','downloads','dialogs','siteSettings','history','privateSessions']) fs.writeFileSync(path.join(mainDir,name+'.js'),`module.exports=require('../../${name}.js');`);
   for(const name of ['chrome-extension-api.preload.js','chrome-web-store.preload.js']) fs.copyFileSync(path.join(runtimeDir,name),path.join(mainDir,name));
   fs.symlinkSync(path.resolve('release/app/dist/renderer'),path.join(runtimeDir,'dist/renderer'),'dir');
   fs.mkdirSync(path.join(runtimeDir,'.erb/dll'),{recursive:true});fs.copyFileSync(path.join(runtimeDir,'preload.js'),path.join(runtimeDir,'.erb/dll/preload.js'));
@@ -73,6 +81,7 @@ const { registerBrowser } = require(path.join(runtimeDir, 'browser.js'));
 const { eventBus } = require(path.join(runtimeDir, 'EventBus.js'));
 app.setPath('userData', path.join(runtimeDir, 'user-data'));
 app.on('window-all-closed', () => {});
+if (process.argv.includes('--private-only')) ipcMain.handle('browser-storage-ready', () => ({available:false,needsRecovery:false}));
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const windows = {};
 let groupAuthenticationCalls=0, cancelGroupAuthentication=false, finishGroupAuthentication;
@@ -114,8 +123,24 @@ app
     const activeDownloadResponses = [];
     let releaseActiveDownload = false;
     let activeDownloadPageHits = 0;
+    const aiBodies = [];
     const server = http
       .createServer((req, res) => {
+        if (req.url === '/v1/chat/completions') {
+          let raw=''; req.on('data', chunk=>raw+=chunk);
+          req.on('end',()=>{const body=JSON.parse(raw);const title=!body.tools?.length;
+            if(!title)aiBodies.push(body);
+            const privatePrompt=JSON.stringify(body.messages).includes('PRIVATE_CHAT_MARKER');
+            res.setHeader('Content-Type','application/json');
+            let message={role:'assistant',content:title?'Fixture chat':privatePrompt?'Private answer':'Regular answer'};
+            if(!title&&privatePrompt){
+              const calls=body.messages.flatMap(entry=>entry.tool_calls||[]);
+              const next=!calls.some(call=>call.function.name==='list_tabs')?'list_tabs':!calls.some(call=>call.function.name==='read_page')?'read_page':undefined;
+              if(next)message={role:'assistant',content:null,tool_calls:[{id:'private-'+next,type:'function',function:{name:next,arguments:JSON.stringify(next==='read_page'?{tabId:'private-fixture'}:{})}}]};
+            }
+            res.end(JSON.stringify({choices:[{message}]}));
+          }); return;
+        }
         if (req.url === '/v1/models') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:[{id:'gpt-4.1'}]}));return;}
         if (req.url === '/capture-fixture') {res.end(`<title>Capture fixture</title><style>body{margin:0;min-height:2600px;background:#f7f7ff;color:#171725;font-family:Arial}h1{padding:24px}#box{margin:24px;width:240px;height:120px;background:#eb4b4b}#below{margin-top:1900px;padding:24px;background:#37c392}.print-only{display:none}@media print{.screen-only{display:none}.print-only{display:block}body{background:white}}</style><h1>Capture marker top</h1><div id="box"></div><p class="screen-only">SCREEN ONLY MARKER</p><p class="print-only">PDF PRINT LAYOUT MARKER</p><div id="below">Below the fold marker</div><script>window.captureClicks=0;document.addEventListener('click',()=>window.captureClicks++);</script>`);return;}
         if (req.url === '/ai-guarded-close') {res.end(`<title>Guarded close fixture</title><button onclick="window.onbeforeunload=()=>''">Arm close guard</button><script>window.addEventListener('unload',()=>{localStorage.closeUnloadCount=Number(localStorage.closeUnloadCount||0)+1;})</script>`);return;}
@@ -196,6 +221,245 @@ app
       await wait(600);
       return win;
     };
+    if (process.argv.includes('--private-only')) {
+      const api = require(path.join(runtimeDir, 'electronBrowser.js'));
+      const downloads = require(path.join(runtimeDir,'downloads.js'));
+      downloads.registerDownloadLibrary(()=>{},contents=>Object.values(windows).some(win=>!win.isDestroyed()&&win.webContents===contents));
+      // Disposable secure-store substitute avoids prompting the real Keychain.
+      const crypto=require('crypto'),storageKey=crypto.randomBytes(32);
+      Object.assign(api.fixtureSecureStorage,{
+        isEncryptionAvailable:()=>true,isFileAvailable:()=>true,getSelectedStorageBackend:()=>'fixture',
+        encryptString:value=>{const iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',storageKey,iv);const data=Buffer.concat([cipher.update(value,'utf8'),cipher.final()]);return Buffer.concat([iv,cipher.getAuthTag(),data]);},
+        decryptString:value=>{const decipher=crypto.createDecipheriv('aes-256-gcm',storageKey,value.subarray(0,12));decipher.setAuthTag(value.subarray(12,28));return Buffer.concat([decipher.update(value.subarray(28)),decipher.final()]).toString('utf8');}
+      });
+      const regularWindow = await create('main', 1160, 900);
+      await evaluate(regularWindow, `window.electron.ai.settings({endpoint:${JSON.stringify(url+'/v1')},model:'fixture',key:'fixture-session-key',remember:false})`);
+      let settingsBefore = fs.readFileSync(path.join(app.getPath('userData'),'ai-settings.json'));
+      const scratchBefore = new Set(fs.readdirSync(app.getPath('temp')).filter(name=>name.startsWith('kudium-private-ai-')));
+      let target = api.createPrivateSession();
+      const createPrivateShell = async () => {
+        const win = new BrowserWindow({ width:1160, height:900, titleBarStyle:'hiddenInset', trafficLightPosition:{x:12,y:13}, webPreferences:{session:target,preload:path.join(runtimeDir,'preload.js'),contextIsolation:true,sandbox:true} });
+        windows['private-'+win.id]=win;
+        const manager = api.registerPrivateBrowserWindow(win, createPrivateShell);
+        api.attachPrivateWindow(win,target);
+        if (!manager.hasOtherWindows(win)) registerBrowser(win);
+        await win.loadFile(path.resolve('release/app/dist/renderer/index.html'),{query:{view:'main',private:'1'}});
+        await wait(500);
+        return win;
+      };
+      // Regular coordinator is retained while private windows use their own manager.
+      const privateWindow = await createPrivateShell();
+      const scratch = fs.readdirSync(app.getPath('temp')).filter(name=>name.startsWith('kudium-private-ai-')&&!scratchBefore.has(name));
+      assert.equal(scratch.length,1);
+      assert.equal(target.isPersistent(),false);
+      assert(await evaluate(privateWindow,"!!document.querySelector('.workspace-sidebar') && !!document.querySelector('[data-private]')"),'Private mode must reuse the existing workspace/sidebar');
+      const item={id:'private-fixture',sessionId:'private-group',name:'Private test',url:url+'/home',icon:'',spaceId:'default',pinned:false};
+      privateWindow.webContents.send('browser-tab-request',{action:'create',app:item});
+      for(let i=0;i<100;i++){if(privateWindow.contentView.children.some(v=>v instanceof WebContentsView&&v.webContents.getURL()===item.url))break;await wait(50);}
+      const page=privateWindow.contentView.children.find(v=>v instanceof WebContentsView&&v.webContents.getURL()===item.url);
+      assert(page,'Existing tab UI must create the private page');assert.equal(page.webContents.session,target);
+      assert.equal(page.webContents.getLastWebPreferences().preload,undefined);
+      await require('electron').session.defaultSession.cookies.set({url,name:'regular',value:'keep'});
+      assert.deepEqual(await target.cookies.get({name:'regular'}),[]);
+      await target.cookies.set({url,name:'private',value:'temporary'});
+      await page.webContents.executeJavaScript("window.open('/popup-tab','private-test');true",true);
+      for(let i=0;i<100;i++){if(privateWindow.contentView.children.some(v=>v instanceof WebContentsView&&v.webContents.getURL().endsWith('/popup-tab')))break;await wait(50);}
+      const popup=privateWindow.contentView.children.find(v=>v instanceof WebContentsView&&v.webContents.getURL().endsWith('/popup-tab'));
+      assert(popup,'Existing tab adoption must handle private popups');assert.equal(popup.webContents.session,target);
+      assert.equal(await popup.webContents.executeJavaScript('!!window.opener'),true);
+      // Exercise the OAuth popup transport without real accounts or credentials.
+      await page.webContents.executeJavaScript(`window.oauthResult=undefined;addEventListener('message',event=>{if(event.origin===location.origin&&event.data.state==='fixture-state')window.oauthResult=event.data.code;});undefined`);
+      await popup.webContents.executeJavaScript(`document.cookie='oauth_fixture=private; path=/';opener.postMessage({state:'fixture-state',code:'fixture-code'},location.origin);undefined`);
+      for(let i=0;i<50&&!(await page.webContents.executeJavaScript('window.oauthResult'));i++)await wait(20);
+      assert.equal(await page.webContents.executeJavaScript('window.oauthResult'),'fixture-code');
+      assert.equal((await target.cookies.get({name:'oauth_fixture'})).length,1);
+      assert.deepEqual(await require('electron').session.defaultSession.cookies.get({name:'oauth_fixture'}),[]);
+
+      // Keep fixture documents observable on a locked/headless Mac. This is
+      // test-only; production retains its normal foreground visibility policy.
+      if(!nativePrivateDialogs) page.webContents.setBackgroundThrottling(false);
+      privateWindow.show();privateWindow.focus();
+      await evaluate(privateWindow,`document.getElementById('page-tab-private-fixture').click();undefined`);await wait(300);
+      console.log('Private fixture: popup transport passed; testing permissions.');
+      // Actual Chromium requests use the ordinary website permission handler.
+      const savedSites=require(path.join(runtimeDir,'siteSettings.js'));
+      const siteFile=path.join(app.getPath('userData'),'site-settings.json');
+      const sitesBefore=fs.existsSync(siteFile)?fs.readFileSync(siteFile):undefined;
+      const dialogs=require(path.join(runtimeDir,'dialogs.js'));
+      const originalDialog=dialogs.showBrowserDialog;let permissionPrompts=0;
+      dialogs.showBrowserDialog=async(_window,options)=>{assert.equal(options.siteOrigin,url);permissionPrompts++;console.log('Private permission request:',options.message);return nativePrivateDialogs?originalDialog(_window,options):{response:0};};
+      try {
+        assert.equal(await page.webContents.executeJavaScript(`new Promise(resolve=>navigator.geolocation.getCurrentPosition(()=>resolve('allowed'),error=>resolve(error.code),{timeout:${nativePrivateDialogs?120000:3000}}))`),1);
+        assert.equal(await page.webContents.executeJavaScript(`new Promise(resolve=>navigator.geolocation.getCurrentPosition(()=>resolve('allowed'),error=>resolve(error.code),{timeout:${nativePrivateDialogs?120000:3000}}))`),1);
+        assert.equal(permissionPrompts,1,'Private denial is remembered for this session');
+        const privateProfile=`private:${privateWindow.id}:private-group`;
+        assert.equal(await page.webContents.executeJavaScript(`navigator.mediaDevices.getUserMedia({audio:true,video:true}).then(stream=>{stream.getTracks().forEach(track=>track.stop());return 'allowed';},error=>error.name)`),'NotAllowedError');
+        assert.equal(permissionPrompts,2,'Camera/microphone must use the website prompt');
+        assert.equal(savedSites.getSiteSettings(privateProfile,url).permissions.geolocation,'block');
+        assert.equal(savedSites.getSiteSettings(privateProfile,url).permissions.media,'block');
+        assert.deepEqual(savedSites.getSiteSettings('private-group',url).permissions,{});
+      } finally {dialogs.showBrowserDialog=originalDialog;}
+      assert.deepEqual(fs.existsSync(siteFile)?fs.readFileSync(siteFile):undefined,sitesBefore,'Private permission decisions never persist');
+
+      await require('./webauthn-fixture.cjs')(page.webContents,url.replace('127.0.0.1','localhost'));
+      assert.equal(page.webContents.session,target,'WebAuthn must retain the private session');
+      await page.webContents.loadURL(item.url);await wait(100);
+      await page.webContents.executeJavaScript(`document.body.insertAdjacentHTML('beforeend','<p>Private find marker</p>');undefined`);
+      const found=new Promise(resolve=>page.webContents.on('found-in-page',(_event,result)=>{if(result.finalUpdate)resolve(result);}));
+      await evaluate(privateWindow,`window.electron.browser.command({id:'private-fixture',action:'find',url:'Private find marker'})`);
+      assert.equal((await found).matches,1,'Private find must search the native page');
+      await evaluate(privateWindow,`window.electron.browser.command({id:'private-fixture',action:'zoom-in'})`);await wait(50);
+      assert.equal(page.webContents.getZoomLevel(),0.5);
+      await evaluate(privateWindow,`window.electron.browser.command({id:'private-fixture',action:'zoom-reset'})`);await wait(50);
+      assert.equal(page.webContents.getZoomLevel(),0);
+      // Trusted native right-click uses the existing page context menu.
+      await page.webContents.executeJavaScript(`document.body.insertAdjacentHTML('beforeend','<a id="context-link" href="/private-context-target" style="position:fixed;left:20px;top:20px;z-index:99999;padding:16px;background:white;color:black">Private context link</a>');undefined`);
+      nativeContextMenu=undefined;
+      page.webContents.sendInputEvent({type:'mouseDown',button:'right',x:40,y:40,clickCount:1});
+      page.webContents.sendInputEvent({type:'mouseUp',button:'right',x:40,y:40,clickCount:1});
+      for(let i=0;i<100&&!nativeContextMenu;i++)await wait(20);
+      assert(nativeContextMenu,'Private native right-click must open the standard page menu');
+      assert(nativeContextMenu.items.some(entry=>entry.label==='Save Page As…'));
+      assert(nativeContextMenu.items.some(entry=>entry.label==='Print…'));
+      const contextOpen=nativeContextMenu.items.find(entry=>entry.label==='Open Link in New Tab');
+      assert(contextOpen,'Private link menu must offer standard tab creation');
+      contextOpen.click();nativeContextMenu.closePopup(privateWindow);
+      let contextPage;
+      for(let i=0;i<100;i++){contextPage=privateWindow.contentView.children.find(view=>view.webContents?.getURL()===url+'/private-context-target');if(contextPage)break;await wait(30);}
+      assert(contextPage,'Native context action must create a real private page');
+      assert.equal(contextPage.webContents.session,target);
+      assert.equal((await contextPage.webContents.session.cookies.get({name:'private'})).length,1);
+
+      // Real beforeunload with controlled answers; cancel preserves the page,
+      // approved unload destroys it exactly once and retains temporary tab metadata.
+      const guarded={...item,id:'private-guarded',name:'Guarded private page',url:url+'/ai-guarded-close'};
+      privateWindow.webContents.send('browser-tab-request',{action:'create',app:guarded});
+      let guardedPage;
+      for(let i=0;i<100;i++){guardedPage=privateWindow.contentView.children.find(view=>view.webContents?.getURL()===guarded.url);if(guardedPage)break;await wait(30);}
+      assert(guardedPage,'Private guarded tab must load');
+      const guardedContents=guardedPage.webContents;let guardedDestructions=0;
+      guardedContents.on('destroyed',()=>guardedDestructions++);
+      await guardedContents.executeJavaScript(`document.querySelector('button').click();undefined`,true);
+      let unloadPrompts=0;
+      const savedDialog=dialogs.showBrowserDialog;
+      try {
+        dialogs.showBrowserDialog=async(_owner,options)=>{assert.equal(options.message,'Unload this tab with unsaved changes?');unloadPrompts++;return {response:0};};
+        await evaluate(privateWindow,`window.electron.browser.command({id:'private-guarded',action:'unload-tab'})`);
+        for(let i=0;i<100&&!unloadPrompts;i++)await wait(20);await wait(100);
+        assert.equal(unloadPrompts,1);
+        assert(!guardedContents.isDestroyed(),'Canceled private unload must keep the actual page');
+        assert.equal(guardedDestructions,0);
+        assert.equal(await guardedContents.executeJavaScript('localStorage.closeUnloadCount'),null);
+        dialogs.showBrowserDialog=async()=>({response:1});
+        await evaluate(privateWindow,`window.electron.browser.command({id:'private-guarded',action:'unload-tab'})`);
+        for(let i=0;i<100&&!guardedContents.isDestroyed();i++)await wait(20);
+        assert(guardedContents.isDestroyed(),'Confirmed private unload must destroy the guarded page');
+        assert.equal(guardedDestructions,1,'Confirmed private unload destroys its native contents once');
+        assert(api.getBrowserWindows(privateWindow).mergedLayout().apps.some(tab=>tab.id==='private-guarded'&&!tab.archived),'Unloading private tabs must retain their temporary metadata');
+      } finally {dialogs.showBrowserDialog=savedDialog;}
+      privateWindow.webContents.send('browser-tab-request',{action:'select',id:'private-fixture'});await wait(150);
+      console.log('Private fixture: permissions, find/zoom, native context menu and guarded unload passed; testing downloads.');
+      // Real downloads; destination selection is controlled in this fixture.
+      // The native picker itself remains a manual acceptance item.
+      const historyFile=path.join(app.getPath('userData'),'download-history.json');
+      const historyBefore=fs.existsSync(historyFile)?fs.readFileSync(historyFile):undefined;
+      const savedFile=path.join(runtimeDir,'private-saved.txt');
+      const receive=(destination,native=false)=>new Promise(resolve=>target.once('will-download',(_event,item)=>{
+        assert.equal(item.getSavePath(),'','Private download must request a destination even with automatic regular downloads');
+        assert.equal(item.getSaveDialogOptions().title,'Save private download');
+        if(native) item.setSaveDialogOptions({...item.getSaveDialogOptions(),defaultPath:destination});
+        else item.setSavePath(destination);resolve(item);
+      }));
+      const received=receive(savedFile,nativePrivateDialogs);
+      page.webContents.downloadURL(url+'/download-fixture');
+      const completedItem=await received;console.log('Private fixture: received completed-file DownloadItem');
+      await new Promise(resolve=>completedItem.once('done',resolve));
+      assert.equal(fs.readFileSync(savedFile,'utf8'),'KudiumBrowser download fixture');
+      const privateDownloads=await evaluate(privateWindow,`window.electron.browser.downloads('get')`);
+      assert.equal(privateDownloads.length,1);assert.equal(privateDownloads[0].state,'completed');
+      assert.deepEqual(await evaluate(regularWindow,`window.electron.browser.downloads('get')`),[]);
+      await evaluate(privateWindow,`window.electron.browser.downloads('open')`);await wait(100);
+      assert(await evaluate(privateWindow,`!!document.querySelector('.download-sidebar-panel') && document.querySelector('.download-library-list').textContent.includes('private-saved.txt')`),'Existing Downloads sidebar must show private files');
+      if(nativePrivateDialogs){
+        const canceledFile=path.join(runtimeDir,'private-cancelled.txt');
+        const receivingCancel=receive(canceledFile,true);
+        page.webContents.downloadURL(url+'/download-fixture');
+        const canceledItem=await receivingCancel;
+        await new Promise(resolve=>canceledItem.once('done',resolve));
+        assert.equal(canceledItem.getState(),'cancelled');
+        assert(!fs.existsSync(canceledFile),'Canceling native Save must not create a file');
+        console.log('Private fixture: native Save selection and cancellation passed.');
+      }
+      await evaluate(privateWindow,`window.electron.browser.downloads('clear')`);
+      assert.equal(fs.readFileSync(savedFile,'utf8'),'KudiumBrowser download fixture');
+      const pendingReceived=receive(path.join(runtimeDir,'private-pending.txt'));
+      page.webContents.downloadURL(url+'/active-child-file');
+      const pendingItem=await pendingReceived;console.log('Private fixture: received pending DownloadItem');
+      for(let i=0;i<50&&!pendingItem.getReceivedBytes();i++)await wait(20);
+      const pendingRecord=(await evaluate(privateWindow,`window.electron.browser.downloads('get')`))[0];
+      await evaluate(privateWindow,`window.electron.browser.downloads('pause',${JSON.stringify(pendingRecord.id)})`);assert(pendingItem.isPaused());
+      await evaluate(privateWindow,`window.electron.browser.downloads('resume',${JSON.stringify(pendingRecord.id)})`);assert(!pendingItem.isPaused());
+      assert.deepEqual(fs.existsSync(historyFile)?fs.readFileSync(historyFile):undefined,historyBefore,'Private downloads never write normal history');
+
+      const inherited = await evaluate(privateWindow,'window.electron.ai.settings()');
+      assert.equal(inherited.endpoint,url+'/v1','Private chat reuses the configured provider');
+      assert.equal(inherited.hasKey,true,'Private chat inherits the session-only provider key');
+      await evaluate(regularWindow, `window.electron.ai.settings({endpoint:${JSON.stringify(url+'/v1')},model:'fixture-updated',key:'fixture-session-key',remember:false})`);
+      assert.equal((await evaluate(privateWindow,'window.electron.ai.settings()')).model,'fixture-updated','Private chat follows configured provider changes');
+      settingsBefore=fs.readFileSync(path.join(app.getPath('userData'),'ai-settings.json'));
+      assert.equal((await evaluate(privateWindow,"window.electron.ai.mcpStatus()")).enabled,false,'Regular external control is not inherited');
+      await evaluate(privateWindow,"document.querySelector('.chat-toolbar-button').click();undefined");
+      await wait(200);
+      assert(await evaluate(privateWindow,"!!document.querySelector('.ai-sidebar')"),'Existing Chat sidebar must open privately');
+      assert(await evaluate(privateWindow,"(()=>{const r=document.querySelector('.private-browsing-badge').getBoundingClientRect();return r.left>100||r.top>40})()"),'Private badge must clear traffic lights');
+      const regularBefore = await evaluate(regularWindow,'window.electron.ai.conversations()');
+      await Promise.all([
+        evaluate(privateWindow,"window.electron.ai.run('PRIVATE_CHAT_MARKER')"),
+        evaluate(regularWindow,"window.electron.ai.run('REGULAR_CHAT_MARKER')")
+      ]);
+      for(let i=0;i<160;i++){
+        const status=await Promise.all([evaluate(privateWindow,'window.electron.ai.taskStatus()'),evaluate(regularWindow,'window.electron.ai.taskStatus()')]);
+        if(status.every(s=>!s.busy))break;await wait(50);
+      }
+      const privateChats = await evaluate(privateWindow,'window.electron.ai.conversations()');
+      const regularChats = await evaluate(regularWindow,'window.electron.ai.conversations()');
+      assert(privateChats.history.some(e=>e.text==='Private answer'),'Private AI must respond');
+      assert(regularChats.history.some(e=>e.text==='Regular answer'),'Regular AI must respond simultaneously');
+      assert(!JSON.stringify(privateChats).includes('REGULAR_CHAT_MARKER'));
+      assert(!JSON.stringify(regularChats).includes('PRIVATE_CHAT_MARKER'));
+      assert.notEqual(privateChats.selectedId,regularBefore.selectedId);
+      const privateBody=aiBodies.find(body=>JSON.stringify(body.messages).includes('PRIVATE_CHAT_MARKER'));
+      assert(privateBody&&!JSON.stringify(privateBody).includes('REGULAR_CHAT_MARKER'),'Provider requests must isolate conversation context');
+      assert(aiBodies.some(body=>body.messages.some(entry=>entry.role==='tool'&&entry.content.includes('Private find marker'))),'Private AI must read its own native browser page');
+      assert.deepEqual(fs.readFileSync(path.join(app.getPath('userData'),'ai-settings.json')),settingsBefore,'Private chat must not alter regular settings');
+      assert(!privateChats.storageNotice,'Memory-only private chat must not report a Keychain error');
+      fs.writeFileSync(path.join(out,'private-shared-shell.png'),(await privateWindow.capturePage()).toPNG());
+      assert(!fs.existsSync(path.join(app.getPath('userData'),'browsing-history.json')),'Private visits must not create persistent history');
+      privateWindow.close();
+      for(let i=0;i<100&&(await target.cookies.get({name:'private'})).length;i++)await wait(50);
+      assert.deepEqual(await target.cookies.get({name:'private'}),[]);
+      assert.equal(pendingItem.getState(),'cancelled','Final close cancels unfinished private downloads');
+      assert.deepEqual(downloads.getDownloadHistory(target),[]);
+      assert.equal(fs.readFileSync(savedFile,'utf8'),'KudiumBrowser download fixture');
+      assert.deepEqual(savedSites.getSiteSettings(`private:${privateWindow.id}:private-group`,url).permissions,{});
+      for(let i=0;i<100&&fs.existsSync(path.join(app.getPath('temp'),scratch[0]));i++)await wait(50);
+      assert(!fs.existsSync(path.join(app.getPath('temp'),scratch[0])),'Private AI scratch files must be removed on final close');
+      assert.equal((await require('electron').session.defaultSession.cookies.get({name:'regular'})).length,1);
+      assert((await evaluate(regularWindow,'window.electron.ai.conversations()')).history.some(e=>e.text==='Regular answer'),'Closing private AI must preserve regular handlers/history');
+      target = api.createPrivateSession();
+      const fresh = await createPrivateShell();
+      assert.deepEqual(await evaluate(fresh,`window.electron.browser.downloads('get')`),[],'Fresh private window must have no download history');
+      assert.deepEqual((await evaluate(fresh,'window.electron.ai.conversations()')).history,[],'New private windows must start with empty chat history');
+      fresh.close();
+      regularWindow.close();
+      if(nativePrivateDialogs) fs.writeFileSync(path.join(out,'private-native-dialogs-results.json'),JSON.stringify({
+        measuredAt:new Date().toISOString(),electron:process.versions.electron,
+        verified:['actual location/media dialog Deny buttons','remembered session-only denials','actual macOS Save acceptance and cancellation','saved file contents and preservation after final close','canceled file absent','private history and final cleanup'],
+        limitations:['Media devices are fake; actual device/OS grants are not tested.','The website/provider is a local disposable fixture.']
+      },null,2));
+      console.log('PASS: private AI reads/responses, regular/private isolation, shared shell, popup messaging, Chromium permission denials, virtual WebAuthn signatures/iframe policy, find/zoom, native context menus, guarded unload, memory-only downloads and final-window cleanup. Screenshot: '+path.join(out,'private-shared-shell.png'));
+      server.close();app.quit();return;
+    }
     if (process.argv.includes('--downloads-only')) {
       const downloads = require(path.join(runtimeDir, 'downloads.js'));
       downloads.registerDownloadLibrary(() => {}, contents => Object.values(windows).some(win => win.webContents === contents));
@@ -229,6 +493,12 @@ app
       server.close(); app.exit(0); return;
     }
     const main = await create('main', 1160, 850);
+    if (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) {
+      const report = await require(process.argv.includes('--kuditrust-only') ? './kuditrust-acceptance.cjs' : './real-sites-acceptance.cjs')({main,evaluate,create,windows,runtimeDir,out,url,registerBrowser});
+      server.close();
+      if (!process.argv.includes('--inspect')) app.exit(report.outcome === 'passed' ? 0 : 1);
+      return;
+    }
 
     if (process.argv.includes('--windows-only')) {
       const api = require(path.join(runtimeDir, 'electronBrowser.js'));
@@ -273,10 +543,13 @@ app
       await untilUI(grouped, `document.querySelectorAll('.horizontal-tab').length===2`);
       await untilUI(main, `!!document.querySelector('.browser-window-mirror')`);
       fs.writeFileSync(path.join(out,'shared-page-inactive.png'),(await main.capturePage()).toPNG());
-      main.focus();await wait(350);assert(main.contentView.children.includes(live));assert.equal(live.webContents.id,originalId);
+      main.focus();
+      // Locked/headless macOS cannot deliver native foreground focus.
+      if(process.argv.includes('--simulate-focus')) main.emit('focus');
+      await wait(350);assert(main.contentView.children.includes(live));assert.equal(live.webContents.id,originalId);
       main.webContents.sendInputEvent({type:'keyDown',keyCode:'N',modifiers:['meta']});main.webContents.sendInputEvent({type:'keyUp',keyCode:'N',modifiers:['meta']});await wait(650);
       assert.equal(coordinator.snapshot(windows['main-secondary']).kind,'workspace');
-      console.log('Window UI passed: production React page, single-tab detach, original live view and draft, parent-group drag-back, unpinned temporary group, whole-group window, dimmed snapshot and New Window shortcut. Screenshots: '+out);
+      console.log('Window UI passed: production React page, single-tab detach, original live view and draft, parent-group drag-back, unpinned temporary group, whole-group window, dimmed snapshot and New Window shortcut'+(process.argv.includes('--simulate-focus')?' (foreground focus event simulated)':'')+'. Screenshots: '+out);
       Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.exit(0);return;
     }
 
@@ -1031,8 +1304,9 @@ app
     if (!process.argv.includes('--website-tabs-only') && !process.argv.includes('--opener-flow-only')) {
     await evaluate(main, `document.getElementById('page-tab-personal-messages').click();undefined`);
     await wait(300);
-    for (const name of ['Facebook · Work', 'Notes', 'Facebook · Personal']) {
-      await evaluate(main, `Array.from(document.querySelectorAll('.sidebar-app')).find(row => row.textContent.includes(${JSON.stringify(name)})).click();undefined`);
+    for (const id of ['work-home', 'notes', 'personal-home']) {
+      // Identify fixture tabs by ID: loaded titles and group labels can change.
+      main.webContents.send('browser-tab-request',{action:'select',id});
       await wait(300);
     }
     await evaluate(main, `document.getElementById('page-tab-personal-home').click();undefined`);
@@ -1380,40 +1654,12 @@ app
     }
     if (process.argv.includes('--webauthn-only')) {
       const web = views[0].webContents;
-      await web.loadURL(url.replace('127.0.0.1','localhost') + '/webauthn');
-      web.debugger.attach('1.3');
-      await web.debugger.sendCommand('WebAuthn.enable');
-      const {authenticatorId} = await web.debugger.sendCommand('WebAuthn.addVirtualAuthenticator', {options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
-      try {
-        const registration = await web.executeJavaScript(`(async()=>{
-          if(!isSecureContext || !window.PublicKeyCredential) throw new Error('WebAuthn unavailable');
-          const challenge=crypto.getRandomValues(new Uint8Array(32));
-          window.testCredential=await navigator.credentials.create({publicKey:{challenge,rp:{id:'localhost',name:'KudiumBrowser test'},user:{id:new Uint8Array([1,2,3,4]),name:'test-user',displayName:'Test user'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{residentKey:'required',userVerification:'required'},timeout:10000}});
-          return {id:testCredential.id,type:testCredential.type,client:JSON.parse(new TextDecoder().decode(testCredential.response.clientDataJSON))};
-        })()`,true);
-        assert.equal(registration.type,'public-key');assert.equal(registration.client.type,'webauthn.create');
-        const authentication = await web.executeJavaScript(`(async()=>{
-          const result=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:'localhost',allowCredentials:[{type:'public-key',id:testCredential.rawId}],userVerification:'required',timeout:10000}});
-          return {id:result.id,client:JSON.parse(new TextDecoder().decode(result.response.clientDataJSON)),signatureBytes:result.response.signature.byteLength,flags:new Uint8Array(result.response.authenticatorData)[32]};
-        })()`,true);
-        assert.equal(authentication.id,registration.id);assert.equal(authentication.client.type,'webauthn.get');assert(authentication.signatureBytes>0);
-        const stored=await web.debugger.sendCommand('WebAuthn.getCredentials',{authenticatorId});assert.equal(stored.credentials.length,1);assert(stored.credentials[0].isResidentCredential);
-        assert.equal(authentication.flags & 5, 5, 'User presence and verification must be signed');
-        const invalidRp = await web.executeJavaScript(`(async()=>{try{await navigator.credentials.get({publicKey:{challenge:new Uint8Array(32),rpId:'example.com',timeout:1000}});return 'accepted';}catch(error){return error.name;}})()`, true);
-        assert.equal(invalidRp, 'SecurityError');
-        const canceled = await web.executeJavaScript(`(async()=>{const controller=new AbortController();controller.abort();try{await navigator.credentials.get({signal:controller.signal,publicKey:{challenge:new Uint8Array(32),rpId:'localhost'}});return 'accepted';}catch(error){return error.name;}})()`, true);
-        assert.equal(canceled, 'AbortError');
-        assert.notEqual(web.session, views[2].webContents.session, 'Profiles must use separate sessions');
-        const preferences = web.getLastWebPreferences();
-        assert.equal(preferences.webSecurity, true);
-        assert.equal(preferences.contextIsolation, true);
-        assert.equal(preferences.nodeIntegration, false);
-        assert.equal(preferences.sandbox, true);
-
-        console.log('PASS: Chromium WebAuthn secure-context registration and authentication with a resident CTAP2 credential and required user verification. Uses virtual test credentials only; does not test iCloud Keychain.');
-      } finally {
-        await web.debugger.sendCommand('WebAuthn.removeVirtualAuthenticator',{authenticatorId});web.debugger.detach();
-      }
+      await require('./webauthn-fixture.cjs')(web,url.replace('127.0.0.1','localhost'));
+      assert.notEqual(web.session,views[2].webContents.session,'Login profiles must use separate sessions');
+      const preferences=web.getLastWebPreferences();
+      assert.equal(preferences.webSecurity,true);assert.equal(preferences.contextIsolation,true);
+      assert.equal(preferences.nodeIntegration,false);assert.equal(preferences.sandbox,true);
+      console.log('PASS: virtual resident WebAuthn registration/discoverable authentication, external signature/challenge/origin/RP verification, tamper rejection, user verification and cancellation. System passkeys are not tested.');
       Object.values(windows).forEach(win=>win.close());server.close();app.quit();return;
     }
     if (process.argv.includes('--move-tab-session-only')) {
@@ -3213,4 +3459,4 @@ app
 setTimeout(() => {
   console.error('UI check timed out');
   app.exit(1);
-}, (process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();
+}, (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) ? (process.argv.includes('--inspect') ? 600000 : 240000) : nativePrivateDialogs?180000:(process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();

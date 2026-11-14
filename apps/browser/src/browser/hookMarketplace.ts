@@ -49,6 +49,7 @@ type ScopedHookMarketplaceRequest =
   | { action: 'preview'; url: string }
   | { action: 'state'; id?: string }
   | { action: 'global-editor-open'; id?: string; hookId?: string }
+  | { action: 'site-editor-open'; id: string; hookId: string }
   | { action: 'global-test-run'; url: string; hook: GlobalHook }
   | { action: 'global-test-stop' }
   | {
@@ -84,6 +85,7 @@ export type HookMarketplaceRequest = ScopedHookMarketplaceRequest & {
   allGroups?: boolean;
 };
 export interface HookMarketplaceState {
+  installedHook?: { id: string; name: string; global: boolean; scopeEnabled?: boolean };
   material?: { translucentChrome: boolean; translucentAI: boolean };
   editorHook?: GlobalHook;
   destination: HookDestination;

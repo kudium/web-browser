@@ -1,3 +1,4 @@
+import { hookSourceValidator } from "../browser/hookValidation";
 /* eslint-disable import/no-relative-packages */
 import { BrowserWindow } from 'electron';
 import { randomUUID } from 'crypto';
@@ -64,6 +65,7 @@ export function readHookAuthoringReference() {
 }
 
 export async function diagnoseAuthoredHook(hook: GlobalHook) {
+  const syntaxErrors = hookSourceValidator.errors(hook);
   const sources = [
     ...(['before', 'after'] as const)
       .filter((stage) => hook[stage].trim())
@@ -96,11 +98,12 @@ export async function diagnoseAuthoredHook(hook: GlobalHook) {
     }))
   );
   return {
-    valid: !results.some((result) =>
+    valid: !syntaxErrors.length && !results.some((result) =>
       result.diagnostics.some((item) => item.severity === 'error')
     ),
     results,
-    cssChecked: false,
+    syntaxErrors,
+    cssChecked: true,
     executed: false,
   };
 }
@@ -164,6 +167,7 @@ export class AIHookAuthoring {
       };
       if (!validGlobalHooks(next))
         throw new Error('Invalid global hook settings (maximum 20 hooks).');
+      hookSourceValidator.assert(hook);
       await this.review(
         `Save “${hook.name}”?`,
         `${args.reason}\nScope: ${

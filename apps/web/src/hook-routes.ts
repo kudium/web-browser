@@ -7,7 +7,7 @@ import type { Database } from './db';
 import { marketplaceStore, hookQuery } from './hook-marketplace';
 import { hookIndexPage, hookDetailPage, hookPublishPage } from './hook-pages';
 export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
-  const app = new Hono<{ Variables: { user: string; admin: boolean } }>();
+  const app = new Hono<{ Variables: { user: string; admin: boolean; styleNonce: string } }>();
   const store = marketplaceStore(db);
   const session = async (headers: Headers) =>
     auth?.api.getSession({ headers, query: { disableCookieCache: true } });
@@ -29,6 +29,15 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
         await Bun.file(new URL(`../public/${asset}`, import.meta.url)).text()
       );
     });
+  let editorBundle: Promise<string> | undefined;
+  app.get('/assets/hook-editor.js', async c => {
+    editorBundle ??= Bun.build({ entrypoints: [new URL('../public/hook-editor.ts', import.meta.url).pathname], target: 'browser', minify: true }).then(async result => {
+      if (!result.success) throw new Error('Hook editor build failed');
+      return result.outputs[0].text();
+    }).catch(error => { editorBundle = undefined; throw error; });
+    c.header('Content-Type', 'text/javascript; charset=utf-8');
+    return c.body(await editorBundle);
+  });
   app.get('/hooks', async (c) =>
     c.html(
       hookIndexPage(
@@ -63,7 +72,7 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
   app.get('/hooks/new', async (c) => {
     const viewer = await session(c.req.raw.headers);
     return viewer
-      ? c.html(hookPublishPage())
+      ? c.html(hookPublishPage(undefined, c.get('styleNonce')))
       : c.redirect('/sign-in?next=%2Fhooks%2Fnew');
   });
   app.get('/hooks/:id/edit', async (c) => {
@@ -73,7 +82,7 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
     const detail = await store.detail(c.req.param('id'), viewer.user.id);
     if (detail.hook.authorId !== viewer.user.id)
       throw new HTTPException(403, { message: 'owner_required' });
-    return c.html(hookPublishPage(detail));
+    return c.html(hookPublishPage(detail, c.get('styleNonce')));
   });
   app.get('/hooks/:id', async (c) => {
     const viewer = await session(c.req.raw.headers);

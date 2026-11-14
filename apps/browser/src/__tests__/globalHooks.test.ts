@@ -245,3 +245,10 @@ it('adds defaults to an existing configuration while preserving disabled masters
   expect(loaded.hooks.map(h=>h.id)).toEqual(['global-one','browser-form-tools']);
   expect(effectiveHookConfig('new-profile','https://example.com').enabled).toBe(false);
 });
+
+it('blocks invalid source before writing the global hook configuration', () => {
+  const initial = getGlobalHooks('syntax-profile');
+  const hash = globalHookHash(initial);
+  expect(() => saveGlobalHooks('syntax-profile', { enabled: true, hooks: [{ ...hook, after: 'const broken = ;' }] }, hash)).toThrow('After load, line 1');
+  expect(globalHookHash(getGlobalHooks('syntax-profile'))).toBe(hash);
+});

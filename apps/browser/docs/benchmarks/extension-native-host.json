@@ -1,0 +1,172 @@
+{
+  "runtime": {
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48",
+    "arch": "arm64"
+  },
+  "oneShot": {
+    "echo": {
+      "source": "frame",
+      "text": "こんにちは 🔐"
+    },
+    "origin": "chrome-extension://ejdnmekgckcfjacilebfnbaiacnojbji/"
+  },
+  "port": [
+    {
+      "echo": {
+        "sequence": 1
+      },
+      "origin": "chrome-extension://ejdnmekgckcfjacilebfnbaiacnojbji/"
+    },
+    {
+      "echo": {
+        "sequence": 2
+      },
+      "origin": "chrome-extension://ejdnmekgckcfjacilebfnbaiacnojbji/"
+    }
+  ],
+  "worker": {
+    "echo": {
+      "source": "worker",
+      "text": "こんにちは 🔐"
+    },
+    "origin": "chrome-extension://ejdnmekgckcfjacilebfnbaiacnojbji/"
+  },
+  "portRefusal": {
+    "message": "Error invoking remote method 'crx-msg': Error: runtime.connectNative requires an extension with nativeMessaging permissions",
+    "samePort": true,
+    "events": 1,
+    "leaked": false
+  },
+  "nativeCallbackError": {
+    "message": "Could not establish connection. Receiving end does not exist.",
+    "leaked": false
+  },
+  "failures": [
+    {
+      "name": "com.kudium.missing",
+      "request": {},
+      "message": "Specified native messaging host not found",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Specified native messaging host not found"
+    },
+    {
+      "name": "com.kudium.forbidden",
+      "request": {},
+      "message": "Access to the native messaging host is forbidden",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Access to the native messaging host is forbidden"
+    },
+    {
+      "name": "com.kudium.missing_executable",
+      "request": {},
+      "message": "Native messaging host executable not found",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Native messaging host executable not found"
+    },
+    {
+      "name": "com.kudium.spawn_failure",
+      "request": {},
+      "message": "Failed to start native messaging host",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Failed to start native messaging host"
+    },
+    {
+      "name": "com.kudium.disposable_fixture",
+      "request": {
+        "mode": "exit",
+        "code": 0
+      },
+      "message": "Native messaging host exited",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Native messaging host exited"
+    },
+    {
+      "name": "com.kudium.disposable_fixture",
+      "request": {
+        "mode": "exit",
+        "code": 7
+      },
+      "message": "Native messaging host exited with an error",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Native messaging host exited with an error"
+    },
+    {
+      "name": "com.kudium.disposable_fixture",
+      "request": {
+        "mode": "signal"
+      },
+      "message": "Native messaging host terminated by signal",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Native messaging host terminated by signal"
+    },
+    {
+      "name": "com.kudium.disposable_fixture",
+      "request": {
+        "mode": "bad-json"
+      },
+      "message": "Invalid native messaging response JSON",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Invalid native messaging response JSON"
+    },
+    {
+      "name": "com.kudium.disposable_fixture",
+      "request": {
+        "mode": "bad-length"
+      },
+      "message": "Invalid native messaging response length",
+      "samePort": true,
+      "events": 1,
+      "writeError": "Attempting to use a disconnected port object",
+      "leaked": false,
+      "oneShotError": "Error invoking remote method 'crx-msg': Error: Invalid native messaging response length"
+    }
+  ],
+  "finalResponse": {
+    "echo": {
+      "mode": "final-response"
+    },
+    "origin": "chrome-extension://ejdnmekgckcfjacilebfnbaiacnojbji/"
+  },
+  "verified": [
+    "real native child process",
+    "UTF-8 framing and split responses",
+    "frame one-shot and persistent port",
+    "module worker one-shot",
+    "permission refusal",
+    "callback lastError and post-callback cleanup",
+    "native runtime.sendMessage callback lastError getter and cleanup",
+    "native port refusal details, event identity and scoped lastError cleanup",
+    "explicit disconnect emits no local onDisconnect event",
+    "writes to disconnected native ports throw synchronously",
+    "missing/forbidden host, absent executable and OS spawn failure reasons",
+    "clean/nonzero/signal exit and invalid-response reasons in ports and promises",
+    "final stdout response delivered before host exit",
+    "website containment"
+  ],
+  "probeSha256": "709ebb2cf957712e2307e37a51e5be93e5932493c94e4fcebb457d7b5dcf2857"
+}

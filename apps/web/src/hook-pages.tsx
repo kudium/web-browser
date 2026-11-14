@@ -1,3 +1,9 @@
+import { HookSource } from "./components/hook-source";
+import { FishingHook as HookIcon, ArrowLeft, Heart, ArrowUpRight } from "lucide-react";
+import { TabNav, Card as ThemeCard, Badge } from "@radix-ui/themes";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { Button, Input, Select, Textarea } from "./components/web-ui";
 import { actionContexts, actionTemplates, type HookAction } from '../../../packages/hooks/actions';
 import { renderToStaticMarkup } from "react-dom/server";
 import { Layout } from "./pages";
@@ -8,11 +14,13 @@ import {
 import type { MarketplaceStore, HookQuery } from "./hook-marketplace";
 type ListingPage = Awaited<ReturnType<MarketplaceStore["list"]>>;
 type Detail = Awaited<ReturnType<MarketplaceStore["detail"]>>;
+const hookStylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/hooks.css", import.meta.url))).digest("hex").slice(0, 12);
 const render = (
   content: React.ReactNode,
   title: string,
   path: string,
-  privatePage = false
+  privatePage = false,
+  editorNonce?: string
 ) =>
   "<!doctype html>" +
   renderToStaticMarkup(
@@ -20,34 +28,38 @@ const render = (
       title={title}
       canonicalPath={path}
       privatePage={privatePage}
-      stylesheet="/assets/hooks.css"
+      stylesheet={`/assets/hooks.css?v=${hookStylesheetVersion}`}
     >
       {content}
+      <template data-hook-button-template><Button type="button" /></template>
+      <template data-hook-textarea-template><Textarea /></template>
       <script src="/assets/hooks.js" defer />
+      {editorNonce !== undefined && <script src="/assets/hook-editor.js" type="module" nonce={editorNonce} data-hook-editor-script />}
     </Layout>
   );
 function ActionFields({ action }: { action?: HookAction }) {
   return <details data-hook-action className="hook-source-stage" open={!action}>
     <summary data-action-title>{action?.name || 'New action'}</summary>
-    <label>Name<input data-action-name defaultValue={action?.name || 'New action'} maxLength={120} required /></label>
-    <fieldset><legend>Show for</legend>{actionContexts.map(c => <label key={c}><input type="checkbox" data-action-context value={c} defaultChecked={action ? action.contexts.includes(c) : c === 'page'} />{c}</label>)}</fieldset>
-    <label>Handler<textarea data-action-source defaultValue={action?.source || 'api.showResult(context.title);'} rows={8} maxLength={20000} spellCheck={false} /></label>
-    <input type="hidden" data-action-id defaultValue={action?.id || ''} />
-    <button type="button" data-remove-action>Remove action</button>
+    <label>Name<Input data-action-name defaultValue={action?.name || 'New action'} maxLength={120} required /></label>
+    <fieldset><legend>Show for</legend>{actionContexts.map(c => <label key={c}><Input type="checkbox" data-action-context value={c} defaultChecked={action ? action.contexts.includes(c) : c === 'page'} />{c}</label>)}</fieldset>
+    <label>Handler<Textarea data-code-editor="action" data-action-source defaultValue={action?.source || 'api.showResult(context.title);'} rows={8} maxLength={20000} spellCheck={false} /></label>
+    <Input type="hidden" data-action-id defaultValue={action?.id || ''} />
+    <Button type="button" color="red" variant="soft" data-remove-action>Remove action</Button>
   </details>;
 }
 function StageBadges({ pkg }: { pkg: HookPackage }) {
   return (
-    <div className="hook-badges">
-      {!!pkg.actions?.length && <span>{pkg.actions.length} context menu actions</span>}
+    <div className="hook-stage-labels">
+      {!!pkg.actions?.length && <Badge color="gray">{pkg.actions.length} context menu {pkg.actions.length === 1 ? "action" : "actions"}</Badge>}
       {Object.entries(pkg.lifecycle)
         .filter(([, code]) => code.trim())
         .map(([stage]) => (
-          <span key={stage}>{stage === "css" ? "CSS" : `${stage} load`}</span>
+          <Badge color="gray" key={stage}>{stage === "css" ? "CSS" : `${stage} load`}</Badge>
         ))}
     </div>
   );
 }
+const authorDisplayName = (name: string) => name.replace(/(^|\s)(\p{L})/gu, (_, space: string, letter: string) => space + letter.toLocaleUpperCase("en"));
 function Card({
   item,
   mine,
@@ -61,9 +73,10 @@ function Card({
     <article className="hook-card">
       <div className="hook-card-top">
         <span className="hook-site-mark" aria-hidden="true">
-          {item.package.applicability === "general"
-            ? "◎"
-            : item.hook.name.slice(0, 1).toUpperCase()}
+          {item.package.applicability === "general" ? <HookIcon size={18} strokeWidth={1.5} /> : <>
+            <img data-hook-site-icon src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(item.package.sites[0].host)}&sz=64`} alt="" width="20" height="20" loading="lazy" referrerPolicy="no-referrer" />
+            <span>{item.package.sites[0].host.slice(0, 1).toUpperCase()}</span>
+          </>}
         </span>
         <span className="hook-type">
           {item.package.applicability === "general"
@@ -76,7 +89,7 @@ function Card({
       </a>
       <p>{item.hook.description}</p>
       <div className="hook-card-footer">
-        <span>By {item.author.name}</span>
+        <span>By {authorDisplayName(item.author.name)}</span>
         <span>♡ {item.hook.likes}</span>
       </div>
       {mine && (
@@ -107,7 +120,7 @@ export function hookIndexPage(
   });
   const path = admin ? "/hooks/admin" : mine ? "/account/hooks" : "/hooks";
   return render(
-    <main className="hooks-marketplace hooks-library" data-hook-marketplace>
+    <main className="hooks-marketplace hooks-library hooks-browse" data-hook-marketplace>
       <div className="hooks-heading">
         <div>
           <h1>
@@ -115,63 +128,58 @@ export function hookIndexPage(
               ? "Marketplace moderation"
               : mine
               ? "Your hooks"
-              : "Hooks"}
+              : "Browse hooks"}
           </h1>
-          <p>
-            {admin
-              ? "Review submissions and manage published hooks."
-              : mine
-              ? "Manage the hooks you’ve shared with the community."
-              : "Scripts and styles for your favourite websites."}
-          </p>
+
         </div>
-        <a className="hook-primary" href="/hooks/new">
-          Publish a hook
-        </a>
+        <Button asChild size="3" variant="solid"><a href="/hooks/new">Publish a hook</a></Button>
       </div>
-      <nav className="hooks-section-links" aria-label="Hooks navigation">
-        <a href="/hooks" aria-current={!mine && !admin ? "page" : undefined}>Explore</a>
-        <a href="/account/hooks" aria-current={mine && !admin ? "page" : undefined}>Your hooks</a>
-        {admin && <a href="/hooks/admin" aria-current="page">Moderation</a>}
-      </nav>
-      <form className="hook-search" method="get" action={path}>
+      <div className="hook-browse-toolbar">
+        <TabNav.Root className="hook-browse-nav" aria-label="Hooks navigation" size="1">
+          <TabNav.Link href="/hooks" active={!mine && !admin}>Explore</TabNav.Link>
+          <TabNav.Link href="/account/hooks" active={mine && !admin}>Your hooks</TabNav.Link>
+          {admin && <TabNav.Link href="/hooks/admin" active>Moderation</TabNav.Link>}
+        </TabNav.Root>
+        <TabNav.Root className="hook-browse-order" aria-label="Sort hooks" size="1" color="gray">
+          {(['trending', 'newest'] as const).map(sort => (
+            <TabNav.Link key={sort} href={`${path}?${new URLSearchParams({ ...query, sort })}`}
+              active={(query.sort || 'newest') === sort}
+              title={sort === 'trending' ? 'Most liked, with newest first for ties' : 'Most recently published'}>
+              {sort === 'trending' ? 'Trending' : 'Newest'}
+            </TabNav.Link>
+          ))}
+        </TabNav.Root>
+      </div>
+      <form id="hook-search-form" className="hook-search" method="get" action={path}>
+        <Input type="hidden" name="sort" defaultValue={query.sort || "newest"} />
         <label>
           <span className="visually-hidden">Search hooks</span>
-          <input
+          <Input
             name="q"
             type="search"
             placeholder="Search hooks"
             defaultValue={query.q}
           />
         </label>
-        <label>
-          <span className="visually-hidden">Site</span>
-          <input
-            name="site"
-            placeholder="Website, e.g. github.com"
-            defaultValue={query.site}
-          />
-        </label>
-        <label>
-          <span className="visually-hidden">Hook type</span>
-          <select name="kind" defaultValue={query.kind}>
-            <option value="all">All hooks</option>
-            <option value="site">Site-specific</option>
-            <option value="general">General hooks</option>
-          </select>
-        </label>
-        <button className="hook-filter-button" type="submit">
-          Search
-        </button>
+        <Button size="3" color="gray" variant="surface" type="submit">Search</Button>
+        <details className="hook-browse-filters" open={!!query.site || query.kind !== 'all'}>
+          <Button asChild size="3" color="gray" variant="surface">
+            <summary>Filters{(query.site || query.kind !== 'all') && <Badge color="gray">{Number(!!query.site) + Number(query.kind !== 'all')}</Badge>}
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m6 9 6 6 6-6" /></svg>
+            </summary>
+          </Button>
+          <ThemeCard className="hook-filter-panel" size="2"><div className="hook-filter-fields">
+            <label>Website<Input name="site" placeholder="e.g. github.com" defaultValue={query.site} /></label>
+            <label>Hook type<Select name="kind" defaultValue={query.kind}>
+              <option value="all">All hooks</option>
+              <option value="site">Site-specific</option>
+              <option value="general">General hooks</option>
+            </Select></label>
+            <Button size="3" variant="solid" type="submit">Apply filters</Button>
+          </div></ThemeCard>
+        </details>
       </form>
-      {page.items.length > 0 && <div className="hooks-results-heading">
-        <h2>
-          {query.q
-            ? `Results for “${query.q}”`
-            : admin ? "Submissions" : mine ? "Published hooks" : "All hooks"}
-        </h2>
-        <span>Newest first</span>
-      </div>}
+      {query.q && <p className="hook-search-context">Results for “{query.q}”</p>}
       <div className="hook-grid">
         {page.items.map((item) => (
           <Card
@@ -218,38 +226,39 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
       data-liked={String(detail.liked)}
       data-admin={String(admin)}
     >
-      <a className="hook-back" href="/hooks">
-        ← Explore hooks
-      </a>
-      <div className="hook-detail-layout">
-        <article>
-          <div className="hook-detail-intro">
-            <span className="hooks-eyebrow">
-              {pkg.applicability === "general"
-                ? "Across websites"
-                : pkg.sites.map((s) => s.host).join(" · ")}
-            </span>
-            <h1>{hook.name}</h1>
+      <Button asChild variant="ghost" color="gray" className="hook-detail-back"><a href="/hooks"><ArrowLeft size={14} />Browse hooks</a></Button>
+      <div className="hook-detail-intro">
+        <div className="hook-detail-title-row">
+          <span className="hook-detail-mark" aria-hidden="true">
+            {pkg.applicability === 'general' ? <HookIcon size={24} strokeWidth={1.5} /> : <>
+              <img data-hook-site-icon src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(pkg.sites[0].host)}&sz=64`} alt="" width="24" height="24" referrerPolicy="no-referrer" />
+              <span>{pkg.sites[0].host.slice(0,1).toUpperCase()}</span>
+            </>}
+          </span>
+          <div><h1>{hook.name}</h1><span className="hook-detail-scope">{pkg.applicability === 'general' ? 'General hook' : pkg.sites.map(site => site.host).join(' · ')}</span></div>
+        </div>
             <p className="hook-description">{hook.description}</p>
             <div className="hook-byline">
-              By {detail.author.name} · Version {hook.version}{" "}
-              <button type="button" data-hook-like aria-pressed={detail.liked}>
-                ♡ <span data-like-count>{hook.likes}</span>
-              </button>
+              <span>By {authorDisplayName(detail.author.name)}</span>
+              <span>Version {hook.version}</span>
+              <Button type="button" variant="ghost" aria-label="Like this hook" data-hook-like aria-pressed={detail.liked}>
+                <Heart size={14} /> <span data-like-count>{hook.likes}</span>
+              </Button>
             </div>
-            <StageBadges pkg={pkg} />
           </div>
+      <div className="hook-detail-layout">
+        <article className="hook-detail-content">
           <section className="hook-code-section">
-            <h2>Source code</h2>
+            <div className="hook-section-heading"><h2>Source code</h2><StageBadges pkg={pkg} /></div>
             <p>
               Review the source before you install. Hooks change the pages where
               you enable them.
             </p>
-            {pkg.actions?.map(action => <details key={action.id}><summary>{action.name} · context menu</summary><p>Show for: {action.contexts.join(', ')}</p><pre>{action.source}</pre></details>)}
+            {pkg.actions?.map(action => <details key={action.id}><summary>{action.name} · context menu</summary><p>Show for: {action.contexts.join(', ')}</p><HookSource source={action.source} /></details>)}
             {Object.entries(pkg.lifecycle)
               .filter(([, source]) => source.trim())
               .map(([stage, source]) => (
-                <details key={stage} open={stage === "css"}>
+                <details key={stage}>
                   <summary>
                     {stage === "css"
                       ? "CSS styles"
@@ -257,9 +266,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
                           stage === "before" ? "Before" : "After"
                         } load script`}
                   </summary>
-                  <pre>
-                    <code>{source}</code>
-                  </pre>
+                  <HookSource source={source} language={stage === "css" ? "css" : "javascript"} />
                 </details>
               ))}
           </section>
@@ -297,14 +304,14 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
                 <label htmlFor="hook-comment-body">
                   Share feedback or ask a question
                 </label>
-                <textarea
+                <Textarea
                   id="hook-comment-body"
                   name="body"
                   maxLength={2000}
                   required
                   rows={3}
                 />
-                <button className="hook-primary">Post comment</button>
+                <Button className="hook-primary">Post comment</Button>
               </form>
             ) : (
               <p>
@@ -319,23 +326,25 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
               </p>
             )}
             <div data-hook-comments />
-            <button className="hook-more" data-comment-more hidden>
+            <Button className="hook-more" data-comment-more hidden>
               Load more comments
-            </button>
+            </Button>
           </section>
         </article>
-        <aside className="hook-install-card">
+        <aside className="hook-detail-sidebar">
+        <ThemeCard asChild size="3" className="hook-detail-install"><section>
           <h2>Install hook</h2>
           <p>
             Preview in Kudium, choose where it runs, then enable it when you’re
             ready.
           </p>
-          <a className="hook-primary" data-hook-install href={packageURL}>
-            Open in Kudium
-          </a>
-          <button type="button" data-copy-package={packageURL}>
+          <Button asChild size="3" variant="solid"><a data-hook-install href={packageURL}>Open in Kudium<ArrowUpRight size={16} /></a></Button>
+          <Button size="3" color="gray" variant="surface" type="button" data-copy-package={packageURL}>
             Copy install link
-          </button>
+          </Button>
+        </section></ThemeCard>
+        <section className="hook-info-card">
+          <h2>Hook details</h2>
           <dl>
             <dt>Works on</dt>
             <dd>
@@ -355,11 +364,12 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
             {pkg.testUrl && <><dt>Test website</dt><dd><a href={pkg.testUrl} target="_blank" rel="noreferrer">{pkg.testUrl}</a></dd></>}
             <dt>License</dt>
             <dd>{pkg.license}</dd>
-            <dt>Browser</dt>
+            <dt>Requires Kudium</dt>
             <dd>{pkg.minimumBrowserVersion} or later</dd>
           </dl>
+          <div className="hook-management">
           {hook.authorId === viewer && (
-            <a href={`/hooks/${hook.id}/edit`}>Edit hook</a>
+            <Button asChild variant="surface" color="gray"><a href={`/hooks/${hook.id}/edit`}>Edit hook</a></Button>
           )}
           {hook.status !== "approved" && (
             <p className="hook-notice">
@@ -367,27 +377,29 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
             </p>
           )}
           {viewer && (
-            <button type="button" data-report-hook>
+            <Button type="button" variant="ghost" color="gray" data-report-hook>
               Report this hook
-            </button>
+            </Button>
           )}
+          </div>
           {admin && (
             <form data-hook-moderate>
               <label>
                 Status
-                <select name="status" defaultValue={hook.status}>
+                <Select name="status" defaultValue={hook.status}>
                   <option>approved</option>
                   <option>pending</option>
                   <option>rejected</option>
-                </select>
+                </Select>
               </label>
               <label>
                 Reason
-                <textarea name="reason" maxLength={2000} />
+                <Textarea name="reason" maxLength={2000} />
               </label>
-              <button>Save moderation decision</button>
+              <Button>Save moderation decision</Button>
             </form>
           )}
+        </section>
           <div className="hook-feedback" role="status" data-hook-feedback />
         </aside>
       </div>
@@ -397,7 +409,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
     hook.status !== "approved"
   );
 }
-export function hookPublishPage(detail?: Detail) {
+export function hookPublishPage(detail?: Detail, editorNonce = "") {
   const pkg = detail?.package;
   return render(
     <main className="hooks-marketplace hooks-library hook-publish">
@@ -408,7 +420,7 @@ export function hookPublishPage(detail?: Detail) {
         <h1>{detail ? "Publish an update" : "Publish a hook"}</h1>
         <label className="hook-import-file">
           Import JSON
-          <input
+          <Input
             type="file"
             accept="application/json,.json"
             data-import-hook
@@ -431,7 +443,7 @@ export function hookPublishPage(detail?: Detail) {
         <div className="hook-form-grid">
           <label>
             Name
-            <input
+            <Input
               name="name"
               defaultValue={pkg?.name}
               maxLength={120}
@@ -441,16 +453,16 @@ export function hookPublishPage(detail?: Detail) {
           </label>
           <label>
             License
-            <select name="license" defaultValue={pkg?.license || "MIT"}>
+            <Select name="license" defaultValue={pkg?.license || "MIT"}>
               {hookLicenses.map((l) => (
                 <option key={l}>{l}</option>
               ))}
-            </select>
+            </Select>
           </label>
         </div>
         <label>
           Description
-          <textarea
+          <Textarea
             name="description"
             defaultValue={pkg?.description}
             maxLength={4000}
@@ -465,17 +477,17 @@ export function hookPublishPage(detail?: Detail) {
         <div className="hook-form-grid">
           <label>
             Works on
-            <select
+            <Select
               name="applicability"
               defaultValue={pkg?.applicability || "site"}
             >
               <option value="site">Specific websites</option>
               <option value="general">Any website</option>
-            </select>
+            </Select>
           </label>
           <label>
             Target domains
-            <input
+            <Input
               name="sites"
               defaultValue={pkg?.sites
                 .map((s) => (s.includeSubdomains ? "*." : "") + s.host)
@@ -486,7 +498,7 @@ export function hookPublishPage(detail?: Detail) {
           </label>
           <label>
             Page pathname
-            <input
+            <Input
               name="path"
               defaultValue={pkg?.path || "/*"}
               required
@@ -496,10 +508,10 @@ export function hookPublishPage(detail?: Detail) {
               * matches characters. Query strings and fragments are ignored.
             </small>
           </label>
-          <label>Test website URL<input type="url" name="testUrl" defaultValue={pkg?.testUrl || ""} maxLength={4096} placeholder="https://example.com" /></label>
+          <label>Test website URL<Input type="url" name="testUrl" defaultValue={pkg?.testUrl || ""} maxLength={4096} placeholder="https://example.com" /></label>
           <label>
             Minimum browser version
-            <input
+            <Input
               name="minimumBrowserVersion"
               defaultValue={pkg?.minimumBrowserVersion || "1.0.0"}
               required
@@ -507,7 +519,7 @@ export function hookPublishPage(detail?: Detail) {
           </label>
         </div>
         </fieldset>
-        <fieldset className="hook-form-section hook-code-fields">
+        <fieldset className="hook-form-section hook-code-fields" data-code-stages>
           <legend>Code</legend>
         {(["before", "after", "css"] as const).map((phase) => (
           <details
@@ -522,8 +534,9 @@ export function hookPublishPage(detail?: Detail) {
             </summary>
             <label className="hook-source-label">
               <span className="visually-hidden">{phase} source</span>
-              <textarea
+              <Textarea
                 name={phase}
+                data-code-editor={phase === "css" ? "css" : "lifecycle"}
                 defaultValue={pkg?.lifecycle[phase]}
                 rows={9}
                 maxLength={20000}
@@ -538,22 +551,32 @@ export function hookPublishPage(detail?: Detail) {
           <p>Actions run when you choose them from the right-click menu.</p>
           <div data-action-list>{pkg?.actions?.map(action => <ActionFields key={action.id} action={action} />)}</div>
           <template data-action-template><ActionFields /></template>
-          <div className="hook-publish-actions"><select aria-label="Action example" data-action-example><option value="custom">Custom action</option>{actionTemplates.map((a, i) => <option key={a.name} value={i}>{a.name}</option>)}</select><button type="button" data-add-action>Add action</button></div>
+          <div className="hook-action-toolbar">
+            <label>
+              Start with
+              <Select data-action-example>
+                <option value="custom">Custom action</option>
+                {actionTemplates.map((a, i) => <option key={a.name} value={i}>{a.name}</option>)}
+              </Select>
+            </label>
+            <Button className="hook-primary" type="button" data-add-action>Add action</Button>
+          </div>
         </fieldset>
         <label className="hook-license-confirm">
-          <input type="checkbox" required /> I have the right to publish this
+          <Input type="checkbox" required /> I have the right to publish this
           code under the selected license.
         </label>
         <div className="hook-publish-actions">
           <p data-hook-feedback role="status" />
-          <button className="hook-primary" type="submit">
+          <Button className="hook-primary" type="submit">
             {detail ? "Publish new version" : "Publish hook"}
-          </button>
+          </Button>
         </div>
       </form>
     </main>,
     detail ? "Update hook" : "Publish hook",
     "/hooks/new",
-    true
+    true,
+    editorNonce
   );
 }

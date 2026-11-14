@@ -45,8 +45,8 @@ export function SyncSettings({
             <div>
               <strong>Kudium Browser Account</strong>
               <p className="preference-note">
-                Sync across devices after signing in and setting up your
-                recovery key.
+                Sync across devices after signing in. Older encrypted backups
+                may need a recovery key once.
               </p>
             </div>
             <Switch
@@ -91,8 +91,7 @@ export function SyncSettings({
       <div className="sync-section-heading">
         <h2>Included in sync</h2>
         <PreferenceHint label="sync privacy">
-          Data is encrypted with your recovery key. Password sync requires
-          unlocking Personal Data. Group-only credentials, passkeys, cookies, AI
+          Account sync encrypts data with an account-managed key, so signing in can unlock it on another device. This is not end-to-end encryption. Older backups may still require their recovery key. Password sync requires unlocking Personal Data. Group-only credentials, passkeys, cookies, AI
           keys and AI history stay local.
         </PreferenceHint>
       </div>

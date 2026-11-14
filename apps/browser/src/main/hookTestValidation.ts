@@ -1,3 +1,4 @@
+import { hookSourceValidator } from "../browser/hookValidation";
 import type { GlobalHook } from '../browser/hookMarketplace';
 import { hookMatchesPath, hookMatchesWebsite } from '../browser/siteDeveloper';
 import { validGlobalHooks } from './globalHooks';
@@ -19,6 +20,7 @@ export function hookTestApplies(hook: GlobalHook, url: string) {
 export function validateHookTest(hook: GlobalHook, url: string) {
   if (!validGlobalHooks({ enabled: true, hooks: [hook] }))
     throw new Error('Invalid hook draft.');
+  hookSourceValidator.assert(hook);
   let target: URL;
   try {
     target = new URL(url);

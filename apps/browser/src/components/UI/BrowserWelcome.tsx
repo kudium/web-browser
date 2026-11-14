@@ -4,7 +4,11 @@ import kudiumLogo from '../../../assets/app-icon.png';
 import { browser } from '../../browser/client';
 import { PreferenceAction, PreferenceInfo } from '../../browser/preferences';
 
-export function BrowserWelcome() {
+export function BrowserWelcome({
+  privateMode = false,
+}: {
+  privateMode?: boolean;
+}) {
   const [ready, setReady] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [info, setInfo] = useState<PreferenceInfo>();
@@ -12,6 +16,11 @@ export function BrowserWelcome() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   useEffect(() => {
+    if (privateMode) {
+      setReady(true);
+      setCompleted(true);
+      return undefined;
+    }
     let active = true;
     Promise.all([browser.preferences('get'), browser.preferenceAction('info')])
       .then(([preferences, details]) => {
@@ -26,7 +35,7 @@ export function BrowserWelcome() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [privateMode]);
 
   async function finish() {
     setBusy(true);
@@ -46,6 +55,19 @@ export function BrowserWelcome() {
   }
 
   if (!ready) return null;
+  if (privateMode)
+    return (
+      <section className="browser-onboarding">
+        <div className="browser-onboarding-card">
+          <h1>Private browsing</h1>
+          <p>Use the address bar or open a tab to start browsing.</p>
+          <p>
+            Your private tabs and website data stay out of your regular
+            workspace. Downloaded files remain on your computer.
+          </p>
+        </div>
+      </section>
+    );
   if (!completed) {
     const options = [
       {

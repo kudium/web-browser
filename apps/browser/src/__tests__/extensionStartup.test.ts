@@ -100,3 +100,42 @@ test('concurrent startup loads each extension once per group with no overlap and
     timer.mockRestore();
   }
 });
+
+test('startup rejects changed package identity without rewriting the saved catalog', async () => {
+  const owner = { id: 2 } as any;
+  const loaded = new Map<string, any>();
+  const extensions = Object.assign(new EventEmitter(), {
+    getAllExtensions: () => [...loaded.values()],
+    removeExtension: jest.fn((id: string) => loaded.delete(id)),
+    loadExtension: jest.fn(async (path: string) => {
+      if (path === '/broken') throw new Error('Invalid manifest');
+      const extension = { id: 'unexpected', path, name: 'Unexpected' };
+      loaded.set(extension.id, extension);
+      extensions.emit('extension-loaded', {}, extension);
+      return extension;
+    }),
+  });
+  const timer = jest
+    .spyOn(global, 'setInterval')
+    .mockReturnValue({ unref: jest.fn() } as any);
+  (fs.writeFileSync as jest.Mock).mockClear();
+  try {
+    await applyExtensions(
+      { extensions, serviceWorkers: new EventEmitter() } as any,
+      'changed-startup',
+      'Changed startup',
+      owner
+    );
+    expect(loaded.size).toBe(0);
+    expect(extensions.removeExtension).toHaveBeenCalledWith('unexpected');
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+    const entry = extensionMenu(owner).find((item) => item.label === 'Test')!;
+    expect(entry.submenu).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'View Errors in Changed startup…' }),
+      ])
+    );
+  } finally {
+    timer.mockRestore();
+  }
+});
