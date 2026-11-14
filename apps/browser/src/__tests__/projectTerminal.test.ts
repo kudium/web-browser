@@ -3,6 +3,7 @@ import { spawn } from 'node-pty';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import {
   ProjectTerminals,
   validTerminalRequest,
@@ -241,7 +242,7 @@ it('runs a saved command in a new named terminal without writing into an existin
   expect(pty.write).not.toHaveBeenCalled();
   expect(spawn).toHaveBeenLastCalledWith(
     expect.any(String),
-    ['-l', '-c', 'npm run dev'],
+    ['-l', '-i', '-c', 'npm run dev'],
     expect.any(Object)
   );
   expect(result.command?.status).toBe('running');
@@ -437,6 +438,54 @@ it('runs a configured command in a selected subfolder and refuses outside folder
     fs.rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+(fs.existsSync('/bin/zsh') ? it : it.skip)(
+  'runs tools installed through interactive shell startup with a minimal app PATH',
+  () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'script-path-'));
+    const originalShell = process.env.SHELL;
+    const terminals = new ProjectTerminals(host, () => directory);
+    try {
+      process.env.SHELL = '/bin/zsh';
+      const bin = path.join(directory, 'bin');
+      fs.mkdirSync(bin);
+      fs.writeFileSync(path.join(bin, 'bun'), '#!/bin/sh\nprintf bun-found', {
+        mode: 0o700,
+      });
+      fs.writeFileSync(
+        path.join(directory, '.zshrc'),
+        'export PATH="$ZDOTDIR/bin:$PATH"\n'
+      );
+      terminals.runCommand('group', 'Bun', 'bun');
+      const [shell, args] = (spawn as jest.Mock).mock.calls[0];
+      const env = {
+        HOME: directory,
+        ZDOTDIR: directory,
+        PATH: '/usr/bin:/bin',
+      };
+      const withoutStartup = spawnSync(shell, ['-l', '-c', 'bun'], {
+        cwd: directory,
+        env,
+        encoding: 'utf8',
+        timeout: 5000,
+      });
+      expect(withoutStartup.status).toBe(127);
+      const result = spawnSync(shell, args, {
+        cwd: directory,
+        env,
+        encoding: 'utf8',
+        timeout: 5000,
+      });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('bun-found');
+    } finally {
+      terminals.dispose();
+      if (originalShell === undefined) delete process.env.SHELL;
+      else process.env.SHELL = originalShell;
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  }
+);
 
 it('removes inherited npm prefixes without changing the parent environment', () => {
   const keys = ['npm_config_prefix', 'NPM_CONFIG_PREFIX'];

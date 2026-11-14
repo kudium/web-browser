@@ -2893,7 +2893,10 @@ export function Main() {
       onSubmit={(event) => {
         event.preventDefault();
         const url = resolveAddress(address);
-        if (selected) command('navigate', url);
+        if (new URL(url).protocol === 'kudium:') {
+          window.electron.hookMarketplace.request({ action: 'open-install', url })
+            .catch((error) => setMoveMessage(String(error)));
+        } else if (selected) command('navigate', url);
         else {
           const item: IApp = {
             id: crypto.randomUUID(),

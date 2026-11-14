@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "minimumBrowserVersion": "1.0.11",
+  "license": "MIT",
+  "applicability": "site",
+  "sites": [
+    {
+      "host": "youtube.com",
+      "includeSubdomains": true
+    }
+  ],
+  "path": "/*",
+  "testUrl": "https://www.youtube.com",
+  "lifecycle": {
+    "before": "",
+    "after": "",
+    "css": "/* Keep search, subscriptions, navigation, comments and the player intact. */\nytd-browse[page-subtype=\"home\"] ytd-rich-grid-renderer { display: none !important; }\nytd-browse[page-subtype=\"home\"]::before { content: \"Choose what to watch: use Search or Subscriptions.\"; display: block; margin: 48px 24px; text-align: center; font: 16px/1.5 Roboto, Arial, sans-serif; color: var(--yt-spec-text-secondary); }\nytd-watch-flexy #related { display: none !important; }\nytd-rich-shelf-renderer[is-shorts], ytd-reel-shelf-renderer,\nytd-guide-entry-renderer:has(a[href^=\"/shorts\"]), ytd-mini-guide-entry-renderer:has(a[href^=\"/shorts\"]),\nytd-rich-item-renderer:has(a[href^=\"/shorts/\"]), ytd-video-renderer:has(a[href^=\"/shorts/\"]) { display: none !important; }"
+  },
+  "name": "YouTube Focus",
+  "description": "Watch intentionally: hide the Home recommendation feed, watch-page recommendations and Shorts shelves/links. Search, Subscriptions, the video player and comments stay available. Direct Shorts URLs are not blocked. Disable to restore YouTube’s normal layout. CSS only; no network requests or data collection."
+}

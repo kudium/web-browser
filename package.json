@@ -38,6 +38,9 @@
     "release:verify-migrations": "npm --prefix apps/browser run release:verify-migrations --",
     "storage:recovery": "npm --prefix apps/browser run storage:recovery --",
     "dummy": "npm --prefix apps/browser run dummy --",
-    "showcase:refresh": "node scripts/refresh-showcase.mjs"
+    "showcase:refresh": "node scripts/refresh-showcase.mjs",
+    "mailpit:up": "brew services start mailpit",
+    "mailpit:down": "brew services stop mailpit",
+    "mailpit:status": "brew services info mailpit"
   }
 }

@@ -122,6 +122,7 @@ The web app requires an untracked `apps/web/.env` configured from
 `apps/web/.env.example`. For local development use
 `BETTER_AUTH_URL=http://localhost:3000`. Generate a persistent Better Auth secret,
 configure PostgreSQL and run `npm run db:migrate` before starting it.
+For local password reset and verification emails, use [Mailpit](apps/web/docs/mailpit.md).
 
 ## Install and check
 

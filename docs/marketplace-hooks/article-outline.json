@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "minimumBrowserVersion": "1.0.11",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide",
+  "lifecycle": {
+    "before": "",
+    "after": "const host=document.createElement('div');\nconst shadow=host.attachShadow({mode:'open'});\nshadow.innerHTML='<style>:host{all:initial;position:fixed;right:20px;top:100px;z-index:2147483646}details{font:14px/1.5 system-ui;color:#222;background:#fff;border:1px solid #ccc;border-radius:10px;box-shadow:0 3px 16px #0002;max-width:min(300px,80vw)}summary{padding:10px 14px;cursor:pointer}nav{max-height:55vh;overflow:auto;padding:0 10px 10px}button{display:block;text-align:left;width:100%;background:transparent;color:inherit;border:0;padding:6px;cursor:pointer;font:inherit}button:hover{background:#eee}</style><details><summary>Article outline</summary><nav aria-label=\"Article headings\"></nav></details>';\ndocument.documentElement.append(host);\nconst nav=shadow.querySelector('nav');let previous=[];\nconst refresh=()=>{\n const root=document.querySelector('article') || document.querySelector('main') || document.querySelector('[role=\"main\"]');\n const headings=root ? Array.from(root.querySelectorAll('h1,h2,h3')).filter(h=>h.getClientRects().length && h.textContent.trim()).slice(0,100) : [];\n host.style.display=headings.length>=3 ? '' : 'none';\n const signature=headings.map(h=>h.textContent);\n if(headings.length===previous.length && headings.every((h,i)=>h===previous[i].node && signature[i]===previous[i].text)) return;\n previous=headings.map((node,i)=>({node,text:signature[i]}));\n nav.replaceChildren(...headings.map(h=>{const button=document.createElement('button');button.textContent=h.textContent.trim().slice(0,160);button.style.paddingLeft=h.tagName==='H3'?'20px':'6px';button.addEventListener('click',()=>{h.scrollIntoView({behavior:'auto',block:'start'});shadow.querySelector('details').open=false;});return button;}));\n};\ncontext.setInterval(refresh,2500);\ncontext.onCleanup(()=>host.remove());refresh();",
+    "css": ""
+  },
+  "name": "Article outline",
+  "description": "Adds a collapsible heading navigator on articles or main content with at least three visible headings. Click a heading to jump there. Updates as content changes, without changing website styles or heading IDs. Works with semantic article/main containers and h1–h3 headings. Disable removes the panel. Runs locally without network requests."
+}

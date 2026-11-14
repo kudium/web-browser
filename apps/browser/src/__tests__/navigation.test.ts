@@ -15,3 +15,8 @@ it('normalizes URLs and searches and shares only exact origins', () => {
   expect(sharesOrigin(source, 'https://example.com:8443')).toBe(false);
   expect(sharesOrigin(undefined, 'https://example.com')).toBe(false);
 });
+
+it('preserves hook-install deep links instead of searching for them', () => {
+  const link = 'kudium://install-hook?url=https%3A%2F%2Fbrowser.kudium.com%2Fv1%2Fhooks%2Febae2914-f663-4291-8e2d-373360e2cf03%2Fversions%2F1%2Fpackage';
+  expect(resolveAddress(link)).toBe(link);
+});

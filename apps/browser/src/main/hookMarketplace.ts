@@ -31,6 +31,7 @@ import {
   createHookEditorWindow,
   getSiteDeveloperBinding,
 } from './siteDeveloperWindow';
+import { showBrowserDialog } from './dialogs';
 import { resolveHtmlPath } from './util';
 import { protectWindowNavigation } from './windowNavigation';
 
@@ -94,6 +95,27 @@ export function deliverHookInstallLinks(host: BrowserWindow) {
     .splice(0)
     .forEach((url) => destination.webContents.send('hook-marketplace-install', url));
 }
+/** Route in-browser links directly; development builds need no OS registration. */
+export function openHookInstallLink(value: string, host: BrowserWindow): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'kudium:' || url.hostname !== 'install-hook') return false;
+  } catch {
+    return false;
+  }
+  try {
+    queueHookInstallLink(value);
+    deliverHookInstallLinks(host);
+  } catch (error) {
+    void showBrowserDialog(host, {
+      message: 'Unable to open hook installer',
+      detail: String(error),
+      buttons: ['OK'],
+    }).catch(() => {});
+  }
+  return true;
+}
+
 /** Settings follows its owning browser window’s live, unlocked destinations. */
 export function hookDestinationsFor(contents?: WebContents): HookDestination[] {
   return contents ? hosts.get(contents)?.destinations() || [] : [];
@@ -249,6 +271,12 @@ export function registerHookMarketplace(
         return binding
           ? [resolve(event.sender)]
           : hosts.get(event.sender)!.destinations();
+      }
+      if (input.action === 'open-install') {
+        const host = BrowserWindow.fromWebContents(event.sender);
+        if (!host || !hosts.has(event.sender)) throw new Error('Untrusted hook installer.');
+        if (!openHookInstallLink(input.url, host)) throw new Error('Invalid hook install link.');
+        return;
       }
       if (input.action === 'browse') {
         await shell.openExternal('https://browser.kudium.com/hooks');

@@ -166,6 +166,12 @@ export function CommandPalette({
       const url = searchScope
         ? searchUrl(searchScope, value)
         : resolveAddress(value);
+      if (new URL(url).protocol === 'kudium:') {
+        window.electron.hookMarketplace.request({ action: 'open-install', url })
+          .catch((reason) => setError(String(reason)));
+        close();
+        return;
+      }
       const source = sourceGroup;
       if (source && lockedGroup(source) && !createGroup)
         throw new Error('Unlock this group before opening tabs.');

@@ -302,7 +302,9 @@ export class ProjectTerminals {
       shellArgs =
         process.platform === 'win32'
           ? ['-NoLogo', '-NonInteractive', '-Command', session.commandText]
-          : ['-l', '-c', session.commandText];
+          : // Load interactive startup files too, just like the project terminal.
+            // Tools such as Bun and nvm commonly configure PATH in .zshrc/.bashrc.
+            ['-l', '-i', '-c', session.commandText];
     const pty = (require('node-pty') as typeof import('node-pty')).spawn(
       shellPath,
       shellArgs,

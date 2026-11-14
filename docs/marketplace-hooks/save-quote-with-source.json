@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "minimumBrowserVersion": "1.0.11",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://example.com",
+  "lifecycle": {
+    "before": "",
+    "after": "",
+    "css": ""
+  },
+  "name": "Save quote with source",
+  "description": "Select text, right-click and choose Save quote with source. Saves the quote, page title, source URL and date as a local note in the current group. Nothing runs automatically and no AI or external service is used.",
+  "actions": [
+    {
+      "id": "save-quote-with-source",
+      "name": "Save quote with source",
+      "contexts": [
+        "selection"
+      ],
+      "source": "const quote = (context.selection || '').trim();\nif (!quote) { api.showResult('Select the text you want to save first.'); return; }\nconst source = new URL(context.url);\nif (!['https:', 'http:'].includes(source.protocol)) return;\nconst title = (context.title || source.hostname).replace(/[\\r\\n]/g, ' ').slice(0, 100);\napi.notes.create({ title: 'Quote: ' + title, body: quote.split('\\n').map(line => '> ' + line).join('\\n') + '\\n\\nSource: <' + source.href.replace(/>/g, '%3E') + '>\\nPage: ' + title + '\\nSaved: ' + new Date().toISOString().slice(0, 10) });"
+    }
+  ]
+}

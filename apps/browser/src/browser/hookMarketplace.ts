@@ -46,6 +46,7 @@ export const ALL_GROUPS_HOOK_SCOPE = '@all-groups';
 type ScopedHookMarketplaceRequest =
   | { action: 'destinations' }
   | { action: 'browse' }
+  | { action: 'open-install'; url: string }
   | { action: 'preview'; url: string }
   | { action: 'state'; id?: string }
   | { action: 'global-editor-open'; id?: string; hookId?: string }

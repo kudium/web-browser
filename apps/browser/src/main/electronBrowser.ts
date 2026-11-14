@@ -20,7 +20,7 @@ import {
   allowWebsiteCertificateErrors,
 } from './websiteCertificates';
 import { effectiveHookConfig } from './globalHooks';
-import { registerHookMarketplace } from './hookMarketplace';
+import { registerHookMarketplace, openHookInstallLink } from './hookMarketplace';
 import { aiGroupId } from '../browser/aiGroups';
 import { projectFileNavigation } from './projectFileNavigation';
 import { onWindowClosed } from './windowLifecycle';
@@ -845,6 +845,7 @@ export function registerElectronBrowser(
             );
         contents.setWindowOpenHandler(({ url, disposition }) => {
           const window = hostFor(item.id);
+          if (openHookInstallLink(url, window)) return { action: 'deny' };
           const behavior = siteRule(
             getBrowserPreferences().advanced,
             contents.getURL()
@@ -984,7 +985,14 @@ export function registerElectronBrowser(
             },
           };
         });
+        contents.on('will-redirect', (navigation, url) => {
+          if (openHookInstallLink(url, hostFor(item.id))) navigation.preventDefault();
+        });
         contents.on('will-navigate', (navigation, url) => {
+          if (openHookInstallLink(url, hostFor(item.id))) {
+            navigation.preventDefault();
+            return;
+          }
           if (
             !validURL(url) &&
             url !== 'about:blank' &&
@@ -2057,6 +2065,7 @@ export function registerElectronBrowser(
         break;
       }
       case 'navigate':
+        if (request.url && openHookInstallLink(request.url, window)) break;
         if (request.url && validURL(request.url))
           contents.loadURL(request.url).catch(() => {});
         break;

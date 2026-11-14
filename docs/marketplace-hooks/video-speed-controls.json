@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "minimumBrowserVersion": "1.0.11",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://www.w3schools.com/html/html5_video.asp",
+  "lifecycle": {
+    "before": "",
+    "after": "const host = document.createElement('div');\nconst shadow = host.attachShadow({mode: 'open'});\nshadow.innerHTML = '<style>:host{all:initial;position:fixed;bottom:20px;right:20px;z-index:2147483646}section{font:14px system-ui;color:#222;background:#fff;border:1px solid #ccc;border-radius:10px;padding:10px;box-shadow:0 3px 16px #0002;display:flex;gap:8px;align-items:center}button,select{font:inherit;padding:4px}button{cursor:pointer}</style><section aria-label=\"Video speed controls\"><select aria-label=\"Video\"></select><button aria-label=\"Decrease speed\">−</button><output aria-live=\"polite\">1×</output><button aria-label=\"Increase speed\">+</button><button>Reset</button><button aria-label=\"Hide video controls\">×</button></section>';\ndocument.documentElement.append(host);\nconst picker = shadow.querySelector('select');\nconst buttons = shadow.querySelectorAll('button');\nconst output = shadow.querySelector('output');\nconst original = new Map();\nlet videos = [], dismissed = false;\nconst refresh = () => {\n videos = Array.from(document.querySelectorAll('video')).filter(video => video.getClientRects().length && video.getBoundingClientRect().width >= 160);\n const previous = picker.value;\n picker.replaceChildren(...videos.map((video,index) => { const option=document.createElement('option'); option.value=String(index); option.textContent='Video ' + (index+1); return option; }));\n if (videos[Number(previous)]) picker.value=previous;\n host.style.display = videos.length && !dismissed ? '' : 'none';\n const video=videos[Number(picker.value) || 0];\n output.textContent = video ? Number(video.playbackRate.toFixed(2)) + '×' : '1×';\n};\nconst change = delta => {\n const video=videos[Number(picker.value) || 0]; if(!video) return;\n if(!original.has(video)) original.set(video,video.playbackRate);\n try { video.playbackRate=delta===0 ? 1 : Math.max(0.25,Math.min(4,Math.round((video.playbackRate+delta)*100)/100)); output.textContent=video.playbackRate+'×'; } catch { output.textContent='Unavailable'; }\n};\ncontext.listen(buttons[0],'click',()=>change(-0.25));\ncontext.listen(buttons[1],'click',()=>change(0.25));\ncontext.listen(buttons[2],'click',()=>change(0));\ncontext.listen(buttons[3],'click',()=>{dismissed=true;host.style.display='none';});\ncontext.listen(picker,'change',refresh);\ncontext.setInterval(refresh,2000);\ncontext.onCleanup(()=>{host.remove();for(const [video,rate] of original) { if(video.isConnected) try {video.playbackRate=rate;} catch {} }});\nrefresh();",
+    "css": ""
+  },
+  "name": "Video speed controls",
+  "description": "Adds a small speed panel when visible HTML videos are present: choose a video, adjust playback from 0.25× to 4×, reset to 1× or hide the panel. Detects videos added later. Disable restores speeds changed by this hook. Works with top-level HTML video elements; embedded frames, closed shadow players and fullscreen overlays may not be supported. Runs locally without network requests."
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "minimumBrowserVersion": "1.0.11",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://example.com",
+  "lifecycle": {
+    "before": "",
+    "after": "",
+    "css": ""
+  },
+  "name": "Shopping shortlist",
+  "description": "On a product page, right-click and choose Save to shopping shortlist. Enter the displayed price and currency, optionally a product name and variant or comparison notes. A blank name uses the page title; selected text is used as details when none are entered. Saves a local note with the source URL and date. Prices are entered by you, not guessed; no automatic price tracking, AI or external requests.",
+  "actions": [
+    {
+      "id": "save-shopping-item",
+      "name": "Save to shopping shortlist",
+      "contexts": [
+        "page",
+        "selection"
+      ],
+      "source": "const source = new URL(context.url);\nif (!['https:', 'http:'].includes(source.protocol)) return;\nconst values = await api.input.request({ title: 'Save to shopping shortlist', fields: [\n  { key: 'product', label: 'Product name (blank uses page title)', type: 'text' },\n  { key: 'price', label: 'Displayed price and currency', type: 'text', required: true, placeholder: 'e.g. ₦850,000 or $129.99' },\n  { key: 'details', label: 'Variant, condition or comparison notes', type: 'textarea' }\n] });\nif (!values) return;\nconst product = (values.product.trim() || context.title || source.hostname).slice(0, 110);\napi.notes.create({ title: product, body: '# Shopping shortlist\\n\\nProduct: ' + product + '\\n\\nPrice when saved: ' + values.price.trim() + '\\n\\nDetails: ' + (values.details.trim() || context.selection?.trim() || 'None added') + '\\n\\nSource: <' + source.href.replace(/>/g, '%3E') + '>\\nSaved: ' + new Date().toISOString().slice(0, 10) });"
+    }
+  ]
+}

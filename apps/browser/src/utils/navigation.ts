@@ -17,6 +17,7 @@ export function cachedSearchEngines() {
 export function resolveAddress(value: string): string {
   const input = value.trim();
   if (!input) throw new Error('Enter a website or search term.');
+  if (/^kudium:\/\/install-hook(?:[/?#]|$)/i.test(input)) return new URL(input).href;
   const address = /^(https?:\/\/|localhost[:/]|[\w-]+\.[\w.-]+)/i.test(input);
   if (!address) {
     const engines = cachedSearchEngines();

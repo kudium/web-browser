@@ -9,6 +9,7 @@ import { parseHookPackage } from '../../../../packages/hooks/package';
 import {
   registerHookMarketplace,
   queueHookInstallLink,
+  openHookInstallLink,
   deliverHookInstallLinks,
   setHookPublisher,
   setHookAccountStatus,
@@ -653,4 +654,21 @@ it('returns the installed identity and opens only a saved site hook in its trust
   openSiteEditor.mockClear();
   await expect(handler(event, { action: 'site-editor-open', id: 'tab', hookId: 'missing' })).rejects.toThrow('no longer exists');
   expect(openSiteEditor).not.toHaveBeenCalled();
+});
+
+it('routes in-browser deep links to the trusted installer', () => {
+  expect(openHookInstallLink('https://example.org/package', mockHost as any)).toBe(false);
+  expect(openHookInstallLink('kudium://unknown', mockHost as any)).toBe(false);
+  const ready = (ipcMain.on as jest.Mock).mock.calls.find(
+    ([channel]) => channel === 'hook-marketplace-ready'
+  )[1];
+  ready(event);
+  expect(openHookInstallLink(
+    'kudium://install-hook?url=https%3A%2F%2Fexample.org%2Fpackage', mockHost as any
+  )).toBe(true);
+  expect(mockSender.send).toHaveBeenCalledWith('hook-marketplace-install', 'https://example.org/package');
+});
+it('allows only trusted hosts to request the install dialog', async () => {
+  await handler(event, { action: 'open-install', url: 'kudium://install-hook?url=https%3A%2F%2Fexample.org%2Fpackage' });
+  await expect(handler({ ...event, senderFrame: {} }, { action: 'open-install', url: 'kudium://install-hook' })).rejects.toThrow('Untrusted');
 });
