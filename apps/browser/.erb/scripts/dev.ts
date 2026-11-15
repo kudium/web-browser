@@ -1,12 +1,12 @@
 import { spawn, ChildProcess } from 'child_process';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
+import { detectPort } from 'detect-port';
 import { isCancelledAssetResponse } from './devLogging';
 import mainConfiguration from '../configs/webpack.config.main.dev';
 import preloadConfiguration from '../configs/webpack.config.preload.dev';
 import rendererConfiguration from '../configs/webpack.config.renderer.dev';
 
-const detectPort: (port: number) => Promise<number> = require('detect-port');
 const {
   developmentElectronPath,
 }: {

@@ -1,5 +1,16 @@
 export const whatsNew = [
   {
+    version: '1.0.13',
+    date: '2026-11-14',
+    title: 'Music controls that stay within reach',
+    highlights: [
+      ['Music in your sidebar', 'A compact floating player above the space footer lets you pause, resume and mute background media. The website icon shows an animated sound indicator, and clicking the player or icon returns you to its tab.'],
+      ['A steadier player', 'The player hides when you return to the music tab and stays steady during quick tab switches. Dismiss it until your next visit to the source tab.'],
+      ['More room for spaces', 'The add-space button appears when you hover over the footer, leaving more room for your spaces the rest of the time.'],
+      ['Browser reliability improvements', 'Updated dependencies and fixes improve autofill matching, update handling and developer tools.'],
+    ],
+  },
+  {
     version: '1.0.11',
     date: '2026-11-14',
     title: 'More flexible autofill and a smoother browser',

@@ -118,6 +118,7 @@ import {
   ARCHIVE_PAGE,
   adjacentSidebarPage,
 } from '../../../utils/sidebarNavigation';
+import { SidebarMediaWidget } from '../../UI/SidebarMediaWidget';
 import { SidebarPager } from '../../UI/SidebarPager';
 import {
   moveGroupToFolder,
@@ -4238,6 +4239,13 @@ export function Main() {
         {!windowWorkspace.state()?.private && <BrowserImportSuggestion />}
         <FirstGroupSyncSuggestion tabs={appList} />
         <AppUpdateBanner compact={compact} onWhatsNew={openWhatsNew} />
+        <SidebarMediaWidget
+          selectedId={selected?.id}
+          tabs={appList.filter((tab) => !tab.archived && !lockedGroup(tab))}
+          states={states}
+          onCommand={(request) => browser.command(request)}
+          onSelect={select}
+        />
         <div
           className="sidebar-bottom"
           onContextMenu={(event) => {

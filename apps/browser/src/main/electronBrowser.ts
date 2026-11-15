@@ -1864,6 +1864,33 @@ export function registerElectronBrowser(
         });
         break;
       }
+      case 'media-play-pause':
+      case 'media-previous':
+      case 'media-next': {
+        const keyCode = {
+          'media-play-pause': 'MediaPlayPause',
+          'media-previous': 'MediaPreviousTrack',
+          'media-next': 'MediaNextTrack',
+        }[request.action];
+        if (request.action === 'media-play-pause') {
+          // Chromium does not apply synthetic media keys to ordinary HTML media.
+          for (const frame of contents.mainFrame.framesInSubtree) {
+            frame.executeJavaScript(`(async () => {
+              const media = [...document.querySelectorAll('audio, video')];
+              const playing = media.filter(item => !item.paused && !item.ended);
+              if (playing.length) playing.forEach(item => item.pause());
+              else {
+                const item = media.find(item => item.currentTime > 0) || media[0];
+                if (item) await item.play();
+              }
+            })()`, true).catch(() => {});
+          }
+        } else {
+          contents.sendInputEvent({ type: 'keyDown', keyCode });
+          contents.sendInputEvent({ type: 'keyUp', keyCode });
+        }
+        break;
+      }
       case 'toggle-mute': {
         const origin = siteOrigin(contents.getURL());
         if (!origin || (request.url && request.url !== origin)) break;
