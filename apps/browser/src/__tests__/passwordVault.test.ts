@@ -163,3 +163,24 @@ describe('Password Manager vault', () => {
     );
   });
 });
+
+describe('Personal Data group placement', () => {
+  let directory:string;let vault:PasswordVault;
+  const item:any={id:'record',title:'Profile',kind:'profile',origin:'',username:'',password:'',fields:[{name:'Name',value:'Alex',secret:false}],allowAI:false};
+  beforeEach(()=>{directory=fs.mkdtempSync(path.join(os.tmpdir(),'personal-placement-'));vault=new PasswordVault(path.join(directory,'vault.json'));vault.unlock(password,true);});
+  afterEach(()=>{vault.lock();fs.rmSync(directory,{recursive:true,force:true});});
+  it('moves a browser-wide item into a group and between groups without duplicates',()=>{
+    vault.save(item);vault.save({...item,title:'Studio profile'},'group:studio',{sourceScope:undefined});
+    expect(vault.records()).toHaveLength(0);expect(vault.records('group:studio')[0].title).toBe('Studio profile');
+    vault.save({...item,title:'Work profile'},'group:work',{sourceScope:'group:studio'});
+    expect(vault.records('group:studio')).toHaveLength(0);expect(vault.records('group:work')).toHaveLength(1);
+    vault.save(item,undefined,{sourceScope:'group:work'});expect(vault.records()[0].scope).toBeUndefined();expect(vault.records()).toHaveLength(1);
+  });
+  it('preserves browser-wide originals when customizing for a different group',()=>{
+    vault.save(item);vault.save({...item,title:'Work customization'},'group:work',{sourceScope:'group:studio'});
+    expect(vault.records()[0].title).toBe('Profile');expect(vault.records('group:work')[0].title).toBe('Work customization');expect(vault.records('group:studio')[0].title).toBe('Profile');
+  });
+  it('rejects moving a private record from the wrong source group',()=>{
+    vault.save(item,'group:studio');expect(()=>vault.save(item,'group:work',{sourceScope:'group:other'})).toThrow('outside this group');expect(vault.records('group:studio')).toHaveLength(1);
+  });
+});

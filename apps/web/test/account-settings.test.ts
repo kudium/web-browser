@@ -27,14 +27,14 @@ test.skipIf(!process.env.TEST_DATABASE_URL)('profile, password and email changes
   let id = '';
   const testIP = `198.18.${randomInt(1, 254)}.${randomInt(1, 254)}`;
   const call = (path: string, body?: unknown, cookie?: string) => app.request(path.startsWith('https:') ? path : baseURL + path, { method: body ? 'POST' : 'GET', headers: { Origin: baseURL, 'x-forwarded-for': testIP, ...(cookie ? { Cookie: cookie } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
-  const link = (message: { text: string }) => message.text.split('\n')[1];
+  const link = (message: { text: string }) => message.text.split('\n').find(line => line.startsWith('https://'))!;
   const login = async () => { const response = await call('/api/auth/sign-in/email', { email, password }); expect(response.status).toBe(200); return response.headers.get('set-cookie')!.split(';')[0]; };
   try {
     await migrate(db, { migrationsFolder: new URL('../drizzle', import.meta.url).pathname });
     expect((await call('/account/settings')).status).toBe(302);
     expect((await call('/api/auth/update-user', { name: 'Intruder' })).status).toBe(401);
     id = (await (await call('/api/auth/sign-up/email', { name: 'Alice', email, password })).json()).user.id;
-    await call(link(messages[0]));
+    await call(link(messages.find(message => message.subject.includes('Verify'))!));
     const cookie = await login(), otherCookie = await login();
     const page = await call('/account/settings', undefined, cookie);
     expect(page.status).toBe(200); expect(page.headers.get('cache-control')).toBe('no-store');

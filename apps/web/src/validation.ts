@@ -3,7 +3,6 @@ import { valid, prerelease } from 'semver';
 export const opaqueId = z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/);
 function base64(max: number, exact?: number) {
   return z.string().max(Math.ceil(max / 3) * 4).refine(value => {
-    if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) return false;
     const bytes = Buffer.from(value, 'base64');
     return bytes.toString('base64') === value && bytes.length <= max && (exact === undefined || bytes.length === exact);
   }, 'Invalid canonical base64');

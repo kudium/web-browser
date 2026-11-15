@@ -5,6 +5,7 @@ export interface SyncCategories {
   preferences: boolean;
   passwords?: boolean;
   notes?: boolean;
+  personalData?: boolean;
 }
 export interface SyncSettings {
   enabled: boolean;
@@ -13,6 +14,12 @@ export interface SyncSettings {
   categories: SyncCategories;
 }
 export const syncCategories = [
+  {
+    id: 'personalData',
+    title: 'Personal details, forms & documents',
+    description:
+      'Saved details, forms, documents and logins from all groups. Unlock Personal Data to sync.',
+  },
   {
     id: 'notes',
     title: 'Personal notes',
@@ -56,7 +63,7 @@ export function validateSyncSettings(value: unknown): SyncSettings {
   const settings = value as SyncSettings;
   if (
     Object.keys(settings).some(
-      (key) => !['enabled', 'provider', 'icloud', 'categories'].includes(key)
+      (key) => !['enabled', 'provider', 'icloud', 'categories'].includes(key),
     ) ||
     typeof settings.enabled !== 'boolean' ||
     (settings.icloud !== undefined && typeof settings.icloud !== 'boolean') ||
@@ -72,16 +79,19 @@ export function validateSyncSettings(value: unknown): SyncSettings {
           'preferences',
           'passwords',
           'notes',
-        ].includes(key)
+          'personalData',
+        ].includes(key),
     ) ||
+    (settings.categories.personalData !== undefined &&
+      typeof settings.categories.personalData !== 'boolean') ||
     (settings.categories.notes !== undefined &&
       typeof settings.categories.notes !== 'boolean') ||
     (settings.categories.passwords !== undefined &&
       typeof settings.categories.passwords !== 'boolean') ||
     syncCategories.some(
       (category) =>
-        category.id !== 'notes' &&
-        typeof settings.categories[category.id] !== 'boolean'
+        !['notes', 'personalData'].includes(category.id) &&
+        typeof settings.categories[category.id] !== 'boolean',
     )
   )
     throw new Error('Invalid sync settings');
@@ -92,7 +102,12 @@ export function validateSyncSettings(value: unknown): SyncSettings {
     provider: 'kudiumbrowser',
     icloud:
       settings.icloud ?? (settings.provider === 'icloud' && settings.enabled),
-    categories: { notes: true, passwords: true, ...settings.categories },
+    categories: {
+      personalData: false,
+      notes: true,
+      passwords: true,
+      ...settings.categories,
+    },
   };
 }
 export interface CloudSyncStatus {
@@ -104,7 +119,7 @@ export interface CloudSyncStatus {
 }
 export function cloudSyncStatus(
   settings: SyncSettings,
-  platform: string
+  platform: string,
 ): CloudSyncStatus {
   const accountEnabled =
     settings.enabled && settings.provider === 'kudiumbrowser';

@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   randomBytes,
+  createHash,
   randomUUID,
   scryptSync,
   createCipheriv,
@@ -102,7 +103,7 @@ export class PasswordVault {
     private summaryProtection?: SummaryProtection,
     private assertScopeWritable: (scope?: string) => void = () => {},
     private assertStoreWritable: () => void = () => {},
-    private ordinaryNotes?: OrdinaryNotesStorage
+    private ordinaryNotes?: OrdinaryNotesStorage,
   ) {
     this.file = file;
     this.now = now || Date.now;
@@ -185,8 +186,8 @@ export class PasswordVault {
               .filter((entry) => entry.scope === scope && entry.hidden)
               .flatMap((entry) =>
                 this.data!.items.filter(
-                  (item) => item.id === entry.recordId
-                ).map(summaryOf)
+                  (item) => item.id === entry.recordId,
+                ).map(summaryOf),
               )
           : [],
     };
@@ -243,7 +244,7 @@ export class PasswordVault {
         const decipher = createDecipheriv(
           'aes-256-gcm',
           key,
-          Buffer.from(saved.iv, 'base64')
+          Buffer.from(saved.iv, 'base64'),
         );
         decipher.setAuthTag(Buffer.from(saved.tag, 'base64'));
         const plain = Buffer.concat([
@@ -311,7 +312,7 @@ export class PasswordVault {
     if (plain.length > 90 * 1024 * 1024) {
       plain.fill(0);
       throw new Error(
-        'Personal Data storage is full. Remove unused documents.'
+        'Personal Data storage is full. Remove unused documents.',
       );
     }
     let ciphertext: Buffer;
@@ -335,7 +336,7 @@ export class PasswordVault {
     };
     if (envelope.summary && this.summaryProtection)
       envelope.summary = this.summaryProtection.seal(
-        envelope.summary as Summary
+        envelope.summary as Summary,
       );
     fs.mkdirSync(path.dirname(this.file), { recursive: true, mode: 0o700 });
     const temporary = `${this.file}.${randomUUID()}.tmp`;
@@ -367,15 +368,16 @@ export class PasswordVault {
     this.changed();
   }
 
-  save(input: VaultItem, scope?: string) {
+  save(input: VaultItem, scope?: string, placement?: { sourceScope?: string }) {
     this.assertScopeWritable(scope);
+    if (placement) this.assertScopeWritable(placement.sourceScope);
     if (input?.kind === 'note' && this.ordinaryNotes) {
       const note = normalizeNote(
         { ...input, id: input.id || randomUUID() },
-        scope
+        scope,
       );
       const existing = this.status(undefined, true).items.find(
-        (item) => item.id === note.id
+        (item) => item.id === note.id,
       );
       if (existing?.scope && existing.scope !== scope)
         throw new Error('Record outside this group.');
@@ -391,7 +393,7 @@ export class PasswordVault {
         if (privateCopy)
           this.mutate(() => {
             this.requireData().items = this.requireData().items.filter(
-              (item) => item.id !== note.id
+              (item) => item.id !== note.id,
             );
           });
         this.changed();
@@ -407,7 +409,7 @@ export class PasswordVault {
     if (
       !input ||
       !['login', 'profile', 'payment', 'knowledge', 'note'].includes(
-        input.kind
+        input.kind,
       ) ||
       !Array.isArray(input.fields) ||
       input.fields.length > 30 ||
@@ -453,11 +455,11 @@ export class PasswordVault {
               .slice(0, 10)
               .map((alias) => bounded(alias, 120)),
             ...((field.aliases || []).some((alias) =>
-              personalDataMatching.types.some((type) => type.value === alias)
+              personalDataMatching.types.some((type) => type.value === alias),
             )
               ? []
               : inferredFieldAliases(field.name)),
-          ])
+          ]),
         ),
       })),
     };
@@ -469,19 +471,21 @@ export class PasswordVault {
     )
       throw new Error('Provide a title and unique field names.');
     const base = data.items.find((existing) => existing.id === item.id);
-    if (base?.scope && base.scope !== scope)
+    if (base?.scope && base.scope !== (placement ? placement.sourceScope : scope))
       throw new Error('Record outside this group.');
-    if (base && scope && !base.scope) {
+    const moving = !!base && !!placement && (base.scope !== undefined || placement.sourceScope === undefined) && base.scope !== scope;
+    if (base && scope && !base.scope && !moving) {
       this.mutate(() => {
         data.overrides = [
           ...(data.overrides || []).filter(
-            (entry) => !(entry.scope === scope && entry.recordId === base.id)
+            (entry) => !(entry.scope === scope && entry.recordId === base.id),
           ),
           difference(base, item, scope),
         ];
       });
     } else {
       this.mutate(() => {
+        if (moving) data.overrides = (data.overrides || []).filter(entry => entry.recordId !== item.id);
         data.items = [
           ...data.items.filter((existing) => existing.id !== item.id),
           item,
@@ -492,7 +496,7 @@ export class PasswordVault {
       if (this.ordinaryNotes.remove) this.ordinaryNotes.remove(item.id);
       else
         this.ordinaryNotes.save(
-          this.ordinaryNotes.load().filter((note) => note.id !== item.id)
+          this.ordinaryNotes.load().filter((note) => note.id !== item.id),
         );
     }
     return item.id;
@@ -502,7 +506,7 @@ export class PasswordVault {
   saveMemory(
     input: Partial<VaultItem>,
     scope?: string,
-    source?: VaultItem['source']
+    source?: VaultItem['source'],
   ) {
     this.checkAccess(true);
     if (
@@ -516,7 +520,7 @@ export class PasswordVault {
           (item) =>
             item.id === input.id &&
             item.allowAI &&
-            ['profile', 'knowledge'].includes(item.kind)
+            ['profile', 'knowledge'].includes(item.kind),
         )
       : undefined;
     if (input.id && !base)
@@ -527,11 +531,11 @@ export class PasswordVault {
           !field ||
           typeof field.name !== 'string' ||
           /password|passwd|token|otp|cvc|cvv|cc-|card|security.?code/i.test(
-            [field.name, ...(field.aliases || [])].join(' ')
+            [field.name, ...(field.aliases || [])].join(' '),
           ) ||
           base?.fields.some(
-            (entry) => entry.name === field.name && isProtectedField(entry)
-          )
+            (entry) => entry.name === field.name && isProtectedField(entry),
+          ),
       )
     )
       throw new Error('Protected fields must be edited in Personal Data.');
@@ -555,7 +559,7 @@ export class PasswordVault {
         allowAI: base?.allowAI === true,
         source: source || base?.source,
       },
-      scope
+      scope,
     );
   }
 
@@ -571,6 +575,29 @@ export class PasswordVault {
     this.changed();
   }
 
+  /** Raw saved records, including group-local information, without inherited duplicates. */
+  personalSyncRecords() {
+    const data = this.requireData();
+    const items = data.items.filter((item) => item.kind !== 'note');
+    const scopes = [
+      ...new Set((data.overrides || []).map((override) => override.scope)),
+    ];
+    return [
+      ...items,
+      ...scopes.flatMap((scope) =>
+        effectiveRecords(items, data.overrides || [], scope)
+          .filter((item) => item.overridden && !item.scope)
+          .map((item) => ({
+            ...item,
+            scope,
+            id: createHash('sha256')
+              .update(JSON.stringify([item.id, scope]))
+              .digest('hex'),
+          })),
+      ),
+    ];
+  }
+
   records(scope?: string) {
     return [
       ...this.publicNoteSummaries(scope).map((note) => ({
@@ -582,7 +609,7 @@ export class PasswordVault {
       ...effectiveRecords(
         this.requireData().items,
         this.requireData().overrides || [],
-        scope
+        scope,
       ),
     ];
   }
@@ -594,8 +621,8 @@ export class PasswordVault {
       data.items
         .filter((item) => !item.scope && item.kind === 'login')
         .map((item) =>
-          JSON.stringify([item.origin, item.username, item.password])
-        )
+          JSON.stringify([item.origin, item.username, item.password]),
+        ),
     );
     const added = items.filter((item) => {
       const key = JSON.stringify([item.origin, item.username, item.password]);
@@ -605,7 +632,7 @@ export class PasswordVault {
     });
     if (data.items.length + added.length > 1000)
       throw new Error(
-        'Your vault is full. Remove unused items before importing.'
+        'Your vault is full. Remove unused items before importing.',
       );
     this.mutate(() => {
       data.items.push(
@@ -615,7 +642,7 @@ export class PasswordVault {
           kind: 'login' as const,
           fields: [],
           allowAI: false,
-        }))
+        })),
       );
     });
     return added.length;
@@ -625,7 +652,8 @@ export class PasswordVault {
     this.checkAccess(true);
     return (this.requireData().hookNotifications || [])
       .filter(
-        (grant) => grant.scope === scope && (!origin || grant.origin === origin)
+        (grant) =>
+          grant.scope === scope && (!origin || grant.origin === origin),
       )
       .map((grant) => ({ ...grant }));
   }
@@ -641,7 +669,7 @@ export class PasswordVault {
             item.groupId === grant.groupId &&
             item.origin === grant.origin &&
             item.key === grant.key
-          )
+          ),
       );
       if (previous.length >= 100)
         throw new Error('Remove an unused notification permission first.');
@@ -658,7 +686,7 @@ export class PasswordVault {
             grant.id === id &&
             grant.groupId === groupId &&
             grant.scope === scope
-          )
+          ),
       );
     });
   }
@@ -671,7 +699,7 @@ export class PasswordVault {
     this.mutate(() => {
       data.overrides = [
         ...(data.overrides || []).filter(
-          (entry) => !(entry.scope === scope && entry.recordId === id)
+          (entry) => !(entry.scope === scope && entry.recordId === id),
         ),
         { scope, recordId: id, hidden: true, patch: {} },
       ];
@@ -683,7 +711,7 @@ export class PasswordVault {
     const data = this.requireData();
     this.mutate(() => {
       data.overrides = (data.overrides || []).filter(
-        (entry) => !(entry.scope === scope && entry.recordId === id)
+        (entry) => !(entry.scope === scope && entry.recordId === id),
       );
     });
   }
@@ -694,7 +722,7 @@ export class PasswordVault {
     const data = this.requireData();
     this.mutate(() => {
       data.hookNotifications = (data.hookNotifications || []).filter(
-        (grant) => grant.scope !== scope
+        (grant) => grant.scope !== scope,
       );
       data.items = data.items.flatMap((item) => {
         if (item.scope !== scope) return [item];
@@ -716,7 +744,7 @@ export class PasswordVault {
             });
           });
       data.overrides = (data.overrides || []).filter(
-        (entry) => entry.scope !== scope
+        (entry) => entry.scope !== scope,
       );
     });
   }
@@ -735,7 +763,7 @@ export class PasswordVault {
             item.notes || '',
             item.scope || '',
           ]);
-        })
+        }),
       );
       const incoming = notes
         .filter((note) => {
@@ -760,8 +788,8 @@ export class PasswordVault {
               fields: [],
               allowAI: false,
             },
-            note.scope
-          )
+            note.scope,
+          ),
         );
       incoming.forEach((note) => this.assertScopeWritable(note.scope));
       const privateNotes = incoming.filter((note) => note.sensitive);
@@ -784,8 +812,8 @@ export class PasswordVault {
       data.items
         .filter((item) => item.kind === 'note')
         .map((item) =>
-          JSON.stringify([item.title, item.notes || '', item.scope || ''])
-        )
+          JSON.stringify([item.title, item.notes || '', item.scope || '']),
+        ),
     );
     const incoming: VaultItem[] = [];
     notes.forEach((note) => {
@@ -811,7 +839,7 @@ export class PasswordVault {
     });
     if (data.items.length + incoming.length > 1000)
       throw new Error(
-        'Personal Data is full. Remove unused records before restoring notes.'
+        'Personal Data is full. Remove unused records before restoring notes.',
       );
     if (incoming.length)
       this.mutate(() => {
@@ -828,7 +856,7 @@ export class PasswordVault {
       notes.flatMap((note) => {
         if (note.scope !== scope) return [note];
         return disposition === 'move' ? [{ ...note, scope: undefined }] : [];
-      })
+      }),
     );
     this.changed();
   }
@@ -836,7 +864,7 @@ export class PasswordVault {
   migrateOrdinaryNotes() {
     if (!this.ordinaryNotes || !this.data) return;
     const notes = this.data.items.filter(
-      (item) => item.kind === 'note' && !item.sensitive
+      (item) => item.kind === 'note' && !item.sensitive,
     );
     if (!notes.length) return;
     const ids = new Set(notes.map((note) => note.id));
@@ -846,7 +874,7 @@ export class PasswordVault {
     ]);
     this.mutate(() => {
       this.requireData().items = this.requireData().items.filter(
-        (item) => !ids.has(item.id)
+        (item) => !ids.has(item.id),
       );
     });
   }
@@ -857,7 +885,7 @@ export class PasswordVault {
       this.ordinaryNotes?.load().map(summaryOf) ||
       [];
     return notes.filter(
-      (note) => allScopes || !note.scope || note.scope === scope
+      (note) => allScopes || !note.scope || note.scope === scope,
     );
   }
 
@@ -872,7 +900,7 @@ export class PasswordVault {
 
   private publicNote(id: string, scope?: string) {
     const summary = this.publicNoteSummaries(undefined, true).find(
-      (note) => note.id === id
+      (note) => note.id === id,
     );
     if (!summary || (summary.scope && summary.scope !== scope))
       return undefined;
@@ -883,7 +911,7 @@ export class PasswordVault {
 
   isOrdinaryNote(id: string) {
     return this.publicNoteSummaries(undefined, true).some(
-      (note) => note.id === id
+      (note) => note.id === id,
     );
   }
 
@@ -900,8 +928,8 @@ export class PasswordVault {
       const note = this.publicNote(
         id,
         this.publicNoteSummaries(undefined, true).find(
-          (entry) => entry.id === id
-        )?.scope
+          (entry) => entry.id === id,
+        )?.scope,
       )!;
       this.assertScopeWritable(note.scope);
       const next = { ...note, scope: destination };
@@ -910,14 +938,14 @@ export class PasswordVault {
         this.ordinaryNotes.save(
           this.ordinaryNotes
             .load()
-            .map((item) => (item.id === id ? next : item))
+            .map((item) => (item.id === id ? next : item)),
         );
       this.changed();
       return;
     }
     const data = this.requireData();
     const item = data.items.find(
-      (entry) => entry.id === id && entry.kind === 'note'
+      (entry) => entry.id === id && entry.kind === 'note',
     );
     if (!item) throw new Error('Note unavailable.');
     this.assertScopeWritable(item.scope);
@@ -934,7 +962,7 @@ export class PasswordVault {
         ? this.publicNotes(scope)
         : this.records(scope)
       ).filter((item) => !site || !item.origin || item.origin === site),
-      query
+      query,
     );
   }
 
@@ -942,7 +970,7 @@ export class PasswordVault {
     id: string,
     scope?: string,
     offset = 0,
-    origin: string | undefined = undefined
+    origin: string | undefined = undefined,
   ) {
     this.checkNoteAccess();
     const ordinary = this.publicNote(id, scope);
@@ -953,7 +981,7 @@ export class PasswordVault {
       (entry) =>
         entry.id === id &&
         entry.allowAI &&
-        (!origin || !entry.origin || entry.origin === new URL(origin).origin)
+        (!origin || !entry.origin || entry.origin === new URL(origin).origin),
     );
     if (!item) throw new Error('Record unavailable or AI access disabled.');
     const safe = safeRecord(item);
@@ -1031,7 +1059,7 @@ export class PasswordVault {
   delete(id: string, scope?: string) {
     if (this.isOrdinaryNote(id) && this.ordinaryNotes) {
       const note = this.publicNoteSummaries(undefined, true).find(
-        (item) => item.id === id
+        (item) => item.id === id,
       )!;
       if (note.scope && note.scope !== scope)
         throw new Error('Record outside this group.');
@@ -1039,7 +1067,7 @@ export class PasswordVault {
       if (this.ordinaryNotes.remove) this.ordinaryNotes.remove(id);
       else
         this.ordinaryNotes.save(
-          this.ordinaryNotes.load().filter((item) => item.id !== id)
+          this.ordinaryNotes.load().filter((item) => item.id !== id),
         );
       this.changed();
       return;
@@ -1050,11 +1078,11 @@ export class PasswordVault {
       throw new Error('Only records belonging to this scope can be deleted.');
     this.mutate(() => {
       data.hookNotifications = (data.hookNotifications || []).filter(
-        (grant) => grant.recordId !== id
+        (grant) => grant.recordId !== id,
       );
       data.items = data.items.filter((entry) => entry.id !== id);
       data.overrides = (data.overrides || []).filter(
-        (entry) => entry.recordId !== id
+        (entry) => entry.recordId !== id,
       );
     });
   }
@@ -1065,7 +1093,7 @@ export class PasswordVault {
     return this.records(scope)
       .filter(
         (item) =>
-          (item.origin === target || !item.origin) && (!ai || item.allowAI)
+          (item.origin === target || !item.origin) && (!ai || item.allowAI),
       )
       .map(summaryOf);
   }
@@ -1074,7 +1102,7 @@ export class PasswordVault {
     id: string,
     origin: string,
     ai = false,
-    scope: string | undefined = undefined
+    scope: string | undefined = undefined,
   ): VaultItem {
     if (!this.matching(origin, ai, scope).some((item) => item.id === id))
       throw new Error('This account is not authorized for this website.');

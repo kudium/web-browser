@@ -1,4 +1,6 @@
-import { randomBytes } from "node:crypto";
+import { validateSyncedLogins } from "./sync-protocol/passwords";
+import { validateSyncedPersonalData } from "./sync-protocol/personalData";
+import { randomBytes, createHash } from "node:crypto";
 import { HTTPException } from "hono/http-exception";
 import {
   encryptSyncRecord,
@@ -61,7 +63,7 @@ const snapshotSchema = z
                   .array(z.object({ id: opaqueId, name: label }).strict())
                   .max(500),
               })
-              .strict()
+              .strict(),
           )
           .max(200),
         apps: z.array(tabSchema).max(5000),
@@ -79,7 +81,7 @@ const snapshotSchema = z
             title: label,
             url: webUrl,
           })
-          .strict()
+          .strict(),
       )
       .max(5000)
       .optional(),
@@ -141,14 +143,14 @@ export function managedSync(store: Store, masterKey: Buffer) {
       const wrapped = encryptSyncRecord(
         { account, key: selected.toString("base64url") },
         masterKey,
-        managedKeyRecord
+        managedKeyRecord,
       );
       try {
         await store.write(
           account,
           managedKeyRecord,
           saved?.revision ?? 0,
-          wrapped
+          wrapped,
         );
       } catch (error) {
         if (error instanceof HTTPException && error.status === 409)
@@ -164,8 +166,8 @@ export function managedSync(store: Store, masterKey: Buffer) {
             encryptSyncRecord(
               { kind: "kudium-sync-key", accountId: account },
               selected,
-              proofRecord
-            )
+              proofRecord,
+            ),
           );
         } catch (error) {
           if (!(error instanceof HTTPException) || error.status !== 409)
@@ -188,7 +190,8 @@ export function managedSync(store: Store, masterKey: Buffer) {
       for (let page = 0; page < 5000; page++) {
         const result = await store.changes(account, cursor, 20);
         for (const record of result.changes) {
-          if (!/^(?:device|notes)_/.test(record.recordId)) continue;
+          if (!/^(?:device|notes|passwords|personal)_/.test(record.recordId))
+            continue;
           if (record.deleted) latest.delete(record.recordId);
           else latest.set(record.recordId, record);
         }
@@ -197,31 +200,100 @@ export function managedSync(store: Store, masterKey: Buffer) {
         if (page === 4999)
           throw new HTTPException(413, { message: "sync_history_too_large" });
       }
-      return [...latest.values()].map((record) => {
-        const value = decryptSyncRecord(record.envelope, dataKey) as any;
-        if (record.recordId.startsWith("notes_")) {
-          if (
-            value.version !== 1 ||
-            record.recordId !== `notes_${value.deviceId}`
-          )
-            throw new Error("Invalid notes record");
+      return await Promise.all(
+        [...latest.values()].map(async (record) => {
+          const value = decryptSyncRecord(record.envelope, dataKey) as any;
+          if (record.recordId.startsWith("personal_")) {
+            const prefix = `personalblob_${createHash("sha256").update(String(value.deviceId)).digest("hex").slice(0, 16)}_`;
+            if (
+              value.version !== 1 ||
+              record.recordId !== `personal_${value.deviceId}` ||
+              !Array.isArray(value.chunks) ||
+              value.chunks.length > 10 ||
+              !value.chunks.length ||
+              value.chunks.some(
+                (id: unknown) =>
+                  typeof id !== "string" ||
+                  !id.startsWith(prefix) ||
+                  !/^[a-f0-9]{64}$/.test(id.slice(prefix.length)),
+              )
+            )
+              throw new Error("Invalid personal data manifest");
+            const buffers: Buffer[] = [];
+            try {
+              for (const id of value.chunks) {
+                const chunk = await store.get(account, id);
+                if (!chunk.envelope)
+                  throw new Error("Personal data backup is incomplete");
+                const payload = decryptSyncRecord(
+                  chunk.envelope,
+                  dataKey,
+                ) as any;
+                if (
+                  typeof payload.data !== "string" ||
+                  payload.data.length > 5592408 ||
+                  createHash("sha256").update(payload.data).digest("hex") !==
+                    id.slice(prefix.length)
+                )
+                  throw new Error("Invalid personal data chunk");
+                const bytes = Buffer.from(payload.data, "base64");
+                if (bytes.toString("base64") !== payload.data)
+                  throw new Error("Invalid personal data chunk");
+                buffers.push(bytes);
+              }
+              const items = validateSyncedPersonalData(
+                JSON.parse(Buffer.concat(buffers).toString("utf8")),
+              );
+              return {
+                id: record.recordId,
+                revision: record.revision,
+                category: "personal",
+                value: { version: 1, deviceId: value.deviceId, items },
+              };
+            } finally {
+              buffers.forEach((buffer) => buffer.fill(0));
+            }
+          }
+          if (record.recordId.startsWith("passwords_")) {
+            if (
+              value.version !== 1 ||
+              record.recordId !== `passwords_${value.deviceId}`
+            )
+              throw new Error("Invalid password record");
+            const items = validateSyncedLogins(value.items).map(
+              (item, index) => ({ ...item, id: String(index), kind: "login" }),
+            );
+            return {
+              id: record.recordId,
+              revision: record.revision,
+              category: "passwords",
+              value: { version: 1, deviceId: value.deviceId, items },
+            };
+          }
+          if (record.recordId.startsWith("notes_")) {
+            if (
+              value.version !== 1 ||
+              record.recordId !== `notes_${value.deviceId}`
+            )
+              throw new Error("Invalid notes record");
+            return {
+              id: record.recordId,
+              revision: record.revision,
+              category: "notes",
+              value: { ...value, items: validateSyncedNotes(value.items) },
+            };
+          }
+          const snapshot = validateIncomingSnapshot(value);
+          if (record.recordId !== `device_${snapshot.deviceId}`)
+            throw new Error("Invalid workspace record");
           return {
             id: record.recordId,
             revision: record.revision,
-            category: "notes",
-            value: { ...value, items: validateSyncedNotes(value.items) },
+            category: "workspace",
+            value: snapshot,
           };
-        }
-        const snapshot = validateIncomingSnapshot(value);
-        if (record.recordId !== `device_${snapshot.deviceId}`)
-          throw new Error("Invalid workspace record");
-        return {
-          id: record.recordId,
-          revision: record.revision,
-          category: "workspace",
-          value: snapshot,
-        };
-      });
+        }),
+      );
     } finally {
       dataKey.fill(0);
     }
@@ -236,7 +308,7 @@ export function managedSync(store: Store, masterKey: Buffer) {
       notes?: string;
       url?: string;
       remove?: boolean;
-    }
+    },
   ) {
     if (!/^(?:device|notes)_[a-zA-Z0-9_-]+$/.test(id))
       throw new HTTPException(400, { message: "invalid_record_id" });
@@ -257,15 +329,15 @@ export function managedSync(store: Store, masterKey: Buffer) {
             item.id !== update.itemId
               ? [item]
               : update.remove
-              ? []
-              : [
-                  {
-                    ...item,
-                    title: update.title ?? item.title,
-                    notes: update.notes ?? item.notes,
-                  },
-                ]
-          )
+                ? []
+                : [
+                    {
+                      ...item,
+                      title: update.title ?? item.title,
+                      notes: update.notes ?? item.notes,
+                    },
+                  ],
+          ),
         );
       } else {
         const snapshot = validateIncomingSnapshot(value);
@@ -279,28 +351,28 @@ export function managedSync(store: Store, masterKey: Buffer) {
             item.id !== update.itemId
               ? [item]
               : update.remove
-              ? []
-              : [
-                  {
-                    ...item,
-                    name: update.title ?? item.name,
-                    homeUrl: update.url ?? item.homeUrl,
-                  },
-                ]
+                ? []
+                : [
+                    {
+                      ...item,
+                      name: update.title ?? item.name,
+                      homeUrl: update.url ?? item.homeUrl,
+                    },
+                  ],
           );
         if (snapshot.openTabs)
           snapshot.openTabs = snapshot.openTabs.flatMap((item) =>
             item.id !== update.itemId
               ? [item]
               : update.remove
-              ? []
-              : [
-                  {
-                    ...item,
-                    title: update.title ?? item.title,
-                    url: update.url ?? item.url,
-                  },
-                ]
+                ? []
+                : [
+                    {
+                      ...item,
+                      title: update.title ?? item.title,
+                      url: update.url ?? item.url,
+                    },
+                  ],
           );
         Object.assign(value, validateIncomingSnapshot(snapshot));
       }
@@ -308,7 +380,7 @@ export function managedSync(store: Store, masterKey: Buffer) {
         account,
         id,
         revision,
-        encryptSyncRecord(value, dataKey, id)
+        encryptSyncRecord(value, dataKey, id),
       );
     } finally {
       dataKey.fill(0);
@@ -327,7 +399,7 @@ function decodeKey(value: string) {
 function verifyProof(
   envelope: Parameters<typeof decryptSyncRecord>[0],
   key: Buffer,
-  account: string
+  account: string,
 ) {
   try {
     const value = decryptSyncRecord(envelope, key) as any;

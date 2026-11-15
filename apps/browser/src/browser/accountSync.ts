@@ -14,6 +14,7 @@ export type AccountSyncAction =
   | 'restore'
   | 'delete-data'
   | 'apply-preferences'
+  | 'sync-personal-data'
   | 'sync-notes'
   | 'restore-notes'
   | 'sync-passwords'

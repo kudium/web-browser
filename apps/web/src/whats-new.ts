@@ -1,5 +1,15 @@
 export const whatsNew = [
   {
+    version: '1.0.14',
+    date: '2026-11-15',
+    title: 'Personal data across your devices',
+    highlights: [
+      ['Sync personal data', 'Enable Personal details, forms & documents in Sync settings, then unlock and sync saved information from your groups, including logins and attached documents.'],
+      ['Choose where to save', 'The personal data editor lets you save an item browser-wide or in a specific group, including customizations of shared items.'],
+      ['Clearer saved fields', 'Choosing a field type now supplies a matching name when the field is unnamed, making saved personal data easier to recognize.'],
+    ],
+  },
+  {
     version: '1.0.13',
     date: '2026-11-14',
     title: 'Music controls that stay within reach',

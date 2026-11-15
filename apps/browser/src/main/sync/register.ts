@@ -9,6 +9,7 @@ import {
   passwordVault,
 } from '../passwordManager';
 import { AccountSyncClient } from './accountClient';
+import { personalDataForSync, type SyncedPersonalItem } from './personalData';
 import { PasswordSyncScheduler } from './passwordScheduler';
 import { safeStorage } from '../localStorage';
 import {
@@ -23,22 +24,23 @@ import type {
 
 export function registerAccountSync(
   trusted: (window: BrowserWindow) => boolean,
-  main: (window: BrowserWindow) => boolean
+  main: (window: BrowserWindow) => boolean,
 ) {
   let client: AccountSyncClient | undefined;
   const passwordScheduler = new PasswordSyncScheduler();
+  const personalScheduler = new PasswordSyncScheduler<SyncedPersonalItem>();
   const filename = () => path.join(app.getPath('userData'), 'account-sync.bin');
   const get = () => {
     if (!safeStorage.isEncryptionAvailable())
       throw new Error(
-        'Enable secure local storage before connecting sync. Restart the browser to enable it.'
+        'Enable secure local storage before connecting sync. Restart the browser to enable it.',
       );
     if (!client)
       client = new AccountSyncClient({
         load: () => {
           if (!fs.existsSync(filename())) return {};
           return JSON.parse(
-            safeStorage.decryptString(fs.readFileSync(filename()))
+            safeStorage.decryptString(fs.readFileSync(filename())),
           );
         },
         save: (value) => {
@@ -46,7 +48,7 @@ export function registerAccountSync(
           fs.writeFileSync(
             `${file}.tmp`,
             safeStorage.encryptString(JSON.stringify(value)),
-            { mode: 0o600 }
+            { mode: 0o600 },
           );
           fs.renameSync(`${file}.tmp`, file);
         },
@@ -89,7 +91,22 @@ export function registerAccountSync(
       const instance = get();
       let operationMessage: string | undefined;
       if (action === 'status' && !main(owner)) await instance.autoUnlock();
-      if (action === 'sync-notes' || action === 'restore-notes') {
+      if (action === 'sync-personal-data') {
+        if (main(owner))
+          throw new Error('Manage personal data in Preferences.');
+        await authenticatePersonalData();
+        const revision = personalDataRevision();
+        const current = () =>
+          !owner.isDestroyed() &&
+          trusted(owner) &&
+          personalDataRevision() === revision;
+        if (!current())
+          throw new Error('Window changed during authentication.');
+        await instance.syncPersonalData(
+          personalDataForSync(passwordVault().personalSyncRecords()),
+          current,
+        );
+      } else if (action === 'sync-notes' || action === 'restore-notes') {
         if (
           action === 'sync-notes' &&
           passwordVault()
@@ -148,14 +165,14 @@ export function registerAccountSync(
                   !item.scope &&
                   item.kind === 'login' &&
                   item.origin &&
-                  item.password
+                  item.password,
               )
               .map(({ title, origin, username, password }) => ({
                 title,
                 origin,
                 username,
                 password,
-              }))
+              })),
           );
           await instance.syncPasswords(items);
         } else {
@@ -169,12 +186,13 @@ export function registerAccountSync(
           )
             throw new Error('Window changed during import.');
           const imported = withPersonalData((vault) =>
-            vault.importSyncedLogins(items)
+            vault.importSyncedLogins(items),
           );
           operationMessage = `${imported} saved logins imported. Existing passwords were kept.`;
         }
       } else if (action === 'connect') {
         passwordScheduler.reset();
+        personalScheduler.reset();
         await instance.connect(input.authMode);
       } else if (action === 'cancel') instance.cancel();
       else if (action === 'enable') await instance.enable(input);
@@ -182,18 +200,32 @@ export function registerAccountSync(
       else if (action === 'reset-sync') {
         const revision = instance.connectionRevision();
         const answer = await dialog.showMessageBox(owner, {
-          type: 'warning', buttons: ['Cancel', 'Reset cloud sync'], defaultId: 0, cancelId: 0, noLink: true,
+          type: 'warning',
+          buttons: ['Cancel', 'Reset cloud sync'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
           message: 'Reset cloud backups only?',
-          detail: 'This permanently deletes the cloud backups for this account and prepares cloud sync for a fresh backup. Local tabs, groups, notes, passwords and browsing data will not be changed or deleted. Your current local data can be uploaded when you enable sync again. Other devices must reconnect. Backups encrypted with a lost key cannot be recovered.',
+          detail:
+            'This permanently deletes the cloud backups for this account and prepares cloud sync for a fresh backup. Local tabs, groups, notes, passwords and browsing data will not be changed or deleted. Your current local data can be uploaded when you enable sync again. Other devices must reconnect. Backups encrypted with a lost key cannot be recovered.',
         });
         if (answer.response !== 1) return instance.status();
-        if (owner.isDestroyed() || !trusted(owner) || client !== instance || revision !== instance.connectionRevision()) throw new Error('Your account changed. Try resetting again.');
+        if (
+          owner.isDestroyed() ||
+          !trusted(owner) ||
+          client !== instance ||
+          revision !== instance.connectionRevision()
+        )
+          throw new Error('Your account changed. Try resetting again.');
         passwordScheduler.reset();
-        updateBrowserPreferences({ cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false } });
+        personalScheduler.reset();
+        updateBrowserPreferences({
+          cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false },
+        });
         await instance.resetSync(true);
-      }
-      else if (action === 'disconnect') {
+      } else if (action === 'disconnect') {
         passwordScheduler.reset();
+        personalScheduler.reset();
         updateBrowserPreferences({
           cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false },
         });
@@ -210,6 +242,7 @@ export function registerAccountSync(
         return instance.restore(input.recordId);
       } else if (action === 'delete-data') {
         passwordScheduler.reset();
+        personalScheduler.reset();
         updateBrowserPreferences({
           cloudSync: { ...getBrowserPreferences().cloudSync, enabled: false },
         });
@@ -221,7 +254,7 @@ export function registerAccountSync(
       // Only the settings window needs the recovery key for explicit setup.
       if (main(owner)) return { ...status, recoveryKey: undefined };
       return status;
-    }
+    },
   );
 
   let lastPasswords = 0;
@@ -252,6 +285,27 @@ export function registerAccountSync(
           !passwordVault().status().locked
         );
       };
+      personalScheduler
+        .tick({
+          current: () => {
+            const settings = getBrowserPreferences().cloudSync;
+            const status = instance.status();
+            return (
+              client === instance &&
+              status.connected &&
+              status.phase === 'ready' &&
+              settings.enabled &&
+              settings.provider === 'kudiumbrowser' &&
+              Boolean(settings.categories.personalData) &&
+              personalDataRevision() === revision &&
+              !passwordVault().status().locked
+            );
+          },
+          read: () =>
+            personalDataForSync(passwordVault().personalSyncRecords()),
+          upload: (items, guard) => instance.syncPersonalData(items, guard),
+        })
+        .catch(() => {});
       passwordScheduler
         .tick({
           current,
@@ -264,7 +318,7 @@ export function registerAccountSync(
                   !item.scope &&
                   item.kind === 'login' &&
                   item.origin &&
-                  item.password
+                  item.password,
               )
               .map(({ title, origin, username, password }) => ({
                 title,
@@ -285,10 +339,12 @@ export function registerAccountSync(
   timer.unref();
   onBrowserPreferencesChanged(() => {
     passwordScheduler.reset();
+    personalScheduler.reset();
     client?.pause();
   });
   app.once('will-quit', () => {
     passwordScheduler.reset();
+    personalScheduler.reset();
     clearInterval(timer);
     client?.pause();
   });

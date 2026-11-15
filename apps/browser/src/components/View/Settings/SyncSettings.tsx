@@ -14,12 +14,14 @@ import {
 } from '../../../browser/cloudSync';
 
 const categoryDescriptions = {
+  personalData: 'Includes saved logins and documents from all groups',
   notes: 'Encrypted notes; unlock to back up',
   workspace: 'Spaces, groups, and folders',
   openTabs: 'Continue on another device',
   preferences: 'Search, fonts, and shortcuts',
 };
 const categoryIcons = {
+  personalData: KeyRound,
   notes: NotebookPen,
   workspace: FolderOpen,
   openTabs: PanelsTopLeft,
@@ -65,6 +67,7 @@ export function SyncSettings({
               enabled
               passwordsEnabled={Boolean(settings.categories.passwords)}
               notesEnabled={Boolean(settings.categories.notes)}
+              personalDataEnabled={Boolean(settings.categories.personalData)}
               onEnabled={() => {}}
             />
           )}
@@ -81,7 +84,7 @@ export function SyncSettings({
             aria-label="Sync with iCloud"
             checked={Boolean(
               settings.icloud ||
-                (settings.provider === 'icloud' && settings.enabled)
+              (settings.provider === 'icloud' && settings.enabled),
             )}
             disabled={busy}
             onCheckedChange={(icloud) => save({ ...settings, icloud })}
@@ -91,8 +94,11 @@ export function SyncSettings({
       <div className="sync-section-heading">
         <h2>Included in sync</h2>
         <PreferenceHint label="sync privacy">
-          Account sync encrypts data with an account-managed key, so signing in can unlock it on another device. This is not end-to-end encryption. Older backups may still require their recovery key. Password sync requires unlocking Personal Data. Group-only credentials, passkeys, cookies, AI
-          keys and AI history stay local.
+          Account sync encrypts data with an account-managed key, so signing in
+          can unlock it on another device. This is not end-to-end encryption.
+          Older backups may still require their recovery key. Password sync
+          requires unlocking Personal Data. Group-only credentials, passkeys,
+          cookies, AI keys and AI history stay local.
         </PreferenceHint>
       </div>
       <div className="sync-category-grid">

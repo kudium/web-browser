@@ -611,6 +611,9 @@ export function registerPasswordManager(
         vault.moveNote(request.id, request.destination);
         return vault.noteSummaries();
       case 'save': {
+        const placement = Object.prototype.hasOwnProperty.call(request, 'destination');
+        if (placement && (request.item.kind === 'note' || (request.destination !== null && (typeof request.destination !== 'string' || !request.destination || request.destination.length > 200)))) throw new Error('Invalid destination group.');
+        const saveItem = () => vault.save(request.item, placement ? request.destination || undefined : request.scope, placement ? {sourceScope: request.scope} : undefined);
         if (request.item.kind === 'note') {
           const ordinary =
             !request.item.sensitive &&
@@ -620,11 +623,11 @@ export function registerPasswordManager(
                 .noteSummaries()
                 .some((item) => item.id === request.item.id));
           if (ordinary) {
-            vault.save(request.item, request.scope);
+            saveItem();
             return vault.noteSummaries();
           }
           await authenticate();
-          vault.save(request.item, request.scope);
+          saveItem();
           return vault.noteSummaries();
         }
         if (request.item.id) {
@@ -654,13 +657,13 @@ export function registerPasswordManager(
           try {
             if (wasLocked)
               vault.unlock(credential, !vault.status().initialized);
-            vault.save(request.item, request.scope);
+            saveItem();
           } finally {
             if (wasLocked) vault.lock();
           }
         } else {
           await authenticate();
-          vault.save(request.item, request.scope);
+          saveItem();
         }
         break;
       }

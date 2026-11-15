@@ -6,6 +6,10 @@
   const recovery = $('[data-data-recovery]'), search = $('[data-data-search]'), source = $('[data-data-source]');
   const refresh = $('[data-data-refresh]'), mobileNavigation = $('[data-workspace-navigation]');
   const categories = {
+    personal: {title:'Personal details', subtitle:'Your saved profiles and payment details.', icon:'▤'},
+    forms: {title:'Saved forms', subtitle:'Information captured from your forms.', icon:'▤'},
+    documents: {title:'Documents', subtitle:'Your saved documents and their text.', icon:'▤'},
+    passwords: {title:'Passwords', subtitle:'Your encrypted saved logins.', icon:'▤'},
     notes: {title:'Notes', subtitle:'Your ideas, always within reach.', icon:'≡'},
     workspace: {title:'Apps & tabs', subtitle:'Pick up where your browser left off.', icon:'▣'},
     hooks: {title:'Page hooks', subtitle:'The customizations that make your pages yours.', icon:'⌘'},
@@ -13,14 +17,14 @@
     devices: {title:'Devices & sessions', subtitle:'Manage where you’re signed in.', icon:'▱'}
   };
   let records = [], entries = [], category = 'notes', selected = null, busy = false, dirty = false, pending = null, loadError = null;
-  const isDataView = () => ['notes','workspace','hooks'].includes(category);
+  const isDataView = () => ['notes','workspace','hooks','personal','forms','documents','passwords'].includes(category);
   const node = (tag, text, className) => { const element=document.createElement(tag); if(text!==undefined)element.textContent=text; if(className)element.className=className; return element; };
   const message = text => { status.textContent=text; };
   const deviceLabel = id => `Device · ${String(id || 'unknown').slice(-6)}`;
   const titleOf = entry => entry.category==='hooks' ? new URL(entry.item.origin).hostname : entry.item.title || entry.item.name || 'Untitled';
   const workspaceItems = record => { const items=new Map();(record.value.openTabs || []).forEach(item=>items.set(item.id,item));(record.value.workspace?.apps || []).forEach(item=>items.set(item.id,item));return [...items.values()]; };
   const dateLabel = value => { const date=new Date(value); return Number.isFinite(date.getTime()) && value ? date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : ''; };
-  const excerpt = entry => entry.category==='notes' ? (entry.item.notes || 'Empty note').replace(/\s+/g,' ') : entry.category==='hooks' ? `${entry.item.config.hooks?.length || 0} named ${(entry.item.config.hooks?.length || 0)===1?'hook':'hooks'} · CSS & scripts` : entry.item.homeUrl || entry.item.url || '';
+  const excerpt = entry => entry.category==='notes' ? (entry.item.notes || 'Empty note').replace(/\s+/g,' ') : entry.category==='hooks' ? `${entry.item.config.hooks?.length || 0} named ${(entry.item.config.hooks?.length || 0)===1?'hook':'hooks'} · CSS & scripts` : entry.item.document?.name || entry.item.origin || entry.item.homeUrl || entry.item.url || '';
   async function request(path, options = {}) {
     const response=await fetch(`/api/account-data/${path}`,{credentials:'same-origin',redirect:'error',...options});
     const result=await response.json().catch(()=>({}));
@@ -34,8 +38,9 @@
   function rebuildEntries() {
     entries=[];
     for(const record of records){
-      const items=record.category==='notes' ? record.value.items : workspaceItems(record);
-      items.forEach(item=>entries.push({key:JSON.stringify([record.id,record.category,item.id]),category:record.category,record,item}));
+      if(record.category==='passwords' && records.some(other=>other.category==='personal' && other.value.deviceId===record.value.deviceId))continue;
+      const items=['notes','personal','passwords'].includes(record.category) ? record.value.items : workspaceItems(record);
+      items.forEach(item=>{const view=record.category==='personal' ? item.kind==='login'?'passwords':item.document?'documents':item.origin && item.fields?.length?'forms':'personal' : record.category;entries.push({key:JSON.stringify([record.id,view,item.id]),category:view,record,item});});
       if(record.category==='workspace') (record.value.workspace?.developer || []).forEach(item=>entries.push({key:JSON.stringify([record.id,'hooks',item.spaceId,item.sessionId,item.origin]),category:'hooks',record,item}));
     }
     for(const button of root.querySelectorAll('[data-data-category]')){
@@ -67,15 +72,15 @@
         else if(loadError.code!=='recovery_key_required'){const retry=node('button','Try again','account-button');retry.type='button';retry.addEventListener('click',()=>navigate(load));list.lastChild.append(retry);}
       }else if(search.value.trim()||source.value!=='all'){
         empty(list,'No matches','Try a different search or device.');const clear=node('button','Clear filters','account-button');clear.type='button';clear.addEventListener('click',()=>{search.value='';source.value='all';renderList();});list.lastChild.append(clear);
-      }else{empty(list,'Nothing here yet','Connect Kudium Browser and enable sync to save your data here.');const guide=node('a','Set up sync ↗','account-button');guide.href='/docs#sync';list.lastChild.append(guide);}
+      }else{empty(list,'Nothing here yet',['personal','forms','documents','passwords'].includes(category)?'In Kudium Browser, open Preferences → Sync, enable Personal details, forms & documents, then choose Unlock & sync personal data.':'Connect Kudium Browser and enable sync to save your data here.');const guide=node('a','Set up sync ↗','account-button');guide.href='/docs#sync';list.lastChild.append(guide);}
       return;
     }
-    const count=node('div',`${visible.length} ${category==='notes'?(visible.length===1?'note':'notes'):category==='hooks'?(visible.length===1?'customization':'customizations'):'apps & tabs'}`,'cloud-list-count');list.append(count);
+    const count=node('div',`${visible.length} ${category==='notes'?(visible.length===1?'note':'notes'):category==='hooks'?(visible.length===1?'customization':'customizations'):category==='workspace'?'apps & tabs':visible.length===1?category==='personal'?'personal record':category==='forms'?'saved form':category==='documents'?'document':'password':categories[category].title.toLowerCase()}`,'cloud-list-count');list.append(count);
     visible.forEach(entry=>{
       const button=node('button',undefined,'cloud-item');button.type='button';button.setAttribute('aria-pressed',String(selected===entry.key));
       const heading=node('strong',titleOf(entry));const preview=node('span',excerpt(entry),'cloud-item-excerpt');
       const meta=node('span',deviceLabel(entry.record.value.deviceId),'cloud-item-meta');meta.title=String(entry.record.value.deviceId || '');
-      if(entry.category==='notes' && entry.item.sensitive)meta.append(node('span','Protected','cloud-protected'));
+      if(entry.category==='passwords' || ['personal','forms','documents'].includes(entry.category) || entry.item.sensitive)meta.append(node('span','Protected','cloud-protected'));
       button.append(heading,preview,meta);button.addEventListener('click',()=>navigate(()=>{selected=entry.key;renderList();renderDetail();root.classList.add('cloud-detail-open');if(matchMedia('(max-width: 900px)').matches)detail.focus();}));list.append(button);
     });
   }
@@ -95,11 +100,11 @@
     detail.replaceChildren();dirty=false;pending=null;
     const entry=entries.find(item=>item.key===selected);
     if(!entry && loadError){empty(detail,'Your data is unavailable','Use the action in the list to reconnect.');return;}
-    if(!entry){empty(detail,`A little space for your ${category==='notes'?'ideas':'workspace'}`,`Select ${category==='notes'?'a note':category==='hooks'?'a customization':'an app or tab'} to preview it here.`);return;}
+    if(!entry){empty(detail,`A little space for your ${category==='notes'?'ideas':'workspace'}`,`Select ${category==='notes'?'a note':category==='hooks'?'a customization':category==='workspace'?'an app or tab':'a saved record'} to preview it here.`);return;}
     const {record,item}=entry;
     const toolbar=node('div',undefined,'cloud-detail-toolbar');
     const back=node('button','‹ Back','account-button cloud-back');back.type='button';back.addEventListener('click',()=>navigate(()=>root.classList.remove('cloud-detail-open')));
-    toolbar.append(back,node('span',category==='notes'?'NOTE':category==='hooks'?'PAGE CUSTOMIZATION':'APP / TAB','cloud-detail-kind'));
+    toolbar.append(back,node('span',category==='notes'?'NOTE':category==='hooks'?'PAGE CUSTOMIZATION':category==='workspace'?'APP / TAB':categories[category].title.toUpperCase(),'cloud-detail-kind'));
     detail.append(toolbar,node('h3',titleOf(entry),'cloud-detail-title'));
     const metadata=node('p',`${deviceLabel(record.value.deviceId)}${dateLabel(record.value.createdAt)?` · Backed up ${dateLabel(record.value.createdAt)}`:''}`,'cloud-detail-meta');detail.append(metadata);
     if(category==='hooks'){
@@ -114,6 +119,32 @@
       }
       codeSection('Page defaults',item.config);
       (item.config.hooks||[]).forEach(hook=>codeSection(hook.name || 'Unnamed hook',hook));return;
+    }
+    if (['personal','forms','documents','passwords'].includes(category)) {
+      const preview=node('div',undefined,'cloud-preview');
+      preview.append(node('p',item.origin || 'Saved information','cloud-detail-meta'));
+      if(item.scope)preview.append(node('p',`Group · ${item.scope}`,'cloud-detail-meta'));
+      const addValue=(label,value,secret)=>{
+        if(!value)return;
+        const row=node('div',undefined,'account-data-field');row.append(node('strong',label));
+        const text=node('p',secret?'••••••••':value,'cloud-note-content');row.append(text);
+        if(secret){const reveal=node('button','Reveal','account-button');reveal.type='button';let shown=false;reveal.addEventListener('click',()=>{shown=!shown;text.textContent=shown?value:'••••••••';reveal.textContent=shown?'Hide':'Reveal';});row.append(reveal);}
+        preview.append(row);
+      };
+      addValue('Username',item.username,false);addValue('Password',item.password,true);
+      (item.fields || []).forEach(field=>addValue(field.name,field.value,field.secret || item.kind==='payment'));
+      addValue('Notes',item.notes,item.sensitive || ['login','payment'].includes(item.kind));
+      if(item.document){
+        addValue(item.document.name,item.document.text,item.sensitive);
+        const download=node('button','Download document','account-button');download.type='button';
+        download.addEventListener('click',()=>{
+          const bytes=Uint8Array.from(atob(item.document.content),char=>char.charCodeAt(0));
+          const url=URL.createObjectURL(new Blob([bytes],{type:item.document.mime}));
+          const link=node('a');link.href=url;link.download=item.document.name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        });preview.append(download);
+      }
+      preview.append(node('p','Manage this saved information in Kudium Browser. Enable Personal details, forms & documents in Sync settings and unlock Personal Data to update this backup.','cloud-detail-meta'));
+      detail.append(preview);return;
     }
     const preview=node('div',undefined,'cloud-preview');
     if(category==='notes')preview.append(node('p',item.notes || 'This note is empty.','cloud-note-content'));
@@ -180,6 +211,7 @@
       root.classList.toggle('cloud-settings-open',!isDataView());refresh.hidden=!isDataView();
       for(const panel of root.querySelectorAll('[data-workspace-panel]'))panel.hidden=panel.dataset.workspacePanel!==category;
       $('[data-data-heading]').textContent=categories[category].title;$('[data-data-subtitle]').textContent=categories[category].subtitle;
+      $('.cloud-workspace-footnote').textContent=['personal','forms','documents','passwords'].includes(category)?'These are cloud backups. Manage saved information in Kudium Browser and sync again to update it here.':'Changes here update a device’s cloud backup. Restore in Kudium Browser → Preferences → Sync to use them on your desktop.';
       search.placeholder=`Search ${categories[category].title.toLowerCase()}`;search.setAttribute('aria-label',search.placeholder);
       rebuildEntries();renderList();renderDetail();message(isDataView()&&loadError?loadError.message:'');
     });

@@ -80,6 +80,8 @@ function PersonalDataRecords({
   const [authPrompt, setAuthPrompt] = useState(false);
   const [item, setItem] = useState<VaultItem>(empty);
   const [editing, setEditing] = useState(false);
+  const [editorScope, setEditorScope] = useState(scope || 'browser');
+  const editorGroups = Array.from(new Map([...(group ? [group] : []), ...tabs].filter(tab => !tab.archived).map(tab => [personalDataScope(tab), tab])).entries());
   const [visibleFields, setVisibleFields] = useState<number[]>([]);
   const editorOpener = useRef<HTMLElement | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
@@ -126,6 +128,7 @@ function PersonalDataRecords({
   const openNew = (opener: HTMLElement) => {
     editorOpener.current = opener;
     setItem(empty());
+    setEditorScope(scope || 'browser');
     setError('');
     setVisibleFields([]);
     setEditing(true);
@@ -228,6 +231,7 @@ function PersonalDataRecords({
       await refresh();
       if (revision !== editorRevision.current) return;
       setItem(entryForEditor(editable as VaultItem));
+      setEditorScope(scope || 'browser');
       setVisibleFields([]);
       setEditing(true);
     } catch {
@@ -732,7 +736,7 @@ function PersonalDataRecords({
               className="password-manager-editor"
               onSubmit={(event) => {
                 event.preventDefault();
-                run({ action: 'save', item: entryForSave(item) });
+                run({ action: 'save', item: entryForSave(item), ...(editorScope !== (scope || 'browser') ? { destination: editorScope === 'browser' ? null : editorScope } : {}) });
               }}
             >
               {status.locked && status.authentication === 'master' && (
@@ -762,6 +766,18 @@ function PersonalDataRecords({
               )}
               <div className="vault-editor-scroll">
                 <fieldset className="vault-editor-fields" disabled={busy}>
+                  <span>Save in group</span>
+                  <GroupPicker
+                    label="Save in group"
+                    disabled={busy}
+                    value={editorScope}
+                    onChange={setEditorScope}
+                    options={[
+                      { id: 'browser', name: 'Browser-wide (all groups)' },
+                      ...editorGroups.map(([id, tab]) => ({ id, name: tab.sessionName || tab.name, group: tab })),
+                    ]}
+                  />
+                  <p className="vault-hint">{item.inherited ? 'Save a customization for the selected group, or choose Browser-wide to update the original.' : 'Browser-wide items are available to all groups. Choosing a group keeps this item local to that group.'}</p>
                   <label htmlFor="vault-item-name">Item name (optional)</label>
                   <TextField.Root
                     id="vault-item-name"
@@ -894,6 +910,11 @@ function PersonalDataRecords({
                                     position === index
                                       ? {
                                           ...current,
+                                          name: current.name.trim()
+                                            ? current.name
+                                            : personalDataMatching.types.find(
+                                                (type) => type.value === mapping
+                                              )?.label || current.name,
                                           aliases: [
                                             ...(current.aliases || []).filter(
                                               (alias) =>

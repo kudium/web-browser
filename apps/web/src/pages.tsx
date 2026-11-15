@@ -833,6 +833,15 @@ export function documentation() {
                 Account-managed sync provisions account keys separately and
                 decrypts data for the authenticated dashboard.
               </p>
+              <p>
+                The account dashboard shows synced notes, apps and tabs, page hooks,
+                personal details, saved forms, documents and passwords. In Kudium
+                Browser, enable Personal details, forms &amp; documents in Preferences
+                → Sync, then choose Unlock &amp; sync personal data. This includes
+                saved information and logins from all groups. Documents are encrypted
+                in chunks and can be downloaded from the dashboard. Manage these
+                personal records in the browser and sync again to update their backups.
+              </p>
               <div className="callout">
                 Storage accepts encrypted envelopes, but cannot verify their
                 cryptographic authenticity. Clients must authenticate and
@@ -1326,9 +1335,13 @@ export function accountPage(
           <section className="cloud-workspace" data-account-data aria-label="Your synced data">
             <aside className="cloud-sidebar">
               <div className="cloud-sidebar-heading">Your workspace</div>
-              <label className="cloud-mobile-navigation"><span className="cloud-app-icon cloud-icon-notes" data-workspace-icon aria-hidden="true">≡</span><span className="sr-only">Workspace view</span><select data-workspace-navigation aria-label="Workspace view"><option value="notes">Notes</option><option value="workspace">Apps &amp; tabs</option><option value="hooks">Page hooks</option><option value="storage">Storage</option><option value="devices">Devices &amp; sessions</option></select></label>
+              <label className="cloud-mobile-navigation"><span className="cloud-app-icon cloud-icon-notes" data-workspace-icon aria-hidden="true">≡</span><span className="sr-only">Workspace view</span><select data-workspace-navigation aria-label="Workspace view"><option value="notes">Notes</option><option value="personal">Personal details</option><option value="forms">Saved forms</option><option value="documents">Documents</option><option value="passwords">Passwords</option><option value="workspace">Apps &amp; tabs</option><option value="hooks">Page hooks</option><option value="storage">Storage</option><option value="devices">Devices &amp; sessions</option></select></label>
               <nav className="cloud-navigation" aria-label="Workspace collections">
                 <button type="button" data-data-category="notes" aria-current="page"><span className="cloud-app-icon cloud-icon-notes" aria-hidden="true">≡</span>Notes<span data-data-count="notes" /></button>
+                <button type="button" data-data-category="personal"><span className="cloud-app-icon cloud-icon-settings" aria-hidden="true">▤</span>Personal details<span data-data-count="personal" /></button>
+                <button type="button" data-data-category="forms"><span className="cloud-app-icon cloud-icon-settings" aria-hidden="true">▤</span>Saved forms<span data-data-count="forms" /></button>
+                <button type="button" data-data-category="documents"><span className="cloud-app-icon cloud-icon-settings" aria-hidden="true">▤</span>Documents<span data-data-count="documents" /></button>
+                <button type="button" data-data-category="passwords"><span className="cloud-app-icon cloud-icon-settings" aria-hidden="true">▤</span>Passwords<span data-data-count="passwords" /></button>
                 <button type="button" data-data-category="workspace"><span className="cloud-app-icon cloud-icon-tabs" aria-hidden="true">▣</span>Apps &amp; tabs<span data-data-count="workspace" /></button>
                 <button type="button" data-data-category="hooks"><span className="cloud-app-icon cloud-icon-hooks" aria-hidden="true">⌘</span>Page hooks<span data-data-count="hooks" /></button>
                 <button className="cloud-menu-settings" type="button" data-data-category="storage" aria-controls="cloud-storage"><span className="cloud-app-icon cloud-icon-settings" aria-hidden="true">▤</span>Storage</button>

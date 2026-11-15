@@ -73,14 +73,14 @@ describe.skipIf(!url)('Better Auth with PostgreSQL', () => {
     expect(created.token).toBeNull(); expect(created.user.emailVerified).toBe(false);
     expect(messages[0].to).toBe(mailEmail);
     expect((await call('/api/auth/sign-in/email', 'POST', { email: mailEmail, password })).status).toBe(403);
-    const verificationURL = messages[0].text.split('\n')[1];
+    const verificationURL = messages.find(message => message.subject.includes('Verify'))!.text.split('\n').find(line => line.startsWith('https://'))!;
     expect((await call(verificationURL)).status).toBe(302);
     const signin = await call('/api/auth/sign-in/email', 'POST', { email: mailEmail, password });
     expect(signin.status).toBe(200); const signed = signin.headers.get('set-auth-token')!;
     expect((await call('/v1/sync/status', 'GET', undefined, { Authorization: `Bearer ${signed}` })).status).toBe(200);
     expect((await call('/api/auth/request-password-reset', 'POST', { email: mailEmail, redirectTo: baseURL + '/reset-password' })).status).toBe(200);
     const resetMail = messages.find(message => message.subject.includes('Reset'))!;
-    const resetURL = resetMail.text.split('\n')[1];
+    const resetURL = resetMail.text.split('\n').find(line => line.startsWith('https://'))!;
     const redirect = await call(resetURL); expect(redirect.status).toBe(302);
     const resetToken = new URL(redirect.headers.get('Location')!).searchParams.get('token'); expect(resetToken).toBeTruthy();
     const resetBody = { token: resetToken, newPassword: 'my replacement password 456' };

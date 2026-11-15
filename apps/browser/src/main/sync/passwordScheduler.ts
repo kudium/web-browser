@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import type { SyncedLogin } from './passwords';
 
 /** Reads only an already-unlocked vault; background work never prompts. */
-export class PasswordSyncScheduler {
+export class PasswordSyncScheduler<T = SyncedLogin> {
   private busy = false;
   private digest?: string;
   private generation = 0;
@@ -13,8 +13,8 @@ export class PasswordSyncScheduler {
   }
 
   async tick(options: {
-    read: () => SyncedLogin[] | undefined;
-    upload: (items: SyncedLogin[], current: () => boolean) => Promise<void>;
+    read: () => T[] | undefined;
+    upload: (items: T[], current: () => boolean) => Promise<void>;
     current: () => boolean;
   }) {
     if (this.busy || !options.current()) return;

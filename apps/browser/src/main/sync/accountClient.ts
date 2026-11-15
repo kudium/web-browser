@@ -1,3 +1,7 @@
+import {
+  validateSyncedPersonalData,
+  type SyncedPersonalItem,
+} from './personalData';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import type {
   AccountSyncInput,
@@ -84,7 +88,7 @@ export class AccountSyncClient {
       enable: () => void;
       open: (url: string) => Promise<void>;
       request?: typeof syncRequest;
-    }
+    },
   ) {
     this.saved = options.load();
     this.saved.cursor = undefined;
@@ -112,10 +116,10 @@ export class AccountSyncClient {
         deviceId: snapshot.deviceId,
         updatedAt: snapshot.createdAt,
         groups: new Set(
-          snapshot.workspace?.apps.map((tab) => tab.sessionId) || []
+          snapshot.workspace?.apps.map((tab) => tab.sessionId) || [],
         ).size,
         tabs: snapshot.openTabs?.length || snapshot.workspace?.apps.length || 0,
-      })
+      }),
     );
     return {
       phase: this.phase,
@@ -137,7 +141,7 @@ export class AccountSyncClient {
         ? [...this.passwordRecords]
             .filter(
               (recordId) =>
-                recordId !== `passwords_${this.saved.credential?.deviceId}`
+                recordId !== `passwords_${this.saved.credential?.deviceId}`,
             )
             .map((recordId) => ({ recordId, deviceId: recordId.slice(10) }))
         : [],
@@ -184,12 +188,12 @@ export class AccountSyncClient {
   private async openAuthorization(authMode?: 'sign-in' | 'sign-up') {
     if (!this.pending) return;
     const destination = `/device?user_code=${encodeURIComponent(
-      this.pending.userCode
+      this.pending.userCode,
     )}`;
     await this.options.open(
       authMode
         ? `${SYNC_ORIGIN}/${authMode}?next=${encodeURIComponent(destination)}`
-        : `${SYNC_ORIGIN}${destination}`
+        : `${SYNC_ORIGIN}${destination}`,
     );
   }
 
@@ -220,7 +224,7 @@ export class AccountSyncClient {
       const token = result.headers.get('set-auth-token');
       if (!token || token.length > 16384)
         throw new Error(
-          'The service did not issue a signed desktop credential.'
+          'The service did not issue a signed desktop credential.',
         );
       const session = (await this.request('/api/auth/get-session', token)).body;
       if (!session?.user?.id || typeof session.user.email !== 'string')
@@ -324,10 +328,17 @@ export class AccountSyncClient {
     return this.pending?.interval || 5000;
   }
 
-  connectionRevision() { return this.generation; }
+  connectionRevision() {
+    return this.generation;
+  }
 
   async autoUnlock() {
-    if (this.managedKeyAttempted || !this.saved.credential || this.saved.credential.enrolled) return;
+    if (
+      this.managedKeyAttempted ||
+      !this.saved.credential ||
+      this.saved.credential.enrolled
+    )
+      return;
     this.managedKeyAttempted = true;
     await this.recoverAccountKey();
   }
@@ -339,18 +350,44 @@ export class AccountSyncClient {
     const migrationKey = recoveryKey?.trim() || credential.key;
     let endpointAvailable = false;
     try {
-      const response = await this.request('/v1/sync/account-key', credential.token, migrationKey ? { recoveryKey: migrationKey } : {});
+      const response = await this.request(
+        '/v1/sync/account-key',
+        credential.token,
+        migrationKey ? { recoveryKey: migrationKey } : {},
+      );
       endpointAvailable = true;
-      if (generation !== this.generation || credential !== this.saved.credential) return false;
+      if (
+        generation !== this.generation ||
+        credential !== this.saved.credential
+      )
+        return false;
       const value = response.body?.key;
-      if (response.body?.managed !== true || typeof value !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(value) || Buffer.from(value, 'base64url').toString('base64url') !== value) throw new Error('The server returned an invalid account key.');
+      if (
+        response.body?.managed !== true ||
+        typeof value !== 'string' ||
+        !/^[A-Za-z0-9_-]{43}$/.test(value) ||
+        Buffer.from(value, 'base64url').toString('base64url') !== value
+      )
+        throw new Error('The server returned an invalid account key.');
       const key = Buffer.from(value, 'base64url');
       try {
-        const root = (await this.request(`/v1/sync/records/${keyRecord}`, credential.token)).body;
+        const root = (
+          await this.request(`/v1/sync/records/${keyRecord}`, credential.token)
+        ).body;
         const proof = decryptSyncRecord(root.envelope, key) as any;
-        if (proof?.kind !== 'kudium-sync-key' || proof.accountId !== credential.accountId) throw new Error('The account key could not unlock your synced data.');
-      } finally { key.fill(0); }
-      if (generation !== this.generation || credential !== this.saved.credential) return false;
+        if (
+          proof?.kind !== 'kudium-sync-key' ||
+          proof.accountId !== credential.accountId
+        )
+          throw new Error('The account key could not unlock your synced data.');
+      } finally {
+        key.fill(0);
+      }
+      if (
+        generation !== this.generation ||
+        credential !== this.saved.credential
+      )
+        return false;
       credential.key = value;
       credential.enrolled = true;
       this.managedKeyAttempted = true;
@@ -360,32 +397,54 @@ export class AccountSyncClient {
       return true;
     } catch (error) {
       if (generation !== this.generation) return false;
-      if (error instanceof SyncHTTPError && error.status === 409 && error.code === 'recovery_key_required') {
+      if (
+        error instanceof SyncHTTPError &&
+        error.status === 409 &&
+        error.code === 'recovery_key_required'
+      ) {
         this.phase = 'recovery-required';
-        this.message = 'Older encrypted backups need their recovery key once. If you no longer have it, you can reset cloud sync and start fresh.';
+        this.message =
+          'Older encrypted backups need their recovery key once. If you no longer have it, you can reset cloud sync and start fresh.';
         return false;
       }
-      if (!endpointAvailable && error instanceof SyncHTTPError && (error.status === 404 || (error.status === 503 && error.code === 'managed_sync_not_configured'))) return false;
-      if (error instanceof SyncHTTPError && error.status === 400) throw new Error('That recovery key could not unlock your backups. Check the key or choose Reset cloud sync.');
+      if (
+        !endpointAvailable &&
+        error instanceof SyncHTTPError &&
+        (error.status === 404 ||
+          (error.status === 503 &&
+            error.code === 'managed_sync_not_configured'))
+      )
+        return false;
+      if (error instanceof SyncHTTPError && error.status === 400)
+        throw new Error(
+          'That recovery key could not unlock your backups. Check the key or choose Reset cloud sync.',
+        );
       throw error;
     }
   }
 
   /** Reset cloud records and sync bookkeeping only; keep the current local snapshot and data stores intact. */
   async resetSync(confirmed: boolean) {
-    if (confirmed !== true) throw new Error('Confirm resetting cloud sync first.');
+    if (confirmed !== true)
+      throw new Error('Confirm resetting cloud sync first.');
     await this.deleteData();
     this.managedKeyAttempted = false;
     const { credential } = this.saved;
     const { generation } = this;
     if (await this.recoverAccountKey()) {
-      this.message = 'Cloud sync was reset. Your local data was kept. Enable sync to back it up again.';
+      this.message =
+        'Cloud sync was reset. Your local data was kept. Enable sync to back it up again.';
     } else {
-      if (generation !== this.generation || credential !== this.saved.credential) return;
+      if (
+        generation !== this.generation ||
+        credential !== this.saved.credential
+      )
+        return;
       credential!.key = randomBytes(32).toString('base64url');
       this.persist();
       this.phase = 'key-required';
-      this.message = 'Cloud sync was reset. Save your new recovery key to start again.';
+      this.message =
+        'Cloud sync was reset. Save your new recovery key to start again.';
     }
   }
 
@@ -395,10 +454,12 @@ export class AccountSyncClient {
     const { generation } = this;
     if (await this.recoverAccountKey(input.recoveryKey)) {
       this.options.enable();
-      this.message = 'Sync is on. Your account unlocks your data on other devices.';
+      this.message =
+        'Sync is on. Your account unlocks your data on other devices.';
       return;
     }
-    if (generation !== this.generation || credential !== this.saved.credential) return;
+    if (generation !== this.generation || credential !== this.saved.credential)
+      return;
     const value = input.recoveryKey?.trim() || credential.key;
     if (
       !value ||
@@ -422,7 +483,7 @@ export class AccountSyncClient {
         const envelope = encryptSyncRecord(
           { kind: 'kudium-sync-key', accountId: credential.accountId },
           key,
-          keyRecord
+          keyRecord,
         );
         try {
           await this.request(
@@ -432,7 +493,7 @@ export class AccountSyncClient {
             error.revision
               ? { 'If-Match': `"${error.revision}"` }
               : { 'If-None-Match': '*' },
-            'PUT'
+            'PUT',
           );
           root = { envelope };
         } catch (conflict) {
@@ -441,7 +502,7 @@ export class AccountSyncClient {
           root = (
             await this.request(
               `/v1/sync/records/${keyRecord}`,
-              credential.token
+              credential.token,
             )
           ).body;
         }
@@ -522,7 +583,7 @@ export class AccountSyncClient {
           `/v1/sync/changes?limit=20${
             cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
           }`,
-          credential.token
+          credential.token,
         );
         if (!active()) return;
         if (
@@ -565,7 +626,7 @@ export class AccountSyncClient {
           if (item.envelope?.recordId !== item.recordId)
             throw new Error('Sync record mismatch');
           const snapshot = validateIncomingSnapshot(
-            decryptSyncRecord(item.envelope, key)
+            decryptSyncRecord(item.envelope, key),
           );
           if (item.recordId !== `device_${snapshot.deviceId}`)
             throw new Error('Invalid device record');
@@ -601,7 +662,7 @@ export class AccountSyncClient {
           credential.token,
           envelope,
           revision ? { 'If-Match': `"${revision}"` } : { 'If-None-Match': '*' },
-          'PUT'
+          'PUT',
         );
         if (!active()) return;
         if (!Number.isSafeInteger(body.revision) || body.revision < 1)
@@ -647,7 +708,9 @@ export class AccountSyncClient {
       throw new Error('Enable password sync and unlock your account first.');
   }
 
-  private async privateDataKey(category: 'passwords' | 'notes' = 'passwords') {
+  private async privateDataKey(
+    category: 'passwords' | 'notes' | 'personalData' = 'passwords',
+  ) {
     const { credential } = this.saved;
     const settings = this.options.preferences().cloudSync;
     if (
@@ -658,7 +721,7 @@ export class AccountSyncClient {
       !settings.categories[category]
     )
       throw new Error(
-        `Enable ${category} sync and connect your account first.`
+        `Enable ${category === 'personalData' ? 'personal data' : category} sync and connect your account first.`,
       );
     const { generation } = this;
     const key = Buffer.from(credential.key, 'base64url');
@@ -681,14 +744,128 @@ export class AccountSyncClient {
     }
   }
 
+  async syncPersonalData(items: SyncedPersonalItem[], current: () => boolean) {
+    const value = Buffer.from(
+      JSON.stringify(validateSyncedPersonalData(items)),
+      'utf8',
+    );
+    if (value.length > 40 * 1024 * 1024)
+      throw new Error('Personal data exceeds the cloud storage limit.');
+    const { key, credential, generation } =
+      await this.privateDataKey('personalData');
+    const manifestId = `personal_${credential.deviceId}`;
+    const prefix = `personalblob_${createHash('sha256').update(credential.deviceId).digest('hex').slice(0, 16)}_`;
+    const guard = () => {
+      const settings = this.options.preferences().cloudSync;
+      return (
+        current() &&
+        generation === this.generation &&
+        settings.enabled &&
+        settings.provider === 'kudiumbrowser' &&
+        Boolean(settings.categories.personalData)
+      );
+    };
+    try {
+      let revision = 0;
+      let previous: string[] = [];
+      try {
+        const old = (
+          await this.request(`/v1/sync/records/${manifestId}`, credential.token)
+        ).body;
+        revision = old.revision;
+        previous = (decryptSyncRecord(old.envelope, key) as any).chunks || [];
+      } catch (error) {
+        if (!(error instanceof SyncHTTPError && error.status === 404))
+          throw error;
+        revision = error.revision || 0;
+      }
+      const chunks: string[] = [];
+      for (let offset = 0; offset < value.length; offset += 4 * 1024 * 1024) {
+        if (!guard()) throw new Error('Personal data sync was paused.');
+        const data = value
+          .subarray(offset, offset + 4 * 1024 * 1024)
+          .toString('base64');
+        const id = prefix + createHash('sha256').update(data).digest('hex');
+        const repeated = chunks.includes(id);
+        chunks.push(id);
+        if (repeated || previous.includes(id)) continue;
+        let expected = 0;
+        try {
+          const existing = (
+            await this.request(`/v1/sync/records/${id}`, credential.token)
+          ).body;
+          expected = existing.revision;
+          if (existing.envelope) {
+            if (
+              existing.envelope.recordId !== id ||
+              (decryptSyncRecord(existing.envelope, key) as any).data !== data
+            )
+              throw new Error(
+                'Personal data chunk does not match its content.',
+              );
+            continue;
+          }
+        } catch (error) {
+          if (!(error instanceof SyncHTTPError && error.status === 404))
+            throw error;
+          expected = error.revision || 0;
+        }
+        if (!guard()) throw new Error('Personal data sync was paused.');
+        await this.request(
+          `/v1/sync/records/${id}`,
+          credential.token,
+          encryptSyncRecord({ data }, key, id),
+          expected ? { 'If-Match': `"${expected}"` } : { 'If-None-Match': '*' },
+          'PUT',
+        );
+      }
+      if (!guard()) throw new Error('Personal data sync was paused.');
+      await this.request(
+        `/v1/sync/records/${manifestId}`,
+        credential.token,
+        encryptSyncRecord(
+          { version: 1, deviceId: credential.deviceId, chunks },
+          key,
+          manifestId,
+        ),
+        revision ? { 'If-Match': `"${revision}"` } : { 'If-None-Match': '*' },
+        'PUT',
+      );
+      // Remove replaced chunks only after the new complete manifest is committed.
+      for (const id of previous.filter(
+        (id) => id.startsWith(prefix) && !chunks.includes(id),
+      )) {
+        if (!guard()) break;
+        try {
+          const old = (
+            await this.request(`/v1/sync/records/${id}`, credential.token)
+          ).body;
+          await this.request(
+            `/v1/sync/records/${id}`,
+            credential.token,
+            undefined,
+            { 'If-Match': `"${old.revision}"` },
+            'DELETE',
+          );
+        } catch {
+          /* Retry cleanup on a later backup. */
+        }
+      }
+      this.message = `${items.length} personal records synced securely.`;
+    } finally {
+      key.fill(0);
+      value.fill(0);
+    }
+  }
+
   async syncPasswords(
     value: SyncedLogin[],
-    current: () => boolean = () => true
+    current: () => boolean = () => true,
   ) {
     return this.uploadPrivateSnapshot(
       'passwords',
       validateSyncedLogins(value),
-      current
+      current,
     );
   }
 
@@ -696,7 +873,7 @@ export class AccountSyncClient {
     return this.restorePrivateSnapshot(
       'passwords',
       recordId,
-      validateSyncedLogins
+      validateSyncedLogins,
     );
   }
 
@@ -704,7 +881,7 @@ export class AccountSyncClient {
     return this.uploadPrivateSnapshot(
       'notes',
       validateSyncedNotes(value),
-      current
+      current,
     );
   }
 
@@ -715,7 +892,7 @@ export class AccountSyncClient {
   private async uploadPrivateSnapshot<T>(
     category: 'passwords' | 'notes',
     items: T[],
-    current: () => boolean = () => true
+    current: () => boolean = () => true,
   ) {
     const { key, credential, generation } = await this.privateDataKey(category);
     try {
@@ -741,14 +918,14 @@ export class AccountSyncClient {
       const envelope = encryptSyncRecord(
         { version: 1, deviceId: credential.deviceId, items },
         key,
-        recordId
+        recordId,
       );
       await this.request(
         `/v1/sync/records/${recordId}`,
         credential.token,
         envelope,
         revision ? { 'If-Match': `"${revision}"` } : { 'If-None-Match': '*' },
-        'PUT'
+        'PUT',
       );
       if (category === 'notes') this.noteRecords.add(recordId);
       this.message =
@@ -763,7 +940,7 @@ export class AccountSyncClient {
   private async restorePrivateSnapshot<T>(
     category: 'passwords' | 'notes',
     recordId: string,
-    validate: (value: unknown) => T[]
+    validate: (value: unknown) => T[],
   ) {
     if (!new RegExp(`^${category}_[a-zA-Z0-9_-]{1,128}$`).test(recordId))
       throw new Error('Choose a private data backup.');
@@ -783,7 +960,7 @@ export class AccountSyncClient {
         data.version !== 1 ||
         `${category}_${data.deviceId}` !== recordId ||
         Object.keys(data).some(
-          (field) => !['version', 'deviceId', 'items'].includes(field)
+          (field) => !['version', 'deviceId', 'items'].includes(field),
         )
       )
         throw new Error('Invalid private data backup.');
@@ -813,7 +990,7 @@ export class AccountSyncClient {
     const spaceFor = (id: string) => {
       if (!spaceIds.has(id)) {
         const original = snapshot.workspace?.spaces.find(
-          (space) => space.id === id
+          (space) => space.id === id,
         );
         const local = randomUUID();
         spaceIds.set(id, local);
@@ -855,7 +1032,7 @@ export class AccountSyncClient {
             sessionName: tab.sessionName,
             favorite: tab.favorite,
             pinned: tab.pinned,
-          })
+          }),
         );
     else if (settings.categories.openTabs)
       snapshot.openTabs?.forEach((tab) =>
@@ -867,7 +1044,7 @@ export class AccountSyncClient {
           url: tab.url,
           icon: '',
           pinned: false,
-        })
+        }),
       );
     if (!apps.length)
       throw new Error('No selected browsing data is available to restore.');
@@ -921,7 +1098,7 @@ export class AccountSyncClient {
       throw new Error(
         response.status === 401
           ? 'Your account session expired. Sign in through Sync Preferences.'
-          : result.error || 'Publishing failed.'
+          : result.error || 'Publishing failed.',
       );
     return result;
   }
@@ -936,9 +1113,12 @@ export class AccountSyncClient {
       credential.token,
       undefined,
       { 'X-Confirm-Delete': 'all-sync-data' },
-      'DELETE'
+      'DELETE',
     );
-    if (generation !== this.generation || credential !== this.saved.credential) throw new Error('Your account changed while resetting sync. Reconnect before continuing.');
+    if (generation !== this.generation || credential !== this.saved.credential)
+      throw new Error(
+        'Your account changed while resetting sync. Reconnect before continuing.',
+      );
     this.pause();
     credential.enrolled = false;
     credential.key = undefined;

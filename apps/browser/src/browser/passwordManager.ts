@@ -52,7 +52,7 @@ type VaultOperation =
   | { action: 'migrateOS'; password: string }
   | { action: 'unlock' | 'create'; password: string }
   | { action: 'settings'; enabled: boolean; autofill: boolean; ai: boolean }
-  | { action: 'save'; item: VaultItem }
+  | { action: 'save'; item: VaultItem; destination?: string | null }
   | { action: 'delete' | 'edit' | 'reveal'; id: string }
   | { action: 'changePassword'; password: string }
   | { action: 'fill'; id: string; pageId: number }

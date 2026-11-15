@@ -54,10 +54,7 @@ export function encryptSyncRecord(
 function decode(value: unknown, max: number) {
   if (
     typeof value !== 'string' ||
-    value.length > Math.ceil(max / 3) * 4 ||
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      value
-    )
+    value.length > Math.ceil(max / 3) * 4
   )
     throw new Error('Invalid encrypted sync data');
   const bytes = Buffer.from(value, 'base64');

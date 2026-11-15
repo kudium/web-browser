@@ -138,6 +138,30 @@ assert.equal(await js(`document.documentElement.scrollWidth>innerWidth`),false);
 await js(`document.querySelector('.cloud-delete').click();document.querySelector('.cloud-delete-confirm button').click();`);await settle();
 assert.equal(await js(`document.querySelector('.cloud-workspace').classList.contains('cloud-detail-open')`),false);
 assert.equal(await js(`getComputedStyle(document.querySelector('.cloud-list')).display!=='none'`),true);
+// Personal details, captured forms, documents and passwords use production rendering.
+await js(`window.demoRecords=[{id:'personal_studio',revision:1,category:'personal',value:{version:1,deviceId:'studio',items:[
+{id:'profile',title:'Studio profile',kind:'profile',origin:'',username:'',password:'',fields:[{name:'Name',value:'Alex Morgan',secret:false},{name:'API key',value:'fictional-secret',secret:true}]},
+{id:'form',title:'Shipping form',kind:'profile',origin:'https://example.com',username:'',password:'',fields:[{name:'City',value:'Copenhagen',secret:false}]},
+{id:'document',title:'Studio brief',kind:'knowledge',origin:'',username:'',password:'',fields:[],document:{name:'brief.txt',mime:'text/plain',text:'A fictional studio brief.',content:btoa('A fictional studio brief.')}},
+{id:'login',title:'Studio login',kind:'login',origin:'https://example.com',username:'alex',password:'fictional-password',fields:[]}
+]}}];document.querySelector('[data-data-refresh]').click();`);await settle();
+win.setSize(1440,1120);await settle();
+for(const category of ['personal','forms','documents','passwords']){
+ await js(`document.querySelector('[data-data-category="${category}"]').click();document.querySelector('.cloud-item').click();`);await settle();
+ assert.equal(await js(`document.querySelectorAll('.cloud-item').length`),1);
+ assert.equal(await js(`document.querySelector('.cloud-preview').textContent.includes('fictional-secret')||document.querySelector('.cloud-preview').textContent.includes('fictional-password')`),false);
+ fs.writeFileSync(path.join(output,`${category}.png`),(await win.capturePage()).toPNG());
+}
+await js(`document.querySelector('.cloud-preview button').click();`);
+assert.equal(await js(`document.querySelector('.cloud-preview').textContent.includes('fictional-password')`),true);
+await js(`document.querySelector('.cloud-preview button').click();`);
+assert.equal(await js(`document.querySelector('.cloud-preview').textContent.includes('fictional-password')`),false);
+await js(`document.querySelector('[data-data-category="documents"]').click();document.querySelector('.cloud-item').click();window.downloadResult=null;URL.createObjectURL=blob=>{window.downloadResult=blob;return 'blob:fictional';};HTMLAnchorElement.prototype.click=function(){window.downloadName=this.download;};document.querySelector('.cloud-preview button').click();`);
+assert.equal(await win.webContents.executeJavaScript(`window.downloadResult.text()`),'A fictional studio brief.');
+assert.equal(await js(`window.downloadName`),'brief.txt');
+win.setSize(390,844);await settle();
+assert.equal(await js(`document.documentElement.scrollWidth>innerWidth`),false);
+fs.writeFileSync(path.join(output,'documents-mobile.png'),(await win.capturePage()).toPNG());
 console.log('Preview screenshots: '+output);
 console.log('Passed: notes/tab/hook previews, search, draft protection, revision-checked save, failed-save draft retention, confirmed deletion, mobile menus, validation, recovery/error actions, literal content, and 320–1920px layouts.');win.destroy();app.quit();
 }).catch(error=>{console.error(error);app.exit(1)});

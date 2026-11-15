@@ -20,6 +20,17 @@ export function expectedRevision(ifMatch: string | undefined, ifNoneMatch?: stri
   if (!/^"[1-9][0-9]*"$/.test(ifMatch) || !Number.isSafeInteger(Number(ifMatch.slice(1, -1)))) throw new HTTPException(400, { message: 'invalid_revision' });
   return Number(ifMatch.slice(1, -1));
 }
+/** Leave room for cursors and JSON metadata under the desktop transport limit. */
+export function boundedChangePage<T extends { envelope: unknown }>(rows: T[], limit: number): T[] {
+  const page: T[] = [];
+  let bytes = 0;
+  for (const row of rows.slice(0, limit)) {
+    const size = Buffer.byteLength(JSON.stringify(row.envelope)) + 1024;
+    if (page.length && bytes + size > 12 * 1024 * 1024 - 64 * 1024) break;
+    page.push(row); bytes += size;
+  }
+  return page;
+}
 export function syncStore(db: Database) {
   async function ensure(account: string) { await db.insert(accounts).values({ id: account }).onConflictDoNothing(); }
   return {
@@ -60,8 +71,8 @@ export function syncStore(db: Database) {
       const [owner] = await db.select().from(accounts).where(eq(accounts.id, account));
       if (revision > owner.revision) throw new HTTPException(400, { message: 'invalid_cursor' });
       const rows = await db.select().from(changes).where(and(eq(changes.accountId, account), gt(changes.revision, revision))).orderBy(asc(changes.revision)).limit(limit + 1);
-      const page = rows.slice(0, limit);
-      return { changes: page.map(row => ({ recordId: row.recordId, revision: row.revision, envelope: row.envelope, deleted: row.envelope === null })), cursor: cursorFor(account, page.at(-1)?.revision ?? revision), hasMore: rows.length > limit };
+      const page = boundedChangePage(rows, limit);
+      return { changes: page.map(row => ({ recordId: row.recordId, revision: row.revision, envelope: row.envelope, deleted: row.envelope === null })), cursor: cursorFor(account, page.at(-1)?.revision ?? revision), hasMore: rows.length > page.length };
     },
     async clear(account: string) {
       await ensure(account);

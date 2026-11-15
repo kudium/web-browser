@@ -282,3 +282,46 @@ it('allows Preferences to browse website data saved in a tab group', async () =>
   await screen.findByRole('button', { name: 'Website fields' });
   expect(request).toHaveBeenCalledWith({ action: 'status', scope: 'group:studio' });
 });
+
+it('lets a new saved item choose a group independently of the current view', async () => {
+  render(<Theme><PasswordManager tabs={[{id:'tab',sessionId:'studio',sessionName:'Studio',name:'Example',url:'https://example.com'} as any]} /></Theme>);
+  fireEvent.click(await screen.findByRole('button',{name:'Add item'}));
+  const dialog=await screen.findByRole('dialog',{name:'Add saved item'});
+  fireEvent.click(within(dialog).getByRole('button',{name:'Save in group'}));
+  fireEvent.click(await screen.findByRole('option',{name:'Studio'}));
+  fireEvent.change(within(dialog).getByRole('textbox',{name:'Key 1'}),{target:{value:'Name'}});
+  fireEvent.change(within(dialog).getByRole('textbox',{name:'Value 1'}),{target:{value:'Alex'}});
+  fireEvent.click(within(dialog).getByRole('button',{name:'Save'}));
+  await waitFor(()=>expect(request).toHaveBeenCalledWith(expect.objectContaining({action:'save',destination:'group:studio'})));
+});
+
+it('lets an existing group item move to browser-wide storage', async () => {
+  const tab={id:'tab',sessionId:'studio',sessionName:'Studio',name:'Example',url:'https://example.com'} as any;
+  request.mockImplementation(async input=>input.action==='status'?{...status,items:[{...status.items[0],scope:'group:studio'}]}:input.action==='edit'?{...saved,scope:'group:studio'}:null);
+  render(<Theme><PasswordManager group={tab} tabs={[tab]} /></Theme>);
+  fireEvent.click(await screen.findByRole('button',{name:'Edit'}));
+  const dialog=await screen.findByRole('dialog',{name:'Edit saved item'});
+  const selector=within(dialog).getByRole('button',{name:'Save in group'});
+  expect(selector).toHaveTextContent('Studio');
+  fireEvent.click(selector);
+  fireEvent.click(await screen.findByRole('option',{name:'Browser-wide (all groups)'}));
+  fireEvent.click(within(dialog).getByRole('button',{name:'Save'}));
+  await waitFor(()=>expect(request).toHaveBeenCalledWith(expect.objectContaining({action:'save',scope:'group:studio',destination:null})));
+});
+
+it('fills an empty field name from Fill as and preserves an entered name', async () => {
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+  const field = screen.getByLabelText('Key 1');
+  const mapping = screen.getByLabelText('Fill as for value 1');
+  fireEvent.change(mapping, { target: { value: 'email' } });
+  expect(field).toHaveValue('Email');
+  fireEvent.change(field, { target: { value: 'Contact' } });
+  fireEvent.change(mapping, { target: { value: 'tel' } });
+  expect(field).toHaveValue('Contact');
+  fireEvent.change(field, { target: { value: '   ' } });
+  fireEvent.change(mapping, { target: { value: 'name' } });
+  expect(field).toHaveValue('Full name');
+  fireEvent.change(mapping, { target: { value: '' } });
+  expect(field).toHaveValue('Full name');
+});
