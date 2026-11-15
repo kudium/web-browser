@@ -1,4 +1,4 @@
-FROM oven/bun:1.2.19
+FROM oven/bun:1.4.4
 WORKDIR /app/apps/web
 COPY --chown=bun:bun apps/web/package.json apps/web/bun.lock ./
 RUN bun install --frozen-lockfile --production
