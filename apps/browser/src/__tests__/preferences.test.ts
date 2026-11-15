@@ -255,6 +255,7 @@ it('persists sync consent and category selections without claiming a cloud conne
       preferences: true,
       passwords: true,
       notes: true,
+      personalData: false,
     },
   });
   expect(() =>
