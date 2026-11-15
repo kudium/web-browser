@@ -1,4 +1,11 @@
-import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  shell,
+  dialog,
+  powerMonitor,
+} from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { setHookPublisher, setHookAccountStatus } from '../hookMarketplace';
@@ -8,6 +15,7 @@ import {
   personalDataRevision,
   passwordVault,
 } from '../passwordManager';
+import { AccountSyncScheduler } from './accountScheduler';
 import { AccountSyncClient } from './accountClient';
 import { personalDataForSync, type SyncedPersonalItem } from './personalData';
 import { PasswordSyncScheduler } from './passwordScheduler';
@@ -27,6 +35,10 @@ export function registerAccountSync(
   main: (window: BrowserWindow) => boolean,
 ) {
   let client: AccountSyncClient | undefined;
+  const schedule = new AccountSyncScheduler();
+  let syncInFlight = false;
+  let vaultRevision = 0;
+  let stopVaultChanges: (() => void) | undefined;
   const passwordScheduler = new PasswordSyncScheduler();
   const personalScheduler = new PasswordSyncScheduler<SyncedPersonalItem>();
   const filename = () => path.join(app.getPath('userData'), 'account-sync.bin');
@@ -35,7 +47,10 @@ export function registerAccountSync(
       throw new Error(
         'Enable secure local storage before connecting sync. Restart the browser to enable it.',
       );
-    if (!client)
+    if (!client) {
+      stopVaultChanges = passwordVault().onChange(() => {
+        vaultRevision += 1;
+      });
       client = new AccountSyncClient({
         load: () => {
           if (!fs.existsSync(filename())) return {};
@@ -65,6 +80,7 @@ export function registerAccountSync(
         },
         open: (url) => shell.openExternal(url),
       });
+    }
     return client;
   };
   setHookPublisher((data) => get().publishHook(data));
@@ -84,7 +100,12 @@ export function registerAccountSync(
         throw new Error('Untrusted sync request.');
       if (action === 'snapshot' && !main(owner))
         throw new Error('Only the browser can publish its workspace.');
-      if (action !== 'snapshot' && action !== 'status' && main(owner))
+      if (
+        action !== 'snapshot' &&
+        action !== 'network-restored' &&
+        action !== 'status' &&
+        main(owner)
+      )
         throw new Error('Open Sync Preferences to manage your account.');
       if (!input || typeof input !== 'object' || Array.isArray(input))
         throw new Error('Invalid sync request');
@@ -235,8 +256,13 @@ export function registerAccountSync(
           throw new Error('Choose a workspace.');
         updateBrowserPreferences(instance.remotePreferences(input.recordId));
       } else if (action === 'sync') await instance.sync(true);
-      else if (action === 'snapshot') instance.snapshot(input);
-      else if (action === 'restore') {
+      else if (action === 'snapshot') {
+        if (instance.snapshot(input)) schedule.changed();
+      } else if (action === 'network-restored') {
+        if (!main(owner))
+          throw new Error('Only the browser can report connectivity.');
+        schedule.wake();
+      } else if (action === 'restore') {
         if (typeof input.recordId !== 'string')
           throw new Error('Choose a workspace.');
         return instance.restore(input.recordId);
@@ -259,7 +285,6 @@ export function registerAccountSync(
 
   let lastPasswords = 0;
   let lastPoll = 0;
-  let lastSync = 0;
   const timer = setInterval(() => {
     if (!client) return;
     const now = Date.now();
@@ -271,6 +296,7 @@ export function registerAccountSync(
       lastPasswords = now;
       const instance = client;
       const revision = personalDataRevision();
+      const dataRevision = vaultRevision;
       const current = () => {
         const settings = getBrowserPreferences().cloudSync;
         const status = instance.status();
@@ -282,11 +308,13 @@ export function registerAccountSync(
           settings.provider === 'kudiumbrowser' &&
           Boolean(settings.categories.passwords) &&
           personalDataRevision() === revision &&
+          vaultRevision === dataRevision &&
           !passwordVault().status().locked
         );
       };
       personalScheduler
         .tick({
+          revision: dataRevision,
           current: () => {
             const settings = getBrowserPreferences().cloudSync;
             const status = instance.status();
@@ -298,6 +326,7 @@ export function registerAccountSync(
               settings.provider === 'kudiumbrowser' &&
               Boolean(settings.categories.personalData) &&
               personalDataRevision() === revision &&
+              vaultRevision === dataRevision &&
               !passwordVault().status().locked
             );
           },
@@ -308,6 +337,7 @@ export function registerAccountSync(
         .catch(() => {});
       passwordScheduler
         .tick({
+          revision: dataRevision,
           current,
           read: () => {
             if (!current()) return undefined;
@@ -331,21 +361,72 @@ export function registerAccountSync(
         })
         .catch(() => {});
     }
-    if (now - lastSync >= 30000) {
-      lastSync = now;
-      client.sync().catch(() => {});
+    const settings = getBrowserPreferences().cloudSync;
+    const status = client.status();
+    if (
+      settings.enabled &&
+      settings.provider === 'kudiumbrowser' &&
+      status.connected &&
+      (status.phase === 'ready' || status.phase === 'error') &&
+      !syncInFlight &&
+      schedule.due(
+        now,
+        !BrowserWindow.getFocusedWindow() ||
+          powerMonitor.getSystemIdleTime() >= 300,
+        client.nextRetryAt(),
+      )
+    ) {
+      const instance = client;
+      const revision = schedule.start(now);
+      syncInFlight = true;
+      instance
+        .sync()
+        .then((success) => {
+          if (client === instance) schedule.finished(revision, success);
+          return success;
+        })
+        .finally(() => {
+          syncInFlight = false;
+        })
+        .catch(() => {});
     }
   }, 1000);
   timer.unref();
+  const wake = () => {
+    if (client) schedule.wake();
+  };
+  const focused = (_event: Electron.Event, window: BrowserWindow) => {
+    if (main(window) && trusted(window)) wake();
+  };
+  app.on('browser-window-focus', focused);
+  let stopped = false;
+  app
+    .whenReady()
+    .then(() => !stopped && powerMonitor.on('resume', wake))
+    .catch(() => {});
+  let previousSyncSettings = JSON.stringify(getBrowserPreferences().cloudSync);
   onBrowserPreferencesChanged(() => {
-    passwordScheduler.reset();
-    personalScheduler.reset();
-    client?.pause();
+    const settings = JSON.stringify(getBrowserPreferences().cloudSync);
+    const settingsChanged = settings !== previousSyncSettings;
+    previousSyncSettings = settings;
+    const workspaceChanged = client?.workspaceChanged();
+    if (settingsChanged) {
+      passwordScheduler.reset();
+      personalScheduler.reset();
+    }
+    if (settingsChanged || workspaceChanged) {
+      schedule.changed();
+      client?.pause();
+    }
   });
   app.once('will-quit', () => {
+    stopped = true;
     passwordScheduler.reset();
     personalScheduler.reset();
     clearInterval(timer);
+    stopVaultChanges?.();
+    app.removeListener('browser-window-focus', focused);
+    powerMonitor.removeListener('resume', wake);
     client?.pause();
   });
 }

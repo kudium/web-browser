@@ -7,6 +7,7 @@ import { connect } from "../src/db";
 import { authUser, hookListings, hookModeration } from "../src/schema";
 import {
   marketplaceStore,
+  publisherUsername,
   encodeHookCursor,
   decodeHookCursor,
   hookQuery,
@@ -58,6 +59,14 @@ test("cursors are bound to filters and reject malformed boundaries", () => {
   expect(() => decodeHookCursor(cursor, hookQuery({ q: "other" }))).toThrow();
   expect(() => decodeHookCursor("invalid", q)).toThrow();
   expect(() => hookQuery({ kind: "bad" })).toThrow();
+});
+test("publisher usernames normalize case and reject invalid handles", () => {
+  expect(publisherUsername(" Atlas_Studio ")).toBe("atlas_studio");
+  for (const value of ["ab", "123name", "has spaces", "@alice", "a".repeat(31), "publisher-reserved"])
+    expect(() => publisherUsername(value)).toThrow();
+  const page = hookPublishPage(undefined, "", "atlas_studio");
+  expect(page).toContain('name="username"');
+  expect(page).toContain('value="atlas_studio"');
 });
 const url = process.env.TEST_DATABASE_URL;
 describe.skipIf(!url)(
@@ -124,6 +133,23 @@ describe.skipIf(!url)(
         .delete(authUser)
         .where(inArray(authUser.id, [alice, bob, admin]));
       await client.end();
+    });
+    test("chosen publisher handles are unique, public and atomic with publication", async () => {
+      const handle = 'atlas_' + suffix.replaceAll('-', '').slice(0, 12);
+      const published = await store.publish(alice, sample(), undefined, undefined, handle.toUpperCase());
+      expect((await store.detail(published.id)).author.username).toBe(handle);
+      expect((await store.package(published.id)).publisher.username).toBe(handle);
+      const bobBefore = await store.publisher(bob);
+      const collision = await request('/api/hooks/publish', 'POST', bob, { package: sample(), username: handle.toUpperCase() });
+      expect(collision.status).toBe(409);
+      expect(await collision.text()).toContain('already taken');
+      await expect(store.publish(bob, sample(), undefined, undefined, handle)).rejects.toThrow('already taken');
+      expect(await store.publisher(bob)).toEqual(bobBefore);
+      await expect(store.publish(alice, sample(), published.id, 999, 'changed_' + suffix.replaceAll('-', '').slice(0, 12))).rejects.toThrow('hook_changed');
+      expect((await store.publisher(alice)).username).toBe(handle);
+      const html = await (await request('/hooks/' + published.id)).text();
+      expect(html).toContain('@' + handle);
+      expect(html).not.toContain(alice + '@example.test');
     });
     test("public browsing, JSON assets, and account redirects work", async () => {
       expect((await request("/hooks")).status).toBe(200);

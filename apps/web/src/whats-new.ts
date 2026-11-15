@@ -1,5 +1,17 @@
 export const whatsNew = [
   {
+    version: '1.0.15',
+    date: '2026-11-15',
+    title: 'Quieter sync and smarter media controls',
+    highlights: [
+      ['Smarter music controls', 'Sidebar controls distinguish sustained playback from muted loops and brief website effects, with cached media detection that reduces background work.'],
+      ['More efficient account sync', 'Changed browsing data syncs promptly while remote checks slow down when idle. Unchanged saved data avoids repeated reads, and failed uploads retry with increasing delays.'],
+      ['Simpler agent reconnects', 'Connecting Hermes or OpenClaw refreshes the browser connection and removes duplicate local entries, including the previous Touchbox name.'],
+      ['Recognizable hook publishers', 'Marketplace packages support unique publisher usernames, shown in install previews when provided by the marketplace.'],
+      ['Optional form tools', 'Unchanged bundled Form tools are retired; customized and installed hooks are preserved. Install the optional Form tools package from the marketplace to keep these actions.'],
+    ],
+  },
+  {
     version: '1.0.14',
     date: '2026-11-15',
     title: 'Personal data across your devices',

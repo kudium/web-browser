@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "minimumBrowserVersion": "1.0.11",
+  "license": "MIT",
+  "applicability": "general",
+  "sites": [],
+  "path": "/*",
+  "testUrl": "https://example.com",
+  "lifecycle": {
+    "before": "",
+    "after": "",
+    "css": ""
+  },
+  "name": "Form tools",
+  "description": "Optional form actions for Kudium Browser: generate and fill a password, save a form to Personal Data, or fill an input from Personal Data. Actions run only when selected from the context menu. Saved data stays in your browser unless you enable sync. Personal Data actions may require unlocking your vault.",
+  "actions": [
+    {
+      "id": "generate-password",
+      "name": "Generate password",
+      "contexts": [
+        "password"
+      ],
+      "source": "api.passwords.generateAndFill();"
+    },
+    {
+      "id": "save-form",
+      "name": "Save form to Personal Data",
+      "contexts": [
+        "page",
+        "input",
+        "password"
+      ],
+      "source": "api.personalData.saveForm();"
+    },
+    {
+      "id": "fill-personal-data",
+      "name": "Fill from Personal Data",
+      "contexts": [
+        "input"
+      ],
+      "source": "api.personalData.fill();"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+beforeEach(() => jest.useFakeTimers());
+afterEach(() => jest.useRealTimers());
 import { PasswordSyncScheduler } from '../main/sync/passwordScheduler';
 
 const login = {
@@ -57,6 +59,31 @@ test('guards in-flight uploads after locking or opting out and retries failures'
   upload.mockRejectedValueOnce(new Error('offline'));
   await expect(scheduler.tick(options)).rejects.toThrow('offline');
   upload.mockImplementation(async () => {});
+  await scheduler.tick(options);
+  expect(upload).toHaveBeenCalledTimes(2);
+  jest.advanceTimersByTime(60000);
+  await scheduler.tick(options);
+  expect(upload).toHaveBeenCalledTimes(3);
+});
+
+test('unchanged vault revisions skip reads and hashes; changes and failed uploads remain retryable', async () => {
+  const scheduler = new PasswordSyncScheduler();
+  const read = jest.fn(() => []);
+  const upload = jest.fn(async () => {});
+  const options = { read, upload, current: () => true, revision: 1 };
+  await scheduler.tick(options);
+  await scheduler.tick(options);
+  expect(read).toHaveBeenCalledTimes(1);
+  await scheduler.tick({ ...options, revision: 2 });
+  await scheduler.tick({ ...options, revision: 2 });
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(upload).toHaveBeenCalledTimes(1);
+  scheduler.reset();
+  upload.mockRejectedValueOnce(new Error('offline'));
+  await expect(scheduler.tick(options)).rejects.toThrow('offline');
+  await scheduler.tick(options);
+  expect(upload).toHaveBeenCalledTimes(2);
+  jest.advanceTimersByTime(60000);
   await scheduler.tick(options);
   expect(upload).toHaveBeenCalledTimes(3);
 });

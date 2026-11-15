@@ -13,13 +13,23 @@ export function AccountSyncPublisher({
   states: Record<string, BrowserState>;
 }) {
   const { spaces } = useSpaces();
-  const currentUrls = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(states).map(([id, state]) => [id, state.url])
-      ),
-    [states]
+  // Audio/loading/title updates should not republish unchanged workspace URLs.
+  const currentUrlsJSON = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(states).map(([id, state]) => [id, state.url]),
+    ),
   );
+  const currentUrls = useMemo(
+    () => JSON.parse(currentUrlsJSON),
+    [currentUrlsJSON],
+  );
+  useEffect(() => {
+    const online = () => {
+      browser.accountSync('network-restored').catch(() => {});
+    };
+    window.addEventListener('online', online);
+    return () => window.removeEventListener('online', online);
+  }, []);
   useEffect(() => {
     const timer = setTimeout(() => {
       browser

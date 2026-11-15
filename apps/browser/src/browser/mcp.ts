@@ -19,6 +19,8 @@ export const MCP_GUIDE = `${PERSONAL_DATA_GUIDE}
 
 Kudium Browser browser control
 
+Connection authentication uses a local Bearer token supplied by Kudium Browser, not OAuth. Do not use an OAuth authorize flow to repair this connection. Once connected, call get_access to inspect browser permissions; when the user requests a permission change, call request_access to open Kudium's local approval dialog. HTTP 401 means the connection credential was rejected before any tool ran, so request_access cannot repair it. Reconnect from Kudium Preferences → AI assistant → External AI to refresh the agent configuration. Missing tool names after reconnect indicate that the agent must refresh its MCP tool registry; they do not indicate a browser permission denial.
+
 Use request_user_feedback for ambiguous tasks or action feedback, with up to five suggestions and a free-text answer. Wait and respect cancellation. Use request_personal_data for missing private task inputs: name observed website fields, never provide values. The HTTPS origin is fixed by Kudium Browser. The user can fill locally and optionally save; only an opaque recordId returns. Use fill_personal_data at the same tab and URL. Temporary values expire after 15 minutes and are removed after filling, Stop or chat changes. Never ask for secrets in ordinary chat.
 
 Site hook configs support up to 20 named hooks alongside legacy default code. Each hook has id, name, enabled, path, before, after and css. Path is a same-origin pathname glob such as /account/*; * matches any characters, query/hash ignored. Preserve existing hooks. Filtering occurs on document load; SPA route changes need a callback listener. Hooks run in list order; inspect logs to verify.

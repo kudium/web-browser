@@ -165,13 +165,15 @@ export async function fetchHookPackage(value: string, browserVersion: string) {
       envelope.version < 1 ||
       typeof envelope.publisher?.id !== 'string' ||
       typeof envelope.publisher?.name !== 'string' ||
+      (envelope.publisher.username !== undefined &&
+        (typeof envelope.publisher.username !== 'string' || !/^(?:[a-z][a-z0-9_]{2,29}|publisher-[a-f0-9]{32})$/.test(envelope.publisher.username))) ||
       envelope.contentHash !== hash
     )
       throw new Error('Invalid marketplace package metadata.');
     publication = {
       id: envelope.id,
       version: envelope.version,
-      publisher: { id: envelope.publisher.id, name: envelope.publisher.name },
+      publisher: { id: envelope.publisher.id, name: envelope.publisher.name, ...(envelope.publisher.username ? { username: envelope.publisher.username } : {}) },
       contentHash: hash,
     };
   }

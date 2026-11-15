@@ -85,12 +85,18 @@ export function decodeHookCursor(value: string, query: unknown) {
     throw new HTTPException(400, { message: 'invalid_cursor' });
   }
 }
+export function publisherUsername(input: string) {
+  const username = input.trim().toLowerCase();
+  if (!/^[a-z][a-z0-9_]{2,29}$/.test(username))
+    throw new HTTPException(400, { message: 'Use 3–30 letters, numbers or underscores, starting with a letter.' });
+  return username;
+}
 export function marketplaceStore(db: Database) {
   const publicRow = async (id: string, viewer?: string, admin = false) => {
     const [row] = await db
       .select({
         hook: hookListings,
-        author: { id: authUser.id, name: authUser.name },
+        author: { id: authUser.id, name: authUser.name, username: authUser.username },
       })
       .from(hookListings)
       .innerJoin(authUser, eq(authUser.id, hookListings.authorId))
@@ -103,6 +109,11 @@ export function marketplaceStore(db: Database) {
     return row;
   };
   return {
+    async publisher(userId: string) {
+      const [user] = await db.select({ username: authUser.username }).from(authUser).where(eq(authUser.id, userId));
+      if (!user) throw new HTTPException(404, { message: 'publisher_not_found' });
+      return user;
+    },
     async list(
       query: HookQuery,
       cursor?: string,
@@ -143,7 +154,7 @@ export function marketplaceStore(db: Database) {
       const rows = await db
         .select({
           hook: hookListings,
-          author: { id: authUser.id, name: authUser.name },
+          author: { id: authUser.id, name: authUser.name, username: authUser.username },
           package: hookVersions.package,
         })
         .from(hookListings)
@@ -233,11 +244,15 @@ export function marketplaceStore(db: Database) {
       userId: string,
       input: unknown,
       id?: string,
-      expected?: number
+      expected?: number,
+      username?: string
     ) {
       const pkg = validatedPackage(input);
       const hookId = id || randomUUID();
+      const handle = username === undefined ? undefined : publisherUsername(username);
       return db.transaction(async (tx) => {
+        if (handle !== undefined)
+          await tx.update(authUser).set({ username: handle, updatedAt: new Date() }).where(eq(authUser.id, userId));
         let version = 1;
         let status: 'approved' | 'pending' = 'approved';
         if (id) {
@@ -290,6 +305,10 @@ export function marketplaceStore(db: Database) {
             .insert(hookTargets)
             .values(pkg.sites.map((site) => ({ hookId, ...site })));
         return { id: hookId, version };
+      }).catch((error) => {
+        if ((error?.constraint_name || error?.cause?.constraint_name) === 'auth_users_username_unique')
+          throw new HTTPException(409, { message: 'That username is already taken. Choose another.' });
+        throw error;
       });
     },
     async like(id: string, user: string, liked: boolean) {
@@ -349,7 +368,7 @@ export function marketplaceStore(db: Database) {
           id: hookComments.id,
           body: hookComments.body,
           createdAt: hookComments.createdAt,
-          author: { id: authUser.id, name: authUser.name },
+          author: { id: authUser.id, name: authUser.name, username: authUser.username },
         })
         .from(hookComments)
         .innerJoin(authUser, eq(authUser.id, hookComments.userId))

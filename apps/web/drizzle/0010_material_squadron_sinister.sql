@@ -1,0 +1,1 @@
+ALTER TABLE "auth_users" ADD CONSTRAINT "auth_users_username_format" CHECK ("auth_users"."username" ~ '^(?:[a-z][a-z0-9_]{2,29}|publisher-[a-f0-9]{32})$');

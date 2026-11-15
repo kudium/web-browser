@@ -128,7 +128,7 @@
           article.className = "hook-comment";
           const meta = document.createElement("div");
           const author = document.createElement("strong");
-          author.textContent = comment.author.name;
+          author.textContent = comment.author.name + " · @" + comment.author.username;
           const date = document.createElement("time");
           date.textContent = new Date(comment.createdAt).toLocaleDateString();
           meta.append(author, date);
@@ -361,6 +361,7 @@
       try {
         const result = await api("/api/hooks/publish", "POST", {
           package: pkg,
+          username: data.username,
           ...(publish.dataset.id
             ? {
                 id: publish.dataset.id,

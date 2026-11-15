@@ -16,6 +16,7 @@ const state: BrowserState = {
   canGoBack: false,
   canGoForward: false,
   mediaPlaying: true,
+  sidebarMediaEligible: true,
 };
 
 test('appears for playback, targets the source tab, and keeps resume available after pause', () => {
@@ -140,4 +141,33 @@ test('rapid focus changes preserve the same widget and settle only on the final 
   act(() => jest.advanceTimersByTime(120));
   expect(screen.getByRole('group')).toBe(widget);
   jest.useRealTimers();
+});
+
+test('ignores decorative playback and clears a remembered player when its session ends', () => {
+  const props = {
+    tabs: [tab],
+    selectedId: 'other',
+    onCommand: jest.fn(),
+    onSelect: jest.fn(),
+  };
+  const view = render(
+    <SidebarMediaWidget
+      {...props}
+      states={{
+        music: { ...state, audible: true, sidebarMediaEligible: false },
+      }}
+    />,
+  );
+  expect(screen.queryByRole('group')).toBeNull();
+  view.rerender(<SidebarMediaWidget {...props} states={{ music: state }} />);
+  expect(screen.getByRole('group')).toBeTruthy();
+  view.rerender(
+    <SidebarMediaWidget
+      {...props}
+      states={{
+        music: { ...state, sidebarMediaEligible: false, mediaPlaying: false },
+      }}
+    />,
+  );
+  expect(screen.queryByRole('group')).toBeNull();
 });

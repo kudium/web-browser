@@ -61,6 +61,7 @@ export interface BrowserState {
   muted?: boolean;
   audible?: boolean;
   mediaPlaying?: boolean;
+  sidebarMediaEligible?: boolean;
   pictureInPicture?: PictureInPictureState;
   siteSettings?: {
     origin: string;

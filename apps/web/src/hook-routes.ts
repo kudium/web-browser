@@ -72,7 +72,7 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
   app.get('/hooks/new', async (c) => {
     const viewer = await session(c.req.raw.headers);
     return viewer
-      ? c.html(hookPublishPage(undefined, c.get('styleNonce')))
+      ? c.html(hookPublishPage(undefined, c.get('styleNonce'), (await store.publisher(viewer.user.id)).username))
       : c.redirect('/sign-in?next=%2Fhooks%2Fnew');
   });
   app.get('/hooks/:id/edit', async (c) => {
@@ -82,7 +82,7 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
     const detail = await store.detail(c.req.param('id'), viewer.user.id);
     if (detail.hook.authorId !== viewer.user.id)
       throw new HTTPException(403, { message: 'owner_required' });
-    return c.html(hookPublishPage(detail, c.get('styleNonce')));
+    return c.html(hookPublishPage(detail, c.get('styleNonce'), detail.author.username));
   });
   app.get('/hooks/:id', async (c) => {
     const viewer = await session(c.req.raw.headers);
@@ -186,6 +186,7 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
       z
         .object({
           package: z.unknown(),
+          username: z.string().max(30).optional(),
           id: z.string().max(100).optional(),
           expectedVersion: z.number().int().positive().optional(),
         })
@@ -196,7 +197,8 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
         c.get('user'),
         data.package,
         data.id,
-        data.expectedVersion
+        data.expectedVersion,
+        data.username
       ),
       201
     );

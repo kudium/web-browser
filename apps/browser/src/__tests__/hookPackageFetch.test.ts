@@ -106,6 +106,13 @@ it('validates redirected destinations and bounds redirects, MIME and package siz
     fetchHookPackage('https://example.com/package', '1.0.0')
   ).rejects.toThrow('256');
 });
+it('retains unique publisher handles in verified packages and rejects malformed handles', async () => {
+  const envelope = { id: 'one', version: 1, publisher: { id: 'author', name: 'Author', username: 'atlas_studio' }, contentHash: hookPackageHash(pkg), package: pkg };
+  mockReplies.push({ status: 200, body: JSON.stringify(envelope) });
+  expect((await fetchHookPackage('https://browser.kudium.com/v1/hooks/one/package', '1.0.0')).publication?.publisher.username).toBe('atlas_studio');
+  mockReplies.push({ status: 200, body: JSON.stringify({ ...envelope, publisher: { ...envelope.publisher, username: '@invalid name' } }) });
+  await expect(fetchHookPackage('https://browser.kudium.com/v1/hooks/one/package', '1.0.0')).rejects.toThrow('metadata');
+});
 it('verifies marketplace metadata against source and rejects unsupported browser/stage versions', async () => {
   const envelope = {
     id: 'one',

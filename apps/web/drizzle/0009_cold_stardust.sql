@@ -1,0 +1,2 @@
+ALTER TABLE "auth_users" ADD COLUMN "username" text DEFAULT 'publisher-' || replace(gen_random_uuid()::text, '-', '') NOT NULL;--> statement-breakpoint
+ALTER TABLE "auth_users" ADD CONSTRAINT "auth_users_username_unique" UNIQUE("username");

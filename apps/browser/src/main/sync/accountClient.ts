@@ -69,6 +69,7 @@ export class AccountSyncClient {
   };
 
   private lastDigest?: string;
+  private inputDigest?: string;
 
   private noteRecords = new Set<string>();
 
@@ -255,6 +256,9 @@ export class AccountSyncClient {
       this.noteRecords.clear();
       this.passwordRecords.clear();
       this.lastDigest = undefined;
+      this.inputDigest = undefined;
+      this.failures = 0;
+      this.retryAt = 0;
       this.pending = undefined;
       this.persist();
       const credential = this.saved.credential!;
@@ -542,10 +546,38 @@ export class AccountSyncClient {
       spaces: input.spaces,
       currentUrls: input.currentUrls,
     };
+    return this.workspaceChanged();
+  }
+
+  workspaceChanged() {
+    if (!this.input) return false;
+    const preferences = this.options.preferences();
+    if (
+      !preferences.cloudSync.enabled ||
+      preferences.cloudSync.provider !== 'kudiumbrowser'
+    )
+      return false;
+    const snapshot = buildSyncSnapshot({
+      settings: preferences.cloudSync,
+      deviceId: this.saved.credential?.deviceId || 'local',
+      ...this.input,
+      preferences,
+      now: 0,
+    });
+    const digest = createHash('sha256')
+      .update(JSON.stringify(snapshot))
+      .digest('hex');
+    const changed = digest !== this.inputDigest;
+    this.inputDigest = digest;
+    return changed;
+  }
+
+  nextRetryAt() {
+    return this.retryAt;
   }
 
   /* eslint-disable no-await-in-loop, no-restricted-syntax, no-continue -- Change pages must be processed in cursor order before upload. */
-  async sync(force = false) {
+  async sync(force = false): Promise<boolean> {
     const { credential } = this.saved;
     const preferences = this.options.preferences();
     if (
@@ -558,7 +590,7 @@ export class AccountSyncClient {
       preferences.cloudSync.provider !== 'kudiumbrowser' ||
       !this.input
     )
-      return;
+      return false;
     const { generation } = this;
     this.busy = true;
     this.phase = 'syncing';
@@ -585,7 +617,7 @@ export class AccountSyncClient {
           }`,
           credential.token,
         );
-        if (!active()) return;
+        if (!active()) return false;
         if (
           !Array.isArray(body.changes) ||
           typeof body.cursor !== 'string' ||
@@ -642,7 +674,7 @@ export class AccountSyncClient {
         if (!body.hasMore) break;
         if (page === 4999) throw new Error('Sync history is too large.');
       }
-      if (!active()) return;
+      if (!active()) return false;
       const snapshot = buildSyncSnapshot({
         settings: preferences.cloudSync,
         deviceId: credential.deviceId,
@@ -656,7 +688,7 @@ export class AccountSyncClient {
         const recordId = `device_${credential.deviceId}`;
         const envelope = encryptSyncRecord(snapshot, key, recordId);
         const revision = this.saved.revision || 0;
-        if (!active()) return;
+        if (!active()) return false;
         const { body } = await this.request(
           `/v1/sync/records/${recordId}`,
           credential.token,
@@ -664,7 +696,7 @@ export class AccountSyncClient {
           revision ? { 'If-Match': `"${revision}"` } : { 'If-None-Match': '*' },
           'PUT',
         );
-        if (!active()) return;
+        if (!active()) return false;
         if (!Number.isSafeInteger(body.revision) || body.revision < 1)
           throw new Error('Invalid revision');
         this.saved.revision = body.revision;
@@ -677,15 +709,23 @@ export class AccountSyncClient {
       this.persist();
       this.phase = 'ready';
       this.message = 'Your selected browsing data is synced.';
+      return true;
     } catch (error) {
-      if (generation !== this.generation) return;
+      if (generation !== this.generation) return false;
+      this.failures += 1;
+      this.retryAt =
+        Date.now() +
+        Math.min(60000 * 2 ** Math.min(this.failures - 1, 4), 900000);
       this.phase = 'error';
       this.message =
         'Sync couldn’t finish. Your local data is safe; we’ll retry.';
-      if (error instanceof SyncHTTPError && error.status === 401)
+      if (error instanceof SyncHTTPError && error.status === 401) {
+        this.retryAt = Infinity;
         this.message = 'Session expired. Reconnect your account.';
+      }
       if (error instanceof SyncHTTPError && error.status === 409)
         this.message = 'A newer copy exists. Sync again to reconcile.';
+      return false;
     } finally {
       key.fill(0);
       this.busy = false;
@@ -1067,6 +1107,9 @@ export class AccountSyncClient {
     this.noteRecords.clear();
     this.passwordRecords.clear();
     this.input = undefined;
+    this.inputDigest = undefined;
+    this.failures = 0;
+    this.retryAt = 0;
     this.lastDigest = undefined;
     this.persist();
     if (credential)

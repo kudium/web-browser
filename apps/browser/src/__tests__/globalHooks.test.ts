@@ -151,7 +151,7 @@ it('runs All groups hooks across current and future profiles before narrower hoo
 it('defaults the master switch on without running disabled hooks and preserves saved off settings', () => {
   const initial = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
   expect(initial.enabled).toBe(true);
-  expect(initial.hooks[0]).toMatchObject({id:'browser-form-tools',enabled:true,before:'',after:'',css:''});
+  expect(initial.hooks).toEqual([]);
   saveGlobalHooks(
     ALL_GROUPS_HOOK_SCOPE,
     { enabled: true, hooks: [{ ...hook, enabled: false }] },
@@ -187,63 +187,38 @@ it('disables default code independently of named site hooks', () => {
   expect(result.hooks).toEqual([expect.objectContaining({ id: 'site-hook' })]);
 });
 
-it('seeds browser actions once and respects edits, deletion and future profiles', () => {
-  const defaults = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
-  expect(defaults.hooks).toHaveLength(1);
-  expect(defaults.hooks[0].actions?.map(a => a.name)).toEqual(['Generate password','Save form to Personal Data','Fill from Personal Data']);
-  expect(effectiveHookConfig('new-profile','https://example.com').hooks?.[0].id).toBe('global:all:browser-form-tools');
-  saveGlobalHooks(ALL_GROUPS_HOOK_SCOPE,{...defaults,hooks:[]},globalHookHash(defaults));
+it('does not install bundled form actions in new profiles', () => {
   expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks).toEqual([]);
-  // Reload storage by visiting a different disposable profile directory.
-  const original = mockFolder;
-  mockFolder = fs.mkdtempSync(path.join(os.tmpdir(),'kudium-global-reload-'));
-  getGlobalHooks('temporary');
-  fs.rmSync(mockFolder,{recursive:true,force:true});
-  mockFolder = original;
-  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks).toEqual([]);
+  expect(effectiveHookConfig('new-profile', 'https://example.com').hooks).toEqual([]);
 });
 
-it('adds Save form once to existing Form tools while preserving custom actions and disabled settings', () => {
-  const existing = { ...hook, id: 'browser-form-tools', enabled: false, actions: [{ id: 'custom', name: 'My action', contexts: ['input'], source: 'return "custom";' }] };
+it('removes unchanged legacy Form tools and preserves customized copies', () => {
+  const bundled: import('../browser/hookMarketplace').GlobalHook = {
+    id: 'browser-form-tools', name: 'Form tools', enabled: true,
+    path: '/*', before: '', after: '', css: '', exclusions: [],
+    actions: [
+      { id: 'generate-password', name: 'Generate password', contexts: ['password'], source: 'api.passwords.generateAndFill();' },
+      { id: 'save-form', name: 'Save form to Personal Data', contexts: ['page', 'input', 'password'], source: 'api.personalData.saveForm();' },
+      { id: 'fill-personal-data', name: 'Fill from Personal Data', contexts: ['input'], source: 'api.personalData.fill();' },
+    ],
+  };
   fs.writeFileSync(path.join(mockFolder, 'global-hooks.json'), JSON.stringify({
     '@browser-default-hooks': 1,
-    [ALL_GROUPS_HOOK_SCOPE]: { enabled: false, hooks: [existing] },
+    [ALL_GROUPS_HOOK_SCOPE]: { enabled: false, hooks: [bundled, hook] },
   }));
-  const migrated = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
-  expect(migrated.enabled).toBe(false);
-  expect(migrated.hooks[0]).toMatchObject({ enabled: false, exclusions: existing.exclusions });
-  expect(migrated.hooks[0].actions?.map(a => a.id)).toEqual(['custom', 'save-form']);
-  const withoutSave = { ...migrated, hooks: [{ ...migrated.hooks[0], actions: migrated.hooks[0].actions!.filter(a => a.id !== 'save-form') }] };
-  saveGlobalHooks(ALL_GROUPS_HOOK_SCOPE, withoutSave, globalHookHash(migrated));
-  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE)).toEqual(withoutSave);
-  expect(JSON.parse(fs.readFileSync(path.join(mockFolder, 'global-hooks.json'), 'utf8'))['@browser-save-form-action']).toBe(2);
+  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE)).toEqual({ enabled: false, hooks: [hook] });
+  // Once retired, even a manually restored legacy ID is user-owned.
+  const current = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
+  saveGlobalHooks(ALL_GROUPS_HOOK_SCOPE, { ...current, hooks: [bundled] }, globalHookHash(current));
+  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks).toEqual([bundled]);
 });
 
-it('does not resurrect a deleted Form tools hook during the Save form migration', () => {
+it('preserves customized Form tools during retirement', () => {
+  const customized = { ...hook, id: 'browser-form-tools', name: 'Form tools' };
   fs.writeFileSync(path.join(mockFolder, 'global-hooks.json'), JSON.stringify({
-    '@browser-default-hooks': 1,
-    [ALL_GROUPS_HOOK_SCOPE]: { enabled: true, hooks: [] },
+    [ALL_GROUPS_HOOK_SCOPE]: { enabled: false, hooks: [customized] },
   }));
-  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks).toEqual([]);
-});
-
-it('updates only the existing default Save form contexts and preserves actions deleted after the first migration', () => {
-  const savedForm = { id: 'save-form', name: 'My save title', contexts: ['input', 'password'], source: 'api.personalData.saveForm();' };
-  fs.writeFileSync(path.join(mockFolder, 'global-hooks.json'), JSON.stringify({ '@browser-default-hooks': 1, '@browser-save-form-action': 1, [ALL_GROUPS_HOOK_SCOPE]: { enabled: true, hooks: [{ ...hook, id: 'browser-form-tools', actions: [savedForm] }] } }));
-  const updated = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
-  expect(updated.hooks[0].actions![0]).toMatchObject({ name: 'My save title', contexts: ['page', 'input', 'password'] });
-});
-
-it('does not restore a Save form action removed before the page-context update', () => {
-  fs.writeFileSync(path.join(mockFolder, 'global-hooks.json'), JSON.stringify({ '@browser-default-hooks': 1, '@browser-save-form-action': 1, [ALL_GROUPS_HOOK_SCOPE]: { enabled: true, hooks: [{ ...hook, id: 'browser-form-tools', actions: [] }] } }));
-  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks[0].actions).toEqual([]);
-});
-it('adds defaults to an existing configuration while preserving disabled masters and custom hooks', () => {
-  fs.writeFileSync(path.join(mockFolder,'global-hooks.json'),JSON.stringify({[ALL_GROUPS_HOOK_SCOPE]:{enabled:false,hooks:[hook]}}));
-  const loaded = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
-  expect(loaded.enabled).toBe(false);
-  expect(loaded.hooks.map(h=>h.id)).toEqual(['global-one','browser-form-tools']);
-  expect(effectiveHookConfig('new-profile','https://example.com').enabled).toBe(false);
+  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE)).toEqual({ enabled: false, hooks: [customized] });
 });
 
 it('blocks invalid source before writing the global hook configuration', () => {

@@ -43,14 +43,22 @@ export function SidebarMediaWidget({
     );
   }, [settledSelectedId]);
   const remembered = tabs.find(
-    (item) => item.id === rememberedId && !states[item.id]?.discarded,
+    (item) =>
+      item.id === rememberedId &&
+      !states[item.id]?.discarded &&
+      states[item.id]?.sidebarMediaEligible,
   );
   const activeMedia =
     (remembered &&
-    (states[remembered.id]?.mediaPlaying || states[remembered.id]?.audible)
+    (states[remembered.id]?.mediaPlaying || states[remembered.id]?.audible) &&
+    states[remembered.id]?.sidebarMediaEligible
       ? remembered
       : undefined) ||
-    tabs.find((tab) => states[tab.id]?.mediaPlaying || states[tab.id]?.audible);
+    tabs.find(
+      (tab) =>
+        states[tab.id]?.sidebarMediaEligible &&
+        (states[tab.id]?.mediaPlaying || states[tab.id]?.audible),
+    );
   const playing =
     (activeMedia && !dismissedIds.includes(activeMedia.id)
       ? activeMedia
@@ -58,18 +66,21 @@ export function SidebarMediaWidget({
     tabs.find(
       (tab) =>
         !dismissedIds.includes(tab.id) &&
+        states[tab.id]?.sidebarMediaEligible &&
         (states[tab.id]?.mediaPlaying || states[tab.id]?.audible),
     );
+  const activeId = activeMedia?.id;
   useEffect(() => {
-    if (activeMedia) setRememberedId(activeMedia.id);
-  }, [activeMedia?.id]);
+    if (activeId) setRememberedId(activeId);
+  }, [activeId]);
   const tab =
     playing ||
     tabs.find(
       (item) =>
         item.id === rememberedId &&
         !dismissedIds.includes(item.id) &&
-        !states[item.id]?.discarded,
+        !states[item.id]?.discarded &&
+        states[item.id]?.sidebarMediaEligible,
     );
   if (!tab) return null;
   const state = states[tab.id];

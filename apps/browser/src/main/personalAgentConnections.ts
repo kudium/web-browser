@@ -20,6 +20,25 @@ const hash = (value: unknown) =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const LIMIT = 2 * 1024 * 1024;
 const empty = (id: PersonalAgentId) => (id === 'hermes' ? '' : '{}\n');
+const localBrowserEndpoint = (entry: unknown): string | undefined => {
+  if (!object(entry) || typeof entry.url !== 'string') return undefined;
+  try {
+    const url = new URL(entry.url);
+    if (
+      url.protocol === 'http:' &&
+      url.hostname === '127.0.0.1' &&
+      url.pathname === '/mcp' &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    )
+      return url.href;
+  } catch {
+    /* An unrelated server is not a browser connection. */
+  }
+  return undefined;
+};
 
 /** Format-preserving adapters; only the Kudium Browser server entry is edited. */
 export function agentConfig(id: PersonalAgentId, text: string) {
@@ -35,14 +54,32 @@ export function agentConfig(id: PersonalAgentId, text: string) {
   const servers = id === 'hermes' ? root.mcp_servers : parent?.servers;
   if (servers !== undefined && !object(servers))
     throw new Error('Invalid MCP servers');
-  const entry = object(servers) ? servers.kudiumbrowser : undefined;
+  // Migrate the previous product name even when its saved port is outdated.
+  // A legacy entry repurposed for another service is left alone.
+  const legacy =
+    object(servers) && localBrowserEndpoint(servers.touchbox)
+      ? servers.touchbox
+      : undefined;
+  const entry = object(servers) ? (servers.kudiumbrowser ?? legacy) : undefined;
   const set = (next?: RecordValue) => {
+    const endpoints = new Set(
+      [localBrowserEndpoint(entry), localBrowserEndpoint(next)].filter(Boolean),
+    );
+    const duplicates = object(servers)
+      ? Object.keys(servers).filter(
+          (name) =>
+            name !== 'kudiumbrowser' &&
+            ((name === 'touchbox' && legacy !== undefined) ||
+              endpoints.has(localBrowserEndpoint(servers[name]))),
+        )
+      : [];
     if (yaml) {
       const existing = yaml.get('mcp_servers', true);
       if (existing !== undefined && !isMap(existing))
         throw new Error('MCP servers must be a mapping');
       if (next) yaml.setIn(['mcp_servers', 'kudiumbrowser'], next);
       else yaml.deleteIn(['mcp_servers', 'kudiumbrowser']);
+      duplicates.forEach((name) => yaml.deleteIn(['mcp_servers', name]));
       const result = yaml.toString();
       const check = parseDocument(result, { merge: true });
       if (check.errors.length) throw new Error('Invalid updated configuration');
@@ -53,6 +90,9 @@ export function agentConfig(id: PersonalAgentId, text: string) {
     updated.mcp.servers = { ...(servers as RecordValue) };
     if (next) (updated.mcp.servers as RecordValue).kudiumbrowser = next;
     else delete (updated.mcp.servers as RecordValue).kudiumbrowser;
+    duplicates.forEach(
+      (name) => delete (updated.mcp.servers as RecordValue)[name],
+    );
     return updateJSON5(text, updated, {
       reserved_keys: 'replace',
       null_prototype: true,
@@ -80,7 +120,7 @@ export class PersonalAgentConnections {
       hermesHome?: string;
       openclawConfig?: string;
       openclawHome?: string;
-    }
+    },
   ) {
     try {
       const saved = JSON.parse(fs.readFileSync(options.filename, 'utf8'));
@@ -101,20 +141,20 @@ export class PersonalAgentConnections {
       (id === 'hermes'
         ? path.join(
             this.options.hermesHome || path.join(this.options.home, '.hermes'),
-            'config.yaml'
+            'config.yaml',
           )
         : this.options.openclawConfig ||
           path.join(
             this.options.openclawHome ||
               path.join(this.options.home, '.openclaw'),
-            'openclaw.json'
+            'openclaw.json',
           ))
     );
   }
 
   list(
     connection?: MCPConnection,
-    agentConnections?: Partial<Record<PersonalAgentId, MCPConnection>>
+    agentConnections?: Partial<Record<PersonalAgentId, MCPConnection>>,
   ): PersonalAgentStatus[] {
     return PERSONAL_AGENTS.map(({ id }) => {
       const configPath = this.filename(id);
@@ -181,13 +221,13 @@ export class PersonalAgentConnections {
     connection: MCPConnection | undefined,
     confirm: (message: string, filename: string) => Promise<boolean>,
     beforeCommit?: () => void,
-    assertCurrent: () => void = () => {}
+    assertCurrent: () => void = () => {},
   ): Promise<boolean> {
     assertCurrent();
     const filename = this.filename(id);
     if (!fs.existsSync(path.dirname(filename)))
       throw new Error(
-        'Agent not found. Install it first, or choose its configuration.'
+        'Agent not found. Install it first, or choose its configuration.',
       );
     const before = snapshot(filename, empty(id));
     let config: ReturnType<typeof agentConfig>;
@@ -195,7 +235,7 @@ export class PersonalAgentConnections {
       config = agentConfig(id, before.text);
     } catch {
       throw new Error(
-        'This agent configuration is invalid. It has not been changed.'
+        'This agent configuration is invalid. It has not been changed.',
       );
     }
     if (!connection && config.entry === undefined) return false;
@@ -203,11 +243,12 @@ export class PersonalAgentConnections {
     if (
       config.entry !== undefined &&
       hash(config.entry) !== this.registrations[id]?.hash &&
+      !localBrowserEndpoint(config.entry) &&
       !(await confirm(
         `${
           connection ? 'Replace' : 'Remove'
         } the existing Kudium Browser connection in ${agent.name}?`,
-        filename
+        filename,
       ))
     )
       return false;
@@ -226,7 +267,7 @@ export class PersonalAgentConnections {
       updated = config.set(next);
     } catch {
       throw new Error(
-        'Could not update this configuration safely. It has not been changed.'
+        'Could not update this configuration safely. It has not been changed.',
       );
     }
     if (updated === before.text) return false;
@@ -241,7 +282,7 @@ export class PersonalAgentConnections {
       fs.writeFileSync(
         `${filename}.kudiumbrowser-backup-${randomUUID()}`,
         before.text,
-        { mode: 0o600, flag: 'wx' }
+        { mode: 0o600, flag: 'wx' },
       );
     beforeCommit?.();
     assertCurrent();
@@ -258,7 +299,7 @@ export class PersonalAgentConnections {
       if (before.stat) atomicWrite(filename, before.text);
       else fs.unlinkSync(filename);
       throw new Error(
-        'Setup could not be saved. The previous configuration was restored.'
+        'Setup could not be saved. The previous configuration was restored.',
       );
     }
     return true;

@@ -11,6 +11,7 @@ export type AccountSyncAction =
   | 'disconnect'
   | 'sync'
   | 'snapshot'
+  | 'network-restored'
   | 'restore'
   | 'delete-data'
   | 'apply-preferences'

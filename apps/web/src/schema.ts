@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, bigint, timestamp, jsonb, primaryKey, uniqueIndex, boolean, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, bigint, timestamp, jsonb, primaryKey, uniqueIndex, boolean, index, check } from 'drizzle-orm/pg-core';
 import type { Envelope, ReleaseManifest } from './validation';
 import type { HookPackage } from '../../../packages/hooks/package';
 export const hookListings = pgTable('hook_listings', {
@@ -60,10 +60,11 @@ export const releases = pgTable('app_releases', {
 // Better Auth's schema keys are mapped explicitly; these names do not overlap sync_accounts.
 export const authUser = pgTable('auth_users', {
   id: text('id').primaryKey(), name: text('name').notNull(), email: text('email').notNull().unique(),
+  username: text('username').notNull().default(sql`'publisher-' || replace(gen_random_uuid()::text, '-', '')`).unique(),
   emailVerified: boolean('email_verified').notNull().default(false), image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, t => [check('auth_users_username_format', sql`${t.username} ~ '^(?:[a-z][a-z0-9_]{2,29}|publisher-[a-f0-9]{32})$'`)]);
 export const authSession = pgTable('auth_sessions', {
   id: text('id').primaryKey(), token: text('token').notNull().unique(),
   userId: text('user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),

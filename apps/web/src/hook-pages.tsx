@@ -89,7 +89,7 @@ function Card({
       </a>
       <p>{item.hook.description}</p>
       <div className="hook-card-footer">
-        <span>By {authorDisplayName(item.author.name)}</span>
+        <span>By {authorDisplayName(item.author.name)} · @{item.author.username}</span>
         <span>♡ {item.hook.likes}</span>
       </div>
       {mine && (
@@ -239,7 +239,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
         </div>
             <p className="hook-description">{hook.description}</p>
             <div className="hook-byline">
-              <span>By {authorDisplayName(detail.author.name)}</span>
+              <span>By {authorDisplayName(detail.author.name)} · @{detail.author.username}</span>
               <span>Version {hook.version}</span>
               <Button type="button" variant="ghost" aria-label="Like this hook" data-hook-like aria-pressed={detail.liked}>
                 <Heart size={14} /> <span data-like-count>{hook.likes}</span>
@@ -409,7 +409,7 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
     hook.status !== "approved"
   );
 }
-export function hookPublishPage(detail?: Detail, editorNonce = "") {
+export function hookPublishPage(detail?: Detail, editorNonce = "", username = detail?.author?.username || "") {
   const pkg = detail?.package;
   return render(
     <main className="hooks-marketplace hooks-library hook-publish">
@@ -440,6 +440,11 @@ export function hookPublishPage(detail?: Detail, editorNonce = "") {
       >
         <fieldset className="hook-form-section">
           <legend>Details</legend>
+        <label>
+          Publisher username
+          <Input name="username" defaultValue={username.startsWith('publisher-') ? '' : username} minLength={3} maxLength={30} pattern="[A-Za-z][A-Za-z0-9_]{2,29}" required placeholder="e.g. atlas_studio" autoComplete="username" />
+          <span>Your unique @username appears on all your hooks. Use 3–30 letters, numbers or underscores, starting with a letter.</span>
+        </label>
         <div className="hook-form-grid">
           <label>
             Name

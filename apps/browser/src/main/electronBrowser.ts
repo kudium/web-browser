@@ -1,3 +1,4 @@
+import { createSidebarMediaSession } from './sidebarMediaSession';
 import { hookActionMenu } from './hookActions';
 /* Native menus and commands deliberately resolve their current host window. */
 /* eslint no-shadow: ["error", {"allow": ["window"]}] */
@@ -305,6 +306,7 @@ export function registerElectronBrowser(
   let pendingOverlay: BrowserLayout | undefined;
   let overlayGeneration = 0;
   const playingMedia = new Set<string>();
+  const sidebarMediaSessions = new Map<string, ReturnType<typeof createSidebarMediaSession>>();
   const icons = new Map<string, string>();
   const themeColors = new WeakMap<WebContents, string>();
   const faviconResolver = new FaviconResolver();
@@ -344,6 +346,7 @@ export function registerElectronBrowser(
       muted: contents.isAudioMuted(),
       audible: contents.isCurrentlyAudible(),
       mediaPlaying: playingMedia.has(id),
+      sidebarMediaEligible: sidebarMediaSessions.get(id)?.eligible ?? false,
       pictureInPicture: pictureInPicture.get(id)?.state,
       extensionContext: {
         profile: `persist:kudiumbrowser-${loginProfileKey(
@@ -400,6 +403,8 @@ export function registerElectronBrowser(
       views.delete(id);
       faviconResolver.cancel(id);
       icons.delete(id);
+      sidebarMediaSessions.get(id)?.dispose();
+      sidebarMediaSessions.delete(id);
       playingMedia.delete(id);
       pictureInPicture.get(id)?.dispose();
       pictureInPicture.delete(id);
@@ -607,6 +612,12 @@ export function registerElectronBrowser(
         if (!adopted) window.contentView.addChildView(view);
         const browserView = view;
         const contents = view.webContents;
+        const mediaSession = createSidebarMediaSession(contents, () => playingMedia.has(item.id), () => publish(item.id, browserView));
+        sidebarMediaSessions.set(item.id, mediaSession);
+        contents.once('destroyed', () => {
+          mediaSession.dispose();
+          if (sidebarMediaSessions.get(item.id) === mediaSession) sidebarMediaSessions.delete(item.id);
+        });
         let faviconPageURL = item.url;
         contents.on('did-navigate', (_, url) => {
           if (faviconSiteChanged(faviconPageURL, url)) icons.set(item.id, '');
@@ -1094,13 +1105,18 @@ export function registerElectronBrowser(
           if (!privateMode && mainFrame)
             recordVisit(url, contents.getTitle(), permissionProfile);
         });
-        contents.on('audio-state-changed', () => publish(item.id, browserView));
+        contents.on('audio-state-changed', () => {
+          mediaSession.refresh();
+          publish(item.id, browserView);
+        });
         contents.on('media-started-playing', () => {
           playingMedia.add(item.id);
+          mediaSession.refresh();
           publish(item.id, browserView);
         });
         contents.on('media-paused', () => {
           playingMedia.delete(item.id);
+          mediaSession.refresh();
           publish(item.id, browserView);
         });
         contents.on('did-change-theme-color', (_, color) => {
@@ -1111,6 +1127,8 @@ export function registerElectronBrowser(
         });
         contents.on('did-start-navigation', (_, _url, inPlace, mainFrame) => {
           if (mainFrame && !inPlace) {
+            mediaSession.reset();
+            playingMedia.delete(item.id);
             faviconResolver.cancel(item.id);
             themeColors.delete(contents);
             failures.delete(item.id);
@@ -1402,6 +1420,8 @@ export function registerElectronBrowser(
         popups.delete(id);
       hiddenSince.delete(id);
       edited.delete(id);
+      sidebarMediaSessions.get(id)?.dispose();
+      sidebarMediaSessions.delete(id);
       playingMedia.delete(id);
       loaded.delete(id);
       faviconResolver.cancel(id);

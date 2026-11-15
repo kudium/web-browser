@@ -303,3 +303,71 @@ test('cloud reset keeps the local workspace and uploads it on the next sync', as
   expect(uploaded.workspace.apps).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'local-tab', homeUrl: 'https://example.com/' })]));
   expect(apps).toEqual(originalApps);
 });
+
+test('failed sync backs off exponentially, skips automatic retries and resets after success', async () => {
+  jest.useFakeTimers();
+  try {
+    const key = Buffer.alloc(32, 42);
+    const preferences = JSON.parse(JSON.stringify(defaultPreferences));
+    preferences.cloudSync = {
+      enabled: true,
+      provider: 'kudiumbrowser',
+      categories: { workspace: true, openTabs: true, preferences: true },
+    };
+    let offline = true;
+    const request = jest.fn(async (path: string) => {
+      if (offline) throw new Error('offline');
+      if (path.includes('account_key_check'))
+        return {
+          status: 200,
+          headers: new Headers(),
+          body: {
+            envelope: encryptSyncRecord(
+              { kind: 'kudium-sync-key', accountId: 'account' },
+              key,
+              'account_key_check_v1',
+            ),
+          },
+        };
+      if (path.includes('changes'))
+        return {
+          status: 200,
+          headers: new Headers(),
+          body: { changes: [], cursor: 'cursor', hasMore: false },
+        };
+      return { status: 200, headers: new Headers(), body: { revision: 1 } };
+    });
+    const client = new AccountSyncClient({
+      load: () => ({
+        credential: {
+          token: 'private',
+          email: 'test@example.com',
+          accountId: 'account',
+          deviceId: 'one',
+          key: key.toString('base64url'),
+          enrolled: true,
+        },
+      }),
+      save: () => {},
+      preferences: () => preferences,
+      enable: () => {},
+      open: async () => {},
+      request,
+    });
+    expect(client.snapshot({ apps: [], spaces: [] })).toBe(true);
+    expect(client.snapshot({ apps: [], spaces: [] })).toBe(false);
+    expect(await client.sync()).toBe(false);
+    expect(client.nextRetryAt() - Date.now()).toBe(60000);
+    await client.sync();
+    expect(request).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(60000);
+    expect(await client.sync()).toBe(false);
+    expect(client.nextRetryAt() - Date.now()).toBe(120000);
+    offline = false;
+    jest.advanceTimersByTime(120000);
+    expect(await client.sync()).toBe(true);
+    expect(client.nextRetryAt()).toBe(0);
+  } finally {
+    jest.useRealTimers();
+  }
+});

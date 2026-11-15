@@ -16,15 +16,12 @@ import {
   type SiteDeveloperConfig,
 } from '../browser/siteDeveloper';
 import { getSiteSettings } from './siteSettings';
-import { defaultGlobalHooks } from '../browser/defaultGlobalHooks';
 
 const events = new EventEmitter();
 let cachedFile: string | undefined;
 let profiles: Record<string, GlobalHookConfig> = {};
-let defaultsSeeded = false;
-const defaultsKey = '@browser-default-hooks';
-let formSaveVersion = 0;
-const formSaveKey = '@browser-save-form-action';
+let formToolsRetired = false;
+const retirementKey = '@browser-form-tools-retired';
 const filename = () => path.join(app.getPath('userData'), 'global-hooks.json');
 function persistProfiles(next: Record<string, GlobalHookConfig>) {
   const file = filename();
@@ -33,8 +30,7 @@ function persistProfiles(next: Record<string, GlobalHookConfig>) {
     `${file}.tmp`,
     JSON.stringify({
       ...next,
-      [defaultsKey]: defaultsSeeded ? 1 : 0,
-      [formSaveKey]: formSaveVersion,
+      [retirementKey]: formToolsRetired ? 1 : 0,
     }),
     { mode: 0o600 }
   );
@@ -67,17 +63,42 @@ export function validGlobalHooks(value: unknown): value is GlobalHookConfig {
     )
   );
 }
+function isBundledFormTools(hook: GlobalHookConfig['hooks'][number]) {
+  const signatures: Record<string, { name: string; contexts: string[] }> = {
+    'generate-password': { name: 'Generate password', contexts: ['password'] },
+    'save-form': { name: 'Save form to Personal Data', contexts: ['page', 'input', 'password'] },
+    'fill-personal-data': { name: 'Fill from Personal Data', contexts: ['input'] },
+  };
+  const sources: Record<string, string> = {
+    'generate-password': 'api.passwords.generateAndFill();',
+    'save-form': 'api.personalData.saveForm();',
+    'fill-personal-data': 'api.personalData.fill();',
+  };
+  const actions = hook.actions || [];
+  return hook.id === 'browser-form-tools' && hook.name === 'Form tools' &&
+    hook.path === '/*' && !hook.before && !hook.after && !hook.css &&
+    !hook.exclusions.length && !hook.installed &&
+    (actions.length === 2 || actions.length === 3) &&
+    new Set(actions.map(action => action.id)).size === actions.length &&
+    actions.some(action => action.id === 'generate-password') &&
+    actions.some(action => action.id === 'fill-personal-data') &&
+    actions.every(action => {
+      const signature = signatures[action.id];
+      const contexts = action.id === 'save-form' && action.contexts.length === 2
+        ? ['input', 'password'] : signature?.contexts;
+      return signature && action.name === signature.name &&
+        action.source === sources[action.id] &&
+        JSON.stringify(action.contexts) === JSON.stringify(contexts);
+    });
+}
 export function getGlobalHooks(profile: string): GlobalHookConfig {
   const file = filename();
   if (cachedFile !== file) {
     profiles = {};
-    defaultsSeeded = false;
-    formSaveVersion = 0;
+    formToolsRetired = false;
     try {
       const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
-      defaultsSeeded = saved[defaultsKey] === 1;
-      formSaveVersion =
-        saved[formSaveKey] === 2 ? 2 : saved[formSaveKey] === 1 ? 1 : 0;
+      formToolsRetired = saved[retirementKey] === 1;
       Object.entries(saved).forEach(([key, value]) => {
         if (validGlobalHooks(value)) profiles[key] = value;
       });
@@ -86,60 +107,16 @@ export function getGlobalHooks(profile: string): GlobalHookConfig {
     }
     cachedFile = file;
   }
-  // Seed once. Edits, deletion, disabled state and exclusions remain user-owned.
-  if (profile === ALL_GROUPS_HOOK_SCOPE && !defaultsSeeded) {
+  // Retire only unchanged bundled copies. Customizations and marketplace
+  // installations remain user-owned, and are never removed on later reloads.
+  if (profile === ALL_GROUPS_HOOK_SCOPE && !formToolsRetired) {
     const existing = profiles[profile] || { enabled: true, hooks: [] };
-    const missing = defaultGlobalHooks.filter(
-      (h) => !existing.hooks.some((saved) => saved.id === h.id)
-    );
-    if (existing.hooks.length + missing.length <= 20) {
-      defaultsSeeded = true;
-      try {
-        persistProfiles({
-          ...profiles,
-          [profile]: { ...existing, hooks: [...existing.hooks, ...missing] },
-        });
-      } catch (error) {
-        defaultsSeeded = false;
-        throw error;
-      }
-    }
-  }
-  if (profile === ALL_GROUPS_HOOK_SCOPE && formSaveVersion < 2) {
-    const existing = profiles[profile] || { enabled: true, hooks: [] };
-    const action = defaultGlobalHooks[0].actions!.find(
-      (entry) => entry.id === 'save-form'
-    )!;
-    const hooks = existing.hooks.map((hook) => {
-      if (hook.id !== 'browser-form-tools') return hook;
-      const savedAction = hook.actions?.find((entry) => entry.id === action.id);
-      if (savedAction) {
-        if (
-          savedAction.source === 'api.personalData.saveForm();' &&
-          savedAction.contexts.length === 2 &&
-          savedAction.contexts.includes('input') &&
-          savedAction.contexts.includes('password')
-        )
-          return {
-            ...hook,
-            actions: hook.actions!.map((entry) =>
-              entry === savedAction
-                ? { ...entry, contexts: action.contexts }
-                : entry
-            ),
-          };
-        return hook;
-      }
-      if (formSaveVersion === 0 && (hook.actions?.length || 0) < 20)
-        return { ...hook, actions: [...(hook.actions || []), action] };
-      return hook;
-    });
-    const previousVersion = formSaveVersion;
-    formSaveVersion = 2;
+    const hooks = existing.hooks.filter((hook) => !isBundledFormTools(hook));
+    formToolsRetired = true;
     try {
       persistProfiles({ ...profiles, [profile]: { ...existing, hooks } });
     } catch (error) {
-      formSaveVersion = previousVersion;
+      formToolsRetired = false;
       throw error;
     }
   }

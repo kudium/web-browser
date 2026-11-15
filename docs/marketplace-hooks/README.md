@@ -46,3 +46,13 @@ context-menu integration remained unverified: automation did not obtain a saved
 and running state from the site editor. This observation alone does not establish
 a browser defect. The other two packages were not confirmed installed in that
 profile. The user's normal stable profile was not changed.
+
+## Form tools
+
+Published as an optional general hook on November 15, 2026:
+https://browser.kudium.com/hooks/26a9db17-5db8-40de-be6a-9c6a356a2904
+
+The package preserves the former bundled password generation, form saving and
+personal data filling actions. It has no automatic lifecycle script. The browser
+no longer seeds it; unchanged bundled copies are retired once, while customized
+copies remain user-owned. Install the marketplace package to opt back in.

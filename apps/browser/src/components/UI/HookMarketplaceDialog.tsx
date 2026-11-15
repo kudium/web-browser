@@ -1000,7 +1000,7 @@ export function HookMarketplaceDialog() {
               <h3>{preview.package.name}</h3>
               <span>
                 {preview.verified
-                  ? `By ${preview.publication?.publisher.name} · v${preview.publication?.version}`
+                  ? `By ${preview.publication?.publisher.name}${preview.publication?.publisher.username ? ` · @${preview.publication.publisher.username}` : ''} · v${preview.publication?.version}`
                   : 'External source · publisher unverified'}
               </span>
             </div>

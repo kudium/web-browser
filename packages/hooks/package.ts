@@ -190,7 +190,7 @@ export function browserSupportsPackage(
 export interface PublishedHookPackage {
   id: string;
   version: number;
-  publisher: { id: string; name: string };
+  publisher: { id: string; name: string; username?: string };
   contentHash: string;
   package: HookPackage;
 }
