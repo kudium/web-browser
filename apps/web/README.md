@@ -339,3 +339,22 @@ dates for trying Trending and Newest. Open <http://localhost:3000/hooks>.
 The script only accepts a localhost database and skips samples already added.
 It uses the most recently created local account (excluding sample voters) as the
 owner; use `bun run seed:hooks --owner=<account-id>` to choose a specific account.
+
+## Website page analytics
+
+The production public website uses GA4 property **Kudium Browser Website**,
+web stream **Kudium Browser Web** (stream ID `16343421806`), measurement ID
+`G-JF314TQ397`. Enhanced measurement is disabled; the client sends a sanitized
+page view after explicit visitor consent. Account/authentication layouts do not
+include the tag. Query strings, fragments, referrers, account identity and
+workspace content are excluded. Google advertising signals are disabled.
+
+The footer's Analytics preferences control saves the visitor's choice locally.
+Declining disables collection and removes first-party GA cookies. Global Privacy
+Control and Do Not Track suppress collection. Local and preview origins never
+send analytics. Implementation: `public/analytics.js`, shared public Layout and
+the CSP in `src/app.ts`. No secret or extra environment variable is needed.
+
+Deploy the web app through its normal deployment route for this to become live.
+After deployment, allow analytics on a public page and check GA4 Realtime;
+standard page reports may take up to 48 hours to populate.

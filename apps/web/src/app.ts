@@ -33,6 +33,8 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
       imgSrc: ["'self'", "https://www.google.com", "https://t0.gstatic.com", "https://t1.gstatic.com", "https://t2.gstatic.com", "https://t3.gstatic.com"],
+      scriptSrc: ["'self'", 'https://www.googletagmanager.com'],
+      connectSrc: ["'self'", 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://www.googletagmanager.com'],
       styleSrc: ["'self'", 'https://fonts.googleapis.com', `'nonce-${nonce}'`],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       frameAncestors: c.req.path === '/' ? ["'self'", 'file:', 'http://localhost:1212'] : ["'none'"],
@@ -93,6 +95,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     c.header('Content-Type', filename.endsWith('.png') ? 'image/png' : 'image/webp');
     return c.body(await file.arrayBuffer());
   });
+  app.get('/assets/analytics.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/analytics.js', import.meta.url)).text()); });
   app.get('/assets/download.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/download.js', import.meta.url)).text()); });
   app.get('/assets/whats-new-fab.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/whats-new-fab.js', import.meta.url)).text()); });
   app.get('/assets/showcase.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/showcase.js', import.meta.url)).text()); });

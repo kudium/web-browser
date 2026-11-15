@@ -13,6 +13,7 @@ const accountDataVersion = createHash("sha256").update(readFileSync(new URL("../
 const authScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/auth.js", import.meta.url))).digest("hex").slice(0, 12);
 const passkeyScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/passkeys.ts", import.meta.url))).digest("hex").slice(0, 12);
 const uiStylesheetVersion = createHash("sha256").update(readFileSync(new URL("../public/ui.css", import.meta.url))).digest("hex").slice(0, 12);
+const analyticsScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/analytics.js", import.meta.url))).digest("hex").slice(0, 12);
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
 export function Layout({
@@ -102,7 +103,16 @@ export function Layout({
           <a href="/whats-new">What’s New</a>
           <a href={githubUrl}>GitHub</a>
           <a href={sponsorsUrl}>Support the project</a>
+          {!privatePage && <button type="button" data-analytics-settings>Analytics preferences</button>}
         </footer>
+        {!privatePage && <>
+          <section className="analytics-consent" aria-label="Analytics preferences" hidden data-analytics-consent>
+            <p>Allow Google Analytics to measure page visits? This helps us improve the website. <a href="/privacy#cookies">Privacy details</a></p>
+            <button type="button" data-analytics-allow>Allow analytics</button>
+            <button type="button" data-analytics-decline>Decline</button>
+          </section>
+          <script src={`/assets/analytics.js?v=${analyticsScriptVersion}`} defer />
+        </>}
         {!privatePage && canonicalPath !== "/whats-new" && (
           <>
           <a className="whats-new-fab" href="/whats-new">

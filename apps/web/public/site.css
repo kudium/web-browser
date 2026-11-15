@@ -2058,3 +2058,9 @@ body.account-page:has(.cloud-workspace) header nav > a[href='/docs'] { display: 
 .account-settings-card [data-form-message] { min-height: 1.5em; margin: 0; }
 .account-settings-card .account-text-link { display: inline-block; margin-top: 20px; }
 @media (max-width: 600px) { .account-settings-card { padding: 20px; } }
+
+.analytics-consent { position: fixed; bottom: 24px; left: 24px; z-index: 100; max-width: min(440px, calc(100vw - 48px)); padding: 20px; border: 1px solid #d5dedd; border-radius: 16px; background: #fff; color: #182c29; box-shadow: 0 8px 32px #0002; }
+.analytics-consent[hidden] { display: none; }
+.analytics-consent p { margin: 0 0 14px; }
+.analytics-consent button, [data-analytics-settings] { cursor: pointer; font: inherit; padding: 8px 12px; border: 1px solid #b5c8c4; border-radius: 8px; background: #fff; color: #182c29; }
+.analytics-consent button + button { margin-left: 8px; }
