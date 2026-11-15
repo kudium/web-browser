@@ -3,7 +3,9 @@ import { EventEmitter } from 'events';
 import { isCancelledAssetResponse } from '../../.erb/scripts/devLogging';
 
 jest.mock('electron', () => '/electron');
-jest.mock('detect-port', () => jest.fn(async (port) => port));
+jest.mock('detect-port', () => ({
+  detectPort: jest.fn(async (port) => port),
+}));
 jest.mock('../../.erb/configs/webpack.config.main.dev', () => ({}));
 jest.mock('../../.erb/configs/webpack.config.preload.dev', () => ({}));
 jest.mock('../../.erb/configs/webpack.config.renderer.dev', () => ({}));
