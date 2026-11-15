@@ -279,6 +279,12 @@ export default class MenuBuilder {
           },
         },
         {
+          label: 'Support Kudium…',
+          click: () => {
+            void shell.openExternal('https://github.com/sponsors/kudium');
+          },
+        },
+        {
           label: 'Report an Issue…',
           click: () => {
             shell.openExternal(

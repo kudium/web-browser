@@ -101,7 +101,7 @@ export function Layout({
           <a href="/releases">Release history</a>
           <a href="/whats-new">What’s New</a>
           <a href={githubUrl}>GitHub</a>
-          <a href={sponsorsUrl}>Support Kudium</a>
+          <a href={sponsorsUrl}>Support the project</a>
         </footer>
         {!privatePage && canonicalPath !== "/whats-new" && (
           <>

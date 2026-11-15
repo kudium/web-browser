@@ -6,6 +6,7 @@ import { createAuthMiddleware } from 'better-auth/api';
 import { setSessionCookie } from 'better-auth/cookies';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import nodemailer from 'nodemailer';
+import { authEmail } from './auth-email';
 import type { Database } from './db';
 import { smtpTransportOptions, type AuthConfig } from './config';
 import { authUser, authSession, authAccount, authVerification, authRateLimit, authDeviceCode, authPasskey } from './schema';
@@ -13,7 +14,7 @@ export type Authenticate = (token: string) => Promise<string>;
 export function syncAccountId(userId: string) {
   return createHash('sha256').update(`better-auth\0${userId}`).digest('hex');
 }
-export type MailDelivery = (message: { from?: string; to: string; subject: string; text: string }) => Promise<unknown>;
+export type MailDelivery = (message: { from?: string; to: string; subject: string; text: string; html?: string; attachments?: { filename: string; content: Buffer; cid: string; contentDisposition: 'inline' }[] }) => Promise<unknown>;
 export function createAuth(db: Database, config: AuthConfig, delivery?: MailDelivery) {
   const mailer = config.smtpURL ? nodemailer.createTransport(smtpTransportOptions(config.smtpURL, config.baseURL)) : undefined;
   const sendMail = delivery ?? (mailer ? (message: Parameters<MailDelivery>[0]) => mailer.sendMail(message) : undefined);
@@ -23,10 +24,19 @@ export function createAuth(db: Database, config: AuthConfig, delivery?: MailDeli
     database: drizzleAdapter(db, { provider: 'pg', schema: { user: authUser, session: authSession, account: authAccount, verification: authVerification, rateLimit: authRateLimit, deviceCode: authDeviceCode, passkey: authPasskey } }),
     socialProviders: config.google ? { google: { ...config.google, prompt: 'select_account' } } : {},
     account: { encryptOAuthTokens: true, accountLinking: { enabled: true, requireLocalEmailVerified: true, allowDifferentEmails: false } },
+    databaseHooks: { user: { create: { after: async user => {
+      if (!sendMail) return;
+      try {
+        await sendMail({ from: config.smtpFrom, to: user.email, ...authEmail('welcome', 'https://browser.kudium.com/download') });
+      } catch {
+        // Delivery failure must not turn a successfully created account into a failed signup.
+        console.error('Kudium welcome email delivery failed.');
+      }
+    } } } },
     user: { changeEmail: {
       enabled: Boolean(sendMail),
       ...(sendMail ? { sendChangeEmailConfirmation: async ({ user, newEmail, url }: { user: { email: string }; newEmail: string; url: string }) => {
-        await sendMail!({ from: config.smtpFrom, to: user.email, subject: 'Confirm your Kudium email change', text: `Confirm changing your email to ${newEmail}:\n${url}\n\nIf you did not request this, do not open this link.` });
+        await sendMail!({ from: config.smtpFrom, to: user.email, ...authEmail('email-change', url, newEmail) });
       } } : {}),
     } },
     emailAndPassword: {
@@ -34,13 +44,13 @@ export function createAuth(db: Database, config: AuthConfig, delivery?: MailDeli
       requireEmailVerification: Boolean(sendMail),
       revokeSessionsOnPasswordReset: true,
       ...(sendMail ? { sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
-        await sendMail!({ from: config.smtpFrom, to: user.email, subject: 'Reset your Kudium password', text: `Reset your password using this link:\n${url}\n\nIf you did not request this, ignore this email.` });
+        await sendMail!({ from: config.smtpFrom, to: user.email, ...authEmail('password-reset', url) });
       } } : {}),
     },
     ...(sendMail ? { emailVerification: {
       sendOnSignUp: true, sendOnSignIn: true,
       sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
-        await sendMail!({ from: config.smtpFrom, to: user.email, subject: 'Verify your Kudium email', text: `Verify your email using this link:\n${url}` });
+        await sendMail!({ from: config.smtpFrom, to: user.email, ...authEmail('verification', url) });
       },
     } } : {}),
     session: { expiresIn: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60, cookieCache: { enabled: false } },

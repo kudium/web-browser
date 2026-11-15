@@ -13,6 +13,8 @@ their own space, then keep the pages and tools you need together.
 [Explore the website](https://browser.kudium.com) ·
 [Learn with tutorials](https://browser.kudium.com/tutorials)
 
+Kudium is free and open source. [Help support its development](https://github.com/sponsors/kudium).
+
 ![Kudium Browser showing Apple’s website, five pinned groups for Social, Work, Design, Development and Reading, and four favorite tools.](apps/web/public/product/demo/design-workspace.webp)
 
 ## A workspace that follows what you are doing
