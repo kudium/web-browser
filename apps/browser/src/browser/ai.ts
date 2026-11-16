@@ -1,3 +1,4 @@
+import type { AICapabilityOutcome } from './aiCapabilityContracts';
 import type { AIThinking } from './aiThinking';
 import { AI_PROVIDERS } from './aiProviders';
 export interface AISettings {
@@ -27,6 +28,7 @@ export interface AIUsage {
   usageReported: boolean;
 }
 export interface AIExecution {
+  capabilityOutcomes?: AICapabilityOutcome[];
   incomplete: boolean;
   pendingActions: number;
   observations: number;

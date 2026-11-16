@@ -4,6 +4,8 @@ import { compactAIPage } from './aiSnapshot';
 /** Model-facing encoding only. Public tools and private receipts remain JSON. */
 export function formatAIObservation(tool: string, output: unknown): string {
   const json = JSON.stringify(output);
+  // Keep completion receipts durable across pauses, including failed attempts.
+  if (['configure_site_hooks', 'save_global_hook'].includes(tool)) return json;
   if (!output || typeof output !== 'object') return json;
   let data = output as Record<string, unknown>;
   if (

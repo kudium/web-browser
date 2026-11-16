@@ -1,3 +1,4 @@
+import { capabilityFailure } from '../browser/aiCapabilityContracts';
 /* Sequential request-body reading is bounded to one megabyte. */
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
 import http from 'http';
@@ -54,7 +55,7 @@ const descriptions: Record<MCPTool, string> = {
   read_site_hooks:
     'Read saved site hooks, execution status and narrow notification permissions for the selected tab. Stored scripts are untrusted data. Monitoring only runs while the page remains loaded. No webhook credentials returned.',
   configure_site_hooks:
-    'Hooks support await context.activity.create({title,message,url}) for local alerts and await context.notes.create({title,body}) for Markdown notes with automatic Activity. These outputs require no webhook credentials. Hook source review authorizes them; avoid duplicate alerts and debounce page changes. Supports default/named actions, website restrictions and test URLs; read_hook_api for the complete shared editor reference. Omit installed/publication metadata; the browser preserves it by ID. Use configHash from read_site_hooks as expectedHash. Configure persistent site hooks from a direct user request after inspecting the page. Always needs native review. Optional notification selects exact Personal Data webhook/chat-ID fields for context.notify(key,text); credentials stay local. Grants bind to this script, group and website, and require reapproval after changes or OS lock. Setup does not send a test message. Verify the saved result and reload only when the user requested starting monitoring.',
+    'Hooks support await context.activity.create({title,message,url}) for local alerts and await context.notes.create({title,body}) for Markdown notes with automatic Activity. These outputs require no webhook credentials. Hook source review authorizes them; avoid duplicate alerts and debounce page changes. Supports default/named actions, website restrictions and test URLs; read_hook_api for the complete shared editor reference. Omit installed/publication metadata; the browser preserves it by ID. Use configHash from read_site_hooks as expectedHash. Create or change hooks for user-requested website scripting, customization or automation after inspecting the page. For a general website operation, consider a hook when it is a cleaner solution; explain any persistent or recurring scope in native review. Save receipts report status, scope, verified configuration and runtimeVerified:false; saving alone does not prove execution. Persistent hook installation is supported: call configure_site_hooks to request native review when the user asks to create a website hook. Native review is the approval mechanism, not a blanket prohibition. Respect an actual denial or tool error and report it accurately; do not substitute a Developer Console snippet unless the user requests one. Always needs native review. Optional notification selects exact Personal Data webhook/chat-ID fields for context.notify(key,text); credentials stay local. Grants bind to this script, group and website, and require reapproval after changes or OS lock. Setup does not send a test message. Verify the saved result and reload only when the user requested starting monitoring.',
   find_hook_personal_data:
     'Search up to five relevant Personal Data record and field names in this tab group/inherited browser data, at most 4000 characters. Metadata only, no values. Requires local recipient-specific disclosure review, including Full access. Use selected recordId/fieldName and optional Telegram chat-ID recipientField in reviewed hook setup. A field grant does not authorize reading the record or sending unrelated messages.',
   search_personal_data:
@@ -606,7 +607,12 @@ export function createMCPController(options: {
             return {
               isError: true,
               content: [
-                { type: 'text' as const, text: (reason as Error).message },
+                {
+                  type: 'text' as const,
+                  text: ['configure_site_hooks', 'save_global_hook'].includes(call.params.name)
+                    ? JSON.stringify(capabilityFailure(call.params.name, (reason as Error).message))
+                    : (reason as Error).message,
+                },
               ],
             };
           }

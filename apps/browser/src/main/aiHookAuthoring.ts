@@ -194,6 +194,10 @@ export class AIHookAuthoring {
       saveGlobalHooks(scope, next, hash);
       const saved = getGlobalHooks(scope);
       return {
+        capability: 'website_hook',
+        status: globalHookHash(saved) === globalHookHash(next) ? 'saved' : 'unverified',
+        runtimeVerified: false,
+        scope: { kind: args.hookScope || 'group' },
         saved: true,
         verified: globalHookHash(saved) === globalHookHash(next),
         hookId: hook.id,

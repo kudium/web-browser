@@ -1,3 +1,5 @@
+import { capabilityFailure } from '../browser/aiCapabilityContracts';
+import { AICompletionContract } from './aiCompletionContract';
 import { AILoopGuard } from './aiLoopGuard';
 import { isPrivateSession } from './privateSessions';
 import {
@@ -2478,6 +2480,11 @@ return function registerScopedAI(
         const saved = getSiteSettings(context.profile, origin).developer!;
         return {
           tabId: id,
+          capability: 'website_hook',
+          status: hookScriptHash(saved) === hookScriptHash(config) ? 'saved' : 'unverified',
+          scope: { kind: 'site', origin },
+          configHash: hookConfigHash(saved),
+          runtimeVerified: false,
           saved: true,
           verified: hookScriptHash(saved) === hookScriptHash(config),
           enabled: saved.enabled,
@@ -4702,6 +4709,19 @@ return function registerScopedAI(
     let inferencePending = false;
     const execution = new AIExecutionTracker(messages);
     const loopGuard = new AILoopGuard();
+    const completionMessages = !prompt && recovery ? recovery.messages : [];
+    const lastRequestIndex = completionMessages.map(message => message.role).lastIndexOf('user');
+    const requestContent = completionMessages[lastRequestIndex]?.content;
+    const completionPrompt = prompt || (typeof requestContent === 'string' ? requestContent : Array.isArray(requestContent) ? requestContent.filter(item => item.type === 'text').map(item => item.text).join(' ') : '');
+    const completion = new AICompletionContract(completionPrompt, completionMessages.slice(Math.max(0, lastRequestIndex)));
+    const executionSnapshot = () => {
+      const snapshot = execution.snapshot();
+      return {
+        ...snapshot,
+        incomplete: snapshot.incomplete || completion.incomplete(),
+        capabilityOutcomes: completion.snapshot(),
+      };
+    };
     let requestedCommandReview = false;
     const roundLimit = recovery
       ? checkpointRoundLimit(recovery)
@@ -4838,6 +4858,16 @@ return function registerScopedAI(
           });
           continue;
         }
+        if (!message.tool_calls?.length) {
+          const recoveryInstruction = completion.recovery();
+          if (recoveryInstruction) {
+            emit({ type: 'partial', text: '' });
+            messages.push({ role: 'system', content: recoveryInstruction });
+            continue;
+          }
+          const completionNotice = completion.notice();
+          if (completionNotice) message.content = `${completionNotice}\n\n${message.content || ''}`;
+        }
         if (message.content)
           emit({
             type: 'message',
@@ -4848,21 +4878,21 @@ return function registerScopedAI(
             ...(!message.tool_calls?.length
               ? {
                   usage: { ...usage.snapshot(), ...catalog.diagnostics() },
-                  execution: execution.snapshot(),
+                  execution: executionSnapshot(),
                 }
               : {}),
           });
         if (!message.tool_calls?.length) {
           activeCheckpoint = undefined;
           const incomplete =
-            execution.failed() || !!execution.pendingCommands().length;
+            execution.failed() || !!execution.pendingCommands().length || completion.incomplete();
           const reply = parseAISuggestions(
             String(message.content || 'Task finished.')
           ).text;
           return {
             state: incomplete ? 'failed' : 'completed',
             summary: incomplete
-              ? `Run needs attention: a command is unfinished, failed or unreviewed, or the final tool/page dialog did not complete. ${reply}`
+              ? `Run needs attention: a required capability was not verified, a command is unfinished, failed or unreviewed, or the final tool/page dialog did not complete. ${reply}`
               : reply,
           };
         }
@@ -4944,9 +4974,10 @@ return function registerScopedAI(
               recoveryObservation?.completed(call.function.name, tabId);
           } catch (error) {
             signal.throwIfAborted();
-            output = { error: (error as Error).message };
+            output = capabilityFailure(call.function.name, (error as Error).message);
           }
           execution.record(call.function.name, receiptArgs, output);
+          completion.record(call.function.name, output);
           messages.push({
             role: 'tool',
             tool_call_id: call.id,

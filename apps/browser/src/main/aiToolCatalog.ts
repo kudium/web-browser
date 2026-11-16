@@ -6,6 +6,7 @@ import {
   hints,
   intentBundles,
   hookRuntimeGuide,
+  hookAuthoringGuide,
 } from '../browser/aiToolCapabilities';
 
 const words = (text: string) =>
@@ -96,7 +97,7 @@ export class AIToolCatalog {
   }
 
   guidance() {
-    return (this.loaded.has('configure_site_hooks') || this.loaded.has('save_global_hook') || this.loaded.has('test_hook')) ? hookRuntimeGuide : '';
+    return (this.loaded.has('configure_site_hooks') || this.loaded.has('save_global_hook') || this.loaded.has('test_hook')) ? `${hookAuthoringGuide}\n\n${hookRuntimeGuide}` : hookAuthoringGuide;
   }
 
   private discoveryTool() {

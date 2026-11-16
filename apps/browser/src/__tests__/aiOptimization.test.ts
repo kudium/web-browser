@@ -108,6 +108,11 @@ test('preloads narrow workflows from user intent without executing them', () => 
     'scroll automatically',
     'create a hook for this page',
     'watch for price changes',
+    'script a custom script for this website',
+    'script this website',
+    'write JavaScript for Jiji',
+    'perform an operation on this website',
+    'build a hook for this website',
   ]) {
     const catalog = new AIToolCatalog();
     expect(catalog.preloadIntent(prompt)).toEqual([
@@ -127,7 +132,8 @@ test('preloads narrow workflows from user intent without executing them', () => 
   }
   const catalog = new AIToolCatalog();
   expect(catalog.preloadIntent('summarize this article')).toEqual([]);
-  expect(catalog.guidance()).toBe('');
+  expect(catalog.guidance()).toContain('consider a hook');
+  expect(catalog.guidance()).not.toContain('10 seconds');
   catalog.recordRequest();
   catalog.discover({ query: 'zzzzzzzz' });
   expect(catalog.diagnostics()).toMatchObject({
