@@ -30,6 +30,7 @@ import { AIStarterActions } from './AIStarterActions';
 import { AIWorkingTabsBadge, AIWorkingTab } from './AIWorkingTabsBadge';
 import { useAIPagePreference } from '../../utils/useAIPagePreference';
 import { NotesPage } from './NotesPage';
+import { RenderErrorBoundary } from './RenderErrorBoundary';
 import { ActivityPage } from './ActivityPage';
 import { AssistantPanelHost, focusAssistantPanel } from './AssistantPanelHost';
 import { HistoryToolbar } from './HistorySidebarFrame';
@@ -1378,7 +1379,9 @@ export function AISidebar({
           id="ai-notes-panel"
           aria-label="Notes workspace"
         >
-          <NotesPage tabs={allContextTabs} />
+          <RenderErrorBoundary label="Notes">
+            <NotesPage tabs={allContextTabs} />
+          </RenderErrorBoundary>
         </div>
       </AssistantPanelHost>
       <AssistantPanelHost panel="developer" active={pane === 'developer'}>

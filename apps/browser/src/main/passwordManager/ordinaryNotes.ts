@@ -117,12 +117,13 @@ export function ordinaryNotesStorage(file: string): OrdinaryNotesStorage {
         else {
           const name = `${randomUUID()}.bin`;
           const target = path.join(directory, name);
+          // A failed write can leave a partial file, so track it before writing.
+          created.push(target);
           fs.writeFileSync(
             target,
             safeStorage.encryptString(JSON.stringify(note)),
             { mode: 0o600, flag: 'wx' }
           );
-          created.push(target);
           next.push({ summary: summaryOf(note), file: name });
         }
       });

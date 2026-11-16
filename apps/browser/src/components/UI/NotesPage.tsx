@@ -1,3 +1,7 @@
+import {
+  RenderErrorBoundary,
+  renderFailureMessage,
+} from './RenderErrorBoundary';
 import { AssistantPageHeader } from './AssistantPageHeader';
 /* Native controls have visible or accessible labels. */
 /* eslint-disable react/require-default-props, jsx-a11y/label-has-associated-control */
@@ -146,7 +150,12 @@ export function NotesPage({
   useEffect(() => {
     refresh().catch((failure) =>
       setError(
-        String(failure.message).replace(
+        (/ENOSPC|no space left on device|disk (?:is )?full/i.test(
+          String(failure.message)
+        )
+          ? renderFailureMessage(new Error(String(failure.message)))
+          : String(failure.message)
+        ).replace(
           /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
           ''
         )
@@ -162,7 +171,12 @@ export function NotesPage({
       setError('');
       refresh().catch((failure) =>
         setError(
-          String(failure.message).replace(
+          (/ENOSPC|no space left on device|disk (?:is )?full/i.test(
+            String(failure.message)
+          )
+            ? renderFailureMessage(new Error(String(failure.message)))
+            : String(failure.message)
+          ).replace(
             /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
             ''
           )
@@ -196,7 +210,12 @@ export function NotesPage({
       } catch (failure) {
         setError(
           failure instanceof Error
-            ? failure.message.replace(
+            ? (/ENOSPC|no space left on device|disk (?:is )?full/i.test(
+                failure.message
+              )
+                ? renderFailureMessage(failure)
+                : failure.message
+              ).replace(
                 /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
                 ''
               )
@@ -829,20 +848,30 @@ export function NotesPage({
                 spellCheck={false}
               />
             ) : (
-              <Suspense
-                fallback={
-                  <div aria-label="Loading note editor" role="status" />
+              <RenderErrorBoundary
+                key={draft.id}
+                label="Note editor"
+                recovery={
+                  <button type="button" onClick={() => setMarkdownMode(true)}>
+                    Use plain text
+                  </button>
                 }
               >
-                <MarkdownNoteEditor
-                  key={draft.id}
-                  ref={setEditorHandle}
-                  onFocusTitle={focusTitle}
-                  onSelectionChange={setTextSelected}
-                  markdown={draft.notes || ''}
-                  onChange={(markdown) => update({ notes: markdown })}
-                />
-              </Suspense>
+                <Suspense
+                  fallback={
+                    <div aria-label="Loading note editor" role="status" />
+                  }
+                >
+                  <MarkdownNoteEditor
+                    key={draft.id}
+                    ref={setEditorHandle}
+                    onFocusTitle={focusTitle}
+                    onSelectionChange={setTextSelected}
+                    markdown={draft.notes || ''}
+                    onChange={(markdown) => update({ notes: markdown })}
+                  />
+                </Suspense>
+              </RenderErrorBoundary>
             )}
           </>
         ) : historyOpen && historyPinned ? (

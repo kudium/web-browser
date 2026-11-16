@@ -106,3 +106,35 @@ test('unread state survives restart and read-only changes persist without changi
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('disk-full partial writes preserve the previous note and leave no orphan file', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-disk-full-'));
+  const file = path.join(root, 'notes.bin');
+  const storage = ordinaryNotesStorage(file);
+  storage.upsert!(note);
+  const before = fs.readdirSync(`${file}.data`);
+  const write = fs.writeFileSync;
+  const diskFull = Object.assign(new Error('ENOSPC: no space left on device'), {
+    code: 'ENOSPC',
+  });
+  const mocked = jest
+    .spyOn(fs, 'writeFileSync')
+    .mockImplementation((target, ...args) => {
+      if (String(target).startsWith(`${file}.data`)) {
+        write(target, Buffer.from('partial'));
+        throw diskFull;
+      }
+      return write(target, ...args);
+    });
+  try {
+    expect(() => storage.upsert!({ ...note, notes: 'New draft' })).toThrow(
+      'ENOSPC'
+    );
+    expect(fs.readdirSync(`${file}.data`)).toEqual(before);
+    expect(storage.get!(note.id)!.notes).toBe(note.notes);
+    expect(ordinaryNotesStorage(file).get!(note.id)!.notes).toBe(note.notes);
+  } finally {
+    mocked.mockRestore();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
