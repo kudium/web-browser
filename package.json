@@ -22,6 +22,7 @@
     "test": "npm run test:browser --",
     "test:browser": "npm --prefix apps/browser run test --",
     "test:browser:compatibility": "npm --prefix apps/browser run test:compatibility --",
+    "test:browser:sign-in": "npm --prefix apps/browser run test:sign-in --",
     "test:browser:notes-editor": "npm --prefix apps/browser run test:notes-editor --",
     "test:web": "bun run --cwd apps/web test",
     "check:web": "bun run --cwd apps/web check",

@@ -32,6 +32,12 @@ stock-runtime installers must not advertise them as verified native support.
 
 - [x] Preserve real Chromium identity across documents, cross-site frames, workers
   and fresh private sessions using the existing identity regression.
+- [x] Retain the actual Electron host token for compatible provider sign-in flows.
+  On 2026-11-17, reproduced Google's insecure-browser rejection with the stripped
+  identity, then verified user-assisted Gmail sign-in and the loaded Gmail app
+  after retaining it. WhatsApp's public linking page also passed. See
+  `apps/browser/.erb/scripts/browser-signin-acceptance.cjs` for repeatable public
+  entry checks; this does not certify every account or provider.
 - [x] Add one documented command for the baseline and structured result artifacts.
 - [x] Exercise the production browser backend and its actual login sessions.
 - [x] Verify two tabs sharing a login share cookies, localStorage and IndexedDB.

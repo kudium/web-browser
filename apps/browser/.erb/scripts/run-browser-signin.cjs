@@ -1,0 +1,11 @@
+const { spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname, '../..');
+const output = process.env.KUDIUMBROWSER_SMOKE_OUTPUT || path.join(root, 'release', `local-signin-${Date.now()}`);
+fs.mkdirSync(output, {recursive: true});
+const env = {...process.env, KUDIUMBROWSER_SMOKE_OUTPUT: output};
+delete env.ELECTRON_RUN_AS_NODE;
+const result = spawnSync(require('electron'), ['.erb/scripts/browser-ui-smoke.cjs', '--sign-in-only'], {cwd: root, env, stdio: 'inherit', timeout: 150000});
+console.log(`Public provider check artifacts: ${output}`);
+process.exit(result.status === 0 && !result.error ? 0 : 1);

@@ -352,7 +352,8 @@ module.exports = async ({ main, evaluate, runtimeDir, out, windows }) => {
             await contents.executeJavaScript('probe.identity()');
           const expected = identities.document.js;
           assert(expected.includes(`Chrome/${process.versions.chrome}`));
-          assert(!/Electron|kudium|touch-?box/i.test(expected));
+          assert(expected.includes(`Electron/${process.versions.electron}`));
+          assert(!/kudium|touch-?box/i.test(expected));
           assert.equal(
             identities.nodeExposed,
             false,

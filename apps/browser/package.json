@@ -50,6 +50,7 @@
     "test": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts test",
     "test:packaged-security": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts packaged-security",
     "test:compatibility": "node .erb/scripts/run-browser-compatibility.cjs",
+    "test:sign-in": "node .erb/scripts/run-browser-signin.cjs",
     "test:notes-editor": "node .erb/scripts/run-notes-editor.cjs",
     "test:tab-switcher": "node .erb/scripts/run-tab-switcher.cjs",
     "test:chat-scroll": "node .erb/scripts/run-browser-ui-smoke.cjs --ai-chat-scroll-only",

@@ -42,8 +42,9 @@ const server = http.createServer((request, response) => {
   while (!requests.some(request => request.url === '/worker-fetch') && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
   assert(requests.some(request => request.url === '/worker-fetch'), 'Cross-site worker must issue its fetch');
   for (const request of requests) assert.strictEqual(request.ua, ua, `${request.url} used a different identity`);
-  assert(!/Electron|touch-?box|kudium/i.test(ua), 'Remove normalized production branding');
+  assert(!/touch-?box|kudium/i.test(ua), 'Remove normalized production branding');
   assert(ua.includes(`Chrome/${process.versions.chrome}`), 'Keep the real Chromium version');
+  assert(ua.includes(`Electron/${process.versions.electron}`), 'Keep the actual browser host so providers select compatible sign-in flows');
   assert.strictEqual(await window.webContents.executeJavaScript('navigator.userAgent'), ua);
   const frame = window.webContents.mainFrame.frames.find(item => item.url.includes('/frame'));
   assert(frame, 'Cross-site frame exists');

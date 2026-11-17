@@ -177,6 +177,18 @@ separate checks. Reports are saved under
 An existing Electron Node-mode environment variable is removed for the child app.
 These checks do not certify real provider sign-ins, device permissions or DRM.
 
+The default website identity preserves the installed Chromium and Electron
+versions. Removing the Electron token makes Google choose a sign-in flow that
+rejects this browser host. Only Kudium's app product token is removed; the same
+identity policy applies to every website, frame and worker.
+
+Run `npm run test:browser:sign-in` from the repository root for optional network
+checks of Google's compatible sign-in entry and WhatsApp's linking page, using
+the production backend with disposable profiles. `KUDIUM_SIGNIN_EMAIL` optionally
+tests Google's account identifier step. Reports omit the email and sign-in tokens.
+This command stops before authentication; successful account sign-in needs a
+separate user-assisted check.
+
 
 ```bash
 npm run lint

@@ -78,7 +78,7 @@ if(process.argv.includes('--developer-sidebar-only')) {
   fs.symlinkSync(path.resolve('release/app/dist/renderer'),path.join(runtimeDir,'dist/renderer'),'dir');
   fs.mkdirSync(path.join(runtimeDir,'.erb/dll'),{recursive:true});fs.copyFileSync(path.join(runtimeDir,'preload.js'),path.join(runtimeDir,'.erb/dll/preload.js'));
 }
-if (process.argv.includes('--compatibility-only')) {
+if (process.argv.includes('--compatibility-only') || process.argv.includes('--sign-in-only')) {
   app.setName('Kudium Browser');
   app.userAgentFallback = require(path.join(runtimeDir, 'browserIdentity.js')).browserUserAgent(app.userAgentFallback);
 }
@@ -530,6 +530,10 @@ app
       server.close(); app.exit(0); return;
     }
     const main = await create('main', 1160, 850);
+    if (process.argv.includes('--sign-in-only')) {
+      await require('./browser-signin-acceptance.cjs')({main,evaluate,out,url});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.exit(0);return;
+    }
     if (process.argv.includes('--project-folder-drop-only')) {
       await require('./project-folder-drop-acceptance.cjs')({main,evaluate,runtimeDir,out,url});
       Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
@@ -3675,4 +3679,4 @@ app
 setTimeout(() => {
   console.error('UI check timed out');
   app.exit(1);
-}, process.argv.includes('--compatibility-only') ? 120000 : (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) ? (process.argv.includes('--inspect') ? 600000 : 240000) : nativePrivateDialogs?180000:(process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();
+}, process.argv.includes('--sign-in-only') ? 150000 : process.argv.includes('--compatibility-only') ? 120000 : (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) ? (process.argv.includes('--inspect') ? 600000 : 240000) : nativePrivateDialogs?180000:(process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();
