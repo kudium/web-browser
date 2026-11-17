@@ -22,7 +22,7 @@ fs.mkdirSync(output, { recursive: true });
 (async () => {
   const source = path.join(temporary, 'source');
   const renderer = path.join(source, 'renderer');
-  fs.cpSync(path.join(appRoot, 'release/app/dist/renderer'), renderer, {
+  fs.cpSync(process.env.KUDIUMBROWSER_SMOKE_RENDERER || path.join(appRoot, 'release/app/dist/renderer'), renderer, {
     recursive: true,
   });
   const archive = path.join(temporary, 'renderer.asar');

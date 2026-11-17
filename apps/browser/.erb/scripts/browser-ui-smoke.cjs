@@ -636,10 +636,19 @@ app
       await wait(1200);
       assert(notesSaves.some(note=>note.notes.includes('Edited in the rich editor')),'Rich editor must autosave edited Markdown');
       const switchMode = async(label) => {
-        await evaluate(main, `document.querySelector('[aria-label="Change note view"]').dispatchEvent(new PointerEvent('pointerdown',{button:0,ctrlKey:false,bubbles:true,pointerType:'mouse'}));undefined`);
-        await wait(100);
-        await evaluate(main, `[...document.querySelectorAll('[role=menuitemradio]')].find(button=>button.textContent.trim()===${JSON.stringify(label)}).click();undefined`);
-        await wait(150);
+        const click = async(expression) => {
+          const point = await evaluate(main, `(()=>{const element=${expression};if(!element)throw new Error('View control missing');const r=element.getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`);
+          main.focus();
+          main.webContents.sendInputEvent({type:'mouseDown',button:'left',clickCount:1,...point});
+          main.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,...point});
+        };
+        await click(`document.querySelector('[aria-label="Change note view"]')`);
+        for(let attempt=0;attempt<50;attempt++) {
+          if(await evaluate(main,`[...document.querySelectorAll('[role=menuitemradio]')].some(button=>button.textContent.trim()===${JSON.stringify(label)})`))break;
+          await wait(40);
+        }
+        await click(`[...document.querySelectorAll('[role=menuitemradio]')].find(button=>button.textContent.trim()===${JSON.stringify(label)})`);
+        await wait(250);
       };
       await switchMode('Markdown');
       assert((await evaluate(main, `document.querySelector('[aria-label="Note Markdown source"]').value`)).includes('Edited in the rich editor'));
