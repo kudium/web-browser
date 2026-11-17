@@ -42,6 +42,8 @@ describe("browser tutorials", () => {
 
   test("the homepage serves refreshed screenshots and only its public recording", async () => {
     const homepage = await (await app.request("/")).text();
+    expect(homepage.match(/class="hero-slide"[\s\S]*?<img[^>]+src="([^"]+)"/)?.[1]).toBe("/assets/product/demo/developer-terminal.webp?v=12");
+    expect(homepage.indexOf("/assets/product/demo/project-editor-dark.webp?v=12")).toBeLessThan(homepage.indexOf("/assets/product/demo/design-workspace.webp?v=12"));
     for (const name of ["favorites-workspace", "folder-group", "space-search", "notes-workspace", "task-manager"]) {
       expect(homepage).toContain(`/assets/product/demo/${name}.webp?v=12`);
       expect((await app.request(`/assets/product/demo/${name}.webp`)).status).toBe(200);

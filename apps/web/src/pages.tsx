@@ -17,6 +17,113 @@ const uiStylesheetVersion = createHash("sha256").update(readFileSync(new URL("..
 const analyticsScriptVersion = createHash("sha256").update(readFileSync(new URL("../public/analytics.js", import.meta.url))).digest("hex").slice(0, 12);
 const githubUrl = "https://github.com/kudium/web-browser";
 const sponsorsUrl = "https://github.com/sponsors/kudium";
+const homeShowcase = [
+  {
+    "image": "developer-terminal",
+    "title": "Your files and terminal. Beside the web.",
+    "description": "Browse your linked project’s file system and run commands in its built-in terminal, beside your documentation. This capture shows a real passing Bun test.",
+    "guide": "project-terminal",
+    "label": "Terminal"
+  },
+  {
+    "image": "project-editor-dark",
+    "title": "Open the folder. Make the change.",
+    "description": "Navigate the project tree, open source files, and edit and save code in the built-in editor. This is the Atlas Studio project’s real source.",
+    "guide": "file-manager",
+    "label": "Editor"
+  },
+  {
+    "image": "developer-files",
+    "title": "Browse and edit your project files.",
+    "description": "Browse folders, filter files, and edit source without losing your place.",
+    "guide": "file-manager",
+    "label": "Files"
+  },
+  {
+    "image": "developer-workspace",
+    "title": "Link your project to a tab group.",
+    "description": "Link a local project to your development group. Keep its files and tools beside the web.",
+    "guide": "developer-project",
+    "label": "Project"
+  },
+  {
+    "image": "design-workspace",
+    "title": "A space for every part of your day.",
+    "description": "Keep everyday sites in groups, gather related groups into collections, and choose a folder or stack view. Your favorites stay within reach.",
+    "guide": "spaces-and-groups",
+    "label": "Everyday"
+  },
+  {
+    "image": "sidebar-collapsed",
+    "title": "More room for the web.",
+    "description": "Hide the sidebar. Your Design group stays in the address bar, ready to switch whenever you need it.",
+    "guide": "sidebar-and-group-picker",
+    "label": "Focus"
+  },
+  {
+    "image": "social-workspace",
+    "title": "Keep your social tabs together.",
+    "description": "YouTube, Mastodon, Instagram, and LinkedIn. Keep your social tabs together, with a separate home for work.",
+    "guide": "spaces-and-groups",
+    "label": "Social"
+  },
+  {
+    "image": "ai-context",
+    "title": "Chat with AI beside your page.",
+    "description": "Keep your page in view while you bring a project brief into the AI sidebar and plan your next move.",
+    "guide": "ai-assistant",
+    "label": "AI assistant"
+  },
+  {
+    "image": "ai-glassy",
+    "title": "Make the AI panel your own.",
+    "description": "Choose a solid AI panel for everyday reading, or turn on Glassy AI panel in Preferences → Appearance for softer, translucent surfaces. Glassy AI panel is off by default.",
+    "guide": "ai-assistant",
+    "label": "Appearance"
+  },
+  {
+    "image": "ai-mentions",
+    "title": "Bring your tabs into the conversation.",
+    "description": "Mention a tab or group while drafting your request. Review the context and permissions before sending it.",
+    "guide": "ai-assistant",
+    "label": "AI context"
+  },
+  {
+    "image": "favorites-workspace",
+    "title": "Your everyday sites, in a smaller space.",
+    "description": "Compact, centered favorites keep more sites within reach. The active favorite takes its subtle border color from the website.",
+    "guide": "spaces-and-groups",
+    "label": "Favorites"
+  },
+  {
+    "image": "folder-group",
+    "title": "Turn a folder into a workspace.",
+    "description": "Drop a folder into the sidebar, review the name and project link in the shared Create group dialog, then save when you’re ready.",
+    "guide": "developer-project",
+    "label": "Folder drop"
+  },
+  {
+    "image": "space-search",
+    "title": "Find the tab you need.",
+    "description": "Search your space by tab title, address, group, or collection. Matching tabs stay in context, with favorites always within reach.",
+    "guide": "space-search",
+    "label": "Search"
+  },
+  {
+    "image": "notes-workspace",
+    "title": "Keep the plan beside your project.",
+    "description": "Write a launch checklist in the visual note editor or switch to Markdown. Long titles wrap and note settings stay out of the writing area.",
+    "guide": "notes",
+    "label": "Notes"
+  },
+  {
+    "image": "task-manager",
+    "title": "See what your browser is doing.",
+    "description": "Inspect real CPU and memory usage, filter and sort activities, and stop a page or close its tab when you need resources back.",
+    "guide": "task-manager",
+    "label": "Performance"
+  }
+] as const;
 export function Layout({
   children,
   docs = false,
@@ -193,63 +300,12 @@ export function homepage() {
               aria-roledescription="carousel"
             >
               <div className="hero-slides" tabIndex={0}>
-                {[
-                  [
-                    "design-workspace",
-                    "A space for every part of your day.",
-                    "Keep everyday sites in groups, gather related groups into collections, and choose a folder or stack view. Your favorites stay within reach.",
-                  ],
-                  [
-                    "sidebar-collapsed",
-                    "More room for the web.",
-                    "Hide the sidebar. Your Design group stays in the address bar, ready to switch whenever you need it.",
-                  ],
-                  [
-                    "social-workspace",
-                    "Keep your social tabs together.",
-                    "YouTube, Mastodon, Instagram, and LinkedIn. Keep your social tabs together, with a separate home for work.",
-                  ],
-                  [
-                    "ai-context",
-                    "Chat with AI beside your page.",
-                    "Keep your page in view while you bring a project brief into the AI sidebar and plan your next move.",
-                  ],
-                  [
-                    "ai-glassy",
-                    "Make the AI panel your own.",
-                    "Choose a solid AI panel for everyday reading, or turn on Glassy AI panel in Preferences → Appearance for softer, translucent surfaces. Glassy AI panel is off by default.",
-                  ],
-                  [
-                    "ai-mentions",
-                    "Bring your tabs into the conversation.",
-                    "Mention a tab or group while drafting your request. Review the context and permissions before sending it.",
-                  ],
-                  [
-                    "developer-workspace",
-                    "Link your project to a tab group.",
-                    "Link a local project to your development group. Keep its files and tools beside the web.",
-                  ],
-                  [
-                    "developer-files",
-                    "Browse and edit your project files.",
-                    "Browse folders, filter files, and edit source without losing your place.",
-                  ],
-                  [
-                    "developer-terminal",
-                    "Run and test in the built-in terminal.",
-                    "Run commands and check your project in the built-in terminal. This is a real test run.",
-                  ],
-                  ["favorites-workspace", "Your everyday sites, in a smaller space.", "Compact, centered favorites keep more sites within reach. The active favorite takes its subtle border color from the website."],
-                  ["folder-group", "Turn a folder into a workspace.", "Drop a folder into the sidebar, review the name and project link in the shared Create group dialog, then save when you’re ready."],
-                  ["space-search", "Find the tab you need.", "Search your space by tab title, address, group, or collection. Matching tabs stay in context, with favorites always within reach."],
-                  ["notes-workspace", "Keep the plan beside your project.", "Write a launch checklist in the visual note editor or switch to Markdown. Long titles wrap and note settings stay out of the writing area."],
-                  ["task-manager", "See what your browser is doing.", "Inspect real CPU and memory usage, filter and sort activities, and stop a page or close its tab when you need resources back."],
-                ].map(([image, title, description], index) => (
+                {homeShowcase.map(({ image, title, description, guide }, index) => (
                   <figure
                     className="hero-slide"
                     id={`workflow-${index}`}
                     key={image}
-                    aria-label={`${index + 1} of 14`}
+                    aria-label={`${index + 1} of ${homeShowcase.length}`}
                   >
                     <div className="hero-screen">
                       <img
@@ -266,24 +322,7 @@ export function homepage() {
                       <p>{description}</p>
                       <a
                         className="text-link"
-                        href={`/tutorials/${
-                          [
-                            "spaces-and-groups",
-                            "sidebar-and-group-picker",
-                            "spaces-and-groups",
-                            "ai-assistant",
-                            "ai-assistant",
-                            "ai-assistant",
-                            "developer-project",
-                            "file-manager",
-                            "project-terminal",
-                            "spaces-and-groups",
-                            "developer-project",
-                            "space-search",
-                            "notes",
-                            "task-manager",
-                          ][index]
-                        }`}
+                        href={`/tutorials/${guide}`}
                       >
                         See how it works <span aria-hidden="true">›</span>
                       </a>
@@ -300,22 +339,7 @@ export function homepage() {
                   ‹
                 </button>
                 <div className="hero-tabs" aria-label="Choose a workflow">
-                  {[
-                    "Everyday",
-                    "Focus",
-                    "Social",
-                    "AI assistant",
-                    "Appearance",
-                    "AI context",
-                    "Developer",
-                    "Files",
-                    "Terminal",
-                    "Favorites",
-                    "Folder drop",
-                    "Search",
-                    "Notes",
-                    "Performance",
-                  ].map((label, index) => (
+                  {homeShowcase.map(({ label }, index) => (
                     <button
                       type="button"
                       data-slide={index}
@@ -505,7 +529,7 @@ export function homepage() {
                 src="/assets/product/demo/developer-terminal.webp?v=12"
                 width="2880"
                 height="1880"
-                alt="The linked Atlas Studio demo project beside its local collection overview, with real project files and an integrated terminal running a passing Bun test"
+                alt="Bun documentation beside the Atlas Studio file system and its built-in terminal with a passing test"
                 loading="lazy"
               />
               <figcaption>
@@ -513,6 +537,16 @@ export function homepage() {
                 the right. One workspace.
               </figcaption>
             </figure>
+            <div className="developer-tool-gallery">
+              <figure>
+                <img src="/assets/product/demo/project-editor-dark.webp?v=12" alt="Atlas Studio file tree and TypeScript source in the built-in editor" width="1440" height="940" loading="lazy" />
+                <figcaption>A real project tree and editable source.</figcaption>
+              </figure>
+              <figure>
+                <img src="/assets/product/demo/project-terminal.webp?v=12" alt="The built-in project terminal running Atlas Studio’s Bun test successfully" width="1440" height="940" loading="lazy" />
+                <figcaption>Commands run in the linked folder. Real output.</figcaption>
+              </figure>
+            </div>
             <div className="developer-details">
               {[
                 [

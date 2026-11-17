@@ -2136,3 +2136,8 @@ body.account-page:has(.cloud-workspace) header nav > a[href='/docs'] { display: 
 .showcase-recording summary { cursor: pointer; font-size: 14px; color: var(--muted); padding: 12px 0; }
 .showcase-recording video { display: block; width: 100%; height: auto; border-radius: 16px; background: #202020; }
 .showcase-recording p { font-size: 12px; line-height: 1.6; color: var(--muted); }
+.developer-tool-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 32px 0; }
+.developer-tool-gallery figure { margin: 0; }
+.developer-tool-gallery img { display: block; width: 100%; height: auto; border-radius: 12px; }
+.developer-tool-gallery figcaption { margin-top: 12px; font-size: 13px; color: var(--muted); }
+@media (max-width: 600px) { .developer-tool-gallery { grid-template-columns: 1fr; } }
