@@ -15,7 +15,3 @@ Linked groups (name and AI reference):
 <!-- kudium:browser-group:77cb6f781255c42a0040f348968c4e22a7381f7a7cfa0bb43e291ba3e6a53b72:start -->
 {"name":"kudium browser","slug":"kudium-browser"}
 <!-- kudium:browser-group:77cb6f781255c42a0040f348968c4e22a7381f7a7cfa0bb43e291ba3e6a53b72:end -->
-
-<!-- kudium:browser-group:410904c5cfd773a9ea7f1b580fecc325fa49efdf75e87894481282507469e22f:start -->
-{"name":"Kudium Browser","slug":"kudium-browser"}
-<!-- kudium:browser-group:410904c5cfd773a9ea7f1b580fecc325fa49efdf75e87894481282507469e22f:end -->

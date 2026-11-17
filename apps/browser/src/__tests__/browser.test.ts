@@ -31,6 +31,10 @@ jest.mock('../main/ai', () => ({ registerAI: jest.fn(() => jest.fn()) }));
 jest.mock('../main/pageCapture', () => ({
   registerPageCapture: jest.fn(() => jest.fn()),
 }));
+jest.mock('../main/tabShortcutCapture', () => ({
+  captureTabShortcuts: jest.fn(() => () => {}),
+}));
+
 jest.mock('../main/spaceGestures', () => ({
   registerSpaceGestures: jest.fn(() => jest.fn()),
 }));
@@ -66,6 +70,7 @@ jest.mock('../main/siteSettings', () => {
 });
 
 jest.mock('../main/preferences', () => ({
+  onBrowserPreferencesChanged: jest.fn(() => () => {}),
   enablePagePinchZoom: jest.fn(),
   applyBrowserPreferences: jest.fn(),
   getBrowserPreferences: () => ({
@@ -130,6 +135,7 @@ jest.mock('electron', () => {
           session: options.webPreferences.session,
           loadURL: jest.fn().mockResolvedValue(undefined),
           focus: jest.fn(),
+          setIgnoreMenuShortcuts: jest.fn(),
         },
         loadURL: jest.fn().mockResolvedValue(undefined),
       })
@@ -142,7 +148,12 @@ jest.mock('electron', () => {
       webContents: Object.assign(new Emitter(), {
         isDestroyed: () => false,
         isDevToolsOpened: () => false,
+        mainFrame: { executeJavaScript: jest.fn().mockResolvedValue(undefined) },
         executeJavaScript: jest.fn().mockResolvedValue(undefined),
+        executeJavaScriptInIsolatedWorld: jest
+          .fn()
+          .mockResolvedValue(undefined),
+        setIgnoreMenuShortcuts: jest.fn(),
         getURL: () => 'https://example.com',
         getTitle: () => 'Example',
         isLoading: jest.fn(() => false),
@@ -159,6 +170,7 @@ jest.mock('electron', () => {
           clearData: jest.fn().mockResolvedValue(undefined),
           setPermissionRequestHandler: jest.fn(),
           setPermissionCheckHandler: jest.fn(),
+          setDisplayMediaRequestHandler: jest.fn(),
           fetch: jest.fn().mockResolvedValue({
             ok: true,
             headers: { get: () => null },
@@ -205,6 +217,7 @@ it.each([false, true])(
         isFocused: jest.fn(() => false),
         isDestroyed: jest.fn(() => false),
         focus: jest.fn(),
+        setIgnoreMenuShortcuts: jest.fn(),
         mainFrame: {},
       }),
       contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
@@ -244,6 +257,7 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
       isFocused: jest.fn(() => false),
       isDestroyed: jest.fn(() => false),
       focus: jest.fn(),
+      setIgnoreMenuShortcuts: jest.fn(),
       mainFrame: {},
     }),
     contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
@@ -277,6 +291,7 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     'browser-shortcut',
     'ai-sidebar'
   );
+  shortcutEvent.preventDefault.mockClear();
   for (const shift of [false, true]) {
     window.webContents.emit('before-input-event', shortcutEvent, {
       type: 'keyDown',
@@ -289,6 +304,10 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
       'browser-shortcut',
       shift ? 'tab-switcher-previous' : 'tab-switcher-next'
     );
+    expect(shortcutEvent.preventDefault).not.toHaveBeenCalled();
+    expect(window.webContents.setIgnoreMenuShortcuts).toHaveBeenLastCalledWith(
+      true
+    );
   }
   window.webContents.emit('before-input-event', shortcutEvent, {
     type: 'keyUp',
@@ -299,6 +318,9 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
   expect(window.webContents.send).toHaveBeenLastCalledWith(
     'browser-shortcut',
     'tab-switcher-commit'
+  );
+  expect(window.webContents.setIgnoreMenuShortcuts).toHaveBeenLastCalledWith(
+    false
   );
   window.webContents.emit('before-input-event', shortcutEvent, {
     type: 'keyDown',
@@ -471,7 +493,8 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
   )?.value;
   expect(bindDownloadSource).toHaveBeenCalledWith(
     earlyContents,
-    JSON.stringify(['one', earlyRequest.app.id])
+    JSON.stringify(['one', earlyRequest.app.id]),
+    'one'
   );
   const preventDefault = jest.fn();
   earlyContents.emit('close', { preventDefault });
@@ -753,6 +776,7 @@ it.each(['same', 'cancel', 'closed', 'moved', 'frame', 'moved-during-clear'])(
         isFocused: jest.fn(() => false),
         isDestroyed: jest.fn(() => false),
         focus: jest.fn(),
+        setIgnoreMenuShortcuts: jest.fn(),
         mainFrame: {},
       }),
       contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
@@ -854,6 +878,7 @@ it.each(['navigation', 'removal', 'window', 'empty-list'])(
         isFocused: jest.fn(() => false),
         isDestroyed: jest.fn(() => false),
         focus: jest.fn(),
+        setIgnoreMenuShortcuts: jest.fn(),
         mainFrame: {},
       }),
       contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
@@ -895,7 +920,9 @@ it.each(['navigation', 'removal', 'window', 'empty-list'])(
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
-    const decoder = jest.requireMock('../main/faviconDecoder').FaviconDecoder.mock.results.at(-1).value;
+    const decoder = jest
+      .requireMock('../main/faviconDecoder')
+      .FaviconDecoder.mock.results.at(-1).value;
     const decodedBeforeRequest = decoder.decode.mock.calls.length;
     let signal: AbortSignal | undefined;
     contents.session.fetch.mockImplementationOnce(

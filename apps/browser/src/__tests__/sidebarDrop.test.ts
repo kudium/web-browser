@@ -53,7 +53,7 @@ it('uses the reviewed import flow and creates a project only after explicit subm
       sessionId: 'old',
       name: 'Old',
       sessionSlug: 'taken',
-      spaceId: 'space',
+      spaceId: 'chosen-space',
       url: 'about:blank',
       icon: '',
     },
@@ -95,21 +95,31 @@ it('uses the reviewed import flow and creates a project only after explicit subm
         slug: 'taken',
       })
     ).rejects.toThrow('already used');
+    await expect(
+      invoke('sidebar-drop-create', {
+        token: proposal.token,
+        name: 'Project',
+        slug: 'project',
+        spaceId: '',
+      })
+    ).rejects.toThrow('Choose a space');
     const result = await invoke('sidebar-drop-create', {
       token: proposal.token,
       name: 'My project',
       slug: 'my-project',
+      spaceId: 'chosen-space',
     });
     expect(result.tab).toMatchObject({
       sessionName: 'My project',
       sessionSlug: 'my-project',
-      spaceId: 'space',
+      spaceId: 'chosen-space',
       url: 'about:blank',
     });
-    expect(linkProjectFolder).toHaveBeenCalledWith(expect.any(String), root, {
-      name: 'My project',
-      slug: 'my-project',
-    });
+    expect(linkProjectFolder).toHaveBeenCalledWith(
+      JSON.stringify([result.tab.sessionId, 'chosen-space']),
+      root,
+      { name: 'My project', slug: 'my-project' }
+    );
     await expect(
       invoke('sidebar-drop-create', {
         token: proposal.token,

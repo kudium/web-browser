@@ -138,6 +138,9 @@ export function registerSidebarDrop(
       if (aiGroups(tabs()).some((group) => group.slug === draft.slug))
         throw new Error('That AI reference is already used.');
       const current = pending;
+      const space = draft.spaceId ?? current.space;
+      if (typeof space !== 'string' || !space || space.length > 200)
+        throw new Error('Choose a space for the project group.');
       const folder = await fs.promises.realpath(current.folder);
       if (!(await fs.promises.stat(folder)).isDirectory())
         throw new Error('The project folder is unavailable.');
@@ -152,7 +155,7 @@ export function registerSidebarDrop(
         sessionSlug: draft.slug,
         url: 'about:blank',
         icon: '',
-        spaceId: current.space,
+        spaceId: space,
         pinned: true,
       };
       linkProjectFolder(aiGroupId(tab), folder, {

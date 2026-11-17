@@ -3,6 +3,7 @@ import {
   renderFailureMessage,
 } from './RenderErrorBoundary';
 import { AssistantPageHeader } from './AssistantPageHeader';
+import { EditorViewSwitch } from './EditorViewSwitch';
 /* Native controls have visible or accessible labels. */
 /* eslint-disable react/require-default-props, jsx-a11y/label-has-associated-control */
 import {
@@ -17,7 +18,6 @@ import {
 import {
   Button,
   IconButton,
-  TextField,
   TextArea,
   Switch,
   Popover,
@@ -34,8 +34,8 @@ import {
   Heading,
   List,
   MoreHorizontal,
-  CaseSensitive,
   LockKeyhole,
+  FileText,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useAIPagePreference } from '../../utils/useAIPagePreference';
@@ -78,7 +78,6 @@ export function NotesPage({
   const [historyPinned, setHistoryPinned] = useState(false);
   const [fontSize, setFontSize] = useAIPagePreference('noteFontSize', 16);
   const [wrap, setWrap] = useAIPagePreference('noteWrap', true);
-  const [formatOpen, setFormatOpen] = useState(false);
   const [markdownMode, setMarkdownMode] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const pageElement = useRef<HTMLElement>(null);
@@ -102,7 +101,7 @@ export function NotesPage({
   const editVersion = useRef(0);
   const privacyEpoch = useRef(0);
   const editor = useRef<NoteEditorHandle | null>(null);
-  const titleInput = useRef<HTMLInputElement>(null);
+  const titleInput = useRef<HTMLTextAreaElement>(null);
   const sourceInput = useRef<HTMLTextAreaElement>(null);
   const pendingBodyFocus = useRef(false);
   const setEditorHandle = useCallback((handle: NoteEditorHandle | null) => {
@@ -502,58 +501,37 @@ export function NotesPage({
         )}
         {draft && (
           <>
-            {dirty && !textSelected && (
-              <span className="notes-save-status" aria-live="polite">
-                {busy ? 'Saving…' : 'Edited'}
-              </span>
-            )}
-            {textSelected && !markdownMode && (
-              <div
-                className="notes-inline-format"
-                aria-label="Format selected text"
-              >
-                {[
-                  [Bold, 'Bold selected text', 'bold'],
-                  [Italic, 'Italic selected text', 'italic'],
-                  [Code, 'Inline code', 'inlineCode'],
-                ].map(([Icon, label, command]) => {
-                  const Glyph = Icon as typeof Bold;
-                  return (
-                    <IconButton
-                      key={String(command)}
-                      size="1"
-                      variant="ghost"
-                      aria-label={String(label)}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() =>
-                        editor.current?.format(command as NoteFormat)
+            <EditorViewSwitch
+              label="Change note view"
+              value={markdownMode ? 'markdown' : 'visual'}
+              onChange={(view) => {
+                setMarkdownMode(view === 'markdown');
+                setTextSelected(false);
+              }}
+            />
+            <Popover.Root open={optionsOpen} onOpenChange={setOptionsOpen}>
+              <Popover.Trigger>
+                <IconButton
+                  size="1"
+                  variant="ghost"
+                  aria-label="Note options"
+                  title="Note options"
+                >
+                  <MoreHorizontal size={16} />
+                </IconButton>
+              </Popover.Trigger>
+              <PanelPopoverContent className="notes-options-popup" size="1">
+                <div className="notes-display-options">
+                  {!markdownMode && (
+                    <div
+                      className="notes-format"
+                      aria-label={
+                        textSelected
+                          ? 'Format selected text'
+                          : 'Note formatting'
                       }
                     >
-                      <Glyph size={14} />
-                    </IconButton>
-                  );
-                })}
-              </div>
-            )}
-            {(!textSelected || markdownMode) && (
-              <Popover.Root open={formatOpen} onOpenChange={setFormatOpen}>
-                <Popover.Trigger>
-                  <IconButton
-                    size="1"
-                    variant="ghost"
-                    aria-label="Format note"
-                    title="Format note"
-                  >
-                    <CaseSensitive size={17} />
-                  </IconButton>
-                </Popover.Trigger>
-                <PanelPopoverContent className="notes-format-popup" size="1">
-                  <div
-                    className="notes-format"
-                    aria-label="Markdown formatting"
-                  >
-                    {!markdownMode &&
-                      [
+                      {[
                         [Bold, 'Bold', 'bold'],
                         [Italic, 'Italic', 'italic'],
                         [Heading, 'Heading', 'heading'],
@@ -570,14 +548,15 @@ export function NotesPage({
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => {
                               editor.current?.format(command as NoteFormat);
-                              setFormatOpen(false);
+                              setOptionsOpen(false);
                             }}
                           >
                             <Glyph size={14} />
                           </IconButton>
                         );
                       })}
-                  </div>
+                    </div>
+                  )}
                   <div className="notes-font-size">
                     <span>Text size</span>
                     <IconButton
@@ -612,34 +591,17 @@ export function NotesPage({
                       <Plus size={14} />
                     </IconButton>
                   </div>
-                </PanelPopoverContent>
-              </Popover.Root>
-            )}
-            <Popover.Root open={optionsOpen} onOpenChange={setOptionsOpen}>
-              <Popover.Trigger>
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  aria-label="Note options"
-                  title="Note options"
-                >
-                  <MoreHorizontal size={16} />
-                </IconButton>
-              </Popover.Trigger>
-              <PanelPopoverContent className="notes-options-popup" size="1">
-                <Button
-                  size="1"
-                  variant="ghost"
-                  onClick={() => {
-                    setMarkdownMode((value) => !value);
-                    setTextSelected(false);
-                    setFormatOpen(false);
-                    setOptionsOpen(false);
-                  }}
-                >
-                  <Code size={14} />
-                  {markdownMode ? 'Use visual editor' : 'Edit as Markdown'}
-                </Button>
+                  {markdownMode && (
+                    <label className="notes-option-row">
+                      <span>Wrap text</span>
+                      <Switch
+                        size="1"
+                        checked={wrap}
+                        onCheckedChange={setWrap}
+                      />
+                    </label>
+                  )}
+                </div>
                 <div
                   className="notes-location"
                   role="group"
@@ -755,6 +717,9 @@ export function NotesPage({
                   <Trash2 size={14} />
                   Delete note
                 </Button>
+                <span className="notes-save-status" aria-live="polite">
+                  {busy ? 'Saving…' : dirty ? 'Edited' : 'All changes saved'}
+                </span>
               </PanelPopoverContent>
             </Popover.Root>
           </>
@@ -767,14 +732,17 @@ export function NotesPage({
       >
         {draft ? (
           <>
-            <TextField.Root
+            <textarea
               ref={titleInput}
               className="notes-title"
               aria-label="Note title"
               placeholder="Title"
               maxLength={120}
+              rows={1}
               value={draft.title}
-              onChange={(event) => update({ title: event.target.value })}
+              onChange={(event) =>
+                update({ title: event.target.value.replace(/\r?\n/g, ' ') })
+              }
               onKeyDown={(event) => {
                 if (
                   event.nativeEvent.isComposing ||
@@ -853,6 +821,7 @@ export function NotesPage({
                 label="Note editor"
                 recovery={
                   <button type="button" onClick={() => setMarkdownMode(true)}>
+                    <FileText size={15} aria-hidden="true" />
                     Use plain text
                   </button>
                 }

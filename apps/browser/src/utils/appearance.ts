@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { browser } from '../browser/client';
+import { LocalStorage } from './LocalStorage';
 
 export type Appearance = 'system' | 'light' | 'dark';
 const key = 'kudiumbrowser-appearance';
 const change = 'kudiumbrowser-appearance-change';
 export function getAppearance(): Appearance {
-  const value = localStorage.getItem(key);
+  const value = LocalStorage.get(key);
   return value === 'light' || value === 'dark' ? value : 'system';
 }
 export function setAppearance(value: Appearance) {
-  localStorage.setItem(key, value);
+  LocalStorage.set(key, value);
   window.dispatchEvent(new Event(change));
 }
 export function useAppearance() {

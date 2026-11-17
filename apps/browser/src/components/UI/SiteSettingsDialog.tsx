@@ -15,6 +15,8 @@ import {
   MapPin,
   Bell,
   Camera,
+  Mic,
+  Monitor,
   Clipboard,
   Maximize,
   Music2,
@@ -35,7 +37,9 @@ import type { PageCaptureMode } from '../../browser/pageCapture';
 const permissions = [
   ['geolocation', 'Location', MapPin],
   ['notifications', 'Notifications', Bell],
-  ['media', 'Camera & microphone', Camera],
+  ['camera', 'Camera', Camera],
+  ['microphone', 'Microphone', Mic],
+  ['display-capture', 'Screen sharing', Monitor],
   ['clipboard-read', 'Clipboard', Clipboard],
   ['fullscreen', 'Full screen', Maximize],
   ['midi', 'MIDI devices', Music2],
@@ -68,7 +72,7 @@ export function SiteSettingsDialog({
   const site = state?.siteSettings;
   const send = (
     action: BrowserCommand['action'],
-    patch: Partial<BrowserCommand> = {}
+    patch: Partial<BrowserCommand> = {},
   ) => {
     if (state && site)
       command({ id: state.id, action, url: site.origin, ...patch });
@@ -81,15 +85,17 @@ export function SiteSettingsDialog({
   let connectionDescription = secure
     ? 'Your connection is encrypted with TLS. This does not guarantee the website is trustworthy.'
     : site?.certificateError
-    ? `The website’s identity could not be verified because its TLS certificate is invalid (${site.certificateError}).`
-    : 'This site uses HTTP. Information you send can be read or changed in transit.';
+      ? `The website’s identity could not be verified because its TLS certificate is invalid (${site.certificateError}).`
+      : 'This site uses HTTP. Information you send can be read or changed in transit.';
   if (!site) {
     connectionLabel = 'No website selected';
     connectionDescription =
       'Open a website to manage its connection and permissions.';
   }
   const extra = Object.keys(site?.permissions || {}).filter(
-    (key) => !permissions.some(([permission]) => permission === key)
+    (key) =>
+      key !== 'media' &&
+      !permissions.some(([permission]) => permission === key),
   );
   const rows = [
     ...permissions,
@@ -127,9 +133,7 @@ export function SiteSettingsDialog({
         >
           <div className="site-hooks-intro">
             <h2 id="site-hooks-intro">Site hooks</h2>
-            <p>
-              Customize with JavaScript and CSS.
-            </p>
+            <p>Customize with JavaScript and CSS.</p>
           </div>
           <Button
             size="2"
@@ -208,28 +212,52 @@ export function SiteSettingsDialog({
                 <div className="site-settings-group">
                   {onSiteAutofillChange && (
                     <div className="site-setting-row">
-                      <span className="site-setting-icon"><Settings2 size={18} /></span>
-                      <span className="site-setting-label">Autofill on this website</span>
-                      <Switch aria-label="Autofill on this website" checked={!!siteAutofillEnabled}
-                        disabled={!site?.origin.startsWith('https:')} onCheckedChange={onSiteAutofillChange} />
-                    </div>
-                  )}
-                  {(['addressBarPlacement', 'addressBarFullUrl'] as const).map((key) => (
-                    <div className="site-setting-row" key={key}>
-                      <span className="site-setting-icon"><Settings2 size={18} /></span>
-                      <span className="site-setting-label">
-                        {preferenceControls.find((control) => control.key === key)?.title}
+                      <span className="site-setting-icon">
+                        <Settings2 size={18} />
                       </span>
-                      <AddressBarSetting
-                        setting={key}
-                        value={key === 'addressBarPlacement' ? addressBarPlacement || 'sidebar' : !!fullUrl}
-                        onChange={(patch) => {
-                          if (patch.addressBarPlacement) onAddressBarPlacementChange(patch.addressBarPlacement);
-                          if (patch.addressBarFullUrl !== undefined) onFullUrlChange(patch.addressBarFullUrl);
-                        }}
+                      <span className="site-setting-label">
+                        Autofill on this website
+                      </span>
+                      <Switch
+                        aria-label="Autofill on this website"
+                        checked={!!siteAutofillEnabled}
+                        disabled={!site?.origin.startsWith('https:')}
+                        onCheckedChange={onSiteAutofillChange}
                       />
                     </div>
-                  ))}
+                  )}
+                  {(['addressBarPlacement', 'addressBarFullUrl'] as const).map(
+                    (key) => (
+                      <div className="site-setting-row" key={key}>
+                        <span className="site-setting-icon">
+                          <Settings2 size={18} />
+                        </span>
+                        <span className="site-setting-label">
+                          {
+                            preferenceControls.find(
+                              (control) => control.key === key,
+                            )?.title
+                          }
+                        </span>
+                        <AddressBarSetting
+                          setting={key}
+                          value={
+                            key === 'addressBarPlacement'
+                              ? addressBarPlacement || 'sidebar'
+                              : !!fullUrl
+                          }
+                          onChange={(patch) => {
+                            if (patch.addressBarPlacement)
+                              onAddressBarPlacementChange(
+                                patch.addressBarPlacement,
+                              );
+                            if (patch.addressBarFullUrl !== undefined)
+                              onFullUrlChange(patch.addressBarFullUrl);
+                          }}
+                        />
+                      </div>
+                    ),
+                  )}
                 </div>
               </section>
             )}
@@ -265,7 +293,13 @@ export function SiteSettingsDialog({
                       {label}
                     </span>
                     <Select.Root
-                      value={site?.permissions[permission] || 'ask'}
+                      value={
+                        site?.permissions[permission] ||
+                        (['camera', 'microphone'].includes(permission)
+                          ? site?.permissions.media
+                          : undefined) ||
+                        'ask'
+                      }
                       disabled={!site || site.blocked}
                       onValueChange={(choice) =>
                         send('set-permission', {

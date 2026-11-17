@@ -6,7 +6,7 @@ const path = require('path'),
   assert = require('assert'),
   ts = require('typescript'),
   http = require('http');
-if (process.argv.includes('--private-only') || process.argv.includes('--real-sites-only')) app.commandLine.appendSwitch('use-fake-device-for-media-stream');
+if (process.argv.includes('--private-only') || process.argv.includes('--real-sites-only') || process.argv.includes('--compatibility-only')) app.commandLine.appendSwitch('use-fake-device-for-media-stream');
 if ((process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) && process.argv.includes('--inspect')) app.commandLine.appendSwitch('remote-debugging-port','9222');
 const nativePrivateDialogs=process.argv.includes('--native-private-dialogs');
 let idleCheck;
@@ -24,6 +24,7 @@ fs.mkdirSync(out, { recursive: true });
 for (const [source, target] of [
   
   ['src/main/browser.ts', 'browser.js'],
+  ['src/main/browserIdentity.ts', 'browserIdentity.js'],
 
   
 
@@ -51,8 +52,8 @@ fs.writeFileSync(path.join(runtimeDir,'dialogs.js'),"module.exports={...require(
 require('esbuild').buildSync({entryPoints:['src/main/privateSessions.ts'],bundle:true,platform:'node',outfile:path.join(runtimeDir,'privateSessions.js')});
 require('esbuild').buildSync({entryPoints:['src/main/downloads.ts'],bundle:true,platform:'node',external:['electron','./preferences','./privateSessions'],outfile:path.join(runtimeDir,'downloads.js')});
 require('esbuild').buildSync({entryPoints:['src/main/websitePermissions.ts'],bundle:true,platform:'node',external:['electron','./preferences','./dialogs','./siteSettings'],outfile:path.join(runtimeDir,'websitePermissions.js')});
-fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};export * from ${JSON.stringify(path.resolve('src/main/privateBrowsing'))};export {safeStorage as fixtureSecureStorage} from ${JSON.stringify(path.resolve('src/main/localStorage'))};`);
-require('esbuild').buildSync({entryPoints:[path.join(runtimeDir,'browser-entry.ts')],bundle:true,platform:'node',external:['electron','./extensions','./preferences','./downloads','./dialogs','./siteSettings','./history','./privateSessions'],outfile:path.join(runtimeDir,'electronBrowser.js')});
+fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};export * from ${JSON.stringify(path.resolve('src/main/privateBrowsing'))};export {registerTaskManagerWindow} from ${JSON.stringify(path.resolve('src/main/taskManager'))};export {safeStorage as fixtureSecureStorage} from ${JSON.stringify(path.resolve('src/main/localStorage'))};`);
+require('esbuild').buildSync({entryPoints:[path.join(runtimeDir,'browser-entry.ts')],bundle:true,platform:'node',external:['electron','./extensions','./preferences','./downloads','./dialogs','./siteSettings','./history','./privateSessions',require.resolve('node-pty')],alias:{'node-pty':require.resolve('node-pty')},outfile:path.join(runtimeDir,'electronBrowser.js')});
 require('fs').copyFileSync(require.resolve('electron-chrome-extensions/preload'),path.join(runtimeDir,'chrome-extension-api.preload.js'));
 require('fs').copyFileSync(require.resolve('electron-chrome-web-store/preload'),path.join(runtimeDir,'chrome-web-store.preload.js'));
 require('esbuild').buildSync({entryPoints:['src/main/extensions.ts'],bundle:true,platform:'node',external:['electron','./dialogs',require.resolve('electron-chrome-extensions'),require.resolve('electron-chrome-web-store')],alias:{'electron-chrome-extensions':require.resolve('electron-chrome-extensions'),'electron-chrome-web-store':require.resolve('electron-chrome-web-store')},outfile:path.join(runtimeDir,'extensions.js')});
@@ -77,11 +78,29 @@ if(process.argv.includes('--developer-sidebar-only')) {
   fs.symlinkSync(path.resolve('release/app/dist/renderer'),path.join(runtimeDir,'dist/renderer'),'dir');
   fs.mkdirSync(path.join(runtimeDir,'.erb/dll'),{recursive:true});fs.copyFileSync(path.join(runtimeDir,'preload.js'),path.join(runtimeDir,'.erb/dll/preload.js'));
 }
+if (process.argv.includes('--compatibility-only')) {
+  app.setName('Kudium Browser');
+  app.userAgentFallback = require(path.join(runtimeDir, 'browserIdentity.js')).browserUserAgent(app.userAgentFallback);
+}
 const { registerBrowser } = require(path.join(runtimeDir, 'browser.js'));
 const { eventBus } = require(path.join(runtimeDir, 'EventBus.js'));
 app.setPath('userData', path.join(runtimeDir, 'user-data'));
 app.on('window-all-closed', () => {});
-if (process.argv.includes('--private-only')) ipcMain.handle('browser-storage-ready', () => ({available:false,needsRecovery:false}));
+if (process.argv.includes('--sync-suggestion-only')) {
+  ipcMain.handle('browser-storage-ready', () => ({available:true,needsRecovery:false}));
+  ipcMain.handle('account-sync', () => ({phase:'off',connected:false,message:'Sync is off',remote:[]}));
+}
+if (process.argv.includes('--private-only') || process.argv.includes('--file-chooser-only') || process.argv.includes('--ai-composer-layout-only') || process.argv.includes('--notes-editor-only') || process.argv.includes('--production-assets-only') || process.argv.includes('--ai-chat-scroll-only')) ipcMain.handle('browser-storage-ready', () => ({available:false,needsRecovery:false}));
+let notesFixture, notesSaves = [];
+if (process.argv.includes('--notes-editor-only')) {
+  notesFixture = {id:'production-note',kind:'note',title:'Production editor fixture: Property Detail — 12 Units of Uncompleted Two Bedroom Apartments with Parking and Amenities',notes:'# Fixture heading\n\nOriginal **bold** text.\n\n```js\nconst fixture = true;\n```',fields:[],origin:'',username:'',password:'',allowAI:false};
+  ipcMain.handle('password-manager', (_event, request) => {
+    if(request.action === 'notes')return [{...notesFixture,notes:undefined}];
+    if(request.action === 'edit')return {...notesFixture};
+    if(request.action === 'save'){notesFixture={...notesFixture,...request.item};notesSaves.push({...notesFixture});return notesFixture;}
+    return {};
+  });
+}
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const windows = {};
 let groupAuthenticationCalls=0, cancelGroupAuthentication=false, finishGroupAuthentication;
@@ -115,6 +134,8 @@ app
   .whenReady()
   .then(async () => {
     let stalledNewTabResponse;
+    let primaryColorLoads = 0;
+    let primaryColorReload;
     let popupHits = 0;
     const popupForms = [];
     let expiredChildHits = 0;
@@ -142,6 +163,21 @@ app
           }); return;
         }
         if (req.url === '/v1/models') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:[{id:'gpt-4.1'}]}));return;}
+        if (req.url === '/theme-fixture') {res.setHeader('Content-Type','text/html');res.end('<title>Header theme fixture</title><header style="height:90px;background:rgb(252,215,43)">Brand header</header><p>Native CSS theme fallback</p>');return;}
+        if (req.url.startsWith('/favorite-theme?')) {
+          const color = new URL(req.url, 'http://localhost').searchParams.get('color');
+          res.setHeader('Content-Type', 'text/html');
+          res.end('<title>Favorite color fixture</title>' + (/^[0-9a-f]{6}$/i.test(color || '') ? '<meta name="theme-color" content="#' + color + '">' : '') + '<p>Favorite theme fixture</p>');
+          return;
+        }
+        if (req.url === '/primary-color-cache') {
+          primaryColorLoads += 1;
+          res.setHeader('Content-Type', 'text/html');
+          if (primaryColorLoads === 2) { primaryColorReload = res; return; }
+          res.end('<title>Cached color fixture</title><div style="height:56px;background:#fcd72b">Header</div>'); return;
+        }
+        if (req.url === '/primary-color-redirect') {res.writeHead(302, {Location:url.replace('127.0.0.1','localhost')+'/primary-color-empty'});res.end();return;}
+        if (req.url === '/primary-color-empty') {res.setHeader('Content-Type','text/html');res.end('<title>No header color</title><p>Another origin</p>');return;}
         if (req.url === '/capture-fixture') {res.end(`<title>Capture fixture</title><style>body{margin:0;min-height:2600px;background:#f7f7ff;color:#171725;font-family:Arial}h1{padding:24px}#box{margin:24px;width:240px;height:120px;background:#eb4b4b}#below{margin-top:1900px;padding:24px;background:#37c392}.print-only{display:none}@media print{.screen-only{display:none}.print-only{display:block}body{background:white}}</style><h1>Capture marker top</h1><div id="box"></div><p class="screen-only">SCREEN ONLY MARKER</p><p class="print-only">PDF PRINT LAYOUT MARKER</p><div id="below">Below the fold marker</div><script>window.captureClicks=0;document.addEventListener('click',()=>window.captureClicks++);</script>`);return;}
         if (req.url === '/ai-guarded-close') {res.end(`<title>Guarded close fixture</title><button onclick="window.onbeforeunload=()=>''">Arm close guard</button><script>window.addEventListener('unload',()=>{localStorage.closeUnloadCount=Number(localStorage.closeUnloadCount||0)+1;})</script>`);return;}
         if (req.url.startsWith('/ai-dialog-tab')) {res.end(`<title>AI dialog destination</title><script>window.dialogResult=confirm('Native browser navigation fixture')</script><p>Dialog destination loaded</p>`);return;}
@@ -214,8 +250,9 @@ app
         coordinator.register(win);
         registerBrowser(win);
       }
+      if (view === 'task-manager') { win.setParentWindow(windows.main); require(path.join(runtimeDir,'electronBrowser.js')).registerTaskManagerWindow(win); }
       if (view === 'main-secondary') { win.loadFile(path.resolve('release/app/dist/renderer/index.html'), { query: { view: 'main' } }).catch(console.error); return win; }
-      await win.loadFile(path.resolve('release/app/dist/renderer/index.html'), {
+      await win.loadFile(path.resolve(process.env.KUDIUMBROWSER_SMOKE_RENDERER || 'release/app/dist/renderer', 'index.html'), {
         query: { view },
       });
       await wait(600);
@@ -296,7 +333,7 @@ app
         assert.equal(await page.webContents.executeJavaScript(`navigator.mediaDevices.getUserMedia({audio:true,video:true}).then(stream=>{stream.getTracks().forEach(track=>track.stop());return 'allowed';},error=>error.name)`),'NotAllowedError');
         assert.equal(permissionPrompts,2,'Camera/microphone must use the website prompt');
         assert.equal(savedSites.getSiteSettings(privateProfile,url).permissions.geolocation,'block');
-        assert.equal(savedSites.getSiteSettings(privateProfile,url).permissions.media,'block');
+        assert.equal(savedSites.getSiteSettings(privateProfile,url).permissions.camera,'block');assert.equal(savedSites.getSiteSettings(privateProfile,url).permissions.microphone,'block');
         assert.deepEqual(savedSites.getSiteSettings('private-group',url).permissions,{});
       } finally {dialogs.showBrowserDialog=originalDialog;}
       assert.deepEqual(fs.existsSync(siteFile)?fs.readFileSync(siteFile):undefined,sitesBefore,'Private permission decisions never persist');
@@ -493,6 +530,168 @@ app
       server.close(); app.exit(0); return;
     }
     const main = await create('main', 1160, 850);
+    if (process.argv.includes('--project-folder-drop-only')) {
+      await require('./project-folder-drop-acceptance.cjs')({main,evaluate,runtimeDir,out,url});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--space-search-only')) {
+      await require('./space-search-acceptance.cjs')({ main, evaluate, out, url, nativeMenu: () => nativeContextMenu });
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--primary-color-cache-only')) {
+      await require('./primary-color-cache-acceptance.cjs')({ main, evaluate, url, finishReload: () => {
+        assert(primaryColorReload, 'A reload response is waiting');
+        primaryColorReload.end('<title>Fresh color fixture</title><div style="height:56px;background:#00b53f">Fresh header</div>');
+      } });
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--group-toolbar-only')) {
+      await require('./group-toolbar-acceptance.cjs')({ main, evaluate, out, runtimeDir, url, dialog });
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--sync-suggestion-only')) {
+      for (let attempt = 0; attempt < 80; attempt++) {
+        if (await evaluate(main, `!!document.querySelector('.account-sync-suggestion')`)) break;
+        await wait(30);
+      }
+      assert(await evaluate(main, `!!document.querySelector('.account-sync-suggestion')`), 'Offer account sync on startup');
+      await evaluate(main, `document.querySelector('.workspace-sidebar').style.width='240px';undefined`);
+      await wait(350);
+      assert(await evaluate(main, `(()=>{const card=document.querySelector('.account-sync-suggestion'),r=card.getBoundingClientRect(),s=document.querySelector('.workspace-sidebar').getBoundingClientRect();return r.width>0&&r.left>=s.left&&r.right<=s.right&&card.scrollWidth<=card.clientWidth+1})()`), 'Suggestion fits narrow sidebar');
+      fs.writeFileSync(path.join(out, 'account-sync-startup.png'), (await main.capturePage()).toPNG());
+      await evaluate(main, `document.querySelector('.workspace').classList.add('compact-sidebar');undefined`);
+      assert(await evaluate(main, `getComputedStyle(document.querySelector('.account-sync-suggestion')).display==='none'`), 'Collapsed sidebar hides the suggestion');
+      await evaluate(main, `document.querySelector('.workspace').classList.remove('compact-sidebar');document.querySelector('[aria-label="Dismiss sync suggestion"]').click();undefined`);
+      assert(await evaluate(main, `!document.querySelector('.account-sync-suggestion')`), 'Dismissal hides the suggestion');
+      await main.reload();
+      await wait(500);
+      assert(await evaluate(main, `!!document.querySelector('.sidebar-bottom')&&!document.querySelector('.account-sync-suggestion')`), 'Dismissal survives browser reload');
+      console.log('PASS: account sync startup suggestion, narrow and collapsed sidebar, persistent dismissal. Evidence: ' + out);
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--space-footer-only')) {
+      await require('./space-footer-acceptance.cjs')({main,evaluate,out});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--ai-chat-scroll-only')) {
+      await require('./ai-chat-scroll-acceptance.cjs')({main,evaluate,out});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--tab-switcher-only')) {
+      await require('./tab-switcher-acceptance.cjs')({main,evaluate,out,url});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--production-assets-only')) {
+      await require('./production-assets-acceptance.cjs')({main,evaluate,runtimeDir,out,url});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--notes-editor-only')) {
+      await evaluate(main, `window.noteCSPViolations=[];document.addEventListener('securitypolicyviolation',event=>window.noteCSPViolations.push({directive:event.effectiveDirective,blocked:event.blockedURI}));localStorage.setItem('kudiumbrowser-ai-page-pane',JSON.stringify('notes'));window.dispatchEvent(new CustomEvent('ai-page-preference-changed',{detail:'kudiumbrowser-ai-page-pane'}));document.querySelector('[aria-label^="Toggle Chat sidebar"]').click();undefined`);
+      await wait(300);
+      await evaluate(main, `localStorage.setItem('kudiumbrowser-ai-page-pane',JSON.stringify('notes'));window.dispatchEvent(new CustomEvent('ai-page-preference-changed',{detail:'kudiumbrowser-ai-page-pane'}));undefined`);
+      await wait(600);
+      await evaluate(main, `const note=[...document.querySelectorAll('button')].find(button=>button.textContent.includes('Production editor fixture'));if(!note)throw new Error('Fixture note missing');note.click();undefined`);
+      await wait(1200);
+      const loaded = await evaluate(main, `({rich:!!document.querySelector('[aria-label="Note content"]'),heading:document.querySelector('.notes-rich-editor h1')?.textContent,bold:document.querySelector('.notes-rich-editor strong')?.textContent,code:document.querySelector('.notes-rich-editor pre code')?.textContent,alerts:[...document.querySelectorAll('[role=alert]')].map(e=>e.textContent),violations:window.noteCSPViolations})`);
+      fs.writeFileSync(path.join(out,'notes-editor-load.json'),JSON.stringify(loaded,null,2));
+      const noteLayouts = [];
+      for (const width of [520, 320, 240]) {
+        await evaluate(main, `document.querySelector('.ai-sidebar').style.width='${width}px';document.querySelector('.ai-panel-slot').style.width='${width+8}px';undefined`);
+        await wait(120);
+        const layout = await evaluate(main, `(()=>{const title=document.querySelector('[aria-label="Note title"]'),r=title.getBoundingClientRect(),alert=document.querySelector('.notes-editor [role="alert"]'),buttons=alert?[...alert.querySelectorAll('button')]:[];const header=document.querySelector('.notes-toolbar'),h=header.getBoundingClientRect(),controls=[...header.querySelectorAll('button')].map(b=>b.getBoundingClientRect());return {width:${width},headerFits:controls.every(b=>b.left>=h.left&&b.right<=h.right)&&controls.every((a,i)=>controls.every((b,j)=>i===j||a.right<=b.left+1||b.right<=a.left+1)),title:title.value,titleHeight:r.height,lineHeight:parseFloat(getComputedStyle(title).lineHeight),titleFits:title.scrollWidth<=title.clientWidth+1&&title.scrollHeight<=title.clientHeight+1,buttonsFit:buttons.every(b=>{const bRect=b.getBoundingClientRect(),a=alert.getBoundingClientRect();return bRect.left>=a.left&&bRect.right<=a.right&&bRect.width>=90&&bRect.height>=32}),buttonsSeparated:buttons.length<2||(()=>{const a=buttons[0].getBoundingClientRect(),b=buttons[1].getBoundingClientRect();return b.left>=a.right+7||b.top>=a.bottom+7})()}})()`);
+        assert(layout.headerFits, 'View and navigation controls fit without overlap at '+width+'px');
+        assert.equal(layout.title, notesFixture.title, 'The complete note title is retained');
+        assert(layout.titleFits && layout.titleHeight > layout.lineHeight * 1.5, 'The full title wraps without clipping at '+width+'px: '+JSON.stringify(layout));
+        assert(layout.buttonsFit && layout.buttonsSeparated, 'Recovery buttons fit without touching at '+width+'px: '+JSON.stringify(layout));
+        noteLayouts.push(layout);
+        fs.writeFileSync(path.join(out,'notes-layout-'+width+'.png'),(await main.capturePage()).toPNG());
+      }
+      fs.writeFileSync(path.join(out,'notes-layout.json'),JSON.stringify(noteLayouts,null,2));
+      await evaluate(main, `document.querySelector('.ai-sidebar').style.width='';document.querySelector('.ai-panel-slot').style.width='';undefined`);
+      if (process.argv.includes('--notes-editor-tampered')) {
+        assert.equal(loaded.rich,false,'Modified lazy chunk must be refused');
+        assert(loaded.alerts.some(alert=>alert.includes('Note editor could not be displayed')));
+        assert.equal(await evaluate(main,'!!window.notesTamperExecuted'),false,'Modified code must not execute');
+        await evaluate(main, `[...document.querySelectorAll('button')].find(button=>button.textContent==='Use plain text').click();undefined`);
+        await wait(150);
+        assert.equal(await evaluate(main, `document.querySelector('[aria-label="Note Markdown source"]').value`),notesFixture.notes);
+        assert.equal(notesSaves.length,0,'Failed editor must not alter saved notes');
+        fs.writeFileSync(path.join(out,'notes-editor-results.json'),JSON.stringify({outcome:'passed',checks:['Modified packaged lazy chunk is refused','Modified code never executes','Plain-text recovery preserves original draft'],loaded},null,2));
+        console.log('PASS: modified lazy chunk refused; original draft preserved. Artifacts: '+out);
+        Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+      }
+      assert.equal(loaded.rich,true,JSON.stringify(loaded));
+      assert.equal(loaded.heading,'Fixture heading');assert.equal(loaded.bold,'bold');assert(loaded.code.includes('const fixture = true;'));
+      assert.equal(await evaluate(main, `!!document.querySelector('.notes-toolbar [aria-label="Format note"]')`),false,'Formatting settings stay out of the header');
+      await evaluate(main, `document.querySelector('[aria-label="Note options"]').click();undefined`);
+      await wait(150);
+      await evaluate(main, `document.querySelector('[aria-label="Increase note text size"]').click();undefined`);
+      await wait(100);
+      assert.equal(await evaluate(main, `getComputedStyle(document.querySelector('.notes-rich-editor')).fontSize`),'17px','Text size works from the options menu');
+      fs.writeFileSync(path.join(out,'notes-options.png'),(await main.capturePage()).toPNG());
+      await evaluate(main, `document.querySelector('[aria-label="Reset note text size"]').click();document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));undefined`);
+      await wait(100);
+
+      await evaluate(main, `const editor=document.querySelector('[aria-label="Note content"]');editor.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'Edited in the rich editor');undefined`);
+      await wait(1200);
+      assert(notesSaves.some(note=>note.notes.includes('Edited in the rich editor')),'Rich editor must autosave edited Markdown');
+      const switchMode = async(label) => {
+        await evaluate(main, `document.querySelector('[aria-label="Change note view"]').dispatchEvent(new PointerEvent('pointerdown',{button:0,ctrlKey:false,bubbles:true,pointerType:'mouse'}));undefined`);
+        await wait(100);
+        await evaluate(main, `[...document.querySelectorAll('[role=menuitemradio]')].find(button=>button.textContent.trim()===${JSON.stringify(label)}).click();undefined`);
+        await wait(150);
+      };
+      await switchMode('Markdown');
+      assert((await evaluate(main, `document.querySelector('[aria-label="Note Markdown source"]').value`)).includes('Edited in the rich editor'));
+      await switchMode('Visual');
+      assert((await evaluate(main, `document.querySelector('[aria-label="Note content"]').textContent`)).includes('Edited in the rich editor'));
+      fs.writeFileSync(path.join(out,'notes-editor.png'),(await main.capturePage()).toPNG());
+      assert.equal(loaded.violations.length,0,'Lazy editor must load without CSP violations');
+      fs.writeFileSync(path.join(out,'notes-editor-results.json'),JSON.stringify({outcome:'passed',runtime:{electron:process.versions.electron,chromium:process.versions.chrome},checks:['Production lazy editor loads with CSP enabled','Markdown headings, bold and highlighted code render','Rich edit autosaves Markdown','Markdown/visual mode switching preserves edits'],loaded},null,2));
+      console.log('PASS: production lazy notes editor, Markdown rendering and autosave. Artifacts: '+out);
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--compatibility-only')) {
+      await require('./browser-compatibility-acceptance.cjs')({main,evaluate,runtimeDir,out,windows});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--ai-composer-layout-only')) {
+      await evaluate(main, `document.querySelector('[aria-label^="Toggle Chat sidebar"]').click();undefined`);
+      await wait(500);
+      const measured=[];
+      for(const width of [520,420,380,320,260,240]) {
+        await evaluate(main, `document.querySelector('.ai-sidebar').style.width='${width}px';document.querySelector('.ai-panel-slot').style.width='${width+8}px';undefined`);
+        await wait(150);
+        const layout=await evaluate(main, `(()=>{const button=document.querySelector('.ai-access-picker'),icon=button.querySelector('svg'),composer=button.closest('.ai-composer'),r=button.getBoundingClientRect(),i=icon.getBoundingClientRect(),c=composer.getBoundingClientRect();return {width:document.querySelector('.ai-sidebar').getBoundingClientRect().width,visible:getComputedStyle(icon).display!=='none'&&i.width>0&&i.height>0,inside:r.left>=c.left&&r.right<=c.right&&r.top>=c.top&&r.bottom<=c.bottom,enabled:!button.disabled};})()`);
+        assert(layout.visible,'AI permission shield must stay visible at '+width+'px');
+        assert(layout.inside,'Permission button must fit inside the composer at '+width+'px');
+        assert(layout.enabled,'Permission button must remain usable at '+width+'px');
+        await evaluate(main, `document.querySelector('.ai-access-picker').click();undefined`);await wait(80);
+        assert(await evaluate(main, `!!document.querySelector('.ai-access-popover')&&['Ask first','Standard','Full access'].every(label=>document.querySelector('.ai-access-popover').textContent.includes(label))`),'Permission menu must open at '+width+'px');
+        await evaluate(main, `document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));undefined`);await wait(80);
+        measured.push(layout);
+        fs.writeFileSync(path.join(out,'ai-composer-'+width+'.png'),(await main.capturePage()).toPNG());
+      }
+      fs.writeFileSync(path.join(out,'ai-composer-layout-results.json'),JSON.stringify({outcome:'passed',measured},null,2));
+      console.log('PASS: AI permissions remain visible, contained and usable at 240–520px. Screenshots: '+out);
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+    }
+    if (process.argv.includes('--task-manager-only')) {
+      await require('./task-manager-acceptance.cjs')({main,create,evaluate,runtimeDir,out,url,windows});
+      Object.values(windows).forEach(win=>win.close());server.close();app.quit();return;
+    }
+    if (process.argv.includes('--shortcuts-layout-only')) {
+      const settings = await create('settings', 1080, 800);
+      await tab(settings, 'Keyboard shortcuts'); await wait(200);
+      for (const [name, width, height] of [['desktop',1080,800], ['narrow',480,700]]) {
+        settings.setSize(width,height); await wait(150);
+        assert(await evaluate(settings, `document.documentElement.scrollWidth <= innerWidth + 1`), 'Shortcut preferences must fit the window');
+        assert(await evaluate(settings, `(()=>{const toolbar=document.querySelector('.shortcut-toolbar'); const r=toolbar.getBoundingClientRect(); return [...toolbar.querySelectorAll('button,input')].every(el=>{const b=el.getBoundingClientRect();return !b.width || (b.left>=r.left && b.right<=r.right+1);});})()`), 'Shortcut toolbar controls must stay inside the card');
+        fs.writeFileSync(path.join(out,`keyboard-shortcuts-${name}.png`), (await settings.capturePage()).toPNG());
+      }
+      console.log('PASS: keyboard shortcut preferences fit desktop and narrow windows');
+      Object.values(windows).forEach(win=>win.close());server.close();app.quit();return;
+    }
     if (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) {
       const report = await require(process.argv.includes('--kuditrust-only') ? './kuditrust-acceptance.cjs' : './real-sites-acceptance.cjs')({main,evaluate,create,windows,runtimeDir,out,url,registerBrowser});
       server.close();
@@ -1197,7 +1396,7 @@ app
 
     if (process.argv.includes('--file-chooser-only')) {
       await wait(500);
-      await evaluate(main, `document.querySelector('[aria-label="Toggle AI sidebar"]').click();undefined`);await wait(200);
+      await evaluate(main, `document.querySelector('[aria-label^="Toggle Chat sidebar"]').click();undefined`);await wait(200);
       const web=main.contentView.children.find(view => view instanceof WebContentsView && view.webContents.session !== main.webContents.session).webContents;
       await web.executeJavaScript(`(()=>{window.chooserTrusted=false;window.waitingClicks=0;const input=document.createElement('input');input.id='native-hidden-file';input.type='file';input.style.display='none';document.body.append(input);const choose=document.createElement('button');choose.textContent='Choose native artifact';choose.style='position:fixed;left:20px;top:20px;z-index:9999';choose.onclick=event=>{window.chooserTrusted=event.isTrusted;input.click();};document.body.append(choose);const wait=document.createElement('button');wait.textContent='Wait for chooser';wait.style='position:fixed;left:20px;top:70px;z-index:9999';wait.onclick=()=>window.waitingClicks++;document.body.append(wait);})()`);
       const {Client}=require('@modelcontextprotocol/sdk/client/index.js');const {StreamableHTTPClientTransport}=require('@modelcontextprotocol/sdk/client/streamableHttp.js');
@@ -1226,6 +1425,13 @@ app
         const retry=decode(await agent.callTool({name:'find_element',arguments:{tabId:'personal-home',label:'Choose native artifact',role:'button'}}));
         decode(await agent.callTool({name:'upload_files',arguments:{tabId:'personal-home',elementId:retry.elementId,snapshotId:retry.snapshotId,paths:[file]}}));
         assert(!web.debugger.isAttached());
+        const secondFile=path.join(runtimeDir,'native-second.txt');fs.writeFileSync(secondFile,'Second chooser fixture');
+        await web.executeJavaScript(`document.querySelector('#native-hidden-file').multiple=true;undefined`);
+        const multipleTarget=decode(await agent.callTool({name:'find_element',arguments:{tabId:'personal-home',label:'Choose native artifact',role:'button'}}));
+        decode(await agent.callTool({name:'upload_files',arguments:{tabId:'personal-home',elementId:multipleTarget.elementId,snapshotId:multipleTarget.snapshotId,paths:[file,secondFile]}}));
+        assert.equal(await web.executeJavaScript('document.querySelector("#native-hidden-file").files.length'),2,'Multiple selection must deliver both files');
+        assert.deepEqual(await web.executeJavaScript('Promise.all(Array.from(document.querySelector("#native-hidden-file").files,file=>file.text()))'),['Native chooser fixture','Second chooser fixture']);
+        assert(!web.debugger.isAttached(),'Multiple selection must release its session');
         const folder=path.join(runtimeDir,'native-folder');fs.mkdirSync(path.join(folder,'nested'),{recursive:true});
         for(let index=0;index<100;index++)fs.writeFileSync(path.join(folder,`file-${index}.txt`),String(index));
         fs.writeFileSync(path.join(folder,'.hidden'),'Hidden native artifact');fs.writeFileSync(path.join(folder,'nested','one.txt'),'Nested one');fs.writeFileSync(path.join(folder,'nested','two.txt'),'Nested two');
@@ -1242,6 +1448,7 @@ app
         assert.equal(await web.executeJavaScript('document.querySelector("#native-hidden-file").files.length'),103,'Browser must receive every file despite bounded receipt');
         assert.equal(await web.executeJavaScript(`Array.from(document.querySelector('#native-hidden-file').files).find(file=>file.webkitRelativePath==='native-folder/nested/two.txt').text()`),'Nested two');
         assert(!web.debugger.isAttached());
+        fs.writeFileSync(path.join(out,'file-input-results.json'),JSON.stringify({outcome:'passed',measuredAt:new Date().toISOString(),runtime:{electron:process.versions.electron,chromium:process.versions.chrome,platform:process.platform,arch:process.arch},verified:['Trusted click and hidden file input','Single and multiple file selection with exact bytes','Sidebar Stop preserves previous selection','Denied directory selection preserves previous files','103-file directory selection with relative paths','Debugger cleanup'],limitations:['Chromium chooser interception is automated through CDP; native macOS Open sheets are not driven.','Synthetic files and approved local fixture actions only.']},null,2));
         console.log('PASS: React/native browser hidden file chooser, trusted input, sidebar Stop/recovery, denied folder preservation, complete 103-file directory selection with relative paths and bounded receipt');
 
       } finally {dialog.showMessageBox=savedApproval;await agent.close();}
@@ -3459,4 +3666,4 @@ app
 setTimeout(() => {
   console.error('UI check timed out');
   app.exit(1);
-}, (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) ? (process.argv.includes('--inspect') ? 600000 : 240000) : nativePrivateDialogs?180000:(process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();
+}, process.argv.includes('--compatibility-only') ? 120000 : (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) ? (process.argv.includes('--inspect') ? 600000 : 240000) : nativePrivateDialogs?180000:(process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();

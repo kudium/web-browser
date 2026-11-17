@@ -7,7 +7,7 @@ const path = require('path'),
   ts = require('typescript'),
   http = require('http');
 const runtimeDir = fs.mkdtempSync(
-  path.join(require('os').tmpdir(), 'kudiumbrowser-desktop-smoke-')
+  '/tmp/kudium-showcase-'
 );
 const out = path.resolve('../web/public/product/demo');
 fs.mkdirSync(out, { recursive: true });
@@ -61,7 +61,7 @@ fs.writeFileSync(
   path.join(runtimeDir, 'browser-entry.ts'),
   `export * from ${JSON.stringify(
     path.resolve('src/main/electronBrowser')
-  )};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};`
+  )};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/passwordManager'))};export * from ${JSON.stringify(path.resolve('src/main/localStorage'))};export * from ${JSON.stringify(path.resolve('src/main/taskManager'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};`
 );
 require('esbuild').buildSync({
   entryPoints: [path.join(runtimeDir, 'browser-entry.ts')],
@@ -183,7 +183,8 @@ const evaluate = async (win, code) => {
     throw error;
   }
 };
-const demoProject = path.resolve('demo/atlas-studio');
+const demoProject = path.join(runtimeDir, 'atlas-studio');
+fs.cpSync(path.resolve('demo/atlas-studio'), demoProject, {recursive:true,filter:source=>!source.split(path.sep).includes('node_modules')});
 require('electron').dialog.showOpenDialog = async () => ({
   canceled: false,
   filePaths: [demoProject],
@@ -319,6 +320,9 @@ app
     windows.main = main;
     demoWindows.register(main);
     registerBrowser(main);
+    const production = require(path.join(runtimeDir,'electronBrowser.js'));
+    await production.initializeLocalStorage();
+    production.registerPasswordManager(contents => Object.values(windows).some(win => !win.isDestroyed() && win.webContents===contents));
     await main.loadURL('http://localhost:1212/?view=main');
     await wait(900);
     const groups = [
@@ -329,7 +333,7 @@ app
             'YouTube',
             'https://www.youtube.com/results?search_query=creative+desk+setup',
           ],
-          ['Reddit', 'https://www.reddit.com/'],
+          ['Mastodon', 'https://blog.joinmastodon.org/'],
           ['Instagram', 'https://www.instagram.com/'],
           ['LinkedIn', 'https://www.linkedin.com/'],
         ],
@@ -381,6 +385,7 @@ app
         ['Perplexity', 'https://www.perplexity.ai/'],
         ['Gemini', 'https://gemini.google.com/'],
         ['Google Translate', 'https://translate.google.com/'],
+        ['Bun', 'https://bun.sh/'],
       ].map(([name, url]) => ({ group: name, name, url, favorite: true })),
     ];
     const tabs = await Promise.all(
@@ -438,20 +443,35 @@ app
     );
     await main.reload();
     await wait(2500);
-    const capture = async (win, name, expected) => {
-      await wait(450);
+    const videoFrames = path.join(runtimeDir, 'video-frames');
+    fs.mkdirSync(videoFrames);
+    const capture = async (win, name, expected, recording = false) => {
+      const targetDir = recording ? videoFrames : out;
+      if (win === main && !recording) {
+        const selected = ['workspace-light','workspace-dark'].includes(name) ? 'demo-13' : ['design-workspace','sidebar-expanded','sidebar-collapsed','folder-group'].includes(name) ? 'demo-11' : name === 'social-workspace' ? 'demo-1' : null;
+        if (selected) {
+          main.webContents.send('browser-tab-request', { action: 'select', id: selected });
+          await wait(5500);
+        }
+        const expand = ['design-workspace','sidebar-expanded'].includes(name) ? 'demo-8' : ['workspace-light','workspace-dark','notes-workspace'].includes(name) ? 'demo-16' : name==='social-workspace' ? 'demo-0' : null;
+        if(expand)await evaluate(main, `(()=>{const row=document.querySelector('[data-tab-motion="sidebar-${expand}"] .sidebar-app');if(row?.getAttribute('aria-expanded')==='false')row.click()})();undefined`);
+      }
+      const pages = [];
+      await wait(recording ? 80 : 450);
       const broken = await evaluate(win, `!!document.querySelector('iframe#webpack-dev-server-client-overlay') || /Failed to compile|Module not found:/.test(document.body.innerText)`);
       if (broken) throw Error('Renderer compile error in ' + name + '; fix it before capturing.');
+      if (await evaluate(win, `!!document.querySelector('.render-error-boundary')`)) throw Error('A browser panel failed in '+name);
+
       const text = await evaluate(
         win,
-        "document.body.innerText+' '+[...document.querySelectorAll('[aria-label]')].map(el=>el.getAttribute('aria-label')).join(' ')"
+        "document.body.innerText+' '+[...document.querySelectorAll('[aria-label]')].map(el=>el.getAttribute('aria-label')).join(' ')+' '+[...document.querySelectorAll('input')].map(el=>el.value).join(' ')"
       );
       if (expected && !text.includes(expected))
         throw Error(
           'Missing ' + expected + ' in ' + name + '; ' + text.slice(0, 1600)
         );
       fs.writeFileSync(
-        path.join(out, name + '.png'),
+        path.join(targetDir, name + '.png'),
         (await photograph(win)).toPNG()
       );
       if (win === main) {
@@ -460,6 +480,16 @@ app
           if (!view.webContents || !view.getVisible()) continue;
           const bounds = view.getBounds();
           if (!bounds.width || !bounds.height) continue;
+          if (!recording) {
+            const pageState=await view.webContents.executeJavaScript(`({title:document.title,body:document.body?.innerText.slice(0,1000),ready:document.readyState})`);
+            if(pageState.ready!=='complete'||/ERR_|Access Denied|Just a moment|Verify you are human|This site can.t be reached/i.test(pageState.title+' '+pageState.body))throw Error('Unready public website in '+name+': '+pageState.title);
+          }
+          if(!recording) {
+            const page = await view.webContents.executeJavaScript(`({url:location.href,title:document.title})`);
+            const expectedHost = ['design-workspace','sidebar-expanded','sidebar-collapsed','folder-group'].includes(name) ? 'www.apple.com' : name === 'social-workspace' ? 'blog.joinmastodon.org' : null;
+            if (expectedHost && new URL(page.url).hostname !== expectedHost) throw Error('Wrong website in '+name+': '+page.url);
+            pages.push(page);
+          }
           await view.webContents.executeJavaScript('document.fonts.ready');
           const file = path.join(
             runtimeDir,
@@ -472,7 +502,7 @@ app
         fs.writeFileSync(
           config,
           JSON.stringify({
-            target: path.join(out, name + '.png'),
+            target: path.join(targetDir, name + '.png'),
             width: 1440,
             layers,
           })
@@ -487,10 +517,13 @@ app
           { encoding: 'utf8' }
         );
         if (result.status !== 0) throw Error(result.stderr);
+        // Popovers intentionally hide the native page behind its real snapshot.
+        if (!recording && !['folder-group','address-group-picker'].includes(name) && !pages.length) throw Error('No visible native website in '+name);
       }
-      checks.push({
+      if (!recording) checks.push({
         image: name + '.png',
         expectedText: expected,
+        pages,
         verified: true,
       });
     };
@@ -507,6 +540,40 @@ app
     await main.reload();
     await wait(1800);
     await capture(main, 'workspace-dark', 'Development');
+    main.webContents.send('browser-tab-request',{action:'select',id:'demo-24'});
+    await wait(2500);
+    await capture(main,'favorites-workspace','Bun');
+    main.webContents.send('browser-tab-request',{action:'select',id:'demo-13'});
+    await wait(700);
+
+    // Record the real search control filtering public tabs; no reconstructed UI.
+    await evaluate(main, `document.querySelector('button[aria-label="Search Studio"]').click();undefined`);
+    let frame = 0;
+    for (const query of ['', 'r', 're', 'rea', 'react', 'react', 'react', 'react', '', '', 'fig', 'figma', 'figma', 'figma']) {
+      await evaluate(main, `(()=>{const input=document.querySelector('input[aria-label="Search Studio"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(query)});input.dispatchEvent(new Event('input',{bubbles:true}));})();undefined`);
+      for (let repeat=0;repeat<2;repeat++) await capture(main,'frame-'+String(frame++).padStart(4,'0'),'Search Studio',true);
+    }
+    await capture(main,'space-search','Figma');
+    const video = require('child_process').spawnSync('ffmpeg',['-y','-framerate','4','-i',path.join(videoFrames,'frame-%04d.png'),'-vf','scale=1440:940','-c:v','libx264','-crf','23','-pix_fmt','yuv420p','-movflags','+faststart',path.join(out,'space-search.mp4')],{encoding:'utf8'});
+    if(video.status!==0)throw Error('Could not encode the real search recording: '+video.stderr.slice(-600));
+    checks.push({video:'space-search.mp4',verified:true,source:'Recorded native browser captures while filtering real public website tabs; no invented UI.'});
+    await evaluate(main, `document.querySelector('[aria-label="Clear group search"]').click();undefined`);
+
+    production.passwordVault().save({id:'atlas-launch-note',title:'Coastal collection — launch checklist and accessibility review',kind:'note',sensitive:false,allowAI:false,notes:fs.readFileSync(path.join(demoProject,'docs/launch-plan.md'),'utf8'),origin:'',username:'',password:'',fields:[]},'group:development');
+    await evaluate(main, `localStorage.setItem('user_last_app_id','demo-15');localStorage.setItem('kudiumbrowser-ai-page-open','true');localStorage.setItem('kudiumbrowser-ai-page-pane','"notes"');undefined`);
+    await main.reload();
+    await wait(1600);
+    await evaluate(main, `document.querySelector('.notes-landing-list .ai-chat-history-row button').click();undefined`);
+    await wait(1600);
+    await capture(main,'notes-workspace','Coastal collection');
+    const manager = new BrowserWindow({width:1100,height:720,show:true,parent:main,titleBarStyle:'hiddenInset',webPreferences:{preload:path.join(runtimeDir,'preload.js'),contextIsolation:true,backgroundThrottling:false}});
+    windows['task-manager']=manager;
+    production.registerTaskManagerWindow(manager);
+    await manager.loadURL('http://localhost:1212/?view=task-manager');
+    await wait(1800);
+    await capture(manager,'task-manager','Task Manager');
+    manager.destroy();
+    delete windows['task-manager'];
     // Show the reproducible local project beside AI and developer tools.
     await evaluate(main, `localStorage.setItem('user_last_app_id','demo-15');const spaces=JSON.parse(localStorage.getItem('kudiumbrowser-spaces'));spaces.find(s=>s.id==='default').selectedAppId='demo-15';localStorage.setItem('kudiumbrowser-spaces',JSON.stringify(spaces));undefined`);
     await evaluate(
@@ -661,7 +728,7 @@ app
     await capture(component, 'project-terminal', '1 pass');
     for (const [id, name] of [
       ['demo-11', 'design-workspace'],
-      ['demo-0', 'social-workspace'],
+      ['demo-1', 'social-workspace'],
     ]) {
       await evaluate(
         main,
@@ -683,6 +750,16 @@ app
     await main.reload();
     await wait(6500);
     await capture(main, 'sidebar-expanded', 'Product Studio');
+    main.webContents.debugger.attach('1.3');
+    const dropPoint=await evaluate(main,`(()=>{const r=document.querySelector('.workspace-sidebar').getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+200)}})()`);
+    for(const type of ['dragEnter','dragOver','drop']){await main.webContents.debugger.sendCommand('Input.dispatchDragEvent',{type,...dropPoint,data:{items:[],files:[demoProject],dragOperationsMask:1}});await wait(100)}
+    main.webContents.debugger.detach();
+    await wait(900);
+    await evaluate(main,`(()=>{const input=document.querySelector('[aria-label="Group name"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Coastal collection');input.dispatchEvent(new Event('input',{bubbles:true}));})();undefined`);
+    await capture(main,'folder-group','Coastal collection');
+    await evaluate(main,`[...document.querySelectorAll('[role="dialog"] button')].find(button=>button.textContent==='Cancel').click();undefined`);
+    await wait(400);
+
     await evaluate(
       main,
       "localStorage.setItem('kudiumbrowser-sidebar-hidden','true');undefined"

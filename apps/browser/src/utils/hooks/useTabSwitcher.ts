@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { IApp } from '../../types';
 
-export const TAB_SWITCHER_DELAY = 1500;
+export const TAB_SWITCHER_DELAY = 200;
 interface Session {
   tabs: IApp[];
   index: number;
@@ -19,7 +19,7 @@ export function useTabSwitcher(
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const latest = useRef({ tabs, selectedId, select });
   latest.current = { tabs, selectedId, select };
-  useEffect(() => {
+  useLayoutEffect(() => {
     const available = new Set(tabs.map((tab) => tab.id));
     history.current = history.current.filter((id) => available.has(id));
     if (selectedId !== lastSelected.current) {
@@ -39,7 +39,15 @@ export function useTabSwitcher(
     const tab = current?.tabs[current.index];
     const available =
       tab && latest.current.tabs.find((item) => item.id === tab.id);
-    if (commit && available) latest.current.select(available);
+    if (commit && available) {
+      // Native shortcut messages can arrive before React renders the selection.
+      // Keep MRU ordering current so successive quick chords toggle immediately.
+      history.current = [
+        available.id,
+        ...history.current.filter((id) => id !== available.id),
+      ];
+      latest.current.select(available);
+    }
   }, []);
   useEffect(() => {
     finish(false);
@@ -62,10 +70,7 @@ export function useTabSwitcher(
       if (recent.length < 2) return true;
       session.current = {
         tabs: recent,
-        index: Math.max(
-          0,
-          recent.findIndex((tab) => tab.id === latest.current.selectedId)
-        ),
+        index: 0,
       };
       timer.current = setTimeout(() => {
         if (session.current) setShown({ ...session.current });

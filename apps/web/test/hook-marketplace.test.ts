@@ -151,6 +151,20 @@ describe.skipIf(!url)(
       expect(html).toContain('@' + handle);
       expect(html).not.toContain(alice + '@example.test');
     });
+    test("publisher usernames can change independently of publishing", async () => {
+      const handle = 'studio_' + suffix.replaceAll('-', '').slice(0, 12);
+      const published = await store.publish(alice, sample());
+      const saved = await request('/api/hooks/publisher', 'POST', alice, { username: ' ' + handle.toUpperCase() + ' ' });
+      expect(saved.status).toBe(200);
+      expect((await saved.json()).username).toBe(handle);
+      expect((await store.detail(published.id)).author.username).toBe(handle);
+      expect((await store.package(published.id)).publisher.username).toBe(handle);
+      const before = await store.publisher(bob);
+      expect((await request('/api/hooks/publisher', 'POST', bob, { username: handle })).status).toBe(409);
+      expect((await request('/api/hooks/publisher', 'POST', bob, { username: 'bad-name' })).status).toBe(400);
+      expect(await store.publisher(bob)).toEqual(before);
+      expect((await request('/api/hooks/publisher', 'POST', undefined, { username: handle }, { Origin: 'http://localhost:3000' })).status).toBe(401);
+    });
     test("public browsing, JSON assets, and account redirects work", async () => {
       expect((await request("/hooks")).status).toBe(200);
       expect((await request("/account/hooks")).status).toBe(302);

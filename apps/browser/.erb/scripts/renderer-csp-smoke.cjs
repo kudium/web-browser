@@ -54,7 +54,7 @@ ipcMain.on('ipc-event-bus', (_event, value) => { if (value?.fixture?.startsWith(
   const report = { measuredAt: new Date().toISOString(), electron: process.versions.electron, platform: process.platform, arch: process.arch,
     probeSourceSHA256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'), htmlSHA256: crypto.createHash('sha256').update(fs.readFileSync(path.join(renderer,'index.html'))).digest('hex'), rendererSHA256: crypto.createHash('sha256').update(fs.readFileSync(path.join(renderer,'renderer.js'))).digest('hex'), rendered, ...result, received, injectedIPC, tamperExecuted, integrityErrors, errors,
     method: 'Actual emitted production renderer loaded from file with actual sandboxed preload. Synthetic inline/event/local-file injections, base rewrite, frame/object loads and HTTP fetch/beacon probes. No personal profile or external service.' };
-  const file = 'docs/benchmarks/renderer-csp.json'; const saved = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file,'utf8')) : {};
+  const file = process.env.KUDIUMBROWSER_CSP_REPORT || 'docs/benchmarks/renderer-csp.json'; const saved = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file,'utf8')) : {};
   const phase = process.env.KUDIUMBROWSER_CSP_PHASE || 'after'; if (saved[phase]) saved.confirmations=[...(saved.confirmations||[]),{phase,...report}]; else saved[phase]=report;
   fs.writeFileSync(file,JSON.stringify(saved,null,2)+'\n'); console.log('PASS renderer CSP',JSON.stringify(report));
   host.destroy();server.close();fs.rmSync(root,{recursive:true,force:true});app.exit(0);

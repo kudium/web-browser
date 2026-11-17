@@ -117,7 +117,9 @@ it('rejects locked groups, foreign windows, subframes and arbitrary group IDs', 
     () => tabs,
     () => undefined
   );
-  const handle = (ipcMain.handle as jest.Mock).mock.calls.at(-1)[1];
+  const handle = (ipcMain.handle as jest.Mock).mock.calls.find(
+    ([channel]) => channel === 'site-developer-pages'
+  )[1];
   expect(() =>
     handle({ sender: { id: 12, mainFrame }, senderFrame: mainFrame }, 'home')
   ).toThrow('Untrusted');

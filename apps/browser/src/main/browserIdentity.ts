@@ -2,4 +2,5 @@
 export const browserUserAgent = (userAgent: string): string =>
   userAgent
     .replace(/ Electron\/\S+/g, '')
-    .replace(/ (?:touch-?box|kudium-browser|Kudium Browser)\/\S+/gi, '');
+    // Electron removes spaces from app.setName('Kudium Browser') in its UA.
+    .replace(/ (?:touch-?box|kudium-?browser|Kudium Browser)\/\S+/gi, '');

@@ -2,6 +2,7 @@ import type { BrowserClient } from './contracts';
 
 // The renderer uses this contract; transport selection belongs to this adapter.
 export const browser: BrowserClient = {
+  taskManager: (request) => window.electron.browser.taskManager(request),
   nativeAppearance: (appearance) =>
     window.electron?.browser?.nativeAppearance?.(appearance) ??
     Promise.resolve(),

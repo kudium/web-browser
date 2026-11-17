@@ -34,6 +34,10 @@ export function registerWindowCommands(
         isChild: true,
         options: { width: 520, height: 720 },
       },
+      'task-manager': {
+        view: 'task-manager',
+        options: { width: 900, height: 640, minWidth: 560, minHeight: 420 },
+      },
     };
     if (
       typeof request.view !== 'string' ||
@@ -50,7 +54,7 @@ export function registerWindowCommands(
     const preset = presets[request.view];
     create({
       ...preset,
-      options: { ...preset.options },
+      options: { ...preset.options, ...(request.view === 'task-manager' ? { parent: sourceWindow(event) || undefined } : {}) },
       ...(request.view === 'add-app' ? { intent: request.intent } : {}),
     }).catch((error) => log.warn('Unable to open app window', error));
   });

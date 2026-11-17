@@ -10,7 +10,9 @@ import { accountSettingsPage } from '../src/pages';
 
 test('settings escape profile details and only offer available sign-in options', () => {
   expect(accountSettingsPage('<script>bad</script>', 'a@example.com', true, true)).toContain('&lt;script&gt;bad&lt;/script&gt;');
-  const page = accountSettingsPage('Alice', 'a@example.com', false, false);
+  const page = accountSettingsPage('Alice', 'a@example.com', false, false, 'alice_studio');
+  expect(page).toContain('data-account-form="publisher"');
+  expect(page).toContain('value="alice_studio"');
   expect(page).not.toContain('data-account-form="password"');
   expect(page).not.toContain('data-account-form="email"');
   expect(page).toContain('currently unavailable');
@@ -37,6 +39,16 @@ test.skipIf(!process.env.TEST_DATABASE_URL)('profile, password and email changes
     await call(link(messages.find(message => message.subject.includes('Verify'))!));
     const cookie = await login(), otherCookie = await login();
     const page = await call('/account/settings', undefined, cookie);
+    expect((await call('/api/hooks/publisher', { username: 'intruder' })).status).toBe(401);
+    const generated = (await db.select().from(authUser).where(eq(authUser.id, id)))[0].username;
+    expect(generated).toMatch(/^publisher_[a-f0-9]{12}$/);
+    const handle = 'alice_' + randomUUID().replaceAll('-', '').slice(0, 12);
+    const saved = await call('/api/hooks/publisher', { username: ' ' + handle.toUpperCase() + ' ' }, cookie);
+    expect(saved.status).toBe(200); expect((await saved.json()).username).toBe(handle);
+    expect(await (await call('/account/settings', undefined, cookie)).text()).toContain(handle);
+    expect((await call('/api/hooks/publisher', { username: 'bad-name' }, cookie)).status).toBe(400);
+    const rejected = await app.request(baseURL + '/api/hooks/publisher', { method: 'POST', headers: { Origin: 'https://evil.example', Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'intruder' }) });
+    expect(rejected.status).toBe(403);
     expect(page.status).toBe(200); expect(page.headers.get('cache-control')).toBe('no-store');
     expect((await call('/api/auth/update-user', { name: 'Updated Alice' }, cookie)).status).toBe(200);
     expect(await (await call('/account/settings', undefined, cookie)).text()).toContain('Updated Alice');

@@ -1,3 +1,4 @@
+import { marketplaceStore } from './hook-marketplace';
 import { HookSourceValidationError } from "../../../packages/hooks/source-validation";
 import { hookRoutes } from './hook-routes';
 import { releasePublishing, type PublishingConfig } from './release-publishing';
@@ -15,7 +16,7 @@ import { authenticateSession, syncAccountId, type Authenticate, type Auth } from
 import { envelopeSchema, opaqueId, targetSchema } from './validation';
 import { expectedRevision, syncStore } from './sync';
 import { latestRelease, updateAvailable, updaterManifest, releaseHistory } from './releases';
-import { homepage, downloadPage, documentation, notesAndActivityDocumentation, unavailablePage, authPage, accountPage, accountSettingsPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
+import { useCasesPage, homepage, downloadPage, documentation, notesAndActivityDocumentation, unavailablePage, authPage, accountPage, accountSettingsPage, tutorialIndex, tutorialPage, devicePage, releaseHistoryPage } from './pages';
 import { tutorials } from './tutorials';
 import { whatsNewPage } from './pages';
 import { privacyPage } from './privacy';
@@ -57,6 +58,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/health', c => c.json({ status: 'ok' }));
   app.get('/ready', async c => { try { await db.execute(sql`select 1`); return c.json({ status: 'ready', sync: authenticate ? 'configured' : 'unconfigured' }); } catch { return c.json({ status: 'unavailable' }, 503); } });
   app.get('/', c => c.html(homepage()));
+  app.get('/use-cases', c => c.html(useCasesPage()));
   app.get('/download', async c => {
     const history = await releaseHistory(db, assetOrigins, 'all', 1, 5);
     c.header('Cache-Control', 'no-store');
@@ -77,13 +79,14 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/docs/notes-and-activity', c => c.html(notesAndActivityDocumentation()));
   app.get('/tutorials', c => c.html(tutorialIndex()));
   app.get('/tutorials/:slug', c => { const tutorial = tutorials.find(t => t.slug === c.req.param('slug')); return tutorial ? c.html(tutorialPage(tutorial)) : c.notFound(); });
-  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-glassy', 'ai-mentions', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace']);
+  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-glassy', 'ai-mentions', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace', 'space-search', 'notes-workspace', 'task-manager', 'favorites-workspace', 'folder-group']);
   app.get('/assets/product/demo/:filename', async c => {
     const filename = c.req.param('filename');
-    if (!filename.endsWith('.webp') || !demoAssets.has(filename.slice(0, -5))) return c.notFound();
+    const recording = filename === 'space-search.mp4';
+    if (!recording && (!filename.endsWith('.webp') || !demoAssets.has(filename.slice(0, -5)))) return c.notFound();
     const file = Bun.file(new URL(`../public/product/demo/${filename}`, import.meta.url));
     if (!(await file.exists())) return c.notFound();
-    c.header('Content-Type', 'image/webp'); c.header('Cache-Control', 'public, max-age=3600');
+    c.header('Content-Type', recording ? 'video/mp4' : 'image/webp'); c.header('Cache-Control', 'public, max-age=3600');
     return c.body(await file.arrayBuffer());
   });
   const productAssets = new Set(['address-picker-detail.webp', 'favorites-detail.webp', 'highlight-workspaces.webp', 'highlight-ai.webp', 'highlight-developer.webp', 'origin-logo.png', 'browser.webp', 'assistant.webp', 'editor.webp', 'kudium-macbook.webp', 'kudium-ai-macbook.webp', 'kudium-imac.webp', 'workspace-detail.webp', 'editor-detail.webp']);
@@ -159,7 +162,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     const session = await auth.api.getSession({ headers: c.req.raw.headers, query: { disableCookieCache: true } });
     if (!session) return c.redirect('/sign-in');
     const linkedAccounts = await auth.api.listUserAccounts({ headers: c.req.raw.headers });
-    return c.html(accountSettingsPage(session.user.name, session.user.email, Boolean(auth.options.emailAndPassword?.sendResetPassword), linkedAccounts.some(account => account.providerId === 'credential')));
+    return c.html(accountSettingsPage(session.user.name, session.user.email, Boolean(auth.options.emailAndPassword?.sendResetPassword), linkedAccounts.some(account => account.providerId === 'credential'), (await marketplaceStore(db).publisher(session.user.id)).username));
   });
   app.get('/account', async c => {
     c.header('Cache-Control', 'no-store');

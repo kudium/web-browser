@@ -15,6 +15,7 @@ import { Main } from '../components/View/Main/Main';
 import { BrowserWorkspace } from '../components/UI/BrowserWorkspace';
 import { Downloads } from '../components/View/Downloads/Downloads';
 import { Settings } from '../components/View/Settings/Settings';
+import { TaskManager } from '../components/View/TaskManager';
 import { View } from '../types';
 import { useSpaces } from '../utils/SpaceManager';
 import { appThemeStyle } from '../utils/appTheme';
@@ -32,6 +33,8 @@ export function AppSelectedView() {
       window.electron?.telemetry?.feature('downloads_opened');
   }, [view]);
   switch (view) {
+    case 'task-manager':
+      return <TaskManager />;
     case 'global-hook-editor':
       return <GlobalHookEditorPage />;
     case 'site-developer':

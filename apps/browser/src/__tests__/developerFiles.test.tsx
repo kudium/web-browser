@@ -579,3 +579,56 @@ it('keeps the tree enabled and cached while loading a file preview', async () =>
     files.mock.calls.filter(([, request]) => request.action === 'list')
   ).toHaveLength(1);
 });
+
+it('keeps file browsing and wrap controls usable when preference storage is unavailable', async () => {
+  const getItem = Storage.prototype.getItem;
+  const setItem = Storage.prototype.setItem;
+  const read = jest
+    .spyOn(Storage.prototype, 'getItem')
+    .mockImplementation(function (this: Storage, key) {
+      if (
+        key === 'kudium-developer-file-wrap' ||
+        key === 'kudiumbrowser-appearance'
+      )
+        throw new DOMException('Storage unavailable', 'SecurityError');
+      return getItem.call(this, key);
+    });
+  const write = jest
+    .spyOn(Storage.prototype, 'setItem')
+    .mockImplementation(function (this: Storage, key, value) {
+      if (key === 'kudium-developer-file-wrap')
+        throw new DOMException('Storage full', 'QuotaExceededError');
+      return setItem.call(this, key, value);
+    });
+  try {
+    files.mockResolvedValue({
+      path: '',
+      entries: [{ name: 'app.ts', path: 'app.ts', kind: 'file' }],
+    });
+    render(
+      <Theme>
+        <DeveloperFiles sourceId="blocked-storage" projectName="Project" />
+      </Theme>
+    );
+    const file = await screen.findByRole('button', { name: 'app.ts' });
+    files.mockResolvedValue({
+      path: '',
+      file: {
+        name: 'app.ts',
+        path: 'app.ts',
+        size: 18,
+        text: 'const answer = 42;',
+        version: 'one',
+      },
+    });
+    fireEvent.click(file);
+    await screen.findByRole('textbox', { name: 'Editor for app.ts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Wrap' }));
+    expect(
+      screen.getByRole('button', { name: 'Wrap' }).getAttribute('aria-pressed')
+    ).toBe('true');
+  } finally {
+    read.mockRestore();
+    write.mockRestore();
+  }
+});

@@ -47,7 +47,8 @@ save(terminal.crop((terminal.width - 716, 1390, terminal.width - 44, terminal.he
 # Close-ups from the same workspace, including the real address-bar popover.
 expanded = Image.open(demo / 'sidebar-expanded.png').convert('RGB')
 picker = Image.open(demo / 'address-group-picker.png').convert('RGB')
-save(expanded.crop((16, 180, 584, 802)), 'favorites-detail.webp')
+focused_favorites = Image.open(demo / 'favorites-workspace.png').convert('RGB')
+save(focused_favorites.crop((16, 92, 584, 390)), 'favorites-detail.webp')
 # Isolate the captured toolbar and rounded popover from the webpage behind it.
 # Preserve every UI pixel inside these bounds; only the outer background is masked.
 picker_detail = picker.crop((286, 86, 930, 794)).convert('RGBA')

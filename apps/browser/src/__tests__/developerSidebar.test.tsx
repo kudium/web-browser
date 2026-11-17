@@ -41,13 +41,30 @@ jest.mock('../utils/groupAccess', () => ({
 const mockStateListeners = new Set<(state: any) => void>();
 jest.mock('../browser/client', () => ({
   browser: {
-    onState: (listener: (state: any) => void) => { mockStateListeners.add(listener); return () => mockStateListeners.delete(listener); },
+    onState: (listener: (state: any) => void) => {
+      mockStateListeners.add(listener);
+      return () => mockStateListeners.delete(listener);
+    },
     command: jest.fn(),
     preferences: jest.fn(async () => undefined),
   },
 }));
 let change: () => void;
 const pages = jest.fn();
+it('opens the focused group terminal when requested from the sidebar shortcut', async () => {
+  pages.mockResolvedValue([]);
+  render(
+    <Theme>
+      <DeveloperSidebar active focusedTabId="home" openTerminalRequest={1} />
+    </Theme>
+  );
+  await waitFor(() =>
+    expect(window.electron.siteDeveloper.terminal).toHaveBeenCalledWith(
+      JSON.stringify(['work', 'default']),
+      expect.objectContaining({ action: 'show' })
+    )
+  );
+});
 beforeEach(() => {
   jest.clearAllMocks();
   Object.assign(global, {
@@ -71,6 +88,8 @@ beforeEach(() => {
         }),
         onTerminal: () => () => {},
         project: jest.fn().mockResolvedValue(null),
+        linkDroppedProject: jest.fn(),
+        files: jest.fn().mockResolvedValue({ path: '', entries: [] }),
         pages,
         onPagesChanged: (listener: typeof change) => {
           change = listener;
@@ -79,6 +98,134 @@ beforeEach(() => {
       },
     },
   });
+});
+it('links a dropped folder to the current group and opens the built-in terminal', async () => {
+  pages.mockResolvedValue([]);
+  const project = { name: 'Atlas', path: '/Projects/Atlas', available: true };
+  (
+    window.electron.siteDeveloper.linkDroppedProject as jest.Mock
+  ).mockResolvedValue(project);
+  render(content(true));
+  const panel = screen.getByRole('region', { name: 'Developer' });
+  const file = new File([], 'Atlas');
+  fireEvent.dragOver(panel, {
+    dataTransfer: { types: ['Files'], dropEffect: 'none' },
+  });
+  expect(screen.getByText('Link folder and open terminal')).toBeTruthy();
+  fireEvent.drop(panel, { dataTransfer: { files: [file], types: ['Files'] } });
+  await waitFor(() =>
+    expect(
+      window.electron.siteDeveloper.linkDroppedProject
+    ).toHaveBeenCalledWith('home', file)
+  );
+  await waitFor(() =>
+    expect(window.electron.siteDeveloper.terminal).toHaveBeenCalledWith(
+      JSON.stringify(['work', 'default']),
+      expect.objectContaining({ action: 'show' })
+    )
+  );
+  expect(screen.queryByText('Link folder and open terminal')).toBeNull();
+});
+
+it('rejects multiple folders and ignores a duplicate drop while linking', async () => {
+  pages.mockResolvedValue([]);
+  let finish!: (project: any) => void;
+  (
+    window.electron.siteDeveloper.linkDroppedProject as jest.Mock
+  ).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  render(content(true));
+  const panel = screen.getByRole('region', { name: 'Developer' });
+  const first = new File([], 'First');
+  fireEvent.drop(panel, {
+    dataTransfer: { files: [first, new File([], 'Second')], types: ['Files'] },
+  });
+  expect((await screen.findByRole('alert')).textContent).toContain(
+    'one project folder'
+  );
+  expect(
+    window.electron.siteDeveloper.linkDroppedProject
+  ).not.toHaveBeenCalled();
+  fireEvent.drop(panel, { dataTransfer: { files: [first], types: ['Files'] } });
+  fireEvent.drop(panel, { dataTransfer: { files: [first], types: ['Files'] } });
+  expect(
+    window.electron.siteDeveloper.linkDroppedProject
+  ).toHaveBeenCalledTimes(1);
+  await act(async () =>
+    finish({ name: 'First', path: '/Projects/First', available: true })
+  );
+  await waitFor(() =>
+    expect(window.electron.siteDeveloper.terminal).toHaveBeenCalledWith(
+      JSON.stringify(['work', 'default']),
+      expect.objectContaining({ action: 'show' })
+    )
+  );
+});
+
+it('does not open the previous group terminal after switching groups during a drop', async () => {
+  pages.mockResolvedValue([]);
+  let finish!: (project: any) => void;
+  (
+    window.electron.siteDeveloper.linkDroppedProject as jest.Mock
+  ).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  mockTabs.push({
+    ...mockTabs[0],
+    id: 'other',
+    sessionId: 'other',
+    sessionName: 'Other',
+  });
+  try {
+    const view = render(
+      <Theme>
+        <DeveloperSidebar active focusedTabId="home" />
+      </Theme>
+    );
+    fireEvent.drop(screen.getByRole('region', { name: 'Developer' }), {
+      dataTransfer: { files: [new File([], 'First')], types: ['Files'] },
+    });
+    view.rerender(
+      <Theme>
+        <DeveloperSidebar active focusedTabId="other" />
+      </Theme>
+    );
+    await act(async () =>
+      finish({ name: 'First', path: '/Projects/First', available: true })
+    );
+    expect(
+      window.electron.siteDeveloper.linkDroppedProject
+    ).toHaveBeenCalledWith('home', expect.any(File));
+    expect(window.electron.siteDeveloper.terminal).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: 'show' })
+    );
+  } finally {
+    mockTabs.pop();
+  }
+});
+
+it('does not open a terminal when linking a dropped folder fails', async () => {
+  pages.mockResolvedValue([]);
+  (
+    window.electron.siteDeveloper.linkDroppedProject as jest.Mock
+  ).mockRejectedValue(new Error('Drop a folder to link a project.'));
+  render(content(true));
+  fireEvent.drop(screen.getByRole('region', { name: 'Developer' }), {
+    dataTransfer: { files: [new File([], 'file.txt')], types: ['Files'] },
+  });
+  await waitFor(() => expect(screen.getByText(/Drop a folder to link a project/)).toBeTruthy());
+  expect(window.electron.siteDeveloper.terminal).not.toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ action: 'show' })
+  );
 });
 const content = (active: boolean) => (
   <Theme>
@@ -126,12 +273,8 @@ it('reuses the group picker, reports saved hooks, searches pages and opens the e
   fireEvent.change(screen.getByLabelText('Search developer pages'), {
     target: { value: 'other' },
   });
-  expect(
-    screen.queryByRole('button', { name: 'Focus tab Home' })
-  ).toBeNull();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Focus tab Other page' })
-  );
+  expect(screen.queryByRole('button', { name: 'Focus tab Home' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Focus tab Other page' }));
   fireEvent.click(
     screen.getByRole('button', { name: 'Add hook for Other page' })
   );
@@ -315,9 +458,7 @@ it('manages the current group and restores exclusive views independently across 
     );
     expect(manage).toHaveBeenCalledWith('home');
     fireEvent.click(screen.getByRole('button', { name: 'Files' }));
-    expect(
-      screen.queryByRole('button', { name: 'Focus tab Home' })
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Focus tab Home' })).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Files' }).getAttribute('aria-pressed')
     ).toBe('true');
@@ -387,11 +528,21 @@ it('indexes saved hooks and opens the selected hook directly', async () => {
     },
   ]);
   const focus = jest.fn();
-  render(<Theme><DeveloperSidebar active focusedTabId="home" onFocusTab={focus} /></Theme>);
-  fireEvent.click(await screen.findByRole('button', { name: 'Focus tab Home' }));
+  render(
+    <Theme>
+      <DeveloperSidebar active focusedTabId="home" onFocusTab={focus} />
+    </Theme>
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Focus tab Home' })
+  );
   expect(focus).toHaveBeenCalledWith('home');
-  expect(screen.queryByRole('button', { name: 'Edit Clean page for Home' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Expand hooks for Home' }));
+  expect(
+    screen.queryByRole('button', { name: 'Edit Clean page for Home' })
+  ).toBeNull();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Expand hooks for Home' })
+  );
   const hook = await screen.findByRole('button', {
     name: 'Edit Clean page for Home',
   });
@@ -421,12 +572,16 @@ it('indexes saved hooks and opens the selected hook directly', async () => {
     url: 'https://example.com',
     hookId: 'clean',
   });
+  fireEvent.click(screen.getByRole('button', { name: 'Focus tab Home' }));
+  expect(
+    screen.getByRole('button', { name: 'Edit Clean page for Home' })
+  ).toBeTruthy();
   fireEvent.click(
-    screen.getByRole('button', { name: 'Focus tab Home' })
+    screen.getByRole('button', { name: 'Collapse hooks for Home' })
   );
-  expect(screen.getByRole('button', { name: 'Edit Clean page for Home' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Collapse hooks for Home' }));
-  expect(screen.queryByRole('button', { name: 'Edit Clean page for Home' })).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Edit Clean page for Home' })
+  ).toBeNull();
 });
 
 it('puts add-hook on the site row without an empty expandable list', async () => {
@@ -475,31 +630,115 @@ it('puts add-hook on the site row without an empty expandable list', async () =>
   });
 });
 
- it('focuses a page tab when its list item is clicked, including internal pages', async () => {
-  pages.mockResolvedValue([{ id: 'home', name: 'Home', url: 'kudium://home', hasHooks: false, enabled: false, status: 'waiting' }]);
+it('focuses a page tab when its list item is clicked, including internal pages', async () => {
+  pages.mockResolvedValue([
+    {
+      id: 'home',
+      name: 'Home',
+      url: 'kudium://home',
+      hasHooks: false,
+      enabled: false,
+      status: 'waiting',
+    },
+  ]);
   const focus = jest.fn();
-  render(<Theme><DeveloperSidebar active focusedTabId="home" onFocusTab={focus} /></Theme>);
-  fireEvent.click(await screen.findByRole('button', { name: 'Focus tab Home' }));
+  render(
+    <Theme>
+      <DeveloperSidebar active focusedTabId="home" onFocusTab={focus} />
+    </Theme>
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Focus tab Home' })
+  );
   expect(focus).toHaveBeenCalledWith('home');
 });
 
 it('shows separate running, successful and failed indicators in an expanded page', async () => {
-  pages.mockResolvedValue([{ id: 'home', name: 'Home', url: 'https://example.com/home', origin: 'https://example.com', hasHooks: true, enabled: true, status: 'error', hooks: [
-    { id: 'one', name: 'Watcher', path: '/*', enabled: true, status: 'running' },
-    { id: 'two', name: 'Cleaner', path: '/*', enabled: true, status: 'success' },
-    { id: 'three', name: 'Notifier', path: '/*', enabled: true, status: 'error' },
-  ] }]);
+  pages.mockResolvedValue([
+    {
+      id: 'home',
+      name: 'Home',
+      url: 'https://example.com/home',
+      origin: 'https://example.com',
+      hasHooks: true,
+      enabled: true,
+      status: 'error',
+      hooks: [
+        {
+          id: 'one',
+          name: 'Watcher',
+          path: '/*',
+          enabled: true,
+          status: 'running',
+        },
+        {
+          id: 'two',
+          name: 'Cleaner',
+          path: '/*',
+          enabled: true,
+          status: 'success',
+        },
+        {
+          id: 'three',
+          name: 'Notifier',
+          path: '/*',
+          enabled: true,
+          status: 'error',
+        },
+      ],
+    },
+  ]);
   render(content(true));
-  fireEvent.click(await screen.findByRole('button', { name: 'Expand hooks for Home' }));
-  expect(screen.getByRole('status', { name: 'Watcher: Running' }).getAttribute('data-status')).toBe('running');
-  expect(screen.getByRole('status', { name: 'Watcher: Running' }).textContent).toBe('Running');
-  expect(screen.getByRole('status', { name: 'Cleaner: Success' }).getAttribute('data-status')).toBe('success');
-  expect(screen.getByRole('status', { name: 'Notifier: Failed' }).getAttribute('data-status')).toBe('error');
-  expect((screen.getByRole('button', { name: 'Run Watcher for Home' }) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.click(screen.getByRole('button', { name: 'Run Notifier for Home' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Expand hooks for Home' })
+  );
+  expect(
+    screen
+      .getByRole('status', { name: 'Watcher: Running' })
+      .getAttribute('data-status')
+  ).toBe('running');
+  expect(
+    screen.getByRole('status', { name: 'Watcher: Running' }).textContent
+  ).toBe('Running');
+  expect(
+    screen
+      .getByRole('status', { name: 'Cleaner: Success' })
+      .getAttribute('data-status')
+  ).toBe('success');
+  expect(
+    screen
+      .getByRole('status', { name: 'Notifier: Failed' })
+      .getAttribute('data-status')
+  ).toBe('error');
+  expect(
+    (
+      screen.getByRole('button', {
+        name: 'Run Watcher for Home',
+      }) as HTMLButtonElement
+    ).disabled
+  ).toBe(true);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Run Notifier for Home' })
+  );
   expect(screen.queryByText('Notifier: Running…')).toBeNull();
-  expect(screen.getByRole('status', { name: 'Notifier: Running' })).toBeTruthy();
-  act(() => mockStateListeners.forEach((listener) => listener({ id: 'home', siteSettings: { developer: { hookStatuses: { three: 'success' }, logs: [] } } })));
+  expect(
+    screen.getByRole('status', { name: 'Notifier: Running' })
+  ).toBeTruthy();
+  act(() =>
+    mockStateListeners.forEach((listener) =>
+      listener({
+        id: 'home',
+        siteSettings: {
+          developer: { hookStatuses: { three: 'success' }, logs: [] },
+        },
+      })
+    )
+  );
   expect(screen.queryByText('Notifier: Completed successfully')).toBeNull();
-  expect(browser.command).toHaveBeenLastCalledWith({ id: 'home', action: 'run-site-hook', url: 'https://example.com', hookId: 'three' });
+  expect(browser.command).toHaveBeenLastCalledWith({
+    id: 'home',
+    action: 'run-site-hook',
+    url: 'https://example.com',
+    hookId: 'three',
+  });
 });

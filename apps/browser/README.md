@@ -85,6 +85,12 @@ stays in the address bar, so switching groups does not require reopening the sid
 
 ## AI beside your pages and projects
 
+Opening Chat, returning from another assistant page or selecting a conversation
+scrolls to its latest messages. Scrolling upward pauses automatic following so new
+messages do not interrupt reading. After a production build, run
+`npm run test:chat-scroll` from `apps/browser` for the native regression with
+disposable conversation history; screenshots and results stay under `release/`.
+
 Keep the page in view while you ask questions, plan a change, or bring a project
 brief into the conversation. Use the built-in assistant with your own model API
 key, or connect an external AI client through MCP. Choose the scope and approval
@@ -148,6 +154,29 @@ React Fast Refresh; main-process changes restart Electron, and preload changes
 reload the window.
 
 ## Quality checks
+
+The [browser completeness checklist](../../docs/browser-completeness.md) tracks
+compatibility, protection, recovery and everyday browser improvements with
+acceptance criteria and verified progress.
+
+Run the native compatibility baseline from the repository root:
+
+```sh
+npm run build:browser
+npm run test:browser:compatibility
+```
+
+It uses disposable profiles and local pages to check browser identity, login
+isolation, service workers, storage, WebCrypto, multipart uploads and live updates.
+It also checks OAuth-style popup returns, a download interrupted by actual process
+termination, live HTTP byte-range resume, independent camera/microphone decisions
+with fake devices, the real source-picker UI with synthetic sources, and Chromium
+file-input selection. The macOS Open/Save sheets are
+separate checks. Reports are saved under
+`apps/browser/release/local-compatibility-<timestamp>/`.
+An existing Electron Node-mode environment variable is removed for the child app.
+These checks do not certify real provider sign-ins, device permissions or DRM.
+
 
 ```bash
 npm run lint
@@ -390,7 +419,42 @@ The optional network integration check is
 real extension through the store button into disposable profiles and checks
 installation/removal, toolbar popup placement, storage, and profile isolation; it does not assert ad-blocking compatibility.
 
+## Recover interrupted downloads
+
+Downloads offers **Download again** for interrupted or cancelled transfers when
+Kudium saved their original download source. This starts from the beginning in the
+original login session and keeps the previous partial file. Active downloads retain
+**Pause** and **Resume**. Interrupted downloads can also **Resume** while the browser
+remains open if their partial file is unchanged and the server supplied a usable
+validator. This continues from the saved byte offset in the original login session.
+After restarting, use **Download again**. Older records without a saved source, expired download
+links or expired sign-ins may require returning to the website.
+
+Private download sources stay in memory and disappear when their private session
+closes. Regular sources stay in the local owner-only download history and are not
+included in renderer responses.
+
+## Website device access
+
+Site settings provide separate Camera, Microphone and Screen sharing controls.
+Older combined camera/microphone decisions remain honored until replaced by an
+individual choice. Reload the page to apply changes to existing device use.
+
+Screen sharing opens the shared glass dialog and requires choosing a window or
+screen for every request. Cancel, closing the requester or navigating away denies
+the pending request. The picker shares video only; system audio is not included.
+macOS device and recording permissions still apply. Real hardware and signed-bundle
+permission checks remain separate from the automated fake-device/picker fixtures.
+
 ## Preferences
+
+Quickly press and release Control+Tab to toggle between the current and last-used
+tab. Keep Control held for 200 ms to open Nav history; press Tab or Shift+Tab to
+browse, release Control to select, or press Escape to cancel. These shortcuts work
+from browser controls and websites. The chooser does not appear for quick switches.
+From `apps/browser`, run `npm run test:tab-switcher` after a production build to
+exercise real native key events with disposable tabs. Set
+`KUDIUMBROWSER_SMOKE_OUTPUT` to retain its screenshots and JSON results.
 
 The gear button and Cmd+, open a searchable preferences page. It unifies browser
 controls with apps, Spaces, appearance and the archive. Search, zoom, spelling,

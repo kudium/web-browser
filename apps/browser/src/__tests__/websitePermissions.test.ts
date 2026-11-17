@@ -33,7 +33,7 @@ function pendingRequest() {
   (showBrowserDialog as jest.Mock).mockReturnValue(
     new Promise((resolve) => {
       answer = resolve;
-    })
+    }),
   );
   const requester = Object.assign(new EventEmitter(), {
     isDestroyed: () => false,
@@ -44,7 +44,7 @@ function pendingRequest() {
     requester as any,
     'geolocation',
     callback,
-    { requestingUrl: 'https://example.com/path' } as any
+    { requestingUrl: 'https://example.com/path' } as any,
   );
   return { requester, callback, pending, answer };
 }
@@ -72,20 +72,20 @@ describe.each([
       });
       const check = websitePermissionCheckHandler('profile');
       expect(
-        check(null, permission as any, 'https://chatgpt.com', {} as any)
+        check(null, permission as any, 'https://chatgpt.com', {} as any),
       ).toBe(allowed);
       const callback = jest.fn();
       await websitePermissionHandler({} as any, 'profile')(
         { isDestroyed: () => false } as any,
         permission as any,
         callback,
-        { requestingUrl: 'https://chatgpt.com/' } as any
+        { requestingUrl: 'https://chatgpt.com/' } as any,
       );
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(allowed);
       expect(showBrowserDialog).not.toHaveBeenCalled();
       expect(updateSiteSettings).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it('denies storage access without a valid requesting origin', async () => {
@@ -96,7 +96,7 @@ describe.each([
       { isDestroyed: () => false } as any,
       permission as any,
       callback,
-      { requestingUrl: '', isMainFrame: false } as any
+      { requestingUrl: '', isMainFrame: false } as any,
     );
     expect(callback).toHaveBeenCalledWith(false);
     expect(showBrowserDialog).not.toHaveBeenCalled();
@@ -124,7 +124,7 @@ it.each(['navigation', 'destruction'])(
         'did-start-navigation',
         {},
         'https://other.example',
-        false
+        false,
       );
     } else request.requester.emit('destroyed');
     expect(request.callback).toHaveBeenCalledWith(false);
@@ -133,7 +133,7 @@ it.each(['navigation', 'destruction'])(
     expect(request.callback).toHaveBeenCalledTimes(1);
     expect(updateSiteSettings).not.toHaveBeenCalled();
     expect(request.requester.listenerCount('destroyed')).toBe(0);
-  }
+  },
 );
 
 it('keeps in-page navigation valid and preserves a changed site decision', async () => {
@@ -142,7 +142,7 @@ it('keeps in-page navigation valid and preserves a changed site decision', async
     'did-start-navigation',
     {},
     'https://example.com/#a',
-    true
+    true,
   );
   (getSiteSettings as jest.Mock).mockReturnValue({
     permissions: { geolocation: 'block' },
@@ -163,7 +163,7 @@ it('saves approval for the original origin and releases prompt listeners', async
     'https://example.com',
     {
       permissions: { geolocation: 'allow' },
-    }
+    },
   );
   expect(request.requester.listenerCount('did-start-navigation')).toBe(0);
   expect(request.requester.listenerCount('destroyed')).toBe(0);
@@ -194,7 +194,7 @@ it('does not inherit the parent grant for a subframe without a requesting URL', 
   expect(callback).toHaveBeenCalledWith(true);
   expect(getSiteSettings).toHaveBeenCalledWith(
     'profile',
-    'https://parent.example'
+    'https://parent.example',
   );
 });
 
@@ -210,25 +210,70 @@ it('checks media against the reported security origin rather than its embedding 
       isMainFrame: false,
       securityOrigin: 'https://frame.example',
       embeddingOrigin: 'https://parent.example',
-    })
+    }),
   ).toBe(false);
   expect(getSiteSettings).toHaveBeenLastCalledWith(
     'profile',
-    'https://frame.example'
+    'https://frame.example',
   );
   expect(
     check(null, 'media', 'https://parent.example', {
       isMainFrame: false,
       securityOrigin: 'null',
-    })
+    }),
   ).toBe(false);
   expect(
     check(null, 'media', 'https://parent.example', {
       isMainFrame: false,
       securityOrigin: '',
-    })
+    }),
   ).toBe(false);
   expect(
-    check(null, 'media', 'https://parent.example', { isMainFrame: true })
+    check(null, 'media', 'https://parent.example', { isMainFrame: true }),
   ).toBe(true);
+});
+
+it('separates camera/microphone checks while retaining legacy combined decisions', () => {
+  (getSiteSettings as jest.Mock).mockReturnValue({
+    permissions: { media: 'allow', camera: 'block' },
+  });
+  const check = websitePermissionCheckHandler('profile');
+  expect(
+    check(null, 'media', 'https://fixture.test', { mediaType: 'audio' } as any),
+  ).toBe(true);
+  expect(
+    check(null, 'media', 'https://fixture.test', { mediaType: 'video' } as any),
+  ).toBe(false);
+  expect(
+    check(null, 'media', 'https://fixture.test', {
+      mediaType: 'unknown',
+    } as any),
+  ).toBe(false);
+});
+
+it('a microphone approval does not grant camera access', async () => {
+  const requester = Object.assign(new EventEmitter(), {
+    isDestroyed: () => false,
+  });
+  (showBrowserDialog as jest.Mock).mockResolvedValue({ response: 1 });
+  const callback = jest.fn();
+  await websitePermissionHandler({} as any, 'profile')(
+    requester as any,
+    'media',
+    callback,
+    { requestingUrl: 'https://fixture.test', mediaTypes: ['audio'] } as any,
+  );
+  expect(callback).toHaveBeenCalledWith(true);
+  expect(updateSiteSettings).toHaveBeenCalledWith(
+    'profile',
+    'https://fixture.test',
+    { permissions: { microphone: 'allow' } },
+  );
+  expect(updateSiteSettings).not.toHaveBeenCalledWith(
+    expect.anything(),
+    expect.anything(),
+    expect.objectContaining({
+      permissions: expect.objectContaining({ camera: 'allow' }),
+    }),
+  );
 });

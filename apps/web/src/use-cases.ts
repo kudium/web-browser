@@ -1,0 +1,67 @@
+export const useCases = [
+  {
+    id: 'developers', label: 'Development', audience: 'For developers', title: 'From documentation to a working build.',
+    summary: 'Keep your local project, reference tabs and terminal in the same workspace. Read, edit and test without losing the page you’re working on.',
+    image: 'developer-terminal', alt: 'Kudium with the Atlas Studio project and a real test run in the built-in terminal.',
+    caption: 'Atlas Studio demo project · a real local test run.',
+    outcome: 'A project workspace you can return to, with the web and local tools together.',
+    steps: [
+      ['Gather your references', 'Create a development group for your app preview, documentation and issue tracker.'],
+      ['Link your project', 'Connect a local folder, browse its files and open source in the built-in editor.'],
+      ['Run and check', 'Use the project terminal to run your commands, then return to the preview tab to check the result.'],
+    ],
+    guides: [['developer-project', 'Link a project'], ['project-terminal', 'Use the terminal']],
+  },
+  {
+    id: 'research', label: 'Research & writing', audience: 'For researchers & writers', title: 'Turn a collection of tabs into a clear next step.',
+    summary: 'Keep sources organized and your brief close by. Open the AI sidebar beside a page and bring the context you choose into the conversation.',
+    image: 'ai-context', alt: 'Kudium AI sidebar beside a webpage with project-brief.md attached to an unsent draft.',
+    caption: 'Atlas Studio demo · an unsent AI draft with a project brief attached.',
+    outcome: 'Sources, project context and your AI conversation within reach.',
+    steps: [
+      ['Collect the source material', 'Keep related articles and reference pages in a named research group.'],
+      ['Bring in your brief', 'Attach the relevant project file to the Assistant so your question has the background it needs.'],
+      ['Work beside the source', 'Ask for a summary or an outline while the page stays visible. Review the response against your sources.'],
+    ],
+    guides: [['ai-assistant', 'Work with the Assistant'], ['ai-permissions', 'Choose AI access']],
+  },
+  {
+    id: 'client-work', label: 'Client work', audience: 'For freelancers & small teams', title: 'Give every client a place of their own.',
+    summary: 'Separate project tabs, reference material and account sessions. Move between clients with a workspace that makes it clear where you are.',
+    image: 'design-workspace', alt: 'Kudium Design group with related websites organized in the sidebar.',
+    caption: 'Demo browsing workspace · related sites organized into groups.',
+    outcome: 'A recognizable home for each project and deliberate control over its login session.',
+    steps: [
+      ['Create a client space', 'Name a space for the client and organize its groups into a collection.'],
+      ['Choose account sessions', 'Use a separate group session when a project needs a different account. Groups in a collection can share a session.'],
+      ['Keep the essentials nearby', 'Pin frequently used groups and keep the client’s brief, tools and reference tabs together.'],
+    ],
+    guides: [['spaces-and-groups', 'Organize spaces & sessions'], ['favorites-and-pinned-groups', 'Pin your essentials']],
+  },
+  {
+    id: 'everyday', label: 'Everyday browsing', audience: 'For everyday browsing', title: 'Less tab hunting. More room for your day.',
+    summary: 'Give work, personal browsing and social sites their own groups. Keep favorites nearby and hide the sidebar when you want more room for the page.',
+    image: 'sidebar-collapsed', alt: 'Kudium with its sidebar hidden and the current group available in the address bar.',
+    caption: 'Real browser capture · the group picker stays available with the sidebar hidden.',
+    outcome: 'A calmer browser that keeps everyday sites easy to find.',
+    steps: [
+      ['Group by purpose', 'Create groups for work, reading and personal browsing rather than keeping everything in one tab list.'],
+      ['Keep favorites in reach', 'Add the sites you return to most and pin the groups you use every day.'],
+      ['Make room to focus', 'Collapse the sidebar and switch groups from the address bar whenever you need to.'],
+    ],
+    guides: [['first-workspace', 'Create your first workspace'], ['sidebar-and-group-picker', 'Browse with more room']],
+  },
+  {
+    id: 'website-hooks', label: 'Website hooks', audience: 'For people who make the web their own', title: 'Make familiar websites work your way.',
+    summary: 'Use website hooks to add styles, scripts and actions to the pages you visit. Discover community hooks or create one for a workflow you repeat.',
+    image: 'site-hooks-light', alt: 'Kudium website hooks panel showing illustrative hooks for a demo workspace.',
+    caption: 'Atlas Studio demo · hook entries and activity are illustrative fixtures.',
+    outcome: 'Reusable website customizations you choose and control.',
+    steps: [
+      ['Start with a useful hook', 'Browse the marketplace or open the hook creator to build your own customization.'],
+      ['Review its scope', 'Check the source and target websites, then decide which permissions to grant. Installed hooks begin disabled.'],
+      ['Enable it deliberately', 'Turn on the hook for its target pages and adjust or disable it when your workflow changes.'],
+    ],
+    guides: [['website-hooks', 'Create & manage hooks']],
+  },
+] as const;

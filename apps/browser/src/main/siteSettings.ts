@@ -35,7 +35,9 @@ export interface SiteSettings {
 export const sitePermissions = [
   ['geolocation', 'Location'],
   ['notifications', 'Notifications'],
-  ['media', 'Camera and microphone'],
+  ['camera', 'Camera'],
+  ['microphone', 'Microphone'],
+  ['display-capture', 'Screen sharing'],
   ['clipboard-read', 'Clipboard'],
   ['fullscreen', 'Full screen'],
   ['midi', 'MIDI devices'],

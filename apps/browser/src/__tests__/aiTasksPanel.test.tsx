@@ -78,6 +78,7 @@ it('blocks another run while paused and exposes Continue and Stop', async () => 
   expect(screen.getByRole('button', { name: 'Delete Staging' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   expect(ai.resume).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('button', { name: 'Stop' }).querySelector('svg.lucide-x')).not.toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
   expect(ai.stop).toHaveBeenCalledTimes(1);
 });

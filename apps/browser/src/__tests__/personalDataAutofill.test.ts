@@ -6,6 +6,54 @@ it('defaults the field picker to enabled', () => {
   expect(defaultPreferences.personalDataAutofill).toBe(true);
 });
 
+it('saves a named password with its form account and explains a failed save before retry', async () => {
+  let shadow!: ShadowRoot;
+  const attachOriginal = HTMLElement.prototype.attachShadow;
+  const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
+    shadow = attachOriginal.call(this, init); return shadow;
+  });
+  const clicks = new Map<EventTarget, Function>();
+  const onOriginal = HTMLButtonElement.prototype.addEventListener;
+  const on = jest.spyOn(HTMLButtonElement.prototype, 'addEventListener').mockImplementation(function (this: HTMLButtonElement, type: string, listener: any, options?: any) {
+    if (type === 'click') clicks.set(this, listener);
+    onOriginal.call(this, type, listener, options);
+  });
+  let attempts = 0;
+  const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel.endsWith('enabled')) return true;
+    if (channel === 'personal-data-autofill-records') return [];
+    if (channel === 'personal-data-autofill-save-field') {
+      if (++attempts < 3) throw new Error("Error invoking remote method: Choose an account before saving website data.");
+      return { saved: true };
+    }
+    return null;
+  }), on: jest.fn() };
+  document.body.innerHTML = '<form><input type="email" value="second@example.com"><input type="password" name="login-secret" aria-label="Account password" value="existing-secret"></form>';
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input'));
+  inputs.forEach((input) => { input.getClientRects = () => [{}] as any; });
+  const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+  const click = async (selector: string) => {
+    clicks.get(shadow.querySelector(selector)!)!({ isTrusted: true });
+    for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+  };
+  try {
+    await Promise.resolve(); inputs[1].focus();
+    await click('.trigger');
+    await click('[aria-label="Save input for this website"]');
+    expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-save-field', {
+      name: 'Password', aliases: ['login-secret', 'Account password'], value: 'existing-secret', secret: true, username: 'second@example.com',
+    });
+    expect(shadow.querySelector('[role=alert]')?.textContent).toBe('Choose or fill your username first, then save the password again.');
+    await click('[aria-label="Save input for this website"]');
+    expect(shadow.querySelectorAll('[role=alert]')).toHaveLength(1);
+    await click('[aria-label="Save input for this website"]');
+    expect(shadow.querySelector('.save-feedback')?.textContent).toContain('Input saved for this website.');
+    expect(inputs[1].value).toBe('existing-secret');
+  } finally {
+    dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = '';
+  }
+});
+
 it('offers autofill on matching fields and passwords, and removes it when disabled', async () => {
   const callbacks: Record<string, Function> = {};
   const bridge = {
@@ -34,7 +82,7 @@ it('offers autofill on matching fields and passwords, and removes it when disabl
   document.body.innerHTML = '';
 });
 
-it.each(['picker', 'quick', 'chooser', 'timeout'])('fills a form with secrets through %s after authentication and Retry', async (mode) => {
+it.each(['picker', 'quick', 'chooser', 'timeout', 'suggestion', 'password suggestion'])('fills a form with secrets through %s after authentication and Retry', async (mode) => {
   if (mode === 'timeout') jest.useFakeTimers();
   let hostKey: Function | undefined;
   const nativeHostOn = EventTarget.prototype.addEventListener;
@@ -68,6 +116,7 @@ it.each(['picker', 'quick', 'chooser', 'timeout'])('fills a form with secrets th
     if (channel.endsWith('enabled')) return true;
     if (channel === 'personal-data-autofill-position') return null;
     if (channel === 'personal-data-autofill-secret') return 'protected-password';
+    if (channel === 'personal-data-autofill-availability') return records;
     if (++attempts === 1) {
       if (mode === 'timeout') return new Promise(() => {});
       throw new Error('Authentication cancelled');
@@ -84,12 +133,13 @@ it.each(['picker', 'quick', 'chooser', 'timeout'])('fills a form with secrets th
   for (const input of [email, name, password]) input.getClientRects = () => [{ width: 200, height: 30 }] as any;
   const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
   try {
-    await Promise.resolve(); email.focus();
+    await Promise.resolve(); (mode === 'password suggestion' ? password : email).focus();
+    await Promise.resolve(); await Promise.resolve();
     expect(shadow!.host.closest('[role=dialog]')).not.toBeNull();
     const outside = jest.fn(); document.addEventListener('click', outside);
     shadow!.querySelector('.trigger')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
     expect(outside).not.toHaveBeenCalled(); document.removeEventListener('click', outside);
-    const trigger = shadow!.querySelector(mode === 'picker' ? '.trigger' : '.quick-fill')!;
+    const trigger = shadow!.querySelector(['picker', 'suggestion', 'password suggestion'].includes(mode) ? '.trigger' : '.quick-fill')!;
     clicks.get(trigger)!({ isTrusted: true });
     await Promise.resolve(); await Promise.resolve();
     if (mode === 'timeout') {
@@ -109,7 +159,7 @@ it.each(['picker', 'quick', 'chooser', 'timeout'])('fills a form with secrets th
     await opening; for (let turn = 0; turn < 10; turn++) await Promise.resolve();
     if (mode !== 'quick' && mode !== 'timeout') {
       expect(email.value).toBe('');
-      const fill = Array.from(shadow!.querySelectorAll<HTMLButtonElement>('.panel button')).find((button) => button.textContent === (mode === 'chooser' ? 'Work' : 'Fill this form'))!;
+      const fill = Array.from(shadow!.querySelectorAll<HTMLButtonElement>('.panel button')).find((button) => mode === 'suggestion' ? button.getAttribute('aria-label') === 'Fill form with Work: work@example.com' : button.textContent === (mode === 'chooser' ? 'Work' : mode === 'password suggestion' ? 'Fill form · Password' : 'Fill this form'))!;
       if (mode === 'picker') expect(fill.parentElement?.className).toBe('heading');
       if (mode === 'picker') {
         const key = (value: string) => hostKey!({ isTrusted: true, key: value, preventDefault: jest.fn(), stopPropagation: jest.fn() });
@@ -188,7 +238,7 @@ it.each(['Hide for now', 'Disable for this website', 'Close Personal Data'])('ge
     expect(shadow!.querySelector('.header [aria-label="Manage Personal Data"]')).not.toBeNull();
     expect(shadow!.querySelector('.header [aria-label="Save input for this website"]')).not.toBeNull();
     await click('Save input for this website');
-    expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-save-field', { name: 'Password', aliases: [], value: fields[1].value, secret: true });
+    expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-save-field', { name: 'Password', aliases: [], value: fields[1].value, secret: true, username: 'sam@example.com' });
     expect(shadow!.querySelector('.save-feedback')?.textContent).toContain('Input saved for this website.');
     await click('Back');
     expect(shadow!.querySelector('.header .close')).not.toBeNull();
@@ -375,6 +425,7 @@ it('browses unmatched saved values and fills only the focused field', async () =
     for (let i = 0; i < 5; i++) await Promise.resolve();
     expect(shadow.textContent).toContain('No suggested matches for this field.');
     click('Browse saved data');
+    for (let turn = 0; turn < 8; turn++) await Promise.resolve();
     expect(shadow.textContent).toContain('Personal profile');
     expect(shadow.textContent).not.toContain('hidden-secret');
     const search = shadow.querySelector<HTMLInputElement>('.saved-search')!;
@@ -386,5 +437,58 @@ it('browses unmatched saved values and fills only the focused field', async () =
     click('Fill Nickname: Samson');
     expect(inputs[0].value).toBe('Samson'); expect(inputs[1].value).toBe('');
     expect(shadow.querySelector('.panel')).toBeNull();
+  } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
+});
+
+it.each(['profile email', 'duplicate email', 'conflicting emails', 'existing email', 'login record'])('supplements a preferred record with saved email through the lightning button: %s', async (mode) => {
+  let shadow!: ShadowRoot;
+  const originalAttach = HTMLElement.prototype.attachShadow;
+  const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
+    shadow = originalAttach.call(this, init); return shadow;
+  });
+  const clicks = new Map<EventTarget, Function>();
+  const originalOn = HTMLButtonElement.prototype.addEventListener;
+  const on = jest.spyOn(HTMLButtonElement.prototype, 'addEventListener').mockImplementation(function (this: HTMLButtonElement, type: string, listener: any, options?: any) {
+    if (type === 'click') clicks.set(this, listener);
+    originalOn.call(this, type, listener, options);
+  });
+  const profile = { id: 'profile', kind: 'profile', title: 'Personal', fields: [{ name: 'Email', value: 'saved@example.com', secret: false }] };
+  const records = [
+    { id: 'account', kind: mode === 'login record' ? 'login' : 'knowledge', selected: true, website: true, title: 'Account', fields: [{ name: 'Password', value: '', secret: true, fieldIndex: 0 }] },
+    profile,
+    ...(mode === 'duplicate email' || mode === 'conflicting emails' ? [{ ...profile, id: 'other-profile', fields: [{ name: 'Email', value: mode === 'duplicate email' ? 'saved@example.com' : 'other@example.com', secret: false }] }] : []),
+    { id: 'other-login', kind: 'login', title: 'Another account', fields: [{ name: 'Email', value: 'wrong-account@example.com', secret: false }] },
+  ];
+  document.body.innerHTML = '<form><input name="email" type="email" autocomplete="email"><input type="password" autocomplete="current-password"><input name="email" type="hidden" value="hidden"><input name="email" readonly value="readonly"></form><form><input type="email" value="other-form@example.com"></form>';
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input'));
+  inputs.forEach((input) => { input.getClientRects = () => [{}] as any; });
+  const submit = jest.fn(); document.querySelector('form')!.addEventListener('submit', submit);
+  if (mode === 'existing email') inputs[0].value = 'typed@example.com';
+  const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel.endsWith('enabled')) return true;
+    if (channel === 'personal-data-autofill-records' || channel === 'personal-data-autofill-availability') return records;
+    if (channel === 'personal-data-autofill-secret') return 'account-password';
+    if (channel === 'personal-data-autofill-login') { inputs[1].value = 'account-password'; return { filled: 1 }; }
+    return null;
+  }), on: jest.fn() };
+  const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+  const flush = async () => { for (let turn = 0; turn < 12; turn++) await Promise.resolve(); };
+  try {
+    await flush(); inputs[1].focus(); await flush();
+    clicks.get(shadow.querySelector('.quick-fill')!)!({ isTrusted: true });
+    await flush();
+    expect(inputs[1].value).toBe('account-password');
+    if (mode === 'conflicting emails') {
+      expect(inputs[0].value).toBe('');
+      expect(shadow.textContent).toContain('Choose a saved value');
+      expect(shadow.textContent).not.toContain('wrong-account@example.com');
+      const chosen = Array.from(shadow.querySelectorAll('button')).find((button) => button.textContent === 'saved@example.com')!;
+      clicks.get(chosen)!({ isTrusted: true }); await flush();
+    }
+    expect(inputs[0].value).toBe(mode === 'existing email' ? 'typed@example.com' : 'saved@example.com');
+    expect(inputs[2].value).toBe('hidden');
+    expect(inputs[3].value).toBe('readonly');
+    expect(inputs[4].value).toBe('other-form@example.com');
+    expect(submit).not.toHaveBeenCalled();
   } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
 });

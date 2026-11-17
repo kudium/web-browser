@@ -1,3 +1,4 @@
+import { useCases } from './use-cases';
 import { Theme } from "@radix-ui/themes";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -22,6 +23,7 @@ export function Layout({
   privatePage = false,
   title,
   canonicalPath,
+  description,
   stylesheet,
 }: {
   children: ReactNode;
@@ -29,6 +31,7 @@ export function Layout({
   privatePage?: boolean;
   title?: string;
   canonicalPath?: string;
+  description?: string;
   stylesheet?: string;
 }) {
   return (
@@ -46,7 +49,7 @@ export function Layout({
         } · Kudium Browser`}</title>
         <meta
           name="description"
-          content="Kudium brings your tabs, AI, project files and terminals into one focused browser workspace."
+          content={description || "Kudium brings your tabs, AI, project files and terminals into one focused browser workspace."}
         />
         {privatePage ? (
           <meta name="robots" content="noindex" />
@@ -77,6 +80,7 @@ export function Layout({
           </a>
           <nav aria-label="Main navigation">
             <a href="/#highlights">Overview</a>
+            <a href="/use-cases" aria-current={canonicalPath === "/use-cases" ? "page" : undefined}>Use cases</a>
             <a href="/hooks">Hooks</a>
             <a href="/tutorials">Tutorials</a>
             <a href="/docs" aria-current={docs ? "page" : undefined}>
@@ -96,6 +100,7 @@ export function Layout({
             Kudium
           </a>
           <span>Free and open source.</span>
+          <a href="/use-cases">Use cases</a>
           <a href="/tutorials">Tutorials</a>
           <a href="/docs">Documentation</a>
           <a href="/privacy" className="privacy-link">Privacy</a>
@@ -131,6 +136,36 @@ export function Layout({
     </html>
   );
 }
+export function useCasesPage() {
+  return "<!doctype html>" + renderToStaticMarkup(
+    <Layout title="Use cases — a workspace for the way you work" canonicalPath="/use-cases" description="Explore Kudium Browser workflows for development, research, client work, everyday browsing and website hooks, with practical setup guides.">
+      <main className="use-cases">
+        <section className="use-case-hero" aria-labelledby="use-cases-title">
+          <h1 id="use-cases-title">A workspace for the way you work.</h1>
+          <p className="use-case-lead">Build a project. Research an idea. Bring order to your day. Keep your tabs, AI and local tools together in a workspace that fits what you’re doing.</p>
+          <div className="campaign-actions"><a className="button" href="/download">Get Kudium Browser</a><a className="text-link" href="#workflows">Explore use cases</a></div>
+          <p className="use-case-caption">Free and open source.</p>
+        </section>
+        <nav id="workflows" className="use-case-picker" aria-label="Choose a use case">
+          {useCases.map(item => <a href={`#${item.id}`} key={item.id}>{item.label}</a>)}
+        </nav>
+        {useCases.map(item => <section id={item.id} className="use-case-story" aria-labelledby={`${item.id}-title`} key={item.id}>
+          <div className="use-case-story-heading"><h2 id={`${item.id}-title`}>{item.title}</h2><p>{item.summary}</p></div>
+          <figure className="use-case-screen"><img src={`/assets/product/demo/${item.image}.webp?v=12`} alt={item.alt} width="1440" height="940" loading="lazy" /><figcaption>{item.caption}</figcaption></figure>
+          <div className="use-case-steps">{item.steps.map(([title, description]) => <div key={title}><h3>{title}</h3><p>{description}</p></div>)}</div>
+          <div className="use-case-outcome"><p><strong>What you get</strong>{item.outcome}</p><div>{item.guides.map(([slug, label]) => <a href={`/tutorials/${slug}`} key={slug}>{label}</a>)}{item.id === 'website-hooks' && <a href="/hooks">Explore the marketplace</a>}</div></div>
+        </section>)}
+        <section className="use-case-faq" aria-labelledby="use-case-faq-title"><div><h2 id="use-case-faq-title">Frequently asked questions.</h2></div><div>
+          <details><summary>Do I need to use AI?</summary><p>No. Spaces, groups, project files, the terminal and hooks are useful on their own. Open the Assistant when it helps your workflow.</p></details>
+          <details><summary>What can the Assistant access?</summary><p>You choose the context and permissions you give it. Review the <a href="/tutorials/ai-permissions">AI access guide</a> before connecting sensitive files or pages.</p></details>
+          <details><summary>How do I get started?</summary><p>Download the browser, create a group for something you’re working on, and add a few related tabs. The <a href="/tutorials/first-workspace">first workspace guide</a> walks you through it.</p></details>
+        </div></section>
+        <section className="use-case-cta"><h2>Start with one project.<br />Make the workspace yours.</h2><div className="campaign-actions"><a className="button" href="/download">Get Kudium Browser</a><a className="text-link" href="/tutorials/first-workspace">Take the first steps</a></div></section>
+      </main>
+    </Layout>
+  );
+}
+
 export function homepage() {
   return (
     "<!doctype html>" +
@@ -148,8 +183,8 @@ export function homepage() {
               <a className="button" href="/download">
                 Get Browser
               </a>
-              <a className="text-link" href="#highlights">
-                Explore the browser <span aria-hidden="true">›</span>
+              <a className="text-link" href="/use-cases">
+                Find your workflow <span aria-hidden="true">›</span>
               </a>
             </div>
             <div
@@ -172,7 +207,7 @@ export function homepage() {
                   [
                     "social-workspace",
                     "Keep your social tabs together.",
-                    "YouTube, Reddit, Instagram, and LinkedIn. Keep your social tabs together, with a separate home for work.",
+                    "YouTube, Mastodon, Instagram, and LinkedIn. Keep your social tabs together, with a separate home for work.",
                   ],
                   [
                     "ai-context",
@@ -185,9 +220,9 @@ export function homepage() {
                     "Choose a solid AI panel for everyday reading, or turn on Glassy AI panel in Preferences → Appearance for softer, translucent surfaces. Glassy AI panel is off by default.",
                   ],
                   [
-                    "ai-active-tabs",
-                    "See which tabs AI is working on.",
-                    "Open Active AI tabs above the Assistant input to see tab icons, activity status, and a shortcut to each page. Illustrated with two sample tabs.",
+                    "ai-mentions",
+                    "Bring your tabs into the conversation.",
+                    "Mention a tab or group while drafting your request. Review the context and permissions before sending it.",
                   ],
                   [
                     "developer-workspace",
@@ -204,16 +239,21 @@ export function homepage() {
                     "Run and test in the built-in terminal.",
                     "Run commands and check your project in the built-in terminal. This is a real test run.",
                   ],
+                  ["favorites-workspace", "Your everyday sites, in a smaller space.", "Compact, centered favorites keep more sites within reach. The active favorite takes its subtle border color from the website."],
+                  ["folder-group", "Turn a folder into a workspace.", "Drop a folder into the sidebar, review the name and project link in the shared Create group dialog, then save when you’re ready."],
+                  ["space-search", "Find the tab you need.", "Search your space by tab title, address, group, or collection. Matching tabs stay in context, with favorites always within reach."],
+                  ["notes-workspace", "Keep the plan beside your project.", "Write a launch checklist in the visual note editor or switch to Markdown. Long titles wrap and note settings stay out of the writing area."],
+                  ["task-manager", "See what your browser is doing.", "Inspect real CPU and memory usage, filter and sort activities, and stop a page or close its tab when you need resources back."],
                 ].map(([image, title, description], index) => (
                   <figure
                     className="hero-slide"
                     id={`workflow-${index}`}
                     key={image}
-                    aria-label={`${index + 1} of 9`}
+                    aria-label={`${index + 1} of 14`}
                   >
                     <div className="hero-screen">
                       <img
-                        src={`/assets/product/demo/${image}.webp?v=11`}
+                        src={`/assets/product/demo/${image}.webp?v=12`}
                         alt={description}
                         width="1440"
                         height="940"
@@ -233,10 +273,15 @@ export function homepage() {
                             "spaces-and-groups",
                             "ai-assistant",
                             "ai-assistant",
-                            "ai-active-tabs",
+                            "ai-assistant",
                             "developer-project",
                             "file-manager",
                             "project-terminal",
+                            "spaces-and-groups",
+                            "developer-project",
+                            "space-search",
+                            "notes",
+                            "task-manager",
                           ][index]
                         }`}
                       >
@@ -261,10 +306,15 @@ export function homepage() {
                     "Social",
                     "AI assistant",
                     "Appearance",
-                    "AI activity",
+                    "AI context",
                     "Developer",
                     "Files",
                     "Terminal",
+                    "Favorites",
+                    "Folder drop",
+                    "Search",
+                    "Notes",
+                    "Performance",
                   ].map((label, index) => (
                     <button
                       type="button"
@@ -286,6 +336,18 @@ export function homepage() {
               </div>
             </div>
             <script src="/assets/showcase.js?v=2" defer />
+            <details className="showcase-recording">
+              <summary>Watch space search in the real browser</summary>
+              <video controls preload="none" poster="/assets/product/demo/space-search.webp?v=12" width="1440" height="940" aria-label="Recorded Kudium Browser space search filtering real website tabs">
+                <source src="/assets/product/demo/space-search.mp4?v=12" type="video/mp4" />
+              </video>
+              <p>A recorded public-website workspace in Kudium Browser. Atlas Studio is a fictional demonstration project.</p>
+            </details>
+          </section>
+          <section className="home-use-cases" aria-labelledby="home-use-cases-title">
+            <div><h2 id="home-use-cases-title">One browser. Many ways to work.</h2><p>Find a workspace for your next project, your research, or your everyday tabs.</p></div>
+            <div className="home-use-case-links">{useCases.slice(0, 3).map(item => <a key={item.id} href={`/use-cases#${item.id}`}><span>{item.audience}</span><strong>{item.title}</strong><span aria-hidden="true">Explore the workflow</span></a>)}</div>
+            <a className="text-link" href="/use-cases">Explore all use cases</a>
           </section>
           <section
             className="product-chapter focus-chapter"
@@ -333,7 +395,7 @@ export function homepage() {
               </div>
               <figure data-sidebar-sample="expanded" hidden>
                 <img
-                  src="/assets/product/demo/sidebar-expanded.webp?v=11"
+                  src="/assets/product/demo/sidebar-expanded.webp?v=12"
                   width="2880"
                   height="1880"
                   alt="Apple’s website in Kudium, with favorite tiles, Product Studio and Engineering collections, and folder and stack groups"
@@ -346,7 +408,7 @@ export function homepage() {
               </figure>
               <figure data-sidebar-sample="collapsed">
                 <img
-                  src="/assets/product/demo/sidebar-collapsed.webp?v=11"
+                  src="/assets/product/demo/sidebar-collapsed.webp?v=12"
                   width="2880"
                   height="1880"
                   alt="The same Apple page with the sidebar hidden and the Design group switcher in the address bar"
@@ -379,7 +441,7 @@ export function homepage() {
                 </div>
                 <figure className="detail-image picker-image">
                   <img
-                    src="/assets/product/address-picker-detail.webp?v=2"
+                    src="/assets/product/address-picker-detail.webp?v=12"
                     width="644"
                     height="708"
                     alt="The open Design group picker beside the URL, with Social, Work, Development, and Reading choices"
@@ -408,10 +470,10 @@ export function homepage() {
                 </div>
                 <figure className="detail-image favorites-image">
                   <img
-                    src="/assets/product/favorites-detail.webp?v=1"
+                    src="/assets/product/favorites-detail.webp?v=12"
                     width="568"
                     height="622"
-                    alt="Four favorite tiles for ChatGPT, Perplexity, Gemini and Google Translate above five pinned groups in Kudium’s sidebar"
+                    alt="Five compact favorite tiles for ChatGPT, Perplexity, Gemini, Google Translate and Bun, with a website-colored active border"
                     loading="lazy"
                   />
                 </figure>
@@ -440,7 +502,7 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/developer-terminal.webp?v=11"
+                src="/assets/product/demo/developer-terminal.webp?v=12"
                 width="2880"
                 height="1880"
                 alt="The linked Atlas Studio demo project beside its local collection overview, with real project files and an integrated terminal running a passing Bun test"
@@ -518,7 +580,7 @@ export function homepage() {
             </div>
             <figure className="chapter-screen">
               <img
-                src="/assets/product/demo/ai-mentions.webp?v=11"
+                src="/assets/product/demo/ai-mentions.webp?v=12"
                 width="2880"
                 height="1880"
                 alt="The Atlas Studio collection overview beside Kudium’s AI sidebar, with an attached project brief and group suggestions directly beneath the draft’s typing line"
@@ -1066,7 +1128,7 @@ export function tutorialPage(tutorial: Tutorial) {
                 aria-label="Open full size screenshot"
               >
                 <img
-                  src={`/assets/product/demo/${tutorial.image}.webp?v=11`}
+                  src={`/assets/product/demo/${tutorial.image}.webp?v=12`}
                   alt={tutorial.imageAlt || `${tutorial.title} in the real Kudium Browser interface with fictional Atlas Studio demo data`}
                   width="1280"
                   height="800"
@@ -1274,7 +1336,7 @@ export function authPage(
     )
   );
 }
-export function accountSettingsPage(name: string, email: string, mailEnabled: boolean, hasPassword: boolean) {
+export function accountSettingsPage(name: string, email: string, mailEnabled: boolean, hasPassword: boolean, username = "") {
   return "<!doctype html>" + renderToStaticMarkup(
     <Layout privatePage title="Account settings">
       <main className="account-dashboard account-settings">
@@ -1282,6 +1344,11 @@ export function accountSettingsPage(name: string, email: string, mailEnabled: bo
         <section className="account-settings-card" aria-labelledby="profile-heading">
           <h2 id="profile-heading">Profile</h2>
           <form data-account-form="profile"><label>Your name<input name="name" defaultValue={name} autoComplete="name" required maxLength={100} /></label><button className="account-button" type="submit">Save profile</button><p data-form-message role="status" aria-live="polite" /></form>
+        </section>
+        <section className="account-settings-card" aria-labelledby="publisher-heading">
+          <h2 id="publisher-heading">Publisher username</h2>
+          <p>Your unique @username appears on all your hooks and comments. Use 3–30 letters, numbers or underscores, starting with a letter.</p>
+          <form data-account-form="publisher"><label>Username<input name="username" defaultValue={username} autoComplete="username" required minLength={3} maxLength={30} pattern="[A-Za-z][A-Za-z0-9_]{2,29}" /></label><button className="account-button" type="submit">Save username</button><p data-form-message role="status" aria-live="polite" /></form>
         </section>
         <section className="account-settings-card" aria-labelledby="email-heading">
           <h2 id="email-heading">Email address</h2>
@@ -1594,8 +1661,8 @@ export function whatsNewPage() {
                 </div>
                 {'screenshots' in release && <div className="whats-new-screenshots">
                   {release.screenshots.map(shot => <figure key={shot.asset}>
-                    <a href={`/assets/product/demo/${shot.asset}.webp?v=11`}>
-                      <img src={`/assets/product/demo/${shot.asset}.webp?v=11`} alt={shot.alt} loading="lazy" />
+                    <a href={`/assets/product/demo/${shot.asset}.webp?v=12`}>
+                      <img src={`/assets/product/demo/${shot.asset}.webp?v=12`} alt={shot.alt} loading="lazy" />
                     </a>
                     <figcaption>{shot.caption}</figcaption>
                   </figure>)}

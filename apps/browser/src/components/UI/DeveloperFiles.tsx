@@ -22,6 +22,7 @@ import type {
   ProjectFilesResult,
 } from '../../browser/developerProject';
 import { DeveloperFileTree } from './DeveloperFileTree';
+import { LocalStorage } from '../../utils/LocalStorage';
 import { DeveloperFormatPreview } from './DeveloperFormatPreview';
 import { DeveloperFileEditor } from './DeveloperFileEditor';
 import {
@@ -72,11 +73,11 @@ export function DeveloperFiles({
   }>();
   const [itemName, setItemName] = useState('');
   const [wrap, setWrap] = useState(
-    () => localStorage.getItem('kudium-developer-file-wrap') === 'true'
+    () => LocalStorage.get('kudium-developer-file-wrap') === 'true'
   );
   const toggleWrap = () => {
     setWrap(!wrap);
-    localStorage.setItem('kudium-developer-file-wrap', String(!wrap));
+    LocalStorage.set('kudium-developer-file-wrap', String(!wrap));
   };
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState<(() => void) | null>(null);

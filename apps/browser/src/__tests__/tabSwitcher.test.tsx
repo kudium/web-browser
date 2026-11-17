@@ -20,7 +20,7 @@ function setup() {
     ({ id, items, scope }) => useTabSwitcher(items, id, select, scope),
     {
       initialProps: { id: 'three', items: tabs, scope: 'default' },
-    }
+    },
   );
   hook.rerender({ id: 'two', items: tabs, scope: 'default' });
   hook.rerender({ id: 'one', items: tabs, scope: 'default' });
@@ -42,10 +42,10 @@ test('quick presses toggle the two most recently active tabs without a dialog', 
   act(() => jest.advanceTimersByTime(TAB_SWITCHER_DELAY));
   expect(result.current.shown).toBeUndefined();
 });
-test('chooser appears after 1.5 seconds and supports reverse navigation', () => {
+test('chooser appears after a short hold and supports reverse navigation', () => {
   const { result, select } = setup();
   act(() => result.current.handle('tab-switcher-next'));
-  act(() => jest.advanceTimersByTime(1499));
+  act(() => jest.advanceTimersByTime(TAB_SWITCHER_DELAY - 1));
   expect(result.current.shown).toBeUndefined();
   act(() => jest.advanceTimersByTime(1));
   expect(result.current.shown?.tabs.map((tab) => tab.id)).toEqual([
@@ -57,6 +57,42 @@ test('chooser appears after 1.5 seconds and supports reverse navigation', () => 
   act(() => result.current.handle('tab-switcher-previous'));
   act(() => result.current.handle('tab-switcher-commit'));
   expect(select).toHaveBeenCalledWith(tabs[0]);
+});
+test('rapid native chords toggle MRU even before selection props rerender', () => {
+  const { result, select } = setup();
+  act(() => {
+    for (let index = 0; index < 10; index++) {
+      result.current.handle('tab-switcher-next');
+      result.current.handle('tab-switcher-commit');
+    }
+    jest.advanceTimersByTime(TAB_SWITCHER_DELAY);
+  });
+  expect(select.mock.calls.map(([tab]) => tab.id)).toEqual([
+    'two',
+    'one',
+    'two',
+    'one',
+    'two',
+    'one',
+    'two',
+    'one',
+    'two',
+    'one',
+  ]);
+  expect(result.current.shown).toBeUndefined();
+});
+test('Tab presses while Control is held browse a stable history until release', () => {
+  const { result, select } = setup();
+  act(() => {
+    result.current.handle('tab-switcher-next');
+    jest.advanceTimersByTime(TAB_SWITCHER_DELAY);
+    result.current.handle('tab-switcher-next');
+  });
+  expect(result.current.shown?.index).toBe(2);
+  expect(select).not.toHaveBeenCalled();
+  act(() => result.current.handle('tab-switcher-commit'));
+  expect(select).toHaveBeenLastCalledWith(tabs[2]);
+  expect(result.current.shown).toBeUndefined();
 });
 test('unloading removes entries and returns to the previous active tab', () => {
   const { result, rerender, select } = setup();

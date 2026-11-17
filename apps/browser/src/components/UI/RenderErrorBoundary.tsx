@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import { FileWarning, RotateCcw } from 'lucide-react';
 import { safeErrorFrames } from '../../browser/telemetry';
 
 export function renderFailureMessage(error: Error): string {
@@ -37,22 +38,25 @@ export class RenderErrorBoundary extends Component<
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div
-        role="alert"
-        style={{
-          padding: 24,
-          color: 'var(--gray-12, #f3f4f6)',
-          background: 'var(--gray-2, #252525)',
-          minHeight: '100%',
-          boxSizing: 'border-box',
-        }}
-      >
-        <h2>{this.props.label} could not be displayed</h2>
-        <p>{renderFailureMessage(this.state.error)}</p>
-        <button type="button" onClick={() => this.setState({ error: null })}>
-          Try again
-        </button>
-        {this.props.recovery}
+      <div role="alert" className="render-error-boundary">
+        <div className="render-error-content">
+          <span className="render-error-icon" aria-hidden="true">
+            <FileWarning size={22} strokeWidth={1.6} />
+          </span>
+          <h2>{this.props.label} could not be displayed</h2>
+          <p>{renderFailureMessage(this.state.error)}</p>
+          <div className="render-error-actions">
+            <button
+              type="button"
+              className="render-error-retry"
+              onClick={() => this.setState({ error: null })}
+            >
+              <RotateCcw size={15} aria-hidden="true" />
+              Try again
+            </button>
+            {this.props.recovery}
+          </div>
+        </div>
       </div>
     );
   }

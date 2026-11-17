@@ -48,7 +48,7 @@ app.whenReady().then(async () => {
    await click('Note options'); await shot(`${theme}-${width}-options`);
    await click('Assign note to group'); await shot(`${theme}-${width}-group-picker`);
    await run(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));`);await pause(80);
-   await run(`document.body.click()`);await click('Format note');await shot(`${theme}-${width}-format`);
+   await run(`document.body.click()`);await click('Note options');await shot(`${theme}-${width}-format`);
    await click('Increase note text size');assert(await run(`getComputedStyle(document.querySelector('.notes-rich-editor')).fontSize==='17px'`),'Custom note size applies');await shot(`${theme}-${width}-font-size`);
    assert(await run(`JSON.parse(localStorage.getItem('kudiumbrowser-ai-page-noteFontSize'))===17`),'Font size is remembered');await click('Reset note text size');assert(await run(`getComputedStyle(document.querySelector('.notes-rich-editor')).fontSize==='16px'`),'Default size restores');if(process.argv.includes('--font')){win.destroy();continue;}
    await run(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));`);

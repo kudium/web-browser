@@ -93,7 +93,7 @@ fs.writeFileSync(
       platform,
       arch,
       channel,
-      notes: `Kudium Browser ${version}`,
+      notes: `Kudium Browser ${version}\n\n${fs.readFileSync(new URL("../../docs/browser-release-notes.md", import.meta.url), "utf8").trim()}`,
       files,
     },
     null,

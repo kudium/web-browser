@@ -6,6 +6,7 @@ export type View =
   | 'settings'
   | 'add-app'
   | 'downloads'
+  | 'task-manager'
   | 'global-hook-editor'
   | 'site-developer';
 

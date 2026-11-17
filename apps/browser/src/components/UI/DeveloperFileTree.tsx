@@ -39,6 +39,18 @@ const DragError = createContext<(message: string) => void>(() => {});
 const FileMenu =
   createContext<(entries: ProjectFileEntry[]) => void>(emptyMenu);
 
+// Arborist requires a backend even with tree dragging disabled. File rows hand
+// native drags to Electron themselves; a window-wide HTML5 backend can survive
+// a project switch and collide with the replacement tree's backend.
+const fileTreeBackend = () => ({
+  profile: () => ({}),
+  setup: () => undefined,
+  teardown: () => undefined,
+  connectDragSource: () => () => undefined,
+  connectDragPreview: () => () => undefined,
+  connectDropTarget: () => () => undefined,
+});
+
 function FileRow({ node, style }: NodeRendererProps<FileNode>) {
   const showMenu = useContext(FileMenu);
   const sourceId = useContext(DragSource);
@@ -320,6 +332,7 @@ export function DeveloperFileTree({
               disableEdit
               disableDrag
               disableDrop
+              dndBackend={fileTreeBackend}
               disableSelect={(dataNode) =>
                 disabled || (dataNode.kind === 'other' && !dataNode.retry)
               }

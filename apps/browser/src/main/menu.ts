@@ -187,6 +187,15 @@ export default class MenuBuilder {
         separator,
         this.action('Show / Hide Space Sidebar', 'sidebar'),
         this.action('Show / Hide Assistant', 'ai-sidebar'),
+        {
+          label: 'Task Manager…',
+          accelerator: 'Shift+Esc',
+          click: () => {
+            const focused = BrowserWindow.getFocusedWindow();
+            const parent = focused && getBrowserWindows(focused)?.contains(focused) ? focused : this.mainWindow;
+            this.createNewWindow?.({ view: 'task-manager', options: { parent, width: 900, height: 640, minWidth: 560, minHeight: 420 } });
+          },
+        },
         { label: 'Enter / Exit Full Screen', role: 'togglefullscreen' },
       ],
     };

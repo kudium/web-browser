@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
+import * as filesView from '../components/UI/DeveloperFiles';
 import { DeveloperProjectSection } from '../components/UI/DeveloperProjectSection';
 
 const linked = {
@@ -227,4 +228,45 @@ it('picks up a project linked elsewhere without waiting for window focus', async
   act(() => changed());
   await screen.findByText('Example');
   expect(screen.queryByRole('button', { name: 'Link folder' })).toBeNull();
+});
+
+it('isolates a file-view crash, retries it and lets the user return to pages', async () => {
+  project.mockResolvedValue(linked);
+  const failedView = jest
+    .spyOn(filesView, 'DeveloperFiles')
+    .mockImplementation(() => {
+      throw new Error('File view fixture failed');
+    });
+  const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    render(
+      <Theme>
+        <DeveloperProjectSection sourceId="one" active />
+      </Theme>
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Files' }));
+    await screen.findByText('Project files could not be displayed');
+    expect(screen.getByRole('button', { name: 'Terminal' })).toBeTruthy();
+    expect(screen.queryByText('Browser could not be displayed')).toBeNull();
+    failedView.mockImplementation(() => <div>Recovered file view</div>);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByText('Recovered file view');
+    fireEvent.click(screen.getByRole('button', { name: 'Files' }));
+    failedView.mockImplementation(() => {
+      throw new Error('File view fixture failed');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Files' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Return to pages' })
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      screen
+        .getByRole('button', { name: 'Files' })
+        .getAttribute('aria-expanded')
+    ).toBe('false');
+  } finally {
+    failedView.mockRestore();
+    logged.mockRestore();
+  }
 });

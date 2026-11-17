@@ -76,6 +76,16 @@ for (const settingsForm of document.querySelectorAll('[data-account-form]')) {
         if (!name) throw new Error('Enter your name.');
         await authRequest('update-user', { name });
         status.textContent = 'Profile saved.';
+      } else if (mode === 'publisher') {
+        const response = await fetch('/api/hooks/publisher', {
+          method: 'POST', credentials: 'same-origin', redirect: 'error',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: String(fields.get('username') || '').trim() }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(response.status === 429 ? 'Too many attempts. Please try again in a minute.' : data.message || data.error || 'Unable to save username. Please try again.');
+        settingsForm.elements.username.value = data.username;
+        status.textContent = `Username saved as @${data.username}.`;
       } else if (mode === 'email') {
         await authRequest('change-email', { newEmail: String(fields.get('email') || '').trim(), callbackURL: `${location.origin}/account/settings` });
         status.textContent = 'Check your current inbox to confirm the change, then verify your new email address. Your email stays unchanged until verification is complete.';

@@ -19,6 +19,7 @@ export function installPersonalDataAutofill(
   let loginPrompt = false;
   let authenticating = false;
   let openCurrent: ((quick?: boolean) => Promise<void>) | null = null;
+  let refreshQuickFill: (() => void) | null = null;
   const actions = new WeakMap<HTMLButtonElement, () => void>();
   const usable = (element: Element | null): element is HTMLInputElement | HTMLTextAreaElement =>
     (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
@@ -31,7 +32,20 @@ export function installPersonalDataAutofill(
   });
   const recognized = (input: HTMLInputElement | HTMLTextAreaElement) =>
     input.type === 'password' || match('username', [], descriptor(input)) > 0 || ['name', 'given-name', 'family-name', 'email', 'tel', 'street-address', 'address-line1', 'address-line2', 'address-level1', 'address-level2', 'postal-code', 'country', 'organization'].some((name) => match(name, [], descriptor(input)) > 0);
-  const close = () => { loginPrompt = false; dragging = false; generation++; openCurrent = null; host?.remove(); host = null; root = null; };
+  type FormCandidate = { kind: string; canFillLogin?: boolean; fields: { name: string; aliases?: string[]; secret?: boolean }[] };
+  const formMatches = (record: FormCandidate, controls: (HTMLInputElement | HTMLTextAreaElement)[]) => {
+    if (record.kind === 'login' && record.canFillLogin !== false) return controls.filter((control) => control.type === 'password').length === 1 &&
+      !controls.some((control) => control.autocomplete === 'new-password');
+    return controls.some((control) => {
+      const info = descriptor(control);
+      const scores = record.fields.map((field) => control.type === 'password' && !field.secret ? 0 :
+        match(field.name, field.aliases || [], info) || (control.type === 'password' && control.autocomplete !== 'new-password' && !/confirm|repeat/i.test(control.name + control.id + info.label)
+          ? match(field.name, field.aliases || [], { ...info, autocomplete: 'current-password' }) : 0));
+      const best = Math.max(0, ...scores);
+      return best > 0 && scores.filter((score) => score === best).length === 1;
+    });
+  };
+  const close = () => { loginPrompt = false; dragging = false; generation++; openCurrent = null; refreshQuickFill = null; host?.remove(); host = null; root = null; };
   const position = () => {
     if (!host || !target) return;
     const rect = target.getBoundingClientRect();
@@ -56,6 +70,22 @@ export function installPersonalDataAutofill(
     element.setAttribute('role', tone === 'error' ? 'alert' : 'status');
     element.textContent = text;
     return element;
+  };
+  const saveError = (error: unknown) => {
+    // Electron prefixes IPC errors. Only display known messages, never raw
+    // exception text that might contain website values or filesystem paths.
+    const message = error instanceof Error ? error.message : '';
+    const known = [
+      ['Choose an account before saving website data.', 'Choose or fill your username first, then save the password again.'],
+      ['This input is too long to save.', 'This input is too long to save. Use up to 4,096 characters.'],
+      ['The target page changed.', 'The page changed while saving. Open Autofill again and retry.'],
+      ['This login is no longer available.', 'This login has expired. Sign in again to save it.'],
+      ['Authentication was cancelled or unsuccessful.', 'Authentication was cancelled. Try saving again.'],
+      ['OS authentication is unavailable.', 'Device authentication is unavailable. Open Personal Data in Preferences.'],
+      ['Unlock Personal Data with your master password first.', 'Unlock Personal Data in Preferences, then try again.'],
+      ['Personal Data is disabled.', 'Enable Personal Data in Preferences, then try again.'],
+    ];
+    return known.find(([match]) => message.includes(match))?.[1] || 'Unable to save to Personal Data. Try again or open Personal Data in Preferences.';
   };
   const confirmUpdate = (panel: HTMLElement) => new Promise<boolean>((resolve) => {
     const prompt = document.createElement('div'); prompt.className = 'update-confirmation';
@@ -129,12 +159,13 @@ export function installPersonalDataAutofill(
       const save = button('Save input for this website', async () => {
         if (!input.value || save.disabled) return;
         const info = descriptor(input);
-        const name = (input.autocomplete && !['off', 'on', 'new-password', 'current-password'].includes(input.autocomplete) ? input.autocomplete : info.label || info.name || info.id || (input.type === 'password' ? 'Password' : input.type)).slice(0, 200);
-        const aliases = Array.from(new Set([info.name, info.id, info.label].filter(Boolean))).map((alias) => alias.slice(0, 200));
+        const name = (input.type === 'password' ? 'Password' : input.autocomplete && !['off', 'on'].includes(input.autocomplete) ? input.autocomplete : info.label || info.name || info.id || input.type).slice(0, 120);
+        const aliases = Array.from(new Set([info.name, info.id, info.label].filter(Boolean))).map((alias) => alias.slice(0, 120));
         save.disabled = true;
         save.setAttribute('aria-busy', 'true');
         try {
-          const payload = { name, aliases, value: input.value, secret: input.type === 'password' };
+          const users = input.type === 'password' && input.form ? Array.from(input.form.querySelectorAll<HTMLInputElement>('input')).filter((field) => usable(field) && field.type !== 'password' && (field.type === 'email' || match('username', [], descriptor(field)) > 0 || field.autocomplete === 'email') && field.value) : [];
+          const payload = { name, aliases, value: input.value, secret: input.type === 'password', ...(users.length === 1 ? { username: users[0].value } : {}) };
           let result = await bridge.invoke('personal-data-autofill-save-field', payload);
           if (generation !== current) return;
           if (result?.needsUpdate) {
@@ -157,7 +188,7 @@ export function installPersonalDataAutofill(
           const actions = document.createElement('div'); actions.className = 'confirmation-actions';
           const back = button('Back', () => { feedback.remove(); content.hidden = false; save.focus(); });
           actions.append(back); feedback.append(confirmation, actions); panel.append(feedback); back.focus();
-        } catch { if (generation === current) { content.hidden = false; content.append(notice('Unable to save. Unlock Personal Data and try again.', 'error')); } }
+        } catch (error) { if (generation === current) { content.hidden = false; content.querySelector('.message-error')?.remove(); content.append(notice(saveError(error), 'error')); } }
         finally { save.disabled = !input.value; save.removeAttribute('aria-busy'); }
       });
       save.className = 'close'; save.setAttribute('aria-label', 'Save input for this website'); save.title = 'Save input for this website'; save.disabled = !input.value;
@@ -206,53 +237,88 @@ export function installPersonalDataAutofill(
               password = '';
               if (generation !== current) return;
               content.replaceChildren(notice(result?.updated ? 'Website data updated.' : 'Password saved.', 'success'));
-            } catch { if (generation === current) content.append(notice('Unable to save. Unlock Personal Data and try again.', 'error')); }
+            } catch (error) { if (generation === current) { content.querySelector('.message-error')?.remove(); content.append(notice(saveError(error), 'error')); } }
           }));
         }));
       };
 
-      type FillRecord = { id: string; kind: string; website?: boolean; selected?: boolean; username?: string; title: string; fields: (VaultField & { fieldIndex?: number })[] };
-      const fillForm = async (record: FillRecord) => {
-        if (!input.form) return;
-        if (record.kind === 'login') {
-          try {
+      type FillRecord = { id: string; kind: string; canFillLogin?: boolean; website?: boolean; selected?: boolean; username?: string; sourceLabel?: string; title: string; fields: (VaultField & { fieldIndex?: number })[] };
+      const fillForm = async (record: FillRecord, supplemental: FillRecord[] = []) => {
+        const form = input.form;
+        if (!form) return;
+        const controls = Array.from(form.elements).filter(usable);
+        const values: { control: HTMLInputElement | HTMLTextAreaElement; value: string }[] = [];
+        const choices: { control: HTMLInputElement | HTMLTextAreaElement; values: string[] }[] = [];
+        const secrets = new Map<number, string>();
+        let filled = 0;
+        const currentTarget = () => enabled && generation === current && input.isConnected && input.form === form;
+        try {
+          if (record.kind === 'login') {
             const result = await bridge.invoke('personal-data-autofill-login', record.id);
-            if (generation !== current) return;
-            if (result.filled) { close(); input.focus(); }
-            else content.append(notice('No matching login fields.', 'error'));
-          } catch { if (generation === current) content.append(notice('Unlock Personal Data to fill this login.', 'error')); }
-          return;
-        }
-      const form = input.form!;
-      const controls = Array.from(form.elements).filter(usable);
-      const values: { control: HTMLInputElement | HTMLTextAreaElement; value: string }[] = [];
-      const secrets = new Map<number, string>();
-      try {
-        for (const control of controls) {
-          const info = descriptor(control);
-          const candidates = record.fields.map((field) => ({ field, score:
-            match(field.name, field.aliases || [], info) || (control.type === 'password' && control.autocomplete !== 'new-password' && !/confirm|repeat/i.test(control.name + control.id + info.label)
-              ? match(field.name, field.aliases || [], { ...info, autocomplete: 'current-password' }) : 0) }));
-          const best = Math.max(0, ...candidates.map((entry) => entry.score));
-          const winners = candidates.filter((entry) => entry.score === best && best > 0);
-          if (winners.length !== 1) continue;
-          const field = winners[0].field;
-          let value = field.value;
-          if (field.secret) {
-            if (field.fieldIndex === undefined) continue;
-            if (!secrets.has(field.fieldIndex)) secrets.set(field.fieldIndex,
-              await bridge.invoke('personal-data-autofill-secret', { id: record.id, fieldIndex: field.fieldIndex }));
-            value = secrets.get(field.fieldIndex)!;
+            if (!currentTarget()) return;
+            filled = result.filled || 0;
           }
-          values.push({ control, value });
-        }
-        if (!enabled || generation !== current || !input.isConnected || input.form !== form) return;
-        for (const { control, value } of values) {
-          if (usable(control) && control.form === form) write(control, value);
-        }
-        void bridge.invoke('personal-data-login-identity', { id: record.id }).catch(() => {});
-        close(); input.focus();
-      } catch { if (generation === current) content.append(notice('Unable to fill this form. Unlock Personal Data and try again.', 'error')); }
+          for (const control of controls) {
+            if (record.kind === 'login' && control.value) continue;
+            const info = descriptor(control);
+            const candidates = record.fields.map((field) => ({ field, score:
+              control.type === 'password' && !field.secret ? 0 :
+              match(field.name, field.aliases || [], info) || (control.type === 'password' && control.autocomplete !== 'new-password' && !/confirm|repeat/i.test(control.name + control.id + info.label)
+                ? match(field.name, field.aliases || [], { ...info, autocomplete: 'current-password' }) : 0) }));
+            const best = Math.max(0, ...candidates.map((entry) => entry.score));
+            const winners = candidates.filter((entry) => entry.score === best && best > 0);
+            if (winners.length === 1) {
+              const field = winners[0].field;
+              let value = field.value;
+              if (field.secret) {
+                if (field.fieldIndex === undefined) continue;
+                if (!secrets.has(field.fieldIndex)) secrets.set(field.fieldIndex,
+                  await bridge.invoke('personal-data-autofill-secret', { id: record.id, fieldIndex: field.fieldIndex }));
+                value = secrets.get(field.fieldIndex)!;
+              }
+              if (value) values.push({ control, value });
+              continue;
+            }
+            // A form shortcut may supplement missing public fields from the
+            // already-authorized records. Never combine passwords or logins.
+            if (!supplemental.length || control.value || control.type === 'password') continue;
+            const fallback = best > 0 ? winners.filter(({ field }) => !field.secret && field.value) :
+              supplemental.filter((other) => other.id !== record.id && other.kind !== 'login')
+                .flatMap((other) => other.fields.filter((field) => !field.secret && field.value)
+                  .map((field) => ({ field, website: !!other.website, score: match(field.name, field.aliases || [], info) })))
+                .filter((entry) => entry.score > 0);
+            const website = fallback.filter((entry) => 'website' in entry && entry.website);
+            const preferred = website.length ? website : fallback;
+            const fallbackBest = Math.max(0, ...preferred.map((entry) => entry.score));
+            const unique = [...new Set(preferred.filter((entry) => entry.score === fallbackBest && fallbackBest > 0).map(({ field }) => field.value))];
+            if (unique.length === 1) values.push({ control, value: unique[0] });
+            else if (unique.length > 1) choices.push({ control, values: unique });
+          }
+          if (!currentTarget()) return;
+          for (const { control, value } of values) {
+            if (usable(control) && control.form === form) { write(control, value); filled++; }
+          }
+          if (filled) void bridge.invoke('personal-data-login-identity', { id: record.id }).catch(() => {});
+          if (choices.length) {
+            title.textContent = 'Finish filling form';
+            content.replaceChildren(notice('Choose a saved value for the remaining fields.'));
+            for (const choice of choices) {
+              const group = document.createElement('div');
+              const heading = document.createElement('div'); heading.className = 'heading';
+              heading.textContent = descriptor(choice.control).label || choice.control.name || 'Saved field'; group.append(heading);
+              for (const value of choice.values) group.append(button(value, () => {
+                if (!currentTarget() || !usable(choice.control) || choice.control.form !== form) return;
+                write(choice.control, value); group.remove();
+                if (!content.querySelector('button')) { close(); input.focus(); }
+              }));
+              content.append(group);
+            }
+            content.querySelector<HTMLButtonElement>('button')?.focus();
+            return;
+          }
+          if (!filled) { content.append(notice('No matching fields available to fill.')); return; }
+          close(); input.focus();
+        } catch { if (generation === current) content.append(notice('Unable to fill this form. Unlock Personal Data and try again.', 'error')); }
       };
       let watchdog: ReturnType<typeof setInterval> | undefined;
       try {
@@ -276,7 +342,7 @@ export function installPersonalDataAutofill(
         if (!enabled || generation !== current) return;
         if (!input.isConnected) { close(); return; }
         content.textContent = '';
-        const browse = () => {
+        const browse = async () => {
           const previousTitle = title.textContent;
           const previousContent = Array.from(content.childNodes);
           title.textContent = 'Saved data';
@@ -287,14 +353,15 @@ export function installPersonalDataAutofill(
           const search = document.createElement('input'); search.type = 'search'; search.className = 'saved-search';
           search.placeholder = 'Search saved data'; search.setAttribute('aria-label', 'Search saved data');
           const results = document.createElement('div');
+          let browsed: FillRecord[] = records;
           const render = () => {
             results.replaceChildren();
             const query = search.value.trim().toLocaleLowerCase();
-            for (const record of records) {
+            for (const record of browsed) {
               const fields = record.fields.filter((field) => !field.secret && field.value &&
                 [record.title, field.name, ...(field.aliases || []), field.value].join(' ').toLocaleLowerCase().includes(query));
               if (!fields.length) continue;
-              const heading = document.createElement('div'); heading.className = 'heading'; heading.textContent = record.title; results.append(heading);
+              const heading = document.createElement('div'); heading.className = 'heading'; heading.textContent = record.sourceLabel ? `${record.title} · ${record.sourceLabel}` : record.title; results.append(heading);
               for (const field of fields) {
                 const entry = button(field.name, () => {
                   if (!enabled || generation !== current || !input.isConnected) return;
@@ -304,23 +371,35 @@ export function installPersonalDataAutofill(
                 entry.setAttribute('aria-label', `Fill ${field.name}: ${field.value}`); results.append(entry);
               }
             }
-            if (!results.childNodes.length) results.append(notice(query ? 'No saved data matches your search.' : 'No saved values available for this website.'));
+            if (!results.childNodes.length) results.append(notice(query ? 'No saved data matches your search.' : 'No saved values in this group or browser.'));
           };
           search.addEventListener('input', render);
-          content.replaceChildren(back, search, results); render(); search.focus();
+          content.replaceChildren(back, search, results); search.focus();
+          if (!records.some((record) => record.website && record.fields.some((field) => !field.secret && field.value))) {
+            results.append(notice('Loading group and browser data…'));
+            try {
+              const fallback = await bridge.invoke('personal-data-autofill-browse');
+              if (generation !== current || !search.isConnected) return;
+              browsed = Array.isArray(fallback) ? fallback : records;
+            } catch {
+              if (generation === current && search.isConnected) results.replaceChildren(notice('Unable to browse saved data. Open Personal Data in Preferences.', 'error'));
+              return;
+            }
+          }
+          if (generation === current && search.isConnected) render();
         };
         const addBrowse = () => { if (input.type !== 'password') content.append(button('Browse saved data', browse)); };
         if (quick && input.form) {
           const controls = Array.from(input.form.elements).filter(usable);
-          const matching = records.filter((record) => (record.kind === 'login' && controls.some((control) => control.type === 'password' && control.autocomplete !== 'new-password')) || record.fields.some((field) =>
-            controls.some((control) => match(field.name, field.aliases || [], descriptor(control)) > 0)));
+          const matching = records.filter((record) => formMatches(record, controls));
+          if (!matching.length) refreshQuickFill?.();
           const website = matching.filter((record) => record.website);
           const selected = matching.filter((record) => record.selected);
           const choices = selected.length ? selected : website.length ? website : matching;
-          if (choices.length === 1) { await fillForm(choices[0]); return; }
+          if (choices.length === 1) { await fillForm(choices[0], records); return; }
           title.textContent = 'Fill form';
           if (!choices.length) content.append(notice('No suggested matches for this field.'));
-          for (const record of choices) content.append(button(record.title, () => { void fillForm(record); }));
+          for (const record of choices) content.append(button(record.title, () => { void fillForm(record, records); }));
           addBrowse();
           (content.querySelector('button') || dismiss).focus();
           return;
@@ -331,18 +410,25 @@ export function installPersonalDataAutofill(
             const secrets = record.fields.filter((field) => field.secret && field.fieldIndex !== undefined);
             if (secrets.length) {
               const heading = document.createElement('div'); heading.className = 'heading'; const name = document.createElement('span'); name.textContent = record.title; heading.append(name); content.append(heading);
-              for (const field of secrets) content.append(button(`Fill ${field.name}`, async () => {
-                try {
-                  const value = await bridge.invoke('personal-data-autofill-secret', { id: record.id, fieldIndex: field.fieldIndex });
-                  if (!enabled || generation !== current || !input.isConnected) return;
-                  write(input, value); close(); input.focus();
-                } catch { if (generation === current) content.append(notice('Unable to fill this secret. Unlock Personal Data and try again.', 'error')); }
-              }));
+              for (const field of secrets) {
+                const fillMatchingForm = !!input.form && formMatches({ kind: 'knowledge', fields: [field] }, [input]);
+                content.append(button(fillMatchingForm ? `Fill form · ${field.name}` : `Fill ${field.name}`, async () => {
+                  if (fillMatchingForm) { await fillForm(record); return; }
+                  try {
+                    const value = await bridge.invoke('personal-data-autofill-secret', { id: record.id, fieldIndex: field.fieldIndex });
+                    if (!enabled || generation !== current || !input.isConnected) return;
+                    write(input, value); close(); input.focus();
+                  } catch { if (generation === current) content.append(notice('Unable to fill this secret. Unlock Personal Data and try again.', 'error')); }
+                }));
+              }
             }
           }
           if (record.kind === 'login') {
             if (input.type !== 'password' && record.username && (match('username', [], descriptor(input)) > 0 || match('email', [], descriptor(input)) > 0)) {
-              content.append(button(`${record.title} · ${record.username}`, () => {
+              content.append(button(`${record.title} · ${record.username}`, async () => {
+                if (input.form && formMatches(record, Array.from(input.form.elements).filter(usable))) {
+                  await fillForm(record); return;
+                }
                 void bridge.invoke('personal-data-login-identity', { id: record.id }).catch(() => {});
                 write(input, record.username!); close(); input.focus();
               }));
@@ -365,11 +451,12 @@ export function installPersonalDataAutofill(
           const heading = document.createElement('div'); heading.className = 'heading'; const name = document.createElement('span'); name.textContent = record.title; heading.append(name); content.append(heading);
           for (const { field } of matches) {
             const entry = button(field.value, () => {
+              if (input.form) { void fillForm(record); return; }
               if (match('username', [], descriptor(input)) > 0 || match('email', [], descriptor(input)) > 0)
                 void bridge.invoke('personal-data-login-identity', { id: record.id }).catch(() => {});
               write(input, field.value); close(); input.focus();
             });
-            entry.setAttribute('aria-label', `Fill ${field.name}: ${field.value}`); content.append(entry);
+            entry.setAttribute('aria-label', input.form ? `Fill form with ${record.title}: ${field.value}` : `Fill ${field.name}: ${field.value}`); content.append(entry);
           }
           if (input.form) {
             const fill = button('Fill this form', () => { void fillForm(record); });
@@ -432,7 +519,19 @@ export function installPersonalDataAutofill(
       const quick = button('Fill this form', () => { void openPicker(true); });
       quick.className = 'quick-fill'; quick.title = 'Fill this form'; quick.setAttribute('aria-label', 'Fill this form');
       quick.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7l0-7Z"/></svg>';
-      control.append(quick);
+      const owner = root;
+      let request = 0;
+      refreshQuickFill = () => {
+        const revision = ++request;
+        quick.remove();
+        if (!input.form || !enabled || paused || disposed) return;
+        void bridge.invoke('personal-data-autofill-availability').then((records) => {
+          if (revision !== request || root !== owner || !input.isConnected || !input.form || !enabled || paused || disposed) return;
+          const controls = Array.from(input.form.elements).filter(usable);
+          if (Array.isArray(records) && records.some((record) => formMatches(record, controls))) control.append(quick);
+        }).catch(() => {});
+      };
+      refreshQuickFill();
     }
     (input.closest('dialog,[role=dialog],[aria-modal=true]') || document.documentElement).append(host); position();
   };
@@ -492,7 +591,7 @@ export function installPersonalDataAutofill(
           }
           if (!panel.isConnected) return;
           panel.replaceChildren(header, notice(result?.updated ? 'Website login updated.' : 'Login saved for this website.', 'success'), button('Done', () => close()));
-        } catch { if (panel.isConnected) { save.disabled = false; panel.append(notice('Unable to save. Unlock Personal Data and try again.', 'error')); } }
+        } catch (error) { if (panel.isConnected) { save.disabled = false; panel.querySelector('.message-error')?.remove(); panel.append(notice(saveError(error), 'error')); } }
       });
       panel.append(save, button('Not now', dismiss)); root.append(panel); document.documentElement.append(host);
     } catch { /* A disabled, private or changed page cannot offer login saving. */ }
@@ -556,6 +655,7 @@ export function installPersonalDataAutofill(
     enabled = next === true;
     if (!enabled) close();
     else if (!wasEnabled && !paused && usable(document.activeElement) && recognized(document.activeElement)) show(document.activeElement);
+    else refreshQuickFill?.();
   });
   bridge.on('personal-data-autofill-authenticating', (_event, waiting) => {
     authenticating = waiting === true;

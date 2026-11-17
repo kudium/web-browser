@@ -39,7 +39,7 @@ it('opens group creation from the space menu in the active space', async () => {
   visit(tree);
   expect(menuFunction).toBeDefined();
   const nativeMenu = jest.fn().mockResolvedValue('new-group');
-  const setNewGroupSpace = jest.fn();
+  const setGroupDialog = jest.fn();
   const setPaletteOpen = jest.fn();
   const setEditingGroup = jest.fn();
   const context = vm.createContext({
@@ -49,7 +49,10 @@ it('opens group creation from the space menu in the active space', async () => {
     appList: [],
     showUnpinnedGroups: false,
     windowWorkspace: { state: () => undefined },
-    setNewGroupSpace,
+    setGroupDialog,
+    searchingGroups: false,
+    collapsedSpaces: [],
+    setSpaceSearch: jest.fn(),
     setDroppedProject: jest.fn(),
     useCallback: (callback: unknown) => callback,
     setEditingGroup,
@@ -67,13 +70,15 @@ it('opens group creation from the space menu in the active space', async () => {
     id: 'new-group',
     label: 'Create Group…',
   });
-  expect(setNewGroupSpace).toHaveBeenCalledWith('work');
-  expect(setEditingGroup).toHaveBeenCalledWith(
+  expect(setGroupDialog).toHaveBeenCalledWith(
     expect.objectContaining({
-      spaceId: 'work',
-      name: '',
-      url: 'about:blank',
-      pinned: true,
+      creating: true,
+      item: expect.objectContaining({
+        spaceId: 'work',
+        name: '',
+        url: 'about:blank',
+        pinned: true,
+      }),
     })
   );
   expect(setPaletteOpen).not.toHaveBeenCalled();

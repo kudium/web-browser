@@ -1,5 +1,8 @@
 import path from 'path';
-import { parseDownloadRecords } from '../main/downloadRecords';
+import {
+  parseDownloadRecords,
+  parseDownloadRetrySource,
+} from '../main/downloadRecords';
 
 const valid = {
   id: 'one',
@@ -29,7 +32,7 @@ it('keeps validated siblings and their identity while rejecting duplicate or mal
   });
   expect(
     parseDownloadRecords([{ ...valid, state: 'progressing', paused: true }])
-      .records[0]
+      .records[0],
   ).toMatchObject({ id: 'one', state: 'interrupted', paused: false });
 });
 
@@ -44,4 +47,42 @@ it('preserves a healthy record while marking repaired optional fields for recove
     paused: false,
     totalBytes: 0,
   });
+});
+
+it('validates saved retry destinations and strips malformed metadata without losing history', () => {
+  const source = { url: 'https://example.test/file#fragment', profile: 'work' };
+  expect(parseDownloadRetrySource(source)).toEqual({
+    url: 'https://example.test/file',
+    profile: 'work',
+  });
+  for (const url of [
+    'file:///etc/passwd',
+    'javascript:alert(1)',
+    'https://user:password@example.test/',
+    'https://example.test/\n',
+  ]) {
+    expect(parseDownloadRetrySource({ ...source, url })).toBeUndefined();
+  }
+  expect(
+    parseDownloadRetrySource({ ...source, profile: '../outside' }),
+  ).toBeUndefined();
+  expect(parseDownloadRetrySource({ url: source.url })).toBeUndefined();
+  expect(parseDownloadRetrySource({ url: source.url }, true)).toEqual({
+    url: 'https://example.test/file',
+  });
+  const parsed = parseDownloadRecords([
+    { ...valid, state: 'progressing', retrySource: source },
+    {
+      ...valid,
+      id: 'bad-retry',
+      retrySource: { ...source, url: 'file:///bad' },
+    },
+  ]);
+  expect(parsed.damaged).toBe(true);
+  expect(parsed.records).toHaveLength(2);
+  expect(parsed.records[0]).toMatchObject({
+    state: 'interrupted',
+    retrySource: { url: 'https://example.test/file', profile: 'work' },
+  });
+  expect(parsed.records[1].retrySource).toBeUndefined();
 });

@@ -11,6 +11,7 @@ import {
   X,
   Tag,
   History,
+  Activity,
 } from 'lucide-react';
 import { useEffect, useState, useRef, useMemo, ReactNode } from 'react';
 import { CollectionIcon } from './CollectionIcon';
@@ -226,6 +227,11 @@ export function CommandPalette({
       .slice(0, 6);
   }, [apps, groupScope, tagScope, term, access]);
   const commands: CommandResult[] = [
+    {
+      id: 'task-manager', title: 'Task Manager', detail: 'Tab CPU, memory and resource usage',
+      icon: <Activity size={18} />,
+      run: () => { close(); window.electron.ipcRenderer.sendMessage('ipc-create-window', [{ view: 'task-manager' }]); },
+    },
     {
       id: 'settings',
       title: 'Settings',

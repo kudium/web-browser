@@ -50,6 +50,7 @@ it('isolates private lists, broadcasts and controls without writing history or d
     let savePath = '';
     const item = Object.assign(new EventEmitter(), {
       getFilename: () => name,
+      getURLChain: () => ['https://example.test/private-file'],
       getSavePath: () => savePath,
       setSavePath: jest.fn((value: string) => {
         savePath = value;
@@ -86,7 +87,7 @@ it('isolates private lists, broadcasts and controls without writing history or d
     const privateFile = download(first, 'private.txt', contents);
     expect(privateFile.item.setSavePath).not.toHaveBeenCalled();
     expect(privateFile.item.setSaveDialogOptions).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Save private download' })
+      expect.objectContaining({ title: 'Save private download' }),
     );
     privateFile.complete();
     const active = download(first, 'active.txt', contents);
@@ -103,14 +104,14 @@ it('isolates private lists, broadcasts and controls without writing history or d
     expect(hosts[0].webContents.send).not.toHaveBeenCalled();
     expect(
       hosts[1].webContents.send.mock.calls.every(([, list]) =>
-        list.every((record: any) => record.name !== 'other.txt')
-      )
+        list.every((record: any) => record.name !== 'other.txt'),
+      ),
     ).toBe(true);
     const record = getDownloadsForContents(contents as any).find(
-      (entry) => entry.state === 'completed'
+      (entry) => entry.state === 'completed',
     )!;
     const handler = (ipcMain.handle as jest.Mock).mock.calls.find(
-      ([channel]) => channel === 'browser-downloads'
+      ([channel]) => channel === 'browser-downloads',
     )[1];
     const frame = {};
     const event = {
@@ -118,11 +119,27 @@ it('isolates private lists, broadcasts and controls without writing history or d
       senderFrame: frame,
     };
     await expect(handler(event, 'cancel', record.id)).rejects.toThrow(
-      'no longer in history'
+      'no longer in history',
     );
     await expect(performDownloadAction('open-file', record.id)).rejects.toThrow(
-      'no longer in history'
+      'no longer in history',
     );
+    const retry = download(first, 'retry-private.txt');
+    retry.item.cancel();
+    const retryRecord = getDownloadHistory(first).find(
+      (entry) => entry.name === 'retry-private.txt',
+    )!;
+    expect(retryRecord.retryable).toBe(true);
+    expect(retryRecord).not.toHaveProperty('retrySource');
+    first.downloadURL = jest.fn();
+    await performDownloadAction('retry', retryRecord.id, first);
+    expect(first.downloadURL).toHaveBeenCalledWith(
+      'https://example.test/private-file',
+    );
+    await expect(
+      performDownloadAction('retry', retryRecord.id, second),
+    ).rejects.toThrow('no longer in history');
+    expect(fs.readFileSync(historyFile)).toEqual(diskBefore);
     await performDownloadAction('clear');
     expect(getDownloadsForContents(contents as any)).toHaveLength(2);
     await performDownloadAction('clear', undefined, first);

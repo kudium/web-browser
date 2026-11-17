@@ -13,24 +13,33 @@ export class RendererCSPPlugin {
       const hashes: string[] = [];
       const hooks = HtmlWebpackPlugin.getHooks(compilation);
       hooks.alterAssetTagGroups.tap(this.name, (data) => {
+        const scriptHash = (filename: string) => {
+          const asset = compilation.getAsset(filename);
+          if (!asset)
+            throw new Error(`Missing production script asset: ${filename}`);
+          return `sha256-${createHash('sha256')
+            .update(asset.source.source())
+            .digest('base64')}`;
+        };
         [...data.headTags, ...data.bodyTags]
           .filter((tag) => tag.tagName === 'script')
           .forEach((tag) => {
             const { src } = tag.attributes;
             if (typeof src !== 'string' || !src.startsWith('./'))
               throw new Error(
-                'Production scripts must be emitted local assets.'
+                'Production scripts must be emitted local assets.',
               );
-            const asset = compilation.getAsset(src.slice(2));
-            if (!asset)
-              throw new Error(`Missing production script asset: ${src}`);
-            const source = asset.source.source();
-            const hash = `sha256-${createHash('sha256')
-              .update(source)
-              .digest('base64')}`;
+            const hash = scriptHash(src.slice(2));
             tag.attributes.integrity = hash;
             hashes.push(`'${hash}'`);
           });
+        // Async chunks are absent from the HTML tags. The SRI plugin attaches
+        // their integrity attributes at runtime; CSP must authorize those same
+        // emitted bytes without allowing arbitrary local or remote scripts.
+        for (const chunk of compilation.chunks)
+          for (const filename of chunk.files)
+            if (filename.endsWith('.js'))
+              hashes.push(`'${scriptHash(filename)}'`);
         return data;
       });
       hooks.beforeEmit.tap(this.name, (data) => {

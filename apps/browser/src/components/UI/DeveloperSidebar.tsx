@@ -1,6 +1,12 @@
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   Search,
   Settings2,
@@ -24,9 +30,12 @@ import { developerPagesStore } from '../../browser/developerPagesStore';
 import { DeveloperProjectSection } from './DeveloperProjectSection';
 import { DeveloperTerminal } from './DeveloperTerminal';
 import { projectErrorMessage } from '../../browser/developerProject';
+import { developerProjectStore } from '../../browser/developerProjectStore';
+import { FolderOpen } from 'lucide-react';
 
 export function DeveloperSidebar({
   active,
+  openTerminalRequest = 0,
   focusedTabId,
   onFocusTab,
   onTabContextMenu,
@@ -34,6 +43,7 @@ export function DeveloperSidebar({
   onManageGroup,
 }: {
   active: boolean;
+  openTerminalRequest?: number;
   focusedTabId?: string;
   onFocusTab?: (id: string) => void;
   onTabContextMenu?: (id: string) => void;
@@ -116,36 +126,122 @@ export function DeveloperSidebar({
     : '';
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const pendingHook = useRef<{ pageId: string; hookId: string; name: string; acknowledged?: boolean } | undefined>(undefined);
+  const pendingHook = useRef<
+    | { pageId: string; hookId: string; name: string; acknowledged?: boolean }
+    | undefined
+  >(undefined);
   const [hookFeedback, setHookFeedback] = useState('');
-  useEffect(() => browser.onState((state) => {
-    const pending = pendingHook.current;
-    if (!pending || state.id !== pending.pageId) return;
-    const developer = state.siteSettings?.developer;
-    const status = developer?.hookStatuses?.[pending.hookId];
-    if (status === 'running') pending.acknowledged = true;
-    if (status === 'success' || status === 'error') {
-      const detail = status === 'error' ? developer?.logs.slice().reverse().find((log) => log.level === 'error' && log.hookId === pending.hookId)?.message : undefined;
-      setHookFeedback(`${pending.name}: ${status === 'success' ? 'Completed successfully' : detail || 'Failed'}`);
-      pendingHook.current = undefined;
-    }
-  }), []);
+  useEffect(
+    () =>
+      browser.onState((state) => {
+        const pending = pendingHook.current;
+        if (!pending || state.id !== pending.pageId) return;
+        const developer = state.siteSettings?.developer;
+        const status = developer?.hookStatuses?.[pending.hookId];
+        if (status === 'running') pending.acknowledged = true;
+        if (status === 'success' || status === 'error') {
+          const detail =
+            status === 'error'
+              ? developer?.logs
+                  .slice()
+                  .reverse()
+                  .find(
+                    (log) =>
+                      log.level === 'error' && log.hookId === pending.hookId
+                  )?.message
+              : undefined;
+          setHookFeedback(
+            `${pending.name}: ${status === 'success' ? 'Completed successfully' : detail || 'Failed'}`
+          );
+          pendingHook.current = undefined;
+        }
+      }),
+    []
+  );
   useEffect(() => {
     const pending = pendingHook.current;
     if (!pending) return undefined;
     const timer = setTimeout(() => {
       if (pendingHook.current !== pending || pending.acknowledged) return;
       pendingHook.current = undefined;
-      setHookFeedback(`${pending.name}: No response from the hook runtime. Reopen this tab to load the updated runtime.`);
+      setHookFeedback(
+        `${pending.name}: No response from the hook runtime. Reopen this tab to load the updated runtime.`
+      );
     }, 5000);
     return () => clearTimeout(timer);
   }, [hookFeedback]);
   const [shortcutError, setShortcutError] = useState('');
+  const [folderDragging, setFolderDragging] = useState(false);
+  const [linkingFolder, setLinkingFolder] = useState(false);
+  const folderDropBusy = useRef(false);
+  const dropTarget = useRef({ sourceId: source?.id, active });
+  dropTarget.current = { sourceId: source?.id, active };
+  useEffect(
+    () => () => {
+      dropTarget.current = { sourceId: undefined, active: false };
+    },
+    []
+  );
+  const dropProjectFolder = async (files: FileList) => {
+    if (folderDropBusy.current) return;
+    if (files.length !== 1) {
+      setShortcutError('Drop one project folder at a time.');
+      return;
+    }
+    if (!source) {
+      setShortcutError('Choose or unlock a group before linking a folder.');
+      return;
+    }
+    const sourceId = source.id;
+    const group = selectedGroup;
+    folderDropBusy.current = true;
+    setLinkingFolder(true);
+    setShortcutError('');
+    try {
+      const project = await window.electron.siteDeveloper.linkDroppedProject(
+        sourceId,
+        files[0]
+      );
+      developerProjectStore.set(sourceId, project);
+      if (
+        dropTarget.current.sourceId === sourceId &&
+        dropTarget.current.active &&
+        project?.available
+      ) {
+        selectView('files');
+        setTerminalReset((value) => value + 1);
+        setTerminalRequest((value) => ({ group, count: value.count + 1 }));
+      }
+    } catch (reason) {
+      if (dropTarget.current.sourceId === sourceId && dropTarget.current.active)
+        setShortcutError(projectErrorMessage(reason));
+    } finally {
+      folderDropBusy.current = false;
+      setLinkingFolder(false);
+    }
+  };
   const [terminalRequest, setTerminalRequest] = useState({
     group: '',
     count: 0,
   });
   const [terminalReset, setTerminalReset] = useState(0);
+  const handledTerminalRequest = useRef(0);
+  useEffect(() => {
+    if (
+      !active ||
+      !source ||
+      !openTerminalRequest ||
+      handledTerminalRequest.current === openTerminalRequest
+    )
+      return;
+    handledTerminalRequest.current = openTerminalRequest;
+    selectView('files');
+    setTerminalRequest((value) => ({
+      group: selectedGroup,
+      count: value.count + 1,
+    }));
+  }, [active, source, selectedGroup, openTerminalRequest]);
+
   const hideTerminal = () => {
     window.electron.siteDeveloper
       .terminal(selectedGroup, { action: 'preferences', open: false })
@@ -200,7 +296,31 @@ export function DeveloperSidebar({
       className="developer-sidebar"
       id="ai-developer-panel"
       aria-label="Developer"
+      onDragOverCapture={(event) => {
+        if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+        setFolderDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          setFolderDragging(false);
+      }}
+      onDropCapture={(event) => {
+        if (!event.dataTransfer.files.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setFolderDragging(false);
+        void dropProjectFolder(event.dataTransfer.files);
+      }}
     >
+      {folderDragging && (
+        <div className="developer-folder-drop-hint">
+          <FolderOpen size={22} aria-hidden="true" />
+          <span>Link folder and open terminal</span>
+        </div>
+      )}
       <AssistantPageHeader className="developer-sidebar-toolbar">
         <GroupPicker
           options={options}
@@ -245,6 +365,11 @@ export function DeveloperSidebar({
         </IconButton>
       </AssistantPageHeader>
       {shortcutError && <p role="alert">{shortcutError}</p>}
+      {linkingFolder && (
+        <p className="developer-sidebar-feedback" role="status">
+          Linking project folder…
+        </p>
+      )}
       <div className="developer-sidebar-pages" aria-busy={loading && !!source}>
         {!source ? (
           <div className="developer-sidebar-empty">
@@ -347,7 +472,9 @@ export function DeveloperSidebar({
                         }}
                         disabled={!onFocusTab && !page.origin}
                         aria-label={`Focus tab ${page.name}`}
-                        aria-current={page.id === focused?.id ? 'page' : undefined}
+                        aria-current={
+                          page.id === focused?.id ? 'page' : undefined
+                        }
                         title={`Focus ${page.name}`}
                         onClick={() => onFocusTab?.(page.id)}
                       >
@@ -384,12 +511,18 @@ export function DeveloperSidebar({
                           className="developer-page-expand"
                           aria-label={`${open ? 'Collapse' : 'Expand'} hooks for ${page.name}`}
                           aria-expanded={open}
-                          onClick={() => setExpanded((previous) => ({
-                            ...previous,
-                            [page.id]: !open,
-                          }))}
+                          onClick={() =>
+                            setExpanded((previous) => ({
+                              ...previous,
+                              [page.id]: !open,
+                            }))
+                          }
                         >
-                          {open ? <ChevronDown size={13} aria-hidden="true" /> : <ChevronRight size={13} aria-hidden="true" />}
+                          {open ? (
+                            <ChevronDown size={13} aria-hidden="true" />
+                          ) : (
+                            <ChevronRight size={13} aria-hidden="true" />
+                          )}
                         </button>
                       )}
                       <button
@@ -429,69 +562,112 @@ export function DeveloperSidebar({
                         aria-label={`Hooks for ${page.name}`}
                       >
                         {(page.hooks || []).map((hook) => {
-                          const status = pendingHook.current?.pageId === page.id && pendingHook.current?.hookId === hook.id ? 'running' : hook.status;
+                          const status =
+                            pendingHook.current?.pageId === page.id &&
+                            pendingHook.current?.hookId === hook.id
+                              ? 'running'
+                              : hook.status;
                           return (
-                          <li key={hook.id} className="developer-page-hook-row">
-                            <button
-                              type="button"
-                              className="developer-page-hook-link"
-                              title={`${hook.name} · ${hook.path}`}
-                              aria-label={`Edit ${hook.name} for ${page.name}`}
-                              onClick={() => editHook(hook.id)}
+                            <li
+                              key={hook.id}
+                              className="developer-page-hook-row"
                             >
-                              <HookIcon size={12} aria-hidden="true" />
-                              <span className="developer-page-hook-name">
-                                {hook.name.trim() || 'Untitled hook'}
+                              <button
+                                type="button"
+                                className="developer-page-hook-link"
+                                title={`${hook.name} · ${hook.path}`}
+                                aria-label={`Edit ${hook.name} for ${page.name}`}
+                                onClick={() => editHook(hook.id)}
+                              >
+                                <HookIcon size={12} aria-hidden="true" />
+                                <span className="developer-page-hook-name">
+                                  {hook.name.trim() || 'Untitled hook'}
+                                </span>
+                              </button>
+                              <span
+                                className="developer-hook-status"
+                                data-status={
+                                  hook.enabled
+                                    ? status || 'waiting'
+                                    : 'disabled'
+                                }
+                                role="status"
+                                aria-label={`${hook.name}: ${!hook.enabled ? 'Disabled' : status === 'running' ? 'Running' : status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Waiting'}`}
+                                title={
+                                  !hook.enabled
+                                    ? 'Disabled'
+                                    : status === 'running'
+                                      ? 'Running'
+                                      : status === 'success'
+                                        ? 'Success'
+                                        : status === 'error'
+                                          ? 'Failed'
+                                          : 'Waiting'
+                                }
+                              >
+                                <span
+                                  className="developer-hook-status-dot"
+                                  aria-hidden="true"
+                                />
+                                <span>
+                                  {!hook.enabled
+                                    ? 'Disabled'
+                                    : status === 'running'
+                                      ? 'Running'
+                                      : status === 'success'
+                                        ? 'Success'
+                                        : status === 'error'
+                                          ? 'Failed'
+                                          : 'Waiting'}
+                                </span>
                               </span>
-                            </button>
-                            <span
-                              className="developer-hook-status"
-                              data-status={hook.enabled ? status || 'waiting' : 'disabled'}
-                              role="status"
-                              aria-label={`${hook.name}: ${!hook.enabled ? 'Disabled' : status === 'running' ? 'Running' : status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Waiting'}`}
-                              title={!hook.enabled ? 'Disabled' : status === 'running' ? 'Running' : status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Waiting'}
-                            >
-                              <span className="developer-hook-status-dot" aria-hidden="true" />
-                              <span>{!hook.enabled ? 'Disabled' : status === 'running' ? 'Running' : status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Waiting'}</span>
-                            </span>
-                            <Switch
-                              size="1"
-                              checked={hook.enabled}
-                              aria-label={`Enable ${hook.name} for ${page.name}`}
-                              onCheckedChange={() =>
-                                browser.command({
-                                  id: page.id,
-                                  action: 'toggle-site-hook',
-                                  url: page.origin,
-                                  hookId: hook.id,
-                                })
-                              }
-                            />
-                            <IconButton
-                              size="1"
-                              variant="ghost"
-                              color="gray"
-                              disabled={!hook.enabled || status === 'running'}
-                              aria-label={`Run ${hook.name} for ${page.name}`}
-                              title="Run hook again without reloading"
-                              onClick={() => {
-                                pendingHook.current = { pageId: page.id, hookId: hook.id, name: hook.name };
-                                setHookFeedback(`${hook.name}: Running…`);
-                                browser.command({ id: page.id, action: 'run-site-hook', url: page.origin, hookId: hook.id });
-                              }}
-                            >
-                              <Play size={12} />
-                            </IconButton>
-                            <IconButton
-                              size="1"
-                              variant="ghost"
-                              color="gray"
-                              aria-label={`Open editor for ${hook.name}`}
-                              onClick={() => editHook(hook.id)}
-                            >
-                              <Pencil size={12} />
-                            </IconButton>
-                          </li>
+                              <Switch
+                                size="1"
+                                checked={hook.enabled}
+                                aria-label={`Enable ${hook.name} for ${page.name}`}
+                                onCheckedChange={() =>
+                                  browser.command({
+                                    id: page.id,
+                                    action: 'toggle-site-hook',
+                                    url: page.origin,
+                                    hookId: hook.id,
+                                  })
+                                }
+                              />
+                              <IconButton
+                                size="1"
+                                variant="ghost"
+                                color="gray"
+                                disabled={!hook.enabled || status === 'running'}
+                                aria-label={`Run ${hook.name} for ${page.name}`}
+                                title="Run hook again without reloading"
+                                onClick={() => {
+                                  pendingHook.current = {
+                                    pageId: page.id,
+                                    hookId: hook.id,
+                                    name: hook.name,
+                                  };
+                                  setHookFeedback(`${hook.name}: Running…`);
+                                  browser.command({
+                                    id: page.id,
+                                    action: 'run-site-hook',
+                                    url: page.origin,
+                                    hookId: hook.id,
+                                  });
+                                }}
+                              >
+                                <Play size={12} />
+                              </IconButton>
+                              <IconButton
+                                size="1"
+                                variant="ghost"
+                                color="gray"
+                                aria-label={`Open editor for ${hook.name}`}
+                                onClick={() => editHook(hook.id)}
+                              >
+                                <Pencil size={12} />
+                              </IconButton>
+                            </li>
                           );
                         })}
                       </ul>

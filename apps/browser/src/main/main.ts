@@ -74,6 +74,7 @@ import { MAIN_WINDOW } from '../utils/constant';
 import { eventBus } from '../utils/EventBus';
 import { registerWindowCommands } from './windowCommands';
 import { registerTelemetry } from './telemetry';
+import { registerTaskManagerWindow } from './taskManager';
 
 app.setName(STORAGE_OS_IDENTITY);
 if (!app.isPackaged && process.env.KUDIUM_DUMMY) {
@@ -232,12 +233,18 @@ export const createNewWindow = async ({
         window === focusedWindow
     )?.[1];
   const parentWindow =
-    view === 'settings'
+    view === 'task-manager'
+      ? (options.parent instanceof BrowserWindow ? options.parent : undefined) || (focusedWindow && isBrowserChrome(focusedWindow.webContents) ? focusedWindow : activeWindows.main)
+      : view === 'settings'
       ? preferencesOwner ||
         activeWindows.settings?.getParentWindow() ||
         activeWindows[MAIN_WINDOW.view]
       : isChild && activeWindows[MAIN_WINDOW.view];
 
+  if (view === 'task-manager' && activeWindows[view] && activeWindows[view]!.getParentWindow() !== parentWindow) {
+    // A fresh renderer prevents regular/private task details persisting across owners.
+    activeWindows[view]!.destroy();
+  }
   if (activeWindows[view] && !additional) {
     const existing = activeWindows[view]!;
     if (view === 'settings' && parentWindow && !parentWindow.isDestroyed()) {
@@ -310,6 +317,15 @@ export const createNewWindow = async ({
     source: () =>
       newWindow.getParentWindow() || activeWindows.main || undefined,
   });
+  if (view === 'task-manager') {
+    registerTaskManagerWindow(newWindow);
+    newWindow.setTitle('Task Manager — Kudium Browser');
+    newWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.type === 'keyDown' && ((input.meta || input.control) && input.key.toLowerCase() === 'w')) {
+        event.preventDefault(); newWindow.close();
+      }
+    });
+  }
   if (view === 'settings') {
     registerHookMarketplace(newWindow, () => {
       const owner = newWindow.getParentWindow();

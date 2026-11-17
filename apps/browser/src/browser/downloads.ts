@@ -4,10 +4,7 @@ export interface DownloadRecoveryInfo {
 }
 
 export type DownloadState =
-  | 'progressing'
-  | 'completed'
-  | 'cancelled'
-  | 'interrupted';
+  'progressing' | 'completed' | 'cancelled' | 'interrupted';
 export interface DownloadRecord {
   id: string;
   sourceKey?: string;
@@ -23,6 +20,9 @@ export interface DownloadRecord {
   active?: boolean;
   awaitingSaveLocation?: boolean;
   resumable?: boolean;
+  retryable?: boolean;
+  /** Main-process persistence only; removed from renderer responses. */
+  retrySource?: { url: string; profile?: string };
 }
 export type DownloadAction =
   | 'get'
@@ -31,6 +31,7 @@ export type DownloadAction =
   | 'reveal'
   | 'pause'
   | 'resume'
+  | 'retry'
   | 'cancel'
   | 'remove'
   | 'clear'

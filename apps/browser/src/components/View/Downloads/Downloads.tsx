@@ -10,6 +10,7 @@ import {
   Music,
   Pause,
   Play,
+  RotateCw,
   Trash2,
   Video,
   X,
@@ -89,9 +90,9 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
           (filter === 'All' ||
             (filter === 'Active' && record.active) ||
             (filter === 'Completed' && record.state === 'completed') ||
-            downloadKind(record) === filter)
+            downloadKind(record) === filter),
       ),
-    [records, query, filter]
+    [records, query, filter],
   );
   const shown = useMemo(() => filtered.slice(0, limit), [filtered, limit]);
   const groups = useMemo(() => {
@@ -106,7 +107,7 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
     shown
       .filter(
         (record) =>
-          record.state === 'completed' && !requested.current.has(record.id)
+          record.state === 'completed' && !requested.current.has(record.id),
       )
       .forEach((record) => {
         requested.current.add(record.id);
@@ -132,7 +133,7 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
     } catch (reason) {
       setError(
         (reason as Error).message ||
-          'The download action could not be completed.'
+          'The download action could not be completed.',
       );
     } finally {
       setBusy(false);
@@ -324,7 +325,7 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
                     record.totalBytes > 0
                       ? Math.min(
                           100,
-                          (record.receivedBytes / record.totalBytes) * 100
+                          (record.receivedBytes / record.totalBytes) * 100,
                         )
                       : undefined;
                   let status = 'Interrupted';
@@ -397,7 +398,7 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
                                       record.state === 'interrupted'
                                       ? 'resume'
                                       : 'pause',
-                                    record.id
+                                    record.id,
                                   )
                                 }
                               >
@@ -421,6 +422,30 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
                           </>
                         ) : (
                           <>
+                            {record.resumable && (
+                              <Tooltip content="Resume the remaining bytes from the saved partial file.">
+                                <IconButton
+                                  variant="ghost"
+                                  aria-label={`Resume ${record.name}`}
+                                  disabled={busy}
+                                  onClick={() => act('resume', record.id)}
+                                >
+                                  <Play size={16} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {record.retryable && (
+                              <Tooltip content="Download again from the beginning. The previous file is kept.">
+                                <IconButton
+                                  variant="ghost"
+                                  aria-label={`Download again ${record.name}`}
+                                  disabled={busy}
+                                  onClick={() => act('retry', record.id)}
+                                >
+                                  <RotateCw size={16} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                             <Tooltip content="Show in folder">
                               <IconButton
                                 variant="ghost"

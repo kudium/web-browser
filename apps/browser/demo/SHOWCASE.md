@@ -13,7 +13,7 @@ Add meaningful project files here rather than seeding personal projects or accou
 ## Capture from the repository root
 
 1. Inspect Git status; preserve existing working edits.
-2. Ensure browser dependencies, Bun and Python Pillow are installed.
+2. Ensure browser dependencies, Bun, ffmpeg and Python Pillow are installed.
 3. Start the renderer with `npm run dev:browser` if port 1212 is not already serving it.
 4. Port 4178 must be free: the capture process owns the local fixture server.
 5. Run `npm run showcase:refresh`. This runs the disposable Electron capture,
@@ -35,7 +35,8 @@ or invent assistant answers. AI drafts stay unsent, with a real reference attach
 The terminal runs the fixture test; script lists and hook activity are explicitly
 illustrative. Public websites may change or fail to load: inspect captures and rerun
 rather than accepting an error page. Never photograph signed-in personal accounts.
-The harness creates its own temporary profile and must not clear the user's profile.
+The harness creates its own temporary profile and project copy and must not clear
+the user's profile or alter the source fixture.
 
 PNG masters and the manifest remain outside public routes. WebP files are explicitly
 allowlisted. A failed capture must be fixed and rerun before accepting a refresh.
@@ -49,3 +50,11 @@ from the current browser UI using Atlas Studio and its launch-plan fixture. Capt
 the solid default and optional glassy AI panel, preserve unrelated edits, verify the
 manifest and visually inspect the images, update asset mappings/cache versions, and
 run web checks. Report the local result and deployment status.”
+
+
+The current refresh also captures real live Task Manager metrics, a saved Atlas
+Studio note through the production encrypted note service, filtered public tabs,
+and a short MP4 recording of the actual space-search control. It stores page URLs
+and titles with each verified screenshot. The website exposes only allowlisted
+WebP images and the search MP4; raw PNGs, frame files and manifests stay private.
+Inspect public pages for skeletons and placeholders as well as error screens.

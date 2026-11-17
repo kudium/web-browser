@@ -8,6 +8,7 @@ import {
 import { fileURLToPath } from 'url';
 import { discoverProjectScripts } from './projectScriptDiscovery';
 import { registerSidebarDrop } from './sidebarDrop';
+import { registerProjectFolderDrop } from './projectFolderDrop';
 import { transferGroup } from './groupTransfer';
 import type { IApp } from '../types';
 import type { SiteDeveloperPageSummary } from '../browser/siteDeveloper';
@@ -389,6 +390,9 @@ export function registerSiteDeveloperLibrary(
     terminals.prune(new Set(tabs().map(aiGroupId)));
   };
   const offLocks = getGroupLocks().subscribe(audit);
+  const offProjectDrop = registerProjectFolderDrop(host, tabs, () =>
+    terminals.prune()
+  );
   const terminalAudit = setInterval(audit, 2000);
   terminalAudit.unref();
   let chosenFolder: string | undefined;
@@ -466,6 +470,7 @@ export function registerSiteDeveloperLibrary(
       host.webContents.send('site-developer-library-changed');
   });
   return () => {
+    offProjectDrop();
     offDrop();
     offProjects();
     offScripts();

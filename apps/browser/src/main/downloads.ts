@@ -28,7 +28,10 @@ import {
 } from '../browser/downloads';
 import { getBrowserPreferences } from './preferences';
 import { ThumbnailCache } from './thumbnailCache';
-import { parseDownloadRecords } from './downloadRecords';
+import {
+  parseDownloadRecords,
+  parseDownloadRetrySource,
+} from './downloadRecords';
 import { loadDownloadImage } from './localImage';
 import { watchIPCRequest } from './ipcRequestBinding';
 import { animateDownload } from './downloadAnimation';
@@ -39,11 +42,24 @@ const owners = new WeakMap<DownloadItem, Session>();
 const savePickers = new WeakSet<DownloadItem>();
 const sourceContents = new Map<string, number>();
 const sourceKeys = new WeakMap<WebContents, string>();
+const sessionProfiles = new WeakMap<Session, string>();
+interface InterruptedTransfer {
+  record: DownloadRecord;
+  session: Session;
+  options: Electron.CreateInterruptedDownloadOptions;
+  file: { dev: number; ino: number; size: number; mtimeMs: number };
+}
+const interruptedTransfers = new Map<string, InterruptedTransfer>();
+const pendingResumes = new WeakMap<Session, InterruptedTransfer>();
+const pendingResumeIds = new Set<string>();
 export const bindDownloadSource = (
   contents: WebContents,
-  sourceKey: string
+  sourceKey: string,
+  profile?: string,
 ) => {
   sourceKeys.set(contents, sourceKey);
+  if (profile && !isPrivateSession(contents.session))
+    sessionProfiles.set(contents.session, profile);
 };
 const thumbnails = new ThumbnailCache();
 let records: DownloadRecord[] | undefined;
@@ -133,22 +149,35 @@ const recordsFor = (target?: Session) =>
     : history();
 export const getDownloadHistory = (target?: Session) =>
   recordsFor(target)
-    .map((record) => ({
+    .map(({ retrySource, ...record }) => ({
       ...record,
       active: items.has(record.id),
       awaitingSaveLocation: Boolean(
         items.get(record.id) &&
-          savePickers.has(items.get(record.id)!) &&
-          !items.get(record.id)!.getSavePath()
+        savePickers.has(items.get(record.id)!) &&
+        !items.get(record.id)!.getSavePath(),
       ),
-      resumable: items.get(record.id)?.canResume() || false,
+      resumable:
+        items.get(record.id)?.canResume() ||
+        (interruptedTransfers.has(record.id) &&
+          !pendingResumeIds.has(record.id)),
+      retryable:
+        !items.has(record.id) &&
+        !pendingResumeIds.has(record.id) &&
+        ['interrupted', 'cancelled'].includes(record.state) &&
+        Boolean(
+          parseDownloadRetrySource(
+            retrySource,
+            !!target && isPrivateSession(target),
+          ),
+        ),
     }))
     .sort((a, b) => b.startedAt - a.startedAt);
 export const getDownloadsForContents = (contents: WebContents) =>
   getDownloadHistory(contents.session).filter(
     (record) =>
       sourceContents.get(record.id) === contents.id ||
-      (!!record.sourceKey && record.sourceKey === sourceKeys.get(contents))
+      (!!record.sourceKey && record.sourceKey === sourceKeys.get(contents)),
   );
 
 function publish(target?: Session) {
@@ -162,14 +191,14 @@ function publish(target?: Session) {
     )
       window.webContents.send(
         'browser-downloads-changed',
-        getDownloadHistory(target)
+        getDownloadHistory(target),
       );
   });
 }
 function saveRecords(next: DownloadRecord[]) {
   if (recoveryBlocked)
     throw new Error(
-      'Download history could not be preserved. Existing history was not changed.'
+      'Download history could not be preserved. Existing history was not changed.',
     );
   fs.mkdirSync(path.dirname(filename()), { recursive: true });
   fs.writeFileSync(`${filename()}.tmp`, JSON.stringify(next), {
@@ -190,6 +219,7 @@ function commitRecords(next: DownloadRecord[], target?: Session) {
   const retained = new Set(next.map((record) => record.id));
   previous.forEach((record) => {
     if (!retained.has(record.id)) {
+      interruptedTransfers.delete(record.id);
       sourceContents.delete(record.id);
       thumbnails.delete(record.id);
     }
@@ -204,7 +234,7 @@ export function pruneDownloadHistory(days: number, now = Date.now()) {
   const next = current.filter(
     (record) =>
       items.has(record.id) ||
-      !expiredRecord(record.endedAt ?? record.startedAt, cutoff)
+      !expiredRecord(record.endedAt ?? record.startedAt, cutoff),
   );
   if (next.length === current.length) return 0;
   commitRecords(next);
@@ -237,7 +267,7 @@ function changed(immediate = false, target?: Session) {
 export const hasActiveDownloads = (browserSession: Session) =>
   [...items.values()].some(
     (item) =>
-      owners.get(item) === browserSession && item.getState() === 'progressing'
+      owners.get(item) === browserSession && item.getState() === 'progressing',
   );
 function occupiedPath(entryPath: string) {
   try {
@@ -251,6 +281,16 @@ export function trackDownloads(browserSession: Session) {
   if (sessions.has(browserSession)) return;
   sessions.add(browserSession);
   browserSession.on('will-download', (_, item, contents) => {
+    const continuation = pendingResumes.get(browserSession);
+    const resuming =
+      continuation && item.getSavePath() === continuation.record.path
+        ? continuation
+        : undefined;
+    if (resuming) {
+      pendingResumes.delete(browserSession);
+      pendingResumeIds.delete(resuming.record.id);
+      interruptedTransfers.delete(resuming.record.id);
+    }
     const privateMode = isPrivateSession(browserSession);
     if (privateMode && !privateRecords.has(browserSession))
       privateRecords.set(browserSession, []);
@@ -269,14 +309,14 @@ export function trackDownloads(browserSession: Session) {
       changed(true, target);
       animateDownload(contents, downloadPointer).catch(() => {});
     };
-    const id = randomUUID();
+    const id = resuming?.record.id || randomUUID();
     if (contents) sourceContents.set(id, contents.id);
     const preferences = getBrowserPreferences();
     const directory = preferences.downloadDirectory || app.getPath('downloads');
     const suggested = Array.from(path.basename(item.getFilename()))
       .filter(
         (character) =>
-          character.charCodeAt(0) > 31 && character.charCodeAt(0) !== 127
+          character.charCodeAt(0) > 31 && character.charCodeAt(0) !== 127,
       )
       .join('');
     const name =
@@ -286,24 +326,27 @@ export function trackDownloads(browserSession: Session) {
     let destination = path.join(directory, name);
     let suffix = 1;
     const activePaths = new Set(
-      [...items.values()].map((active) => active.getSavePath())
+      [...items.values()].map((active) => active.getSavePath()),
     );
-    while (occupiedPath(destination) || activePaths.has(destination)) {
+    while (
+      !resuming &&
+      (occupiedPath(destination) || activePaths.has(destination))
+    ) {
       const parsed = path.parse(name);
       destination = path.join(
         directory,
-        `${parsed.name} (${suffix})${parsed.ext}`
+        `${parsed.name} (${suffix})${parsed.ext}`,
       );
       suffix += 1;
     }
-    if (privateMode || preferences.askDownloadLocation) {
+    if (!resuming && (privateMode || preferences.askDownloadLocation)) {
       savePickers.add(item);
       item.setSaveDialogOptions({
         defaultPath: destination,
         ...(privateMode && { title: 'Save private download' }),
       });
-    } else item.setSavePath(destination);
-    const record: DownloadRecord = {
+    } else if (!resuming) item.setSavePath(destination);
+    const record: DownloadRecord = resuming?.record || {
       id,
       sourceKey: contents ? sourceKeys.get(contents) : undefined,
       name: path.basename(item.getSavePath() || destination),
@@ -314,8 +357,15 @@ export function trackDownloads(browserSession: Session) {
       totalBytes: item.getTotalBytes(),
       state: 'progressing',
       paused: false,
+      retrySource: parseDownloadRetrySource(
+        {
+          url: item.getURLChain?.()[0],
+          profile: sessionProfiles.get(browserSession),
+        },
+        privateMode,
+      ),
     };
-    recordsFor(target).push(record);
+    if (!resuming) recordsFor(target).push(record);
     items.set(id, item);
     owners.set(item, browserSession);
     const update = () => {
@@ -339,10 +389,60 @@ export function trackDownloads(browserSession: Session) {
       record.paused = false;
       record.endedAt = Date.now();
       items.delete(id);
+      interruptedTransfers.delete(id);
+      if (state === 'interrupted') {
+        try {
+          const file = fs.lstatSync(record.path);
+          const urlChain = item.getURLChain?.();
+          const eTag = item.getETag?.() || '';
+          const lastModified = item.getLastModifiedTime?.() || '';
+          if (
+            file.isFile() &&
+            file.nlink === 1 &&
+            file.size === record.receivedBytes &&
+            file.size > 0 &&
+            file.size < record.totalBytes &&
+            urlChain?.length &&
+            urlChain.length <= 20 &&
+            urlChain.every(
+              (url) => !!parseDownloadRetrySource({ url }, true),
+            ) &&
+            ((eTag && !eTag.startsWith('W/')) ||
+              Number.isFinite(Date.parse(lastModified))) &&
+            !/[\r\n\0]/.test(eTag + lastModified) &&
+            eTag.length <= 1024 &&
+            lastModified.length <= 1024
+          ) {
+            interruptedTransfers.set(id, {
+              record,
+              session: browserSession,
+              file: {
+                dev: file.dev,
+                ino: file.ino,
+                size: file.size,
+                mtimeMs: file.mtimeMs,
+              },
+              options: {
+                path: record.path,
+                urlChain,
+                mimeType: record.mime,
+                offset: file.size,
+                length: record.totalBytes,
+                eTag,
+                lastModified,
+                startTime: record.startedAt / 1000,
+              },
+            });
+          }
+        } catch {
+          /* Missing or modified partial files require Download again. */
+        }
+      }
       changed(true, target);
     });
     changed(true, target);
     if (!privateMode && !preferences.askDownloadLocation) animate();
+    if (resuming) item.resume();
   });
 }
 // Register before browser views load so downloads from native viewers and
@@ -355,7 +455,7 @@ export function registerDownloadTracking() {
 export async function performDownloadAction(
   action: DownloadAction,
   id?: string,
-  target?: Session
+  target?: Session,
 ) {
   if (
     ![
@@ -365,6 +465,7 @@ export async function performDownloadAction(
       'reveal',
       'pause',
       'resume',
+      'retry',
       'cancel',
       'remove',
       'clear',
@@ -390,8 +491,10 @@ export async function performDownloadAction(
   }
   if (action === 'clear') {
     commitRecords(
-      recordsFor(target).filter((record) => items.has(record.id)),
-      target
+      recordsFor(target).filter(
+        (record) => items.has(record.id) || pendingResumeIds.has(record.id),
+      ),
+      target,
     );
     if (!target) thumbnails.clear();
     if (!target) recoveryCleared = true;
@@ -401,11 +504,11 @@ export async function performDownloadAction(
   if (!record) throw new Error('Download is no longer in history');
   const item = items.get(record.id);
   if (action === 'remove') {
-    if (item)
+    if (item || pendingResumeIds.has(record.id))
       throw new Error('Finish or cancel this download before removing it');
     commitRecords(
       recordsFor(target).filter((entry) => entry.id !== id),
-      target
+      target,
     );
     thumbnails.delete(record.id);
   } else if (action === 'open-file' || action === 'reveal') {
@@ -414,6 +517,70 @@ export async function performDownloadAction(
     if (action === 'reveal') shell.showItemInFolder(record.path);
     else if (await shell.openPath(record.path))
       throw new Error('The file could not be opened');
+  } else if (action === 'resume' && !item) {
+    const continuation = interruptedTransfers.get(record.id);
+    if (
+      !continuation ||
+      pendingResumeIds.has(record.id) ||
+      pendingResumes.has(continuation.session)
+    )
+      throw new Error('This download cannot be resumed. Use Download again.');
+    let file: fs.Stats;
+    try {
+      file = fs.lstatSync(record.path);
+    } catch {
+      interruptedTransfers.delete(record.id);
+      throw new Error(
+        'The partial file was moved or removed. Use Download again.',
+      );
+    }
+    const previous = continuation.file;
+    if (
+      !file.isFile() ||
+      file.nlink !== 1 ||
+      file.dev !== previous.dev ||
+      file.ino !== previous.ino ||
+      file.size !== previous.size ||
+      file.mtimeMs !== previous.mtimeMs
+    ) {
+      interruptedTransfers.delete(record.id);
+      throw new Error(
+        'The partial file was changed or replaced. Use Download again.',
+      );
+    }
+    pendingResumes.set(continuation.session, continuation);
+    pendingResumeIds.add(record.id);
+    try {
+      continuation.session.createInterruptedDownload(continuation.options);
+    } catch (error) {
+      pendingResumes.delete(continuation.session);
+      pendingResumeIds.delete(record.id);
+      throw error;
+    }
+  } else if (action === 'retry') {
+    const privateMode = !!target && isPrivateSession(target);
+    const source = parseDownloadRetrySource(record.retrySource, privateMode);
+    if (
+      item ||
+      pendingResumeIds.has(record.id) ||
+      !['interrupted', 'cancelled'].includes(record.state) ||
+      !source
+    )
+      throw new Error(
+        'This download cannot be restarted. Open the website and download it again.',
+      );
+    if (!privateMode && recoveryBlocked)
+      throw new Error(
+        'Resolve download history recovery before starting another download.',
+      );
+    const originalSession = privateMode
+      ? target!
+      : session.fromPartition(`persist:kudiumbrowser-${source.profile}`);
+    if (source.profile && !privateMode)
+      sessionProfiles.set(originalSession, source.profile);
+    trackDownloads(originalSession);
+    // Start a fresh transfer through normal collision-safe destination selection.
+    originalSession.downloadURL(source.url);
   } else if (['pause', 'resume', 'cancel'].includes(action)) {
     if (!item || !['progressing', 'interrupted'].includes(item.getState()))
       throw new Error('This download is no longer active');
@@ -432,21 +599,21 @@ export async function performDownloadAction(
 export async function controlTabDownload(
   contents: WebContents,
   id: string,
-  action: 'pause' | 'resume' | 'cancel'
+  action: 'pause' | 'resume' | 'cancel',
 ) {
   if (!getDownloadsForContents(contents).some((record) => record.id === id))
     throw new Error('Download does not belong to this tab.');
   await performDownloadAction(
     action,
     id,
-    isPrivateSession(contents.session) ? contents.session : undefined
+    isPrivateSession(contents.session) ? contents.session : undefined,
   );
   return getDownloadsForContents(contents);
 }
 
 export function registerDownloadLibrary(
   open: () => void,
-  isTrusted: (contents: WebContents) => boolean
+  isTrusted: (contents: WebContents) => boolean,
 ) {
   opener = open;
   trusted = isTrusted;
@@ -467,12 +634,12 @@ export function registerDownloadLibrary(
       if (target && action === 'open') {
         BrowserWindow.fromWebContents(event.sender)?.webContents.send(
           'browser-shortcut',
-          'downloads'
+          'downloads',
         );
         return getDownloadHistory(target);
       }
       return performDownloadAction(action, id, target);
-    }
+    },
   );
   ipcMain.handle('browser-download-recovery', (event) => {
     check(event);
@@ -551,7 +718,7 @@ export function downloadMenu(): MenuItemConstructorOptions[] {
             click: () => {
               performDownloadAction(
                 record.paused ? 'resume' : 'pause',
-                record.id
+                record.id,
               ).catch(() => {});
             },
           },
@@ -570,9 +737,12 @@ export function downloadMenu(): MenuItemConstructorOptions[] {
 export function clearPrivateDownloads(target: Session) {
   const current = privateRecords.get(target) || [];
   privateRecords.delete(target);
+  pendingResumes.delete(target);
   current.forEach((record) => {
     items.get(record.id)?.cancel();
     items.delete(record.id);
+    interruptedTransfers.delete(record.id);
+    pendingResumeIds.delete(record.id);
     sourceContents.delete(record.id);
     thumbnails.delete(record.id);
   });

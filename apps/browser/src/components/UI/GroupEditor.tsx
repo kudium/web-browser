@@ -196,6 +196,7 @@ function GroupEditorContent({
                     token: droppedProject.token,
                     name: draft.name.trim(),
                     slug: draft.slug,
+                    spaceId: draft.spaceId,
                   })
                 ).tab
               : item;

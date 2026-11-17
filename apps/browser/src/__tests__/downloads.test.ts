@@ -19,7 +19,7 @@ jest.mock('electron', () => ({
     on: jest.fn(),
     whenReady: jest.fn(async () => {}),
   },
-  session: { defaultSession: { on: jest.fn() } },
+  session: { defaultSession: { on: jest.fn() }, fromPartition: jest.fn() },
   BrowserWindow: { getAllWindows: () => [] },
   shell: { openPath: jest.fn(async () => ''), showItemInFolder: jest.fn() },
   ipcMain: { handle: jest.fn() },
@@ -32,7 +32,7 @@ jest.mock('../main/preferences', () => ({
 
 it('persists completed history and clears records without deleting files or active downloads', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'kudiumbrowser-downloads-')
+    path.join(os.tmpdir(), 'kudiumbrowser-downloads-'),
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const session = new EventEmitter();
@@ -62,40 +62,40 @@ it('persists completed history and clears records without deleting files or acti
     const record = history.find((entry) => entry.state === 'completed')!;
     expect(
       JSON.parse(
-        fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8')
-      )
+        fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8'),
+      ),
     ).toHaveLength(2);
     await performDownloadAction('open-file', record.id);
     expect(shell.openPath).toHaveBeenCalledWith(record.path);
     await expect(
-      performDownloadAction('open-file', '/etc/passwd')
+      performDownloadAction('open-file', '/etc/passwd'),
     ).rejects.toThrow();
     await expect(
       performDownloadAction(
         'remove',
-        history.find((entry) => entry.state === 'progressing')!.id
-      )
+        history.find((entry) => entry.state === 'progressing')!.id,
+      ),
     ).rejects.toThrow();
     const disk = fs.readFileSync(
       path.join(directory, 'download-history.json'),
-      'utf8'
+      'utf8',
     );
     const rename = jest.spyOn(fs, 'renameSync').mockImplementation(() => {
       throw new Error('Disk unavailable');
     });
     try {
       await expect(performDownloadAction('clear')).rejects.toThrow(
-        'Disk unavailable'
+        'Disk unavailable',
       );
       await expect(performDownloadAction('remove', record.id)).rejects.toThrow(
-        'Disk unavailable'
+        'Disk unavailable',
       );
       expect(() =>
-        pruneDownloadHistory(7, record.endedAt! + 8 * 86400000)
+        pruneDownloadHistory(7, record.endedAt! + 8 * 86400000),
       ).toThrow('Disk unavailable');
       expect(getDownloadHistory()).toEqual(history);
       expect(
-        fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8')
+        fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8'),
       ).toBe(disk);
     } finally {
       rename.mockRestore();
@@ -105,18 +105,18 @@ it('persists completed history and clears records without deleting files or acti
     expect(pruneDownloadHistory(7, record.endedAt! + 8 * 86400000)).toBe(1);
     expect(
       JSON.parse(
-        fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8')
-      ).map((entry: { id: string }) => entry.id)
+        fs.readFileSync(path.join(directory, 'download-history.json'), 'utf8'),
+      ).map((entry: { id: string }) => entry.id),
     ).toEqual(getDownloadHistory().map((entry) => entry.id));
     await performDownloadAction('clear');
     expect(getDownloadHistory()).toHaveLength(1);
     expect(fs.readFileSync(record.path, 'utf8')).toBe('download');
     registerDownloadLibrary(jest.fn(), () => false);
     const handler = (ipcMain.handle as jest.Mock).mock.calls.find(
-      ([channel]) => channel === 'browser-downloads'
+      ([channel]) => channel === 'browser-downloads',
     )[1];
     await expect(
-      handler({ sender: { mainFrame: {} }, senderFrame: {} }, 'clear')
+      handler({ sender: { mainFrame: {} }, senderFrame: {} }, 'clear'),
     ).rejects.toThrow('Untrusted');
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
@@ -127,18 +127,18 @@ it('groups downloads by date and identifies common file types', () => {
   const record = { name: 'photo.png', mime: '' } as never;
   expect(downloadKind(record)).toBe('Images');
   expect(downloadKind({ name: 'report.pdf', mime: '' } as never)).toBe(
-    'Documents'
+    'Documents',
   );
   const now = new Date(2026, 10, 4, 12);
   expect(downloadDateGroup(new Date(2026, 10, 4).getTime(), now)).toBe('Today');
   expect(downloadDateGroup(new Date(2026, 10, 3).getTime(), now)).toBe(
-    'Yesterday'
+    'Yesterday',
   );
 });
 
 it('preserves damaged native history before sanitizing and refuses replaced file targets', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'kudiumbrowser-download-recovery-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-recovery-'),
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const file = path.join(directory, 'file.txt');
@@ -183,7 +183,7 @@ it('preserves damaged native history before sanitizing and refuses replaced file
     });
     await isolated.performDownloadAction('reveal-recovery');
     expect(shell.showItemInFolder).toHaveBeenLastCalledWith(
-      path.join(directory, backup)
+      path.join(directory, backup),
     );
     (shell.showItemInFolder as jest.Mock).mockClear();
     let reopened!: typeof import('../main/downloads');
@@ -193,7 +193,7 @@ it('preserves damaged native history before sanitizing and refuses replaced file
     });
     expect(reopened.getDownloadHistory()).toHaveLength(1);
     expect(
-      fs.readdirSync(directory).filter((name) => name.includes('.recovery-'))
+      fs.readdirSync(directory).filter((name) => name.includes('.recovery-')),
     ).toHaveLength(1);
     await isolated.performDownloadAction('open-file', good.id);
     expect(shell.openPath).toHaveBeenLastCalledWith(file);
@@ -201,20 +201,20 @@ it('preserves damaged native history before sanitizing and refuses replaced file
     fs.unlinkSync(file);
     fs.symlinkSync(target, file);
     await expect(
-      isolated.performDownloadAction('open-file', good.id)
+      isolated.performDownloadAction('open-file', good.id),
     ).rejects.toThrow('replaced');
     await expect(
-      isolated.performDownloadAction('reveal', good.id)
+      isolated.performDownloadAction('reveal', good.id),
     ).rejects.toThrow('replaced');
     expect(shell.openPath).not.toHaveBeenCalled();
     expect(shell.showItemInFolder).not.toHaveBeenCalled();
     fs.unlinkSync(file);
     fs.mkdirSync(file);
     await expect(
-      isolated.performDownloadAction('open-file', good.id)
+      isolated.performDownloadAction('open-file', good.id),
     ).rejects.toThrow('replaced');
     await expect(
-      isolated.performDownloadAction('open-file', {} as any)
+      isolated.performDownloadAction('open-file', {} as any),
     ).rejects.toThrow('Invalid download');
     await isolated.performDownloadAction('clear');
     expect(JSON.parse(fs.readFileSync(historyFile, 'utf8'))).toEqual([]);
@@ -230,7 +230,7 @@ it('preserves damaged native history before sanitizing and refuses replaced file
 
 it('refuses to overwrite corrupt history if its recovery copy cannot be written', async () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'kudiumbrowser-download-recovery-failure-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-recovery-failure-'),
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const historyFile = path.join(directory, 'download-history.json');
@@ -254,7 +254,7 @@ it('refuses to overwrite corrupt history if its recovery copy cannot be written'
     await isolated.performDownloadAction('reveal-recovery');
     expect(shell.showItemInFolder).toHaveBeenLastCalledWith(historyFile);
     await expect(isolated.performDownloadAction('clear')).rejects.toThrow(
-      'Existing history was not changed'
+      'Existing history was not changed',
     );
     expect(fs.readFileSync(historyFile, 'utf8')).toBe(raw);
   } finally {
@@ -265,7 +265,7 @@ it('refuses to overwrite corrupt history if its recovery copy cannot be written'
 
 it('uses safe fallback names, avoids dangling-link collisions and follows save-path renames', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'kudiumbrowser-download-name-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-name-'),
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   const link = path.join(directory, 'download');
@@ -312,7 +312,7 @@ it('uses safe fallback names, avoids dangling-link collisions and follows save-p
 
 it('attributes live downloads to the originating WebContents and omits unowned history', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'kudiumbrowser-download-owner-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-owner-'),
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   let isolated: typeof import('../main/downloads');
@@ -344,12 +344,12 @@ it('attributes live downloads to the originating WebContents and omits unowned h
     expect(
       isolated!
         .getDownloadsForContents({ id: 11 } as never)
-        .map((record) => record.name)
+        .map((record) => record.name),
     ).toEqual(['first.txt']);
     expect(
       isolated!
         .getDownloadsForContents({ id: 12 } as never)
-        .map((record) => record.name)
+        .map((record) => record.name),
     ).toEqual(['second.txt']);
     expect(isolated!.getDownloadsForContents({ id: 13 } as never)).toEqual([]);
   } finally {
@@ -359,7 +359,7 @@ it('attributes live downloads to the originating WebContents and omits unowned h
 
 it('preserves scoped ownership across replacement WebContents and history reload', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'kudiumbrowser-download-stable-owner-')
+    path.join(os.tmpdir(), 'kudiumbrowser-download-stable-owner-'),
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   let manager: typeof import('../main/downloads');
@@ -390,7 +390,7 @@ it('preserves scoped ownership across replacement WebContents and history reload
     session.emit('will-download', {}, item, source);
     item.emit('done', {}, 'completed');
     expect(manager!.getDownloadsForContents(replacement as never)).toHaveLength(
-      1
+      1,
     );
     expect(manager!.getDownloadsForContents(otherProfile as never)).toEqual([]);
     jest.isolateModules(() => {
@@ -399,7 +399,7 @@ it('preserves scoped ownership across replacement WebContents and history reload
     });
     manager!.bindDownloadSource(replacement as never, '["profile-a","tab-a"]');
     expect(manager!.getDownloadsForContents(replacement as never)[0].name).toBe(
-      'owned.txt'
+      'owned.txt',
     );
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
@@ -408,7 +408,7 @@ it('preserves scoped ownership across replacement WebContents and history reload
 
 it('reports an outstanding save picker only until a destination is selected or cancelled', () => {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'kudiumbrowser-save-picker-')
+    path.join(os.tmpdir(), 'kudiumbrowser-save-picker-'),
   );
   (app.getPath as jest.Mock).mockReturnValue(directory);
   (getBrowserPreferences as jest.Mock).mockReturnValue({
@@ -471,13 +471,130 @@ it('tracks default and newly created sessions before a regular browser tab attac
   await Promise.resolve();
   expect(electronSession.defaultSession.on).toHaveBeenCalledWith(
     'will-download',
-    expect.any(Function)
+    expect.any(Function),
   );
   const listener = (app.on as jest.Mock).mock.calls.find(
-    ([event]) => event === 'session-created'
+    ([event]) => event === 'session-created',
   )![1];
   const groupSession = new EventEmitter();
   listener(groupSession);
   isolated.trackDownloads(groupSession as never);
   expect(groupSession.listenerCount('will-download')).toBe(1);
+});
+
+it('restarts saved interrupted downloads in the original login without exposing URLs or writing the old file', async () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kudium-download-retry-'),
+  );
+  (app.getPath as jest.Mock).mockReturnValue(directory);
+  const oldPath = path.join(directory, 'partial.txt');
+  fs.writeFileSync(oldPath, 'partial sentinel');
+  fs.writeFileSync(
+    path.join(directory, 'download-history.json'),
+    JSON.stringify([
+      {
+        id: 'retry-one',
+        name: 'partial.txt',
+        path: oldPath,
+        mime: 'text/plain',
+        startedAt: 1,
+        receivedBytes: 4,
+        totalBytes: 100,
+        state: 'progressing',
+        paused: false,
+        retrySource: {
+          url: 'https://example.test/file?token=fixture',
+          profile: 'original-login',
+        },
+      },
+    ]),
+  );
+  let isolated!: typeof import('../main/downloads');
+  jest.isolateModules(() => {
+    isolated = require('../main/downloads');
+  });
+  const originalSession = Object.assign(new EventEmitter(), {
+    downloadURL: jest.fn(),
+  });
+  (electronSession.fromPartition as jest.Mock).mockReturnValue(originalSession);
+  try {
+    const history = isolated.getDownloadHistory();
+    expect(history[0]).toMatchObject({
+      state: 'interrupted',
+      active: false,
+      retryable: true,
+    });
+    expect(history[0]).not.toHaveProperty('retrySource');
+    await isolated.performDownloadAction('retry', 'retry-one');
+    expect(electronSession.fromPartition).toHaveBeenLastCalledWith(
+      'persist:kudiumbrowser-original-login',
+    );
+    expect(originalSession.downloadURL).toHaveBeenCalledWith(
+      'https://example.test/file?token=fixture',
+    );
+    expect(fs.readFileSync(oldPath, 'utf8')).toBe('partial sentinel');
+    await expect(
+      isolated.performDownloadAction('retry', 'missing'),
+    ).rejects.toThrow('no longer in history');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+it('offers byte-range resume only for an unchanged partial file and refuses a replacement', async () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kudium-partial-resume-'),
+  );
+  (app.getPath as jest.Mock).mockReturnValue(directory);
+  let isolated!: typeof import('../main/downloads');
+  jest.isolateModules(() => {
+    isolated = require('../main/downloads');
+  });
+  const session = Object.assign(new EventEmitter(), {
+    createInterruptedDownload: jest.fn(),
+  });
+  let savedPath = '';
+  let state = 'progressing';
+  const item = Object.assign(new EventEmitter(), {
+    getFilename: () => 'partial.txt',
+    getSavePath: () => savedPath,
+    setSavePath: (value: string) => {
+      savedPath = value;
+    },
+    getMimeType: () => 'text/plain',
+    getTotalBytes: () => 12,
+    getReceivedBytes: () => 4,
+    getState: () => state,
+    isPaused: () => false,
+    canResume: () => false,
+    getURLChain: () => ['https://fixture.test/file'],
+    getETag: () => '"fixture"',
+    getLastModifiedTime: () => '',
+  });
+  try {
+    isolated.trackDownloads(session as any);
+    session.emit('will-download', {}, item);
+    fs.writeFileSync(savedPath, 'part');
+    state = 'interrupted';
+    item.emit('done', {}, state);
+    const record = isolated
+      .getDownloadHistory()
+      .find((entry) => entry.path === savedPath)!;
+    expect(record).toMatchObject({ active: false, resumable: true });
+    const replacement = path.join(directory, 'replacement.txt');
+    fs.writeFileSync(replacement, 'keep replacement');
+    fs.unlinkSync(savedPath);
+    fs.symlinkSync(replacement, savedPath);
+    await expect(
+      isolated.performDownloadAction('resume', record.id),
+    ).rejects.toThrow('changed or replaced');
+    expect(session.createInterruptedDownload).not.toHaveBeenCalled();
+    expect(fs.readFileSync(replacement, 'utf8')).toBe('keep replacement');
+    expect(
+      isolated.getDownloadHistory().find((entry) => entry.id === record.id)!
+        .resumable,
+    ).toBe(false);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });

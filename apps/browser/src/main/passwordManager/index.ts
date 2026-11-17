@@ -22,6 +22,7 @@ import type { VaultField, VaultItem, VaultRequest } from '../../browser/password
 import { PasswordVault } from './vault';
 import { hasSavedWebsiteLogin } from './websiteLogin';
 import { saveWebsiteFields } from './websiteFields';
+import { browseSavedData } from './browse';
 import { fillDocument } from './fill';
 import * as nativeAuthentication from './authentication';
 import { safeStorage } from '../localStorage';
@@ -199,6 +200,7 @@ export function registerPasswordManager(
   };
   onBrowserPreferencesChanged(refreshAutofill);
   getGroupLocks().subscribe(refreshAutofill);
+  passwordVault().onChange(refreshAutofill);
   const autofillPage = (event: Electron.IpcMainInvokeEvent) => {
     const page = pages.get(event.sender.id);
     if (!page || page.isDestroyed() || event.senderFrame !== page.mainFrame ||
@@ -307,6 +309,21 @@ export function registerPasswordManager(
     updateBrowserPreferences({ personalDataAutofillPositions: { ...Object.fromEntries(entries), [origin]: { side: placement.side, x: placement.x, y: placement.y } } });
     return { saved: true };
   });
+  ipcMain.handle('personal-data-autofill-availability', (event) => {
+    try {
+      const page = autofillPage(event);
+      if (!autofillEnabled(page)) return [];
+      const expected = page.getURL();
+      const scope = pageScopes.get(page.id)?.();
+      // No authentication or values cross IPC for this passive UI check.
+      return withPersonalData((vault) => vault.matching(expected, false, scope)
+        .filter((record) => ['profile', 'knowledge', 'login'].includes(record.kind))
+        .slice(0, 50).map((record) => {
+          const item = vault.forFill(record.id, expected, false, scope);
+          return { kind: item.kind, canFillLogin: item.kind === 'login' && !!item.password, fields: item.fields.filter((field) => field.value).map((field) => ({ name: field.name, aliases: field.aliases, secret: isProtectedField(field) })) };
+        }));
+    } catch { return []; }
+  });
   ipcMain.handle('personal-data-autofill-records', async (event) => {
     const page = autofillPage(event);
     if (!autofillEnabled(page)) throw new Error('Autofill is disabled.');
@@ -324,10 +341,21 @@ export function registerPasswordManager(
       .slice(0, 50)
       .map((record) => {
         const saved = vault.forFill(record.id, expected, false, scope);
-        return { id: saved.id, kind: saved.kind, website: !!record.origin, selected: record.id === loginIdentity(page)?.recordId, username: saved.kind === 'login' ? saved.username : undefined, title: record.origin && saved.title === `${new URL(record.origin).hostname} · Saved inputs` ? new URL(record.origin).hostname : saved.title, fields: saved.fields.map((field, fieldIndex) => isProtectedField(field)
+        return { id: saved.id, kind: saved.kind, canFillLogin: saved.kind === 'login' && !!saved.password, website: !!record.origin, selected: record.id === loginIdentity(page)?.recordId, username: saved.kind === 'login' ? saved.username : undefined, title: record.origin && saved.title === `${new URL(record.origin).hostname} · Saved inputs` ? new URL(record.origin).hostname : saved.title, fields: saved.fields.map((field, fieldIndex) => isProtectedField(field)
           ? { name: field.name, aliases: field.aliases, secret: true, value: '', fieldIndex }
           : { ...field, fieldIndex }).filter((field) => field.secret || field.value).slice(0, 100) };
       }));
+  });
+  ipcMain.handle('personal-data-autofill-browse', async (event) => {
+    const page = autofillPage(event);
+    if (!autofillEnabled(page)) throw new Error('Autofill is disabled.');
+    const expected = page.getURL();
+    const scope = pageScopes.get(page.id)?.();
+    const epoch = personalDataRevision();
+    await authenticatePersonalData(page);
+    autofillPage(event);
+    if (page.getURL() !== expected || pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch || !autofillEnabled(page)) throw new Error('The target page changed.');
+    return withPersonalData((vault) => browseSavedData(vault, scope));
   });
   ipcMain.handle('personal-data-autofill-disable-site', (event) => {
     const page = autofillPage(event);
@@ -358,6 +386,7 @@ export function registerPasswordManager(
   });
   ipcMain.handle('personal-data-autofill-save-field', async (event, input) => {
     const page = autofillPage(event);
+    if (input?.username !== undefined && (typeof input.username !== 'string' || input.username.length > 1000)) throw new Error('Invalid input field.');
     if (!autofillEnabled(page) || !input || typeof input.name !== 'string' || !input.name.trim() || input.name.length > 200 || typeof input.value !== 'string' || !input.value || input.value.length > 10000 || typeof input.secret !== 'boolean' || !Array.isArray(input.aliases) || input.aliases.length > 10 || input.aliases.some((alias: unknown) => typeof alias !== 'string' || alias.length > 200)) throw new Error('Invalid input field.');
     const expected = page.getURL();
     const scope = pageScopes.get(page.id)?.();
@@ -366,7 +395,10 @@ export function registerPasswordManager(
     autofillPage(event);
     if (page.getURL() !== expected || pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch || !autofillEnabled(page)) throw new Error('The target page changed.');
     return withPersonalData((vault) => {
-      return saveWebsiteFields(vault, expected, scope, [{ name: input.name.trim(), value: input.value, secret: input.secret, aliases: input.aliases }], input.confirmUpdate === true);
+      const fields: VaultField[] = [{ name: input.name.trim(), value: input.value, secret: input.secret, aliases: input.aliases }];
+      const username = input.name === 'Password' && input.secret ? input.username || loginIdentity(page)?.username : undefined;
+      if (username) fields.push({ name: 'Username', value: username, secret: false, aliases: ['username', 'email'] });
+      return saveWebsiteFields(vault, expected, scope, fields, input.confirmUpdate === true);
     });
   });
   ipcMain.handle('personal-data-autofill-secret', async (event, input) => {

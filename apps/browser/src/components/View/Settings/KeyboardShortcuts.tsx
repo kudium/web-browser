@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Dialog, TextField, Text } from '@radix-ui/themes';
-import { Plus, RotateCcw } from 'lucide-react';
+import { Plus, RotateCcw, Search, Upload, Download } from 'lucide-react';
 import { browser } from '../../../browser/client';
 import {
   shortcutActions,
@@ -38,13 +38,13 @@ export function KeyboardShortcuts({
     () => () => {
       importRequest.current += 1;
     },
-    []
+    [],
   );
   const changedActions = pendingImport
     ? shortcutActions.filter(
         (action) =>
           JSON.stringify(bindings[action.id]) !==
-          JSON.stringify(pendingImport[action.id])
+          JSON.stringify(pendingImport[action.id]),
       )
     : [];
 
@@ -70,81 +70,103 @@ export function KeyboardShortcuts({
   };
   return (
     <div className="keyboard-shortcuts">
-      <Text as="p" size="2" color="gray">
-        Toggle the Space sidebar or Assistant without leaving your page.
-        Command / Control + S saves the file when the developer editor has
-        focus.
-      </Text>
+      <div className="shortcut-intro">
+        <Text as="p" size="2" color="gray">
+          Customize shortcuts for navigation, your spaces, and the Assistant.
+        </Text>
+        <Text as="p" size="1" color="gray">
+          {mac ? 'Command' : 'Control'} + S saves the file when the developer
+          editor has focus.
+        </Text>
+      </div>
       {error && !editing && (
         <Text role="alert" color="red" size="2">
           {error}
         </Text>
       )}
-      <div className="shortcut-controls shortcut-toolbar">
-        <Button
-          variant="surface"
-          disabled={busy || transferBusy}
-          onClick={() => fileInput.current?.click()}
+      <div className="shortcut-toolbar">
+        <TextField.Root
+          aria-label="Search keyboard shortcuts"
+          placeholder="Search shortcuts"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
         >
-          Import shortcuts
-        </Button>
-        <Button
-          variant="surface"
-          disabled={busy || transferBusy}
-          onClick={() => {
-            try {
-              const url = URL.createObjectURL(
-                new Blob([exportShortcuts(bindings, mac)], {
-                  type: 'application/json',
-                })
-              );
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = 'kudiumbrowser-shortcuts.json';
-              link.click();
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
-              setTransferError('');
-            } catch (reason) {
-              setTransferError((reason as Error).message);
-            }
-          }}
-        >
-          Export shortcuts
-        </Button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".json,application/json"
-          aria-label="Import shortcut file"
-          hidden
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (!file) return;
-            importRequest.current += 1;
-            const request = importRequest.current;
-            setTransferBusy(true);
-            setTransferError('');
-            try {
-              if (file.size > 65536)
-                throw new Error('Shortcut file is too large');
-              const next = importShortcuts(await file.text(), mac);
-              if (request === importRequest.current) setPendingImport(next);
-            } catch (reason) {
-              if (request === importRequest.current)
+          <TextField.Slot>
+            <Search size={15} aria-hidden="true" />
+          </TextField.Slot>
+        </TextField.Root>
+        <div className="shortcut-controls shortcut-transfer-controls">
+          <Button
+            variant="soft"
+            size="1"
+            aria-label="Import shortcuts"
+            disabled={busy || transferBusy}
+            onClick={() => fileInput.current?.click()}
+          >
+            <Upload size={14} aria-hidden="true" /> Import
+          </Button>
+          <Button
+            variant="soft"
+            size="1"
+            aria-label="Export shortcuts"
+            disabled={busy || transferBusy}
+            onClick={() => {
+              try {
+                const url = URL.createObjectURL(
+                  new Blob([exportShortcuts(bindings, mac)], {
+                    type: 'application/json',
+                  }),
+                );
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'kudiumbrowser-shortcuts.json';
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                setTransferError('');
+              } catch (reason) {
                 setTransferError((reason as Error).message);
-            } finally {
-              if (request === importRequest.current) setTransferBusy(false);
-            }
-          }}
-        />
-        <Button
-          variant="surface"
-          disabled={busy}
-          onClick={() => save(defaultShortcuts)}
-        >
-          Reset all shortcuts
-        </Button>
+              }
+            }}
+          >
+            <Download size={14} aria-hidden="true" /> Export
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            aria-label="Import shortcut file"
+            hidden
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (!file) return;
+              importRequest.current += 1;
+              const request = importRequest.current;
+              setTransferBusy(true);
+              setTransferError('');
+              try {
+                if (file.size > 65536)
+                  throw new Error('Shortcut file is too large');
+                const next = importShortcuts(await file.text(), mac);
+                if (request === importRequest.current) setPendingImport(next);
+              } catch (reason) {
+                if (request === importRequest.current)
+                  setTransferError((reason as Error).message);
+              } finally {
+                if (request === importRequest.current) setTransferBusy(false);
+              }
+            }}
+          />
+          <Button
+            variant="ghost"
+            size="1"
+            aria-label="Reset all shortcuts"
+            disabled={busy || transferBusy}
+            onClick={() => save(defaultShortcuts)}
+          >
+            <RotateCcw size={14} aria-hidden="true" /> Reset all
+          </Button>
+        </div>
       </div>
       {transferError && !pendingImport && (
         <Text role="alert" color="red" size="2">
@@ -201,7 +223,7 @@ export function KeyboardShortcuts({
                   if (await save(pendingImport)) setPendingImport(undefined);
                   else
                     setTransferError(
-                      'Shortcuts could not be saved. Try again.'
+                      'Shortcuts could not be saved. Try again.',
                     );
                 } catch {
                   setTransferError('Shortcuts could not be saved. Try again.');
@@ -220,19 +242,14 @@ export function KeyboardShortcuts({
           )}
         </Dialog.Content>
       </Dialog.Root>
-      <TextField.Root
-        aria-label="Search keyboard shortcuts"
-        placeholder="Search actions or shortcuts"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
+
       {shortcutActions
         .filter((action) =>
           `${action.title} ${bindings[action.id]
             .map((key) => displayBinding(key, mac))
             .join(' ')}`
             .toLowerCase()
-            .includes(query.toLowerCase())
+            .includes(query.toLowerCase()),
         )
         .map((action) => (
           <div className="preference-row" key={action.id}>
@@ -252,8 +269,8 @@ export function KeyboardShortcuts({
                       change(
                         action.id,
                         bindings[action.id].filter(
-                          (_, position) => position !== index
-                        )
+                          (_, position) => position !== index,
+                        ),
                       )
                     }
                   >
@@ -347,7 +364,7 @@ export function KeyboardShortcuts({
                   alt: event.altKey,
                   shift: event.shiftKey,
                 },
-                mac
+                mac,
               );
               if (key) {
                 setCaptured(key);
@@ -380,7 +397,7 @@ export function KeyboardShortcuts({
                 captured &&
                 change(
                   editing,
-                  adding ? [...bindings[editing], captured] : [captured]
+                  adding ? [...bindings[editing], captured] : [captured],
                 )
               }
             >

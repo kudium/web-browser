@@ -27,6 +27,7 @@ import type {
   ProjectEditors,
 } from '../../browser/developerProject';
 import { DeveloperFiles } from './DeveloperFiles';
+import { RenderErrorBoundary } from './RenderErrorBoundary';
 import { DeveloperScripts } from './DeveloperScripts';
 import { projectErrorMessage } from '../../browser/developerProject';
 
@@ -411,13 +412,22 @@ export function DeveloperProjectSection({
           )}
           {!settingsOnly && filesOpen && (
             <div id="developer-project-files">
-              <DeveloperFiles
+              <RenderErrorBoundary
                 key={`${sourceId}:${project.path}`}
-                sourceId={sourceId}
-                projectName={project.name}
-                projectPath={project.path}
-                onOpenTerminal={onOpenTerminal}
-              />
+                label="Project files"
+                recovery={
+                  <button type="button" onClick={() => setFilesOpen(false)}>
+                    Return to pages
+                  </button>
+                }
+              >
+                <DeveloperFiles
+                  sourceId={sourceId}
+                  projectName={project.name}
+                  projectPath={project.path}
+                  onOpenTerminal={onOpenTerminal}
+                />
+              </RenderErrorBoundary>
             </div>
           )}
         </>

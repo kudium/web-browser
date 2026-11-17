@@ -285,3 +285,16 @@ it('keeps generic names and one-time codes out of inferred matches', () => {
   expect(score('tel', [], { type: 'tel', autocomplete: 'one-time-code', name: 'phone' })).toBe(0);
   expect(score('email', [], { name: 'email_preferences' })).toBe(0);
 });
+
+it('uses a saved Email field when the login username is empty, without clearing an existing email', () => {
+  document.body.innerHTML = '<form><input type="email" name="email" autocomplete="email"><input type="password" autocomplete="current-password"></form>';
+  const visible = jest.spyOn(HTMLInputElement.prototype, 'getClientRects').mockReturnValue([{}] as any);
+  try {
+    const inputs = Array.from(document.querySelectorAll('input'));
+    expect(fillDocument({ ...item, username: '', fields: [{ name: 'Email', value: 'saved@example.com', secret: false }] }, false)).toEqual({ filled: 2 });
+    expect(inputs[0].value).toBe('saved@example.com');
+    inputs[0].value = 'typed@example.com';
+    expect(fillDocument({ ...item, username: '' }, false)).toEqual({ filled: 1 });
+    expect(inputs[0].value).toBe('typed@example.com');
+  } finally { visible.mockRestore(); }
+});

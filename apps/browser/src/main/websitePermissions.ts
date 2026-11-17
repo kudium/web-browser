@@ -20,12 +20,30 @@ const storagePermissions = new Set([
   'top-level-storage-access',
 ]);
 
+const mediaKeys = (types?: string[]) => {
+  const keys =
+    types?.flatMap((type) =>
+      type === 'video' ? ['camera'] : type === 'audio' ? ['microphone'] : [],
+    ) || [];
+  return keys.length ? [...new Set(keys)] : ['camera', 'microphone'];
+};
+const choiceFor = (permissions: Record<string, string>, key: string) =>
+  permissions[key] ??
+  (['camera', 'microphone'].includes(key) ? permissions.media : undefined);
+
 export function websitePermissionCheckHandler(profile: string): CheckHandler {
   return (_requester, permission, requestingOrigin, details) => {
     const origin = siteOrigin(details?.securityOrigin ?? requestingOrigin);
     if (!origin || getBrowserPreferences().permissions === 'block')
       return false;
-    const choice = getSiteSettings(profile, origin).permissions[permission];
+    const permissions = getSiteSettings(profile, origin).permissions;
+    if (permission === 'media') {
+      const keys = mediaKeys(
+        details?.mediaType ? [details.mediaType] : undefined,
+      );
+      return keys.every((key) => choiceFor(permissions, key) === 'allow');
+    }
+    const choice = permissions[permission];
     // Website storage access is granted silently unless explicitly blocked.
     return (
       choice === 'allow' ||
@@ -37,7 +55,7 @@ export function websitePermissionCheckHandler(profile: string): CheckHandler {
 /** Permission decisions belong to the requesting document, not a later page. */
 export function websitePermissionHandler(
   window: BrowserWindow,
-  profile: string
+  profile: string,
 ): RequestHandler {
   return async (requester, permission, callback, details) => {
     if (
@@ -48,15 +66,26 @@ export function websitePermissionHandler(
       return;
     }
     const origin = siteOrigin(
-      details.requestingUrl || (details.isMainFrame ? requester.getURL() : '')
+      details.requestingUrl || (details.isMainFrame ? requester.getURL() : ''),
     );
     if (!origin) {
       callback(false);
       return;
     }
-    const choice = getSiteSettings(profile, origin).permissions[permission];
-    if (choice && choice !== 'ask') {
-      callback(choice === 'allow');
+    const keys =
+      permission === 'media'
+        ? mediaKeys('mediaTypes' in details ? details.mediaTypes : undefined)
+        : [permission];
+    const permissions = getSiteSettings(profile, origin).permissions;
+    if (keys.some((key) => choiceFor(permissions, key) === 'block')) {
+      callback(false);
+      return;
+    }
+    const pendingKeys = keys.filter(
+      (key) => choiceFor(permissions, key) !== 'allow',
+    );
+    if (!pendingKeys.length) {
+      callback(true);
       return;
     }
     if (storagePermissions.has(permission)) {
@@ -86,7 +115,10 @@ export function websitePermissionHandler(
     try {
       const answer = await showBrowserDialog(
         window,
-        websitePermissionDialog(origin, permission)
+        websitePermissionDialog(
+          origin,
+          pendingKeys.length === 1 ? pendingKeys[0] : permission,
+        ),
       );
       if (settled) return;
       if (
@@ -97,16 +129,24 @@ export function websitePermissionHandler(
         return;
       }
       const latest = getSiteSettings(profile, origin);
-      const current = latest.permissions[permission];
-      if (current && current !== 'ask') {
-        finish(current === 'allow');
+      if (keys.some((key) => choiceFor(latest.permissions, key) === 'block')) {
+        finish(false);
+        return;
+      }
+      const unresolved = pendingKeys.filter(
+        (key) => choiceFor(latest.permissions, key) !== 'allow',
+      );
+      if (!unresolved.length) {
+        finish(true);
         return;
       }
       const allowed = answer.response === 1;
       updateSiteSettings(profile, origin, {
         permissions: {
           ...latest.permissions,
-          [permission]: allowed ? 'allow' : 'block',
+          ...Object.fromEntries(
+            unresolved.map((key) => [key, allowed ? 'allow' : 'block']),
+          ),
         },
       });
       finish(allowed);

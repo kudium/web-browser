@@ -1,6 +1,7 @@
 import { resolveAppTheme, appThemeStyle } from '../../../utils/appTheme';
 import { SpaceThemeContext } from '../../../utils/spaceTheme';
 import { websiteThemeStyle } from '../../../utils/websiteTheme';
+import { sidebarLabel } from '../../../utils/sidebarLabel';
 import { BrowserOptionsMenu } from '../../UI/BrowserOptionsMenu';
 import {
   CSSProperties,
@@ -45,7 +46,7 @@ import {
   RotateCw,
   Sparkles,
   MessageCircle,
-  Square,
+  Terminal,
   X,
 } from 'lucide-react';
 import { HorizontalTabList } from '../../UI/HorizontalTabList';
@@ -61,7 +62,7 @@ import { EmptySpaceWelcome } from '../../UI/EmptySpaceWelcome';
 import { BrowserWelcome } from '../../UI/BrowserWelcome';
 import { AccountSyncPublisher } from '../../UI/AccountSyncPublisher';
 import { BrowserImportSuggestion } from '../../UI/BrowserImportSuggestion';
-import { FirstGroupSyncSuggestion } from '../../UI/FirstGroupSyncSuggestion';
+import { AccountSyncSuggestion } from '../../UI/AccountSyncSuggestion';
 import { TabSwitcher } from '../../UI/TabSwitcher';
 import { useTabSwitcher } from '../../../utils/hooks/useTabSwitcher';
 import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
@@ -132,6 +133,12 @@ import {
   repairSplitView,
 } from '../../../utils/splitView';
 import { SpaceIcon } from '../../UI/SpaceIcon';
+import { SpaceGroupSearch } from '../../UI/SpaceGroupSearch';
+import { SpaceSearchResults } from '../../UI/SpaceSearchResults';
+import {
+  filterSpaceGroups,
+  searchSpaceGroupTabs,
+} from '../../../utils/spaceGroupSearch';
 import type { SpaceIconName } from '../../../utils/SpaceManager';
 import {
   NativeContextMenu as ContextMenu,
@@ -282,6 +289,7 @@ export function Main() {
     };
   }, []);
   const [developerRequest, setDeveloperRequest] = useState(0);
+  const [terminalOpenRequest, setTerminalOpenRequest] = useState(0);
   const [menuPaneRequest, setMenuPaneRequest] = useState<{
     pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
     token: number;
@@ -331,6 +339,17 @@ export function Main() {
     (tab) => !tab.archived && aiWorkingTabIds.includes(tab.id)
   );
   const { spaces, active } = useSpaces();
+  const [groupSearch, setGroupSearch] = useState<{
+    spaceId: string;
+    value: string | null;
+  }>({ spaceId: active.id, value: null });
+  const groupSearchValue =
+    groupSearch.spaceId === active.id ? groupSearch.value : null;
+  const searchingGroups = groupSearchValue !== null;
+  const filteringGroups = !!groupSearchValue?.trim();
+  useEffect(() => {
+    setGroupSearch({ spaceId: active.id, value: null });
+  }, [active.id]);
   const [translucentChrome, setTranslucentChrome] = useState(true);
   const [translucentAI, setTranslucentAI] = useState(false);
   const [showExtensionIcons, setShowExtensionIcons] = useState(true);
@@ -348,7 +367,9 @@ export function Main() {
     'sidebar' | 'header'
   >('sidebar');
   const [addressBarFullUrl, setAddressBarFullUrl] = useState(false);
-  const [autofillExcludedSites, setAutofillExcludedSites] = useState<string[]>([]);
+  const [autofillExcludedSites, setAutofillExcludedSites] = useState<string[]>(
+    []
+  );
   const [addressBarExtensionsExpanded, setAddressBarExtensionsExpanded] =
     useState(false);
   const [extensionToolbarOrder, setExtensionToolbarOrder] = useState<
@@ -436,11 +457,14 @@ export function Main() {
   const [split, setSplit] = useState<SplitView | null>(null);
   const [snapshots, setSnapshots] = useState<BrowserSnapshot[]>([]);
   const [windowMirrors, setWindowMirrors] = useState<BrowserSnapshot[]>([]);
-  const windowDrag = useRef<{
-    token: string;
-    handled: boolean;
-    cancelled: boolean;
-  } | undefined>(undefined);
+  const windowDrag = useRef<
+    | {
+        token: string;
+        handled: boolean;
+        cancelled: boolean;
+      }
+    | undefined
+  >(undefined);
   const [states, setStates] = useState<Record<string, BrowserState>>({});
   useEffect(() => {
     setStates((previous) =>
@@ -456,23 +480,42 @@ export function Main() {
   const [address, setAddress] = useState('');
   const [editingAddress, setEditingAddress] = useState(false);
   const [smartLabelsEnabled, setSmartLabelsEnabled] = useState(true);
-  const [editingGroup, setEditingGroup] = useState<IApp>();
-  const [droppedProject, setDroppedProject] =
-    useState<Extract<SidebarDropResult, { kind: 'project' }>>();
+  const [groupDialog, setGroupDialog] = useState<{
+    item: IApp;
+    creating?: boolean;
+    project?: Extract<SidebarDropResult, { kind: 'project' }>;
+  }>();
+  const editingGroup = groupDialog?.item;
+  const setEditingGroup = useCallback((item: IApp | undefined) => {
+    setGroupDialog(item ? { item } : undefined);
+  }, []);
   const [fileDragging, setFileDragging] = useState(false);
-  const [newGroupSpace, setNewGroupSpace] = useState<string>();
-  const openNewGroup = useCallback((spaceId: string) => {
-    setDroppedProject(undefined);
-    setNewGroupSpace(spaceId);
-    setEditingGroup({
-      id: crypto.randomUUID(),
-      sessionId: crypto.randomUUID(),
-      name: '',
-      sessionName: '',
-      url: 'about:blank',
-      icon: '',
-      spaceId,
-      pinned: true,
+  const openNewGroup = useCallback((
+    spaceId: string,
+    options: {
+      folderId?: string;
+      project?: Extract<SidebarDropResult, { kind: 'project' }>;
+    } = {}
+  ) => {
+    setGroupDialog({
+      creating: true,
+      project: options.project,
+      item: {
+        id: crypto.randomUUID(),
+        sessionId: crypto.randomUUID(),
+        name: options.project?.name || '',
+        sessionName: options.project?.name || '',
+        sessionSlug: options.project?.slug,
+        url: 'about:blank',
+        icon: '',
+        spaceId,
+        pinned: true,
+        ...(options.folderId ? {
+          folderId: options.folderId,
+          groupDisplay: 'folder' as const,
+          sessionMode: 'collection' as const,
+        } : {}),
+      },
     });
   }, []);
   const sidebarDropBusy = useRef(false);
@@ -749,6 +792,83 @@ export function Main() {
     () => getTabGroups(appList, active.id),
     [appList, active.id]
   );
+  const filteredGroups = useMemo(
+    () =>
+      filterSpaceGroups(
+        filteringGroups
+          ? [
+              ...tabGroups,
+              ...favorites.filter(
+                (item) => (item.spaceId || 'default') === active.id
+              ),
+            ]
+          : tabGroups,
+        active.folders,
+        groupSearchValue || '',
+        appList
+          .filter(
+            (tab) =>
+              !tab.archived &&
+              !lockedGroup(tab) &&
+              (tab.spaceId || 'default') === active.id
+          )
+          .map((tab) => ({
+            ...tab,
+            name: states[tab.id]?.title || tab.name,
+            url: states[tab.id]?.url || tab.url,
+          }))
+      ),
+    [
+      tabGroups,
+      active.folders,
+      active.id,
+      groupSearchValue,
+      filteringGroups,
+      favorites,
+      appList,
+      states,
+      groupAccess,
+    ]
+  );
+  const searchResults = useMemo(() => {
+    if (!filteringGroups) return [];
+    const byGroup = new Map(
+      filteredGroups.map((group) => [groupKey(group), group])
+    );
+    return appList
+      .filter(
+        (tab) =>
+          !tab.archived &&
+          !lockedGroup(tab) &&
+          (tab.spaceId || 'default') === active.id
+      )
+      .map((tab) => ({
+        ...tab,
+        name: states[tab.id]?.title || tab.name,
+        url: states[tab.id]?.url || tab.url,
+      }))
+      .filter((tab) => {
+        const group = byGroup.get(groupKey(tab));
+        return (
+          !!group &&
+          searchSpaceGroupTabs(
+            group,
+            [tab],
+            active.folders,
+            groupSearchValue || ''
+          ).length > 0
+        );
+      });
+  }, [
+    filteringGroups,
+    filteredGroups,
+    appList,
+    active.id,
+    active.folders,
+    states,
+    groupSearchValue,
+    groupAccess,
+  ]);
   const previewIndex = useMemo(() => {
     const byId = new Map<string, IApp>();
     const tabs = new Map<string, IApp[]>();
@@ -849,8 +969,8 @@ export function Main() {
         event.deltaMode === 1
           ? 16
           : event.deltaMode === 2
-          ? list.clientWidth
-          : 1;
+            ? list.clientWidth
+            : 1;
       event.preventDefault();
       event.stopPropagation();
       list.scrollLeft = Math.max(
@@ -969,6 +1089,19 @@ export function Main() {
           );
       }
     }
+    if (choice === 'toggle-space') {
+      const searching = target.id === active.id && searchingGroups;
+      if (searching) setGroupSearch({ spaceId: target.id, value: null });
+      setCollapsedSpaces((previous) =>
+        searching
+          ? previous.includes(target.id)
+            ? previous
+            : [...previous, target.id]
+          : previous.includes(target.id)
+            ? previous.filter((id) => id !== target.id)
+            : [...previous, target.id]
+      );
+    }
     if (choice === 'new-group') openNewGroup(target.id);
     if (choice === 'new-tab') setPaletteOpen(true);
     if (choice === 'sort')
@@ -1007,6 +1140,14 @@ export function Main() {
   };
   const showSpaceMenu = async () => {
     const choice = await browser.nativeMenu([
+      {
+        id: 'toggle-space',
+        label:
+          !searchingGroups && collapsedSpaces.includes(active.id)
+            ? 'Expand Groups'
+            : 'Collapse Groups',
+      },
+
       { id: 'new-tab', label: 'New Tab…' },
       { id: 'new-group', label: 'Create Group…' },
       { id: 'import-group', label: 'Import Group…' },
@@ -1189,7 +1330,13 @@ export function Main() {
   }, [active.id, select]);
   const openWhatsNew = (url: string) => {
     if (!selected || lockedGroup(selected)) return false;
-    const item = commandDestination([], selected, url, false, selected.spaceId || active.id).app;
+    const item = commandDestination(
+      [],
+      selected,
+      url,
+      false,
+      selected.spaceId || active.id
+    ).app;
     if (!item) return false;
     AppManager.add(item);
     select(item);
@@ -1200,8 +1347,6 @@ export function Main() {
     !!tabSwitcher.shown ||
     nativeOverlayOpen ||
     !!editingGroup ||
-    !!droppedProject ||
-    !!newGroupSpace ||
     siteSettingsOpen ||
     !!pageCapture ||
     paletteOpen ||
@@ -1212,6 +1357,9 @@ export function Main() {
     aiResizing ||
     !!dragged;
   const state = selected && states[selected.id];
+  const focusedTab = split
+    ? appList.find((tab) => tab.id === split[split.focused])
+    : selected;
   const spaceThemeColor = split
     ? states[split[split.focused]]?.themeColor
     : state?.themeColor;
@@ -1258,7 +1406,9 @@ export function Main() {
       );
       setAddressBarPlacement(preferences.addressBarPlacement || 'sidebar');
       setAddressBarFullUrl(preferences.addressBarFullUrl === true);
-      setAutofillExcludedSites(preferences.personalDataAutofillExcludedSites || []);
+      setAutofillExcludedSites(
+        preferences.personalDataAutofillExcludedSites || []
+      );
       setAddressBarExtensionsExpanded(
         preferences.addressBarExtensionsExpanded !== false
       );
@@ -1487,7 +1637,9 @@ export function Main() {
             name: next.title || item.name,
             url: savedNavigationURL(item, next),
             sessionName:
-              !item.customName && item.sessionName === item.name
+              !item.sessionNameCustom &&
+              !item.customName &&
+              item.sessionName === item.name
                 ? next.title || item.name
                 : item.sessionName,
             icon: next.icon !== undefined ? next.icon : item.icon,
@@ -1591,6 +1743,16 @@ export function Main() {
   useEffect(
     () =>
       browser.onTabRequest((request) => {
+        if (request.action === 'task-ended' && request.id) {
+          tabSwitcherRef.current.remove([request.id]);
+          setClosedTabs((previous) => new Set([...previous, request.id!]));
+          setSplit((previous) =>
+            previous && [previous.left, previous.right].includes(request.id!)
+              ? null
+              : previous
+          );
+          return;
+        }
         if (request.action === 'open-external' && request.url) {
           try {
             const url = new URL(request.url);
@@ -1795,7 +1957,10 @@ export function Main() {
   ) => {
     if (selected) browser.command({ id: selected.id, action, url });
   };
-  const rename = (item: IApp, axis: 'vertical' | 'horizontal' | 'folder' = 'vertical') => {
+  const rename = (
+    item: IApp,
+    axis: 'vertical' | 'horizontal' | 'folder' = 'vertical'
+  ) => {
     if (axis === 'vertical' && item.favorite) {
       setFavoriteName(item.sessionName || item.name);
       setFavoriteRename(item);
@@ -2091,19 +2256,7 @@ export function Main() {
     try {
       const result = await window.electron.siteDeveloper.drop(file, active.id);
       if (result.kind === 'project') {
-        setDroppedProject(result);
-        setNewGroupSpace(active.id);
-        setEditingGroup({
-          id: crypto.randomUUID(),
-          sessionId: crypto.randomUUID(),
-          name: result.name,
-          sessionName: result.name,
-          sessionSlug: result.slug,
-          url: 'about:blank',
-          icon: '',
-          spaceId: active.id,
-          pinned: true,
-        });
+        openNewGroup(active.id, { project: result });
       } else if (result.imported) {
         const { imported } = result;
         AppManager.set([...AppManager.getAll(), ...imported.tabs]);
@@ -2390,6 +2543,9 @@ export function Main() {
   };
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const renderApp = (item: IApp) => {
+    const displayName = sidebarLabel(
+      item.sessionName || (item.sessionId ? item.name : 'Saved group')
+    );
     const folderView = item.groupDisplay === 'folder' && !item.favorite;
     const expansionKey = JSON.stringify([
       item.spaceId || 'default',
@@ -2400,6 +2556,8 @@ export function Main() {
       renameTarget?.id === item.id && renameTarget.axis === 'vertical';
     const Row = renaming ? 'div' : 'button';
     const locked = lockedGroup(item);
+    const activeTab = item.favorite ? focusedTab : selected;
+    const isActive = !!activeTab && groupKey(activeTab) === groupKey(item);
     const protectedGroup = groupAccess.protected.includes(groupKey(item));
     const slug = item.sessionSlug || '';
     const tooltip = `${item.sessionName || item.name}${
@@ -2428,11 +2586,12 @@ export function Main() {
             >
               <Row
                 type="button"
-                className={`sidebar-app ${
-                  selected && groupKey(selected) === groupKey(item)
-                    ? 'active'
-                    : ''
-                }`}
+                className={`sidebar-app ${isActive ? 'active' : ''}`}
+                style={
+                  item.favorite && isActive && !locked
+                    ? websiteThemeStyle(spaceThemeColor)
+                    : undefined
+                }
                 title={
                   hasPreview && tabDisplayMode !== 'click' ? undefined : tooltip
                 }
@@ -2461,11 +2620,7 @@ export function Main() {
                   }
                 }}
                 aria-label={item.sessionName || item.name}
-                aria-current={
-                  selected && groupKey(selected) === groupKey(item)
-                    ? 'page'
-                    : undefined
-                }
+                aria-current={isActive ? 'page' : undefined}
                 onClick={(event) => {
                   if (renaming) return;
                   if (folderView && !locked) {
@@ -2541,10 +2696,7 @@ export function Main() {
                       cancel={() => setRenameTarget(undefined)}
                     />
                   ) : (
-                    <strong>
-                      {item.sessionName ||
-                        (item.sessionId ? item.name : 'Saved group')}
-                    </strong>
+                    <strong>{displayName}</strong>
                   )}
                 </span>
                 {folderView && !item.favorite && !locked && (
@@ -2556,6 +2708,27 @@ export function Main() {
                   />
                 )}
               </Row>
+              {!item.favorite && !renaming && !locked && (
+                <button
+                  type="button"
+                  className="sidebar-app-terminal"
+                  aria-label={`Open terminal for ${item.sessionName || item.name}`}
+                  title="Open group terminal"
+                  onMouseEnter={closePreview}
+                  onFocus={closePreview}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    closePreview();
+                    select(item);
+                    setAIMounted(true);
+                    setAIOpen(true);
+                    setDeveloperRequest((previous) => previous + 1);
+                    setTerminalOpenRequest((previous) => previous + 1);
+                  }}
+                >
+                  <Terminal size={13} />
+                </button>
+              )}
               {!item.favorite && !renaming && !locked && (
                 <button
                   type="button"
@@ -2646,13 +2819,23 @@ export function Main() {
                     >
                       <div
                         className="sidebar-group-tab-select"
-                        role={renameTarget?.id === tab.id && renameTarget.axis === 'folder' ? undefined : 'button'}
+                        title={tab.url}
+                        role={
+                          renameTarget?.id === tab.id &&
+                          renameTarget.axis === 'folder'
+                            ? undefined
+                            : 'button'
+                        }
                         tabIndex={expanded ? 0 : -1}
                         aria-current={
                           selected?.id === tab.id ? 'page' : undefined
                         }
                         onClick={() => {
-                          if (renameTarget?.id === tab.id && renameTarget.axis === 'folder') return;
+                          if (
+                            renameTarget?.id === tab.id &&
+                            renameTarget.axis === 'folder'
+                          )
+                            return;
                           closePreview();
                           select(tab);
                         }}
@@ -2670,14 +2853,15 @@ export function Main() {
                           icon={tab.icon}
                           title={tab.customName || tab.name}
                         />
-                        {renameTarget?.id === tab.id && renameTarget.axis === 'folder' ? (
+                        {renameTarget?.id === tab.id &&
+                        renameTarget.axis === 'folder' ? (
                           <InlineTabName
                             name={tab.customName || tab.name}
                             save={(name) => saveName(tab, 'folder', name)}
                             cancel={() => setRenameTarget(undefined)}
                           />
                         ) : (
-                          <span>{tab.customName || tab.name}</span>
+                          <span>{tab.customName || sidebarLabel(tab.name)}</span>
                         )}
                       </div>
                       <button
@@ -2706,7 +2890,11 @@ export function Main() {
   const renderBrowserTools = () => (
     <>
       {windowWorkspace.state()?.private && (
-        <span className="private-browsing-badge" role="status" title="Private browsing — temporary browsing data and chats">
+        <span
+          className="private-browsing-badge"
+          role="status"
+          title="Private browsing — temporary browsing data and chats"
+        >
           <LockKeyhole size={14} aria-hidden="true" />
           <span>Private</span>
         </span>
@@ -2724,10 +2912,13 @@ export function Main() {
           else if (option === 'find') setFindOpen(true);
           else if (option === 'print') command('print');
           else if (option === 'updates') {
-            browser.preferences('open', { section: 'updates' }).catch((error) => setMoveMessage(String(error)));
-            browser.appUpdates('check').catch((error) => setMoveMessage(String(error)));
-          }
-          else if (option === 'site-settings') setSiteSettingsOpen(true);
+            browser
+              .preferences('open', { section: 'updates' })
+              .catch((error) => setMoveMessage(String(error)));
+            browser
+              .appUpdates('check')
+              .catch((error) => setMoveMessage(String(error)));
+          } else if (option === 'site-settings') setSiteSettingsOpen(true);
           else if (option === 'extensions') {
             if (addressBarPlacement === 'sidebar') {
               setCompact(false);
@@ -2859,7 +3050,7 @@ export function Main() {
               onClick={() => command('forward')}
             />
             <ChromeIconButton
-              icon={state?.loading ? Square : RotateCw}
+              icon={state?.loading ? X : RotateCw}
               label={state?.loading ? 'Stop loading' : 'Reload'}
               disabled={!selected}
               onClick={() => command(state?.loading ? 'stop' : 'reload')}
@@ -2899,7 +3090,8 @@ export function Main() {
         event.preventDefault();
         const url = resolveAddress(address);
         if (new URL(url).protocol === 'kudium:') {
-          window.electron.hookMarketplace.request({ action: 'open-install', url })
+          window.electron.hookMarketplace
+            .request({ action: 'open-install', url })
             .catch((error) => setMoveMessage(String(error)));
         } else if (selected) command('navigate', url);
         else {
@@ -3147,17 +3339,24 @@ export function Main() {
       </ContextMenu.Item>
     </ContextMenu.Content>
   );
-  const showTabContextMenu = (id: string, fromDeveloper = true, renameAxis: 'horizontal' | 'folder' = 'horizontal') => {
+  const showTabContextMenu = (
+    id: string,
+    fromDeveloper = true,
+    renameAxis: 'horizontal' | 'folder' = 'horizontal'
+  ) => {
     const item = AppManager.getAll().find(
       (tab) => tab.id === id && !tab.archived
     );
     if (!item || lockedGroup(item)) return;
-    showNativeContextMenu(renderTabMenu(item, undefined, fromDeveloper, renameAxis), () => {
-      const current = AppManager.getAll().find(
-        (tab) => tab.id === id && !tab.archived
-      );
-      return !!current && !lockedGroup(current);
-    }).catch((error) => setMoveMessage(String(error)));
+    showNativeContextMenu(
+      renderTabMenu(item, undefined, fromDeveloper, renameAxis),
+      () => {
+        const current = AppManager.getAll().find(
+          (tab) => tab.id === id && !tab.archived
+        );
+        return !!current && !lockedGroup(current);
+      }
+    ).catch((error) => setMoveMessage(String(error)));
   };
   const showGroupContextMenu = (id: string) => {
     const item = AppManager.getAll().find(
@@ -3636,11 +3835,7 @@ export function Main() {
                   disabled={!selected}
                   onClick={() => command(state?.loading ? 'stop' : 'reload')}
                 >
-                  {state?.loading ? (
-                    <Square size={17} />
-                  ) : (
-                    <RotateCw size={20} />
-                  )}
+                  {state?.loading ? <X size={17} /> : <RotateCw size={20} />}
                 </IconButton>
               </Tooltip>
               <Tooltip
@@ -3762,30 +3957,15 @@ export function Main() {
                   );
                 }}
               >
-                <button
-                  type="button"
-                  className="space-title-toggle"
-                  aria-label={`Toggle ${active.name} space`}
-                  aria-expanded={!collapsedSpaces.includes(active.id)}
-                  onClick={() =>
-                    setCollapsedSpaces((previous) =>
-                      previous.includes(active.id)
-                        ? previous.filter((id) => id !== active.id)
-                        : [...previous, active.id]
-                    )
-                  }
-                >
-                  <span className="space-title-icon" aria-hidden="true">
-                    <SpaceIcon space={active} />
-                    <ChevronDown
-                      size={15}
-                      className={
-                        collapsedSpaces.includes(active.id) ? 'collapsed' : ''
-                      }
-                    />
-                  </span>
-                  <span className="space-title-name">{active.name}</span>
-                </button>
+                <SpaceGroupSearch
+                  key={active.id}
+                  name={active.name}
+                  value={groupSearchValue}
+                  onChange={(value) => {
+                    closePreview();
+                    setGroupSearch({ spaceId: active.id, value });
+                  }}
+                />
                 <Tooltip
                   collisionBoundary={sidebarBoundary}
                   collisionPadding={8}
@@ -3808,428 +3988,491 @@ export function Main() {
                 </Tooltip>
               </div>
               <nav
+                id="space-group-list"
+                aria-label={`Groups in ${active.name}`}
                 className="sidebar-apps"
-                hidden={collapsedSpaces.includes(active.id)}
+                hidden={!searchingGroups && collapsedSpaces.includes(active.id)}
               >
-                {tabGroups.length === 0 && (
-                  <EmptySpaceWelcome
-                    onAction={(action) => {
-                      applySpaceMenuChoice(action).catch((error) =>
-                        setMoveMessage(String(error))
-                      );
+                {filteringGroups ? (
+                  <SpaceSearchResults
+                    tabs={searchResults}
+                    selectedId={selected?.id}
+                    onSelect={(tab) => {
+                      closePreview();
+                      select(tab);
                     }}
+                    onContextMenu={(tab) =>
+                      showTabContextMenu(tab.id, false, 'folder')
+                    }
                   />
-                )}
-                <div
-                  className="sidebar-section"
-                  aria-label="Pinned groups"
-                  data-drop-target={
-                    dropTarget === 'section-pinned' || undefined
-                  }
-                  onDragOver={sectionDropProps('pinned').onDragOver}
-                  onDrop={sectionDropProps('pinned').onDrop}
-                >
-                  {tabGroups
-                    .filter(
-                      (item) =>
-                        (!showUnpinnedGroups || item.pinned !== false) &&
-                        !item.folderId
-                    )
-                    .map(renderApp)}
-                  {dragged &&
-                    !tabGroups.some(
-                      (item) =>
-                        (!showUnpinnedGroups || item.pinned !== false) &&
-                        !item.folderId
-                    ) && (
-                      <span className="sidebar-section-hint">Drop to pin</span>
+                ) : (
+                  <>
+                    {tabGroups.length === 0 && (
+                      <EmptySpaceWelcome
+                        onAction={(action) => {
+                          applySpaceMenuChoice(action).catch((error) =>
+                            setMoveMessage(String(error))
+                          );
+                        }}
+                      />
                     )}
-                </div>
-                {active.folders.map((folder) => (
-                  <div
-                    key={folder.id}
-                    className="tab-folder"
-                    onDragOver={(event) => {
-                      if (dragged?.axis === 'vertical') {
-                        event.preventDefault();
-                        setDropTarget(folder.id);
+                    <div
+                      className="sidebar-section"
+                      aria-label="Pinned groups"
+                      data-drop-target={
+                        dropTarget === 'section-pinned' || undefined
                       }
-                    }}
-                    data-drop-target={dropTarget === folder.id || undefined}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      const apps = AppManager.getAll();
-                      const source = apps.find(
-                        (item) => item.id === dragged?.id
-                      );
-                      if (
-                        source &&
-                        dragged?.axis === 'vertical' &&
-                        event.dataTransfer.getData(
-                          'application/x-kudiumbrowser-tab'
-                        ) === source.id
-                      ) {
-                        AppManager.set(
-                          moveGroupToFolder(apps, source, active.id, folder.id)
-                        );
-                      }
-                      finishDrag();
-                    }}
-                  >
-                    <ContextMenu.Root onOpenChange={setMenuOpen}>
-                      <ContextMenu.Trigger>
-                        <div className="folder-header">
-                          <button
-                            type="button"
-                            className="folder-heading"
-                            onMouseEnter={(event) => {
-                              if (
-                                folderHoverPreviews &&
-                                collapsedFolders.includes(folder.id) &&
-                                (previewIndex.folders.get(folder.id)?.length ||
-                                  0) > 0 &&
-                                !dragged &&
-                                !menuOpen
-                              )
-                                preview.open({
-                                  kind: 'folder',
-                                  id: folder.id,
-                                  anchor: event.currentTarget,
-                                  interaction: 'hover',
-                                });
-                            }}
-                            onMouseLeave={preview.leave}
-                            aria-expanded={
-                              !collapsedFolders.includes(folder.id)
+                      onDragOver={sectionDropProps('pinned').onDragOver}
+                      onDrop={sectionDropProps('pinned').onDrop}
+                    >
+                      {filteredGroups
+                        .filter(
+                          (item) =>
+                            (filteringGroups ||
+                              !showUnpinnedGroups ||
+                              item.pinned !== false) &&
+                            !item.folderId
+                        )
+                        .map(renderApp)}
+                      {dragged &&
+                        !tabGroups.some(
+                          (item) =>
+                            (!showUnpinnedGroups || item.pinned !== false) &&
+                            !item.folderId
+                        ) && (
+                          <span className="sidebar-section-hint">
+                            Drop to pin
+                          </span>
+                        )}
+                    </div>
+                    {active.folders
+                      .filter(
+                        (folder) =>
+                          !filteringGroups ||
+                          filteredGroups.some(
+                            (item) => item.folderId === folder.id
+                          )
+                      )
+                      .map((folder) => (
+                        <div
+                          key={folder.id}
+                          className="tab-folder"
+                          onDragOver={(event) => {
+                            if (dragged?.axis === 'vertical') {
+                              event.preventDefault();
+                              setDropTarget(folder.id);
                             }
-                            aria-controls={`folder-content-${folder.id}`}
-                            onKeyDown={(event) => {
-                              if (
-                                event.key === 'ArrowDown' &&
-                                folderHoverPreviews &&
-                                collapsedFolders.includes(folder.id) &&
-                                (previewIndex.folders.get(folder.id)?.length ||
-                                  0) > 0
-                              ) {
-                                event.preventDefault();
-                                preview.open({
-                                  kind: 'folder',
-                                  id: folder.id,
-                                  anchor: event.currentTarget,
-                                  interaction: 'keyboard',
-                                });
-                              } else if (event.key === 'ArrowLeft') {
-                                event.preventDefault();
-                                setCollapsedFolders((previous) =>
-                                  previous.includes(folder.id)
-                                    ? previous
-                                    : [...previous, folder.id]
-                                );
-                              } else if (event.key === 'ArrowRight') {
-                                event.preventDefault();
-                                if (collapsedFolders.includes(folder.id)) {
-                                  setCollapsedFolders((previous) =>
-                                    previous.filter((id) => id !== folder.id)
-                                  );
-                                } else {
-                                  event.currentTarget
-                                    .closest('.tab-folder')
-                                    ?.querySelector<HTMLButtonElement>(
-                                      '.sidebar-app'
-                                    )
-                                    ?.focus();
-                                }
-                              }
-                            }}
-                            onClick={() => {
-                              preview.close();
-                              setCollapsedFolders((previous) =>
-                                previous.includes(folder.id)
-                                  ? previous.filter((id) => id !== folder.id)
-                                  : [...previous, folder.id]
-                              );
-                            }}
-                          >
-                            <CollectionIcon size={16} strokeWidth={1.5} />
-                            <strong>{folder.name}</strong>
-                          </button>
-                          <ChromeIconButton
-                            icon={Plus}
-                            className="collection-add"
-                            label={`New group in ${folder.name}`}
-                            onClick={() => {
-                              closePreview();
-                              setNewGroupSpace(active.id);
-                              setEditingGroup({
-                                id: crypto.randomUUID(),
-                                sessionId: crypto.randomUUID(),
-                                name: '',
-                                sessionName: '',
-                                url: 'about:blank',
-                                icon: '',
-                                spaceId: active.id,
-                                folderId: folder.id,
-                                groupDisplay: 'folder',
-                                sessionMode: 'collection',
-                                pinned: true,
-                              });
-                            }}
-                          />
-                          <ContextMenu.OptionsTrigger>
-                            <span className="visually-hidden">
-                              Collection options for {folder.name}
-                            </span>
-                            <MoreHorizontal size={15} />
-                          </ContextMenu.OptionsTrigger>
-                        </div>
-                      </ContextMenu.Trigger>
-                      <ContextMenu.Content>
-                        {['Copy all links', 'Copy all links as Markdown'].map(
-                          (label, index) => (
-                            <ContextMenu.Item
-                              key={label}
-                              disabled={
-                                !folderLinks(
-                                  appList.filter((item) => !lockedGroup(item)),
+                          }}
+                          data-drop-target={
+                            dropTarget === folder.id || undefined
+                          }
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const apps = AppManager.getAll();
+                            const source = apps.find(
+                              (item) => item.id === dragged?.id
+                            );
+                            if (
+                              source &&
+                              dragged?.axis === 'vertical' &&
+                              event.dataTransfer.getData(
+                                'application/x-kudiumbrowser-tab'
+                              ) === source.id
+                            ) {
+                              AppManager.set(
+                                moveGroupToFolder(
+                                  apps,
+                                  source,
                                   active.id,
                                   folder.id
                                 )
-                              }
-                              onSelect={() => {
-                                navigator.clipboard
-                                  .writeText(
-                                    folderLinks(
+                              );
+                            }
+                            finishDrag();
+                          }}
+                        >
+                          <ContextMenu.Root onOpenChange={setMenuOpen}>
+                            <ContextMenu.Trigger>
+                              <div className="folder-header">
+                                <button
+                                  type="button"
+                                  className="folder-heading"
+                                  onMouseEnter={(event) => {
+                                    if (
+                                      folderHoverPreviews &&
+                                      collapsedFolders.includes(folder.id) &&
+                                      (previewIndex.folders.get(folder.id)
+                                        ?.length || 0) > 0 &&
+                                      !dragged &&
+                                      !menuOpen
+                                    )
+                                      preview.open({
+                                        kind: 'folder',
+                                        id: folder.id,
+                                        anchor: event.currentTarget,
+                                        interaction: 'hover',
+                                      });
+                                  }}
+                                  onMouseLeave={preview.leave}
+                                  aria-expanded={
+                                    filteringGroups ||
+                                    !collapsedFolders.includes(folder.id)
+                                  }
+                                  aria-controls={`folder-content-${folder.id}`}
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key === 'ArrowDown' &&
+                                      folderHoverPreviews &&
+                                      collapsedFolders.includes(folder.id) &&
+                                      (previewIndex.folders.get(folder.id)
+                                        ?.length || 0) > 0
+                                    ) {
+                                      event.preventDefault();
+                                      preview.open({
+                                        kind: 'folder',
+                                        id: folder.id,
+                                        anchor: event.currentTarget,
+                                        interaction: 'keyboard',
+                                      });
+                                    } else if (event.key === 'ArrowLeft') {
+                                      event.preventDefault();
+                                      setCollapsedFolders((previous) =>
+                                        previous.includes(folder.id)
+                                          ? previous
+                                          : [...previous, folder.id]
+                                      );
+                                    } else if (event.key === 'ArrowRight') {
+                                      event.preventDefault();
+                                      if (
+                                        collapsedFolders.includes(folder.id)
+                                      ) {
+                                        setCollapsedFolders((previous) =>
+                                          previous.filter(
+                                            (id) => id !== folder.id
+                                          )
+                                        );
+                                      } else {
+                                        event.currentTarget
+                                          .closest('.tab-folder')
+                                          ?.querySelector<HTMLButtonElement>(
+                                            '.sidebar-app'
+                                          )
+                                          ?.focus();
+                                      }
+                                    }
+                                  }}
+                                  onClick={() => {
+                                    preview.close();
+                                    setCollapsedFolders((previous) =>
+                                      previous.includes(folder.id)
+                                        ? previous.filter(
+                                            (id) => id !== folder.id
+                                          )
+                                        : [...previous, folder.id]
+                                    );
+                                  }}
+                                >
+                                  <span
+                                    className="sidebar-collection-icon"
+                                    aria-hidden="true"
+                                  >
+                                    <CollectionIcon
+                                      size={16}
+                                      strokeWidth={1.5}
+                                    />
+                                  </span>
+                                  <strong>{folder.name}</strong>
+                                </button>
+                                <ChromeIconButton
+                                  icon={Plus}
+                                  className="collection-add"
+                                  label={`New group in ${folder.name}`}
+                                  onClick={() => {
+                                    closePreview();
+                                    openNewGroup(active.id, { folderId: folder.id });
+                                  }}
+                                />
+                                <ContextMenu.OptionsTrigger>
+                                  <span className="visually-hidden">
+                                    Collection options for {folder.name}
+                                  </span>
+                                  <MoreHorizontal size={15} />
+                                </ContextMenu.OptionsTrigger>
+                              </div>
+                            </ContextMenu.Trigger>
+                            <ContextMenu.Content>
+                              {[
+                                'Copy all links',
+                                'Copy all links as Markdown',
+                              ].map((label, index) => (
+                                <ContextMenu.Item
+                                  key={label}
+                                  disabled={
+                                    !folderLinks(
                                       appList.filter(
                                         (item) => !lockedGroup(item)
                                       ),
                                       active.id,
-                                      folder.id,
-                                      index === 1
+                                      folder.id
                                     )
-                                  )
-                                  .then(() =>
-                                    setFolderFeedback({
-                                      id: folder.id,
-                                      text: 'Links copied',
-                                    })
-                                  )
-                                  .catch(() =>
-                                    setFolderFeedback({
-                                      id: folder.id,
-                                      text: 'Could not copy links. Try again.',
-                                    })
-                                  );
-                              }}
-                            >
-                              {label}
-                            </ContextMenu.Item>
-                          )
-                        )}
-                        <ContextMenu.Sub>
-                          <ContextMenu.SubTrigger>
-                            Move to space
-                          </ContextMenu.SubTrigger>
-                          <ContextMenu.SubContent>
-                            {spaces
-                              .filter((space) => space.id !== active.id)
-                              .map((space) => (
-                                <ContextMenu.Item
-                                  key={space.id}
+                                  }
                                   onSelect={() => {
-                                    const moved = moveFolder(
-                                      appList,
-                                      spaces,
-                                      active.id,
-                                      folder.id,
-                                      space.id
-                                    );
-                                    AppManager.set(moved.apps);
-                                    SpaceManager.set(moved.spaces);
+                                    navigator.clipboard
+                                      .writeText(
+                                        folderLinks(
+                                          appList.filter(
+                                            (item) => !lockedGroup(item)
+                                          ),
+                                          active.id,
+                                          folder.id,
+                                          index === 1
+                                        )
+                                      )
+                                      .then(() =>
+                                        setFolderFeedback({
+                                          id: folder.id,
+                                          text: 'Links copied',
+                                        })
+                                      )
+                                      .catch(() =>
+                                        setFolderFeedback({
+                                          id: folder.id,
+                                          text: 'Could not copy links. Try again.',
+                                        })
+                                      );
                                   }}
                                 >
-                                  {space.name}
+                                  {label}
                                 </ContextMenu.Item>
                               ))}
-                            {spaces.length < 2 && (
-                              <ContextMenu.Item disabled>
-                                No other spaces
+                              <ContextMenu.Sub>
+                                <ContextMenu.SubTrigger>
+                                  Move to space
+                                </ContextMenu.SubTrigger>
+                                <ContextMenu.SubContent>
+                                  {spaces
+                                    .filter((space) => space.id !== active.id)
+                                    .map((space) => (
+                                      <ContextMenu.Item
+                                        key={space.id}
+                                        onSelect={() => {
+                                          const moved = moveFolder(
+                                            appList,
+                                            spaces,
+                                            active.id,
+                                            folder.id,
+                                            space.id
+                                          );
+                                          AppManager.set(moved.apps);
+                                          SpaceManager.set(moved.spaces);
+                                        }}
+                                      >
+                                        {space.name}
+                                      </ContextMenu.Item>
+                                    ))}
+                                  {spaces.length < 2 && (
+                                    <ContextMenu.Item disabled>
+                                      No other spaces
+                                    </ContextMenu.Item>
+                                  )}
+                                </ContextMenu.SubContent>
+                              </ContextMenu.Sub>
+                              <ContextMenu.Separator />
+                              <ContextMenu.Item
+                                onSelect={() => {
+                                  setEditingFolder(folder.id);
+                                  setFolderName(folder.name);
+                                  setFolderDialog(true);
+                                }}
+                              >
+                                Manage collection…
                               </ContextMenu.Item>
-                            )}
-                          </ContextMenu.SubContent>
-                        </ContextMenu.Sub>
-                        <ContextMenu.Separator />
-                        <ContextMenu.Item
-                          onSelect={() => {
-                            setEditingFolder(folder.id);
-                            setFolderName(folder.name);
-                            setFolderDialog(true);
-                          }}
-                        >
-                          Manage collection…
-                        </ContextMenu.Item>
-                        <ContextMenu.Item
-                          color="red"
-                          onSelect={() =>
-                            setDeletingCollection({
-                              id: folder.id,
-                              name: folder.name,
-                              spaceId: active.id,
-                            })
-                          }
-                        >
-                          Delete collection…
-                        </ContextMenu.Item>
-                      </ContextMenu.Content>
-                    </ContextMenu.Root>
-                    {folderFeedback?.id === folder.id && (
-                      <span className="sidebar-section-hint" role="status">
-                        {folderFeedback.text}
-                      </span>
-                    )}
-                    <div
-                      id={`folder-content-${folder.id}`}
-                      className="folder-content"
-                      data-collapsed={collapsedFolders.includes(folder.id)}
-                      aria-hidden={collapsedFolders.includes(folder.id)}
-                      // React 18 types do not yet expose the native inert attribute.
-                      // eslint-disable-next-line react/jsx-props-no-spreading
-                      {...(collapsedFolders.includes(folder.id)
-                        ? { inert: true }
-                        : {})}
-                    >
-                      <div className="folder-content-inner">
-                        {!collapsedFolders.includes(folder.id) &&
-                          (previewIndex.folders.get(folder.id) || []).map(
-                            renderApp
-                          )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {(showUnpinnedGroups ||
-                  windowWorkspace.state()?.kind === 'temporary') && (
-                  <div className="session-list-tools">
-                    <span className="list-divider" />
-                    {!!tabGroups.length && (
-                      <>
-                        <Tooltip
-                          collisionBoundary={sidebarBoundary}
-                          collisionPadding={8}
-                          className="sidebar-tooltip"
-                          content="Sort groups by name"
-                        >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              AppManager.set(
-                                [...appList].sort((a, b) =>
-                                  (a.sessionName || a.name).localeCompare(
-                                    b.sessionName || b.name
-                                  )
-                                )
-                              )
-                            }
-                          >
-                            <Brush size={13} />
-                            Tidy
-                          </button>
-                        </Tooltip>
-                        {(showUnpinnedGroups ||
-                          windowWorkspace.state()?.kind === 'temporary') && (
-                          <Tooltip
-                            collisionBoundary={sidebarBoundary}
-                            collisionPadding={8}
-                            className="sidebar-tooltip"
-                            content="Archive unpinned groups in this space"
-                          >
-                            <button
-                              type="button"
-                              disabled={
-                                !tabGroups.some((item) => item.pinned === false)
-                              }
-                              onClick={async () => {
-                                const unpinned = new Set(
-                                  tabGroups
-                                    .filter((item) => item.pinned === false)
-                                    .map(groupKey)
-                                );
-                                if (!unpinned.size) return;
-                                const approved = await browser.confirm({
-                                  message: 'Clear unpinned groups?',
-                                  detail: `Archive ${unpinned.size} group${
-                                    unpinned.size === 1 ? '' : 's'
-                                  } in this space. You can restore them from Archive.`,
-                                  confirm: 'Clear groups',
-                                });
-                                if (!approved) return;
-                                AppManager.set(
-                                  AppManager.getAll().map((item) =>
-                                    (item.spaceId || 'default') === active.id &&
-                                    unpinned.has(groupKey(item))
-                                      ? { ...item, archived: true }
-                                      : item
-                                  )
-                                );
-                              }}
+                              <ContextMenu.Item
+                                color="red"
+                                onSelect={() =>
+                                  setDeletingCollection({
+                                    id: folder.id,
+                                    name: folder.name,
+                                    spaceId: active.id,
+                                  })
+                                }
+                              >
+                                Delete collection…
+                              </ContextMenu.Item>
+                            </ContextMenu.Content>
+                          </ContextMenu.Root>
+                          {folderFeedback?.id === folder.id && (
+                            <span
+                              className="sidebar-section-hint"
+                              role="status"
                             >
-                              <ArrowDownToLine size={13} />
-                              Clear
-                            </button>
-                          </Tooltip>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-                <div className="sidebar-create-actions">
-                  <button
-                    type="button"
-                    className="new-tab-button"
-                    aria-label="Add tab"
-                    title="Add tab"
-                    onClick={() => setPaletteOpen(true)}
-                  >
-                    <Plus size={16} />
-                    <span>Add tab</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="new-tab-button"
-                    aria-label="Add group"
-                    title="Add group"
-                    onClick={() => {
-                      closePreview();
-                      openNewGroup(active.id);
-                    }}
-                  >
-                    <FolderPlus size={16} />
-                    <span>Add group</span>
-                  </button>
-                </div>
-                {(showUnpinnedGroups ||
-                  windowWorkspace.state()?.kind === 'temporary') && (
-                  <div
-                    className="sidebar-section"
-                    aria-label="Unpinned groups"
-                    data-drop-target={
-                      dropTarget === 'section-regular' || undefined
-                    }
-                    onDragOver={sectionDropProps('regular').onDragOver}
-                    onDrop={sectionDropProps('regular').onDrop}
-                  >
-                    {tabGroups
-                      .filter((item) => item.pinned === false && !item.folderId)
-                      .map(renderApp)}
-                    {dragged &&
-                      !tabGroups.some(
-                        (item) => item.pinned === false && !item.folderId
-                      ) && (
-                        <span className="sidebar-section-hint">
-                          Drop to unpin
-                        </span>
+                              {folderFeedback.text}
+                            </span>
+                          )}
+                          <div
+                            id={`folder-content-${folder.id}`}
+                            className="folder-content"
+                            data-collapsed={
+                              !filteringGroups &&
+                              collapsedFolders.includes(folder.id)
+                            }
+                            aria-hidden={
+                              !filteringGroups &&
+                              collapsedFolders.includes(folder.id)
+                            }
+                            // React 18 types do not yet expose the native inert attribute.
+                            // eslint-disable-next-line react/jsx-props-no-spreading
+                            {...(!filteringGroups &&
+                            collapsedFolders.includes(folder.id)
+                              ? { inert: true }
+                              : {})}
+                          >
+                            <div className="folder-content-inner">
+                              {(filteringGroups ||
+                                !collapsedFolders.includes(folder.id)) &&
+                                filteredGroups
+                                  .filter((item) => item.folderId === folder.id)
+                                  .map(renderApp)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    {!filteringGroups &&
+                      (showUnpinnedGroups ||
+                        windowWorkspace.state()?.kind === 'temporary') && (
+                        <div className="session-list-tools">
+                          <span className="list-divider" />
+                          {!!tabGroups.length && (
+                            <>
+                              <Tooltip
+                                collisionBoundary={sidebarBoundary}
+                                collisionPadding={8}
+                                className="sidebar-tooltip"
+                                content="Sort groups by name"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    AppManager.set(
+                                      [...appList].sort((a, b) =>
+                                        (a.sessionName || a.name).localeCompare(
+                                          b.sessionName || b.name
+                                        )
+                                      )
+                                    )
+                                  }
+                                >
+                                  <Brush size={13} />
+                                  Tidy
+                                </button>
+                              </Tooltip>
+                              {(showUnpinnedGroups ||
+                                windowWorkspace.state()?.kind ===
+                                  'temporary') && (
+                                <Tooltip
+                                  collisionBoundary={sidebarBoundary}
+                                  collisionPadding={8}
+                                  className="sidebar-tooltip"
+                                  content="Archive unpinned groups in this space"
+                                >
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      !tabGroups.some(
+                                        (item) => item.pinned === false
+                                      )
+                                    }
+                                    onClick={async () => {
+                                      const unpinned = new Set(
+                                        tabGroups
+                                          .filter(
+                                            (item) => item.pinned === false
+                                          )
+                                          .map(groupKey)
+                                      );
+                                      if (!unpinned.size) return;
+                                      const approved = await browser.confirm({
+                                        message: 'Clear unpinned groups?',
+                                        detail: `Archive ${unpinned.size} group${
+                                          unpinned.size === 1 ? '' : 's'
+                                        } in this space. You can restore them from Archive.`,
+                                        confirm: 'Clear groups',
+                                      });
+                                      if (!approved) return;
+                                      AppManager.set(
+                                        AppManager.getAll().map((item) =>
+                                          (item.spaceId || 'default') ===
+                                            active.id &&
+                                          unpinned.has(groupKey(item))
+                                            ? { ...item, archived: true }
+                                            : item
+                                        )
+                                      );
+                                    }}
+                                  >
+                                    <ArrowDownToLine size={13} />
+                                    Clear
+                                  </button>
+                                </Tooltip>
+                              )}
+                            </>
+                          )}
+                        </div>
                       )}
-                  </div>
+                    <div className="sidebar-create-actions">
+                      <button
+                        type="button"
+                        className="new-tab-button"
+                        aria-label="Add tab"
+                        title="Add tab"
+                        onClick={() => setPaletteOpen(true)}
+                      >
+                        <Plus size={16} />
+                        <span>Add tab</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="new-tab-button"
+                        aria-label="Add group"
+                        title="Add group"
+                        onClick={() => {
+                          closePreview();
+                          openNewGroup(active.id);
+                        }}
+                      >
+                        <FolderPlus size={16} />
+                        <span>Add group</span>
+                      </button>
+                    </div>
+                    {!filteringGroups &&
+                      (showUnpinnedGroups ||
+                        windowWorkspace.state()?.kind === 'temporary') && (
+                        <div
+                          className="sidebar-section"
+                          aria-label="Unpinned groups"
+                          data-drop-target={
+                            dropTarget === 'section-regular' || undefined
+                          }
+                          onDragOver={sectionDropProps('regular').onDragOver}
+                          onDrop={sectionDropProps('regular').onDrop}
+                        >
+                          {tabGroups
+                            .filter(
+                              (item) => item.pinned === false && !item.folderId
+                            )
+                            .map(renderApp)}
+                          {dragged &&
+                            !tabGroups.some(
+                              (item) => item.pinned === false && !item.folderId
+                            ) && (
+                              <span className="sidebar-section-hint">
+                                Drop to unpin
+                              </span>
+                            )}
+                        </div>
+                      )}
+                  </>
                 )}
               </nav>
             </>
@@ -4237,7 +4480,7 @@ export function Main() {
         </SidebarPager>
         <AccountSyncPublisher tabs={appList} states={states} />
         {!windowWorkspace.state()?.private && <BrowserImportSuggestion />}
-        <FirstGroupSyncSuggestion tabs={appList} />
+        {!windowWorkspace.state()?.private && <AccountSyncSuggestion />}
         <AppUpdateBanner compact={compact} onWhatsNew={openWhatsNew} />
         <SidebarMediaWidget
           selectedId={selected?.id}
@@ -4390,7 +4633,9 @@ export function Main() {
               </ContextMenu.Content>
             </ContextMenu.Root>
           </div>
-          {sidebarHidden && <AppUpdateBanner compact onWhatsNew={openWhatsNew} />}
+          {sidebarHidden && (
+            <AppUpdateBanner compact onWhatsNew={openWhatsNew} />
+          )}
           {selected && tabDisplayMode === 'horizontal' && (
             <div
               className={`pane-tab-strips ${split ? 'split-tab-strips' : ''}`}
@@ -4649,7 +4894,9 @@ export function Main() {
                 <span aria-hidden="true" />
               </GroupAccessGate>
             )}
-            {!selected && <BrowserWelcome privateMode={windowWorkspace.state()?.private} />}
+            {!selected && (
+              <BrowserWelcome privateMode={windowWorkspace.state()?.private} />
+            )}
           </div>
           {aiMounted && (
             <div
@@ -4670,6 +4917,7 @@ export function Main() {
                 onResizingChange={setAIResizing}
               />
               <AISidebar
+                visible={aiOpen}
                 workingTabs={aiWorkingTabs.map((tab) => ({
                   id: tab.id,
                   name: tab.customName || states[tab.id]?.title || tab.name,
@@ -4677,6 +4925,7 @@ export function Main() {
                 }))}
                 activeTabId={aiActivityTab}
                 developerRequest={developerRequest}
+                terminalOpenRequest={terminalOpenRequest}
                 menuPaneRequest={menuPaneRequest}
                 promptRequest={aiPromptRequest}
                 focusedTabId={selected?.id}
@@ -4705,22 +4954,29 @@ export function Main() {
         addressBarPlacement={preferredAddressBarPlacement}
         onAddressBarPlacementChange={(placement) => {
           setAddressBarPlacement(placement);
-          browser.preferences('update', { addressBarPlacement: placement })
+          browser
+            .preferences('update', { addressBarPlacement: placement })
             .catch((error) => setMoveMessage(String(error)));
         }}
-        siteAutofillEnabled={!autofillExcludedSites.includes(state?.siteSettings?.origin || '')}
+        siteAutofillEnabled={
+          !autofillExcludedSites.includes(state?.siteSettings?.origin || '')
+        }
         onSiteAutofillChange={(enabled) => {
           const origin = state?.siteSettings?.origin;
           if (!origin?.startsWith('https:')) return;
-          const next = enabled ? autofillExcludedSites.filter((site) => site !== origin) : [...new Set([...autofillExcludedSites, origin])];
+          const next = enabled
+            ? autofillExcludedSites.filter((site) => site !== origin)
+            : [...new Set([...autofillExcludedSites, origin])];
           setAutofillExcludedSites(next);
-          browser.preferences('update', { personalDataAutofillExcludedSites: next })
+          browser
+            .preferences('update', { personalDataAutofillExcludedSites: next })
             .catch((error) => setMoveMessage(String(error)));
         }}
         fullUrl={addressBarFullUrl}
         onFullUrlChange={(enabled) => {
           setAddressBarFullUrl(enabled);
-          browser.preferences('update', { addressBarFullUrl: enabled })
+          browser
+            .preferences('update', { addressBarFullUrl: enabled })
             .catch((error) => setMoveMessage(String(error)));
         }}
         state={state || undefined}
@@ -4800,15 +5056,13 @@ export function Main() {
         onOpenChange={(open) => {
           if (!open) {
             setEditingGroup(undefined);
-            setNewGroupSpace(undefined);
-            setDroppedProject(undefined);
           }
         }}
       >
         <Dialog.Content className="session-settings-dialog" maxWidth="540px">
           <PanelDialogHeader
             title={
-              newGroupSpace
+              groupDialog?.creating
                 ? 'New group'
                 : (groupPersonalData && 'Personal Data') || 'Group settings'
             }
@@ -4834,18 +5088,14 @@ export function Main() {
               key={editingGroup.id}
               onPersonalDataChange={setGroupPersonalData}
               item={editingGroup}
-              creating={!!newGroupSpace}
-              droppedProject={droppedProject}
+              creating={!!groupDialog?.creating}
+              droppedProject={groupDialog?.project}
               onCreated={(tab) => {
-                setNewGroupSpace(undefined);
-                setDroppedProject(undefined);
-                setEditingGroup(tab);
+                setEditingGroup(undefined);
                 select(tab);
               }}
               close={() => {
                 setEditingGroup(undefined);
-                setNewGroupSpace(undefined);
-                setDroppedProject(undefined);
               }}
             />
           )}

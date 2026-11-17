@@ -1,4 +1,7 @@
 import { createSidebarMediaSession } from './sidebarMediaSession';
+import { extractWebsitePrimaryColor } from '../utils/websiteTheme';
+import { createWebsitePrimaryColorCache } from '../utils/websitePrimaryColorCache';
+import { captureTabShortcuts } from './tabShortcutCapture';
 import { hookActionMenu } from './hookActions';
 /* Native menus and commands deliberately resolve their current host window. */
 /* eslint no-shadow: ["error", {"allow": ["window"]}] */
@@ -13,6 +16,7 @@ import {
   IpcMainEvent,
   ipcMain,
   Menu,
+  nativeTheme,
   WebContentsView,
   RestoreOptions,
 } from 'electron';
@@ -70,6 +74,7 @@ import { AINewTabs } from './aiTabs';
 import { getBrowserWindows } from './browserWindows';
 import { WebsiteTabRecovery } from './websiteTabRecovery';
 import { PictureInPictureController } from './pictureInPicture';
+import { configureScreenSharing } from './screenSharing';
 import { registerSpaceGestures } from './spaceGestures';
 import { isBrowserCommand, isBrowserLayout } from './browserRequests';
 import { clearSessionSiteData } from './siteData';
@@ -84,6 +89,8 @@ import { nativeMenuLabels } from '../browser/menuLabels';
 import { excludedFromSleep } from '../browser/sleepingTabs';
 import { retainTabHistory, tabResumeURL } from '../browser/tabDefaults';
 import { inspectDiscardCandidate } from './tabDiscard';
+import { registerTaskSource } from './taskManager';
+import type { BrowserTask } from '../browser/taskManager';
 import { newPageTab } from '../utils/tabMetadata';
 import { showBrowserContextMenu } from './browserContextMenu';
 import { showBrowserDialog, permissionSummary } from './dialogs';
@@ -179,7 +186,9 @@ export function registerElectronBrowser(
   const popups = new Map<string, Set<BrowserWindow>>();
   const popupSources = new WeakMap<BrowserWindow, IApp>();
   const keyboardCleanup = new Set<() => void>();
+  const keyboardMenuResets = new Set<() => void>();
   window.on('blur', () => {
+    keyboardMenuResets.forEach(reset => reset());
     if (!window.isDestroyed())
       window.webContents.send('browser-shortcut', 'tab-switcher-cancel');
   });
@@ -190,6 +199,11 @@ export function registerElectronBrowser(
   ) => {
     if (!privateMode && contents !== window.webContents)
       registerPasswordPage(contents, dataScope);
+    const stopCapture = captureTabShortcuts(contents);
+    const resetMenuShortcuts = () => {
+      if (!contents.isDestroyed()) contents.setIgnoreMenuShortcuts(false);
+    };
+    keyboardMenuResets.add(resetMenuShortcuts);
     const listener = (event: Event, input: Input) => {
       const target = [...views].find(
         ([, view]) => view.webContents === contents
@@ -203,6 +217,7 @@ export function registerElectronBrowser(
           input.code === 'ControlLeft' ||
           input.code === 'ControlRight')
       ) {
+        resetMenuShortcuts();
         host.webContents.send('browser-shortcut', 'tab-switcher-commit');
         return;
       }
@@ -226,7 +241,9 @@ export function registerElectronBrowser(
         !input.meta &&
         !input.alt
       ) {
-        event.preventDefault();
+        // Keep modifier releases flowing; the isolated DOM listener consumes
+        // page navigation and menu suppression prevents a duplicate accelerator.
+        contents.setIgnoreMenuShortcuts(true);
         host.webContents.send(
           'browser-shortcut',
           action === 'next-tab' ? 'tab-switcher-next' : 'tab-switcher-previous'
@@ -278,6 +295,9 @@ export function registerElectronBrowser(
     };
     contents.on('before-input-event', listener);
     const cleanup = () => {
+      stopCapture();
+      resetMenuShortcuts();
+      keyboardMenuResets.delete(resetMenuShortcuts);
       contents.removeListener('before-input-event', listener);
       keyboardCleanup.delete(cleanup);
     };
@@ -309,6 +329,7 @@ export function registerElectronBrowser(
   const sidebarMediaSessions = new Map<string, ReturnType<typeof createSidebarMediaSession>>();
   const icons = new Map<string, string>();
   const themeColors = new WeakMap<WebContents, string>();
+  const primaryColorCache = createWebsitePrimaryColorCache();
   const faviconResolver = new FaviconResolver();
   const publish = (id: string, view: WebContentsView, error?: string) => {
     const contents = view.webContents;
@@ -704,7 +725,8 @@ export function registerElectronBrowser(
         applyBrowserPreferences(contents, loginProfileKey(item));
         bindDownloadSource(
           contents,
-          JSON.stringify([loginProfileKey(item), item.id])
+          JSON.stringify([loginProfileKey(item), item.id]),
+          loginProfileKey(item)
         );
         trackDownloads(contents.session);
         const profileId = loginProfileKey(item);
@@ -930,7 +952,8 @@ export function registerElectronBrowser(
                 );
               bindDownloadSource(
                 childContents,
-                JSON.stringify([loginProfileKey(item), id])
+                JSON.stringify([loginProfileKey(item), id]),
+                loginProfileKey(item)
               );
               trackDownloads(childContents.session);
               let timer: ReturnType<typeof setTimeout>;
@@ -1076,6 +1099,9 @@ export function registerElectronBrowser(
           );
         });
         const permissionProfile = profileId;
+        configureScreenSharing(contents.session, permissionProfile, requester =>
+          BrowserWindow.getAllWindows().find(host => !host.isDestroyed() && host.contentView.children.some(child => 'webContents' in child && child.webContents === requester))
+        );
         contents.session.setPermissionCheckHandler(
           websitePermissionCheckHandler(permissionProfile)
         );
@@ -1119,18 +1145,58 @@ export function registerElectronBrowser(
           mediaSession.refresh();
           publish(item.id, browserView);
         });
-        contents.on('did-change-theme-color', (_, color) => {
-          if (color && /^#[0-9a-f]{6}$/i.test(color))
-            themeColors.set(contents, color);
+        let themeRevision = 0;
+        let themeTarget = contents.getURL();
+        const themeContext = () => JSON.stringify([permissionProfile, nativeTheme?.shouldUseDarkColors ? 'dark' : 'light']);
+        const useCachedTheme = (url: string) => {
+          const cached = primaryColorCache.get(url, themeContext());
+          if (cached) themeColors.set(contents, cached);
           else themeColors.delete(contents);
+        };
+        const applyWebsiteTheme = (color: unknown, url: string) => {
+          if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) {
+            primaryColorCache.set(url, color, themeContext());
+            themeColors.set(contents, color);
+          } else useCachedTheme(url);
+        };
+        const refreshWebsiteTheme = () => {
+          const revision = ++themeRevision;
+          const expected = contents.getURL();
+          const expectedContext = themeContext();
+          if (!/^https?:/.test(expected) || expected !== themeTarget || contents.isDestroyed()) return;
+          void contents.mainFrame.executeJavaScript(`(${extractWebsitePrimaryColor.toString()})()`).then((color) => {
+            if (contents.isDestroyed() || revision !== themeRevision || contents.getURL() !== expected || themeContext() !== expectedContext) return;
+            applyWebsiteTheme(color, expected);
+            publish(item.id, browserView);
+          }).catch(() => {});
+        };
+        contents.on('did-change-theme-color', (_, color) => {
+          if (contents.getURL() === themeTarget) applyWebsiteTheme(color, themeTarget);
+          else useCachedTheme(themeTarget);
           publish(item.id, browserView);
+          if (!color && !contents.isLoadingMainFrame()) refreshWebsiteTheme();
         });
-        contents.on('did-start-navigation', (_, _url, inPlace, mainFrame) => {
+        contents.on('did-finish-load', refreshWebsiteTheme);
+        contents.on('did-navigate', (_, url) => { themeTarget = url; });
+        contents.on('did-navigate-in-page', (_, url, mainFrame) => {
+          if (mainFrame) { themeTarget = url; refreshWebsiteTheme(); }
+        });
+        contents.on('did-redirect-navigation', (_, url, inPlace, mainFrame) => {
           if (mainFrame && !inPlace) {
+            themeRevision += 1;
+            themeTarget = url;
+            useCachedTheme(url);
+            publish(item.id, browserView);
+          }
+        });
+        contents.on('did-start-navigation', (_, url, inPlace, mainFrame) => {
+          if (mainFrame && !inPlace) {
+            themeRevision += 1;
+            themeTarget = url;
             mediaSession.reset();
             playingMedia.delete(item.id);
             faviconResolver.cancel(item.id);
-            themeColors.delete(contents);
+            useCachedTheme(url);
             failures.delete(item.id);
             publish(item.id, browserView);
           }
@@ -1140,6 +1206,7 @@ export function registerElectronBrowser(
         contents.on('dom-ready', () => {
           if (!failures.has(item.id)) loaded.add(item.id);
           publish(item.id, browserView);
+          refreshWebsiteTheme();
         });
         contents.on('did-finish-load', () => {
           if (!failures.has(item.id)) {
@@ -1348,7 +1415,8 @@ export function registerElectronBrowser(
     id: string,
     view: WebContentsView,
     scroll: { x: number; y: number },
-    manual = false
+    manual = false,
+    force = false
   ) => {
     const contents = view.webContents;
     const item = configurations.get(id);
@@ -1409,7 +1477,10 @@ export function registerElectronBrowser(
       removeView(view);
       const ownedPopups = popups.get(id);
       ownedPopups?.forEach((popup) => {
-        if (!popup.isDestroyed()) popup.close();
+        if (!popup.isDestroyed()) {
+          if (force) popup.destroy();
+          else popup.close();
+        }
       });
       // A popup may cancel its close; keep tracking it so removal cannot clear
       // a session while one of the group's windows is still using it.
@@ -1447,8 +1518,59 @@ export function registerElectronBrowser(
     };
     contents.once('will-prevent-unload', prevented);
     contents.once('destroyed', unloaded);
-    contents.close({ waitForBeforeUnload: true });
+    contents.close({ waitForBeforeUnload: !force });
   };
+  const disposeTasks = registerTaskSource({
+    owns: (owner) => owner === window || Boolean(windows?.contains(owner)),
+    list: () => [...configurations].flatMap(([id, item]) => {
+      const contents = views.get(id)?.webContents;
+      const live = contents && !contents.isDestroyed();
+      const locked = isGroupLocked(item);
+      let site = '';
+      if (!locked) {
+        try { site = new URL(lastStates.get(id)?.url || item.url).hostname; } catch { /* Local page. */ }
+      }
+      const task: Omit<BrowserTask, 'cpu' | 'memory' | 'shared' | 'canForceEnd' | 'processStarted'> = { id, title: locked ? 'Locked tab' : lastStates.get(id)?.title || item.name || 'Untitled tab',
+        site, kind: 'tab' as const,
+        status: locked ? 'locked' as const : live ? contents.isCrashed() ? 'stopped' as const : 'running' as const : 'sleeping' as const,
+        contentsId: live ? contents.id : null, pid: live ? contents.getOSProcessId() : null,
+        canEnd: Boolean(live && !locked && !retiringTabs.has(contents.id) && !removals.blocks(item)),
+      };
+      const frames: typeof task[] = [];
+      if (live && !locked && !contents.isCrashed()) {
+        const seen = new Set([task.pid]);
+        for (const frame of contents.mainFrame.framesInSubtree) {
+          if (frame.detached || frame.osProcessId <= 0 || seen.has(frame.osProcessId)) continue;
+          seen.add(frame.osProcessId);
+          let frameSite = '';
+          try { frameSite = new URL(frame.url).hostname; } catch { /* Non-web frame. */ }
+          frames.push({ ...task, id: `frame:${id}:${frame.osProcessId}`, title: `Embedded content — ${task.title}`,
+            site: frameSite, pid: frame.osProcessId, kind: 'process', canEnd: false });
+        }
+      }
+      return [task, ...frames];
+    }),
+    close: (task) => {
+      const item = configurations.get(task.id);
+      if (!item || isGroupLocked(item) || removals.blocks(item)) return;
+      const host = hostFor(task.id);
+      if (!host.isDestroyed()) host.webContents.send('browser-tab-request', { action: 'close', id: task.id });
+    },
+    end: (task) => {
+      const view = views.get(task.id);
+      if (!view || view.webContents.isDestroyed() || view.webContents.id !== task.contentsId) return;
+      const host = hostFor(task.id);
+      unloadTab(task.id, view, { x: 0, y: 0 }, true, true);
+      if (!host.isDestroyed()) host.webContents.send('browser-tab-request', { action: 'task-ended', id: task.id });
+    },
+    activate: (task) => {
+      const host = hostFor(task.id);
+      if (host.isDestroyed()) return;
+      if (host.isMinimized()) host.restore();
+      host.show(); host.focus();
+      host.webContents.send('browser-tab-request', { action: 'select', id: task.id });
+    },
+  });
   const rootWindow = window;
   const command = (event: IpcMainEvent, incoming: BrowserCommand) => {
     if (
@@ -1941,7 +2063,7 @@ export function registerElectronBrowser(
         const secure = origin.startsWith('https:') && !certificateError;
         const permissions = new Map<string, string>(sitePermissions);
         Object.keys(settings.permissions).forEach((permission) => {
-          if (!permissions.has(permission))
+          if (permission !== 'media' && !permissions.has(permission))
             permissions.set(permission, permission.replace(/-/g, ' '));
         });
         Menu.buildFromTemplate([
@@ -1982,7 +2104,7 @@ export function registerElectronBrowser(
                   label: { ask: 'Ask', allow: 'Allow', block: 'Block' }[choice],
                   type: 'radio' as const,
                   checked:
-                    (settings.permissions[permission] || 'ask') === choice,
+                    (settings.permissions[permission] || (['camera', 'microphone'].includes(permission) ? settings.permissions.media : undefined) || 'ask') === choice,
                   click: () => {
                     const latest = getSiteSettings(profile, origin);
                     updateSiteSettings(profile, origin, {
@@ -2543,6 +2665,7 @@ export function registerElectronBrowser(
     releaseGroupLocks();
     aiNewTabs.dispose();
     releaseExtensionOwner(window);
+    disposeTasks();
     clearInterval(discardTimer);
     pictureInPicture.forEach((controller) => controller.dispose());
     pictureInPicture.clear();

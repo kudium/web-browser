@@ -13,6 +13,7 @@ import webpackPaths from './webpack.paths';
 import checkNodeEnv from '../scripts/check-node-env';
 import deleteSourceMaps from '../scripts/delete-source-maps';
 import { RendererCSPPlugin } from './rendererCSP';
+import { SubresourceIntegrityPlugin } from 'webpack-subresource-integrity';
 
 checkNodeEnv('production');
 deleteSourceMaps();
@@ -29,6 +30,7 @@ const configuration: webpack.Configuration = {
   output: {
     path: webpackPaths.distRendererPath,
     publicPath: './',
+    crossOriginLoading: 'anonymous',
     filename: 'renderer.js',
     library: {
       type: 'umd',
@@ -101,6 +103,8 @@ const configuration: webpack.Configuration = {
   },
 
   plugins: [
+    // Lazy editors need integrity metadata as well as the initial HTML scripts.
+    new SubresourceIntegrityPlugin({ hashFuncNames: ['sha256'] }),
     new RendererCSPPlugin(),
     /**
      * Create global constants which can be configured at compile time.

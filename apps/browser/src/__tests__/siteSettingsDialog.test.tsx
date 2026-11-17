@@ -25,7 +25,7 @@ it('shows saved choices and exposes mute, reset, and reload controls', () => {
     muted: true,
     siteSettings: {
       origin: 'https://example.com',
-      permissions: { geolocation: 'block' },
+      permissions: { geolocation: 'block', media: 'allow', camera: 'block' },
       blocked: false,
     },
   };
@@ -37,14 +37,23 @@ it('shows saved choices and exposes mute, reset, and reload controls', () => {
         state={state}
         command={command}
       />
-    </Theme>
+    </Theme>,
   );
   expect(screen.getByRole('dialog')).toHaveAccessibleName('example.com');
   expect(screen.getByRole('combobox', { name: 'Location' })).toHaveTextContent(
-    'Block'
+    'Block',
+  );
+  expect(screen.getByRole('combobox', { name: 'Camera' })).toHaveTextContent(
+    'Block',
   );
   expect(
-    screen.getByText('Connection uses HTTPS').closest('details')
+    screen.getByRole('combobox', { name: 'Microphone' }),
+  ).toHaveTextContent('Allow');
+  expect(
+    screen.getByRole('combobox', { name: 'Screen sharing' }),
+  ).toHaveTextContent('Ask');
+  expect(
+    screen.getByText('Connection uses HTTPS').closest('details'),
   ).not.toHaveAttribute('open');
   fireEvent.click(screen.getByRole('switch', { name: 'Mute this site' }));
   expect(command).toHaveBeenLastCalledWith({
@@ -90,13 +99,13 @@ it('exposes compact capture modes and PDF export independently of website permis
           },
         }}
       />
-    </Theme>
+    </Theme>,
   );
   fireEvent.keyDown(screen.getByRole('button', { name: 'Capture page' }), {
     key: 'ArrowDown',
   });
   fireEvent.click(
-    await screen.findByRole('menuitem', { name: 'Capture area' })
+    await screen.findByRole('menuitem', { name: 'Capture area' }),
   );
   expect(capture).toHaveBeenLastCalledWith('area');
   fireEvent.click(screen.getByRole('button', { name: 'Save PDF' }));
@@ -125,11 +134,11 @@ it('shows invalid HTTPS certificates as insecure', () => {
           },
         }}
       />
-    </Theme>
+    </Theme>,
   );
   expect(screen.getByText('Connection is not secure')).toBeInTheDocument();
   expect(screen.getByText(/identity could not be verified/)).toHaveTextContent(
-    'ERR_CERT_DATE_INVALID'
+    'ERR_CERT_DATE_INVALID',
   );
   expect(screen.queryByText('Connection uses HTTPS')).not.toBeInTheDocument();
 });

@@ -180,6 +180,10 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
       throw new HTTPException(400, { message: 'invalid_request' });
     return result.data;
   };
+  app.post('/api/hooks/publisher', async c => {
+    const data = await input(c, z.object({ username: z.string().max(100) }).strict());
+    return c.json(await store.updatePublisherUsername(c.get('user'), data.username));
+  });
   app.post('/api/hooks/publish', async (c) => {
     const data = await input(
       c,

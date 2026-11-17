@@ -136,6 +136,7 @@ it('uses the settings form for dropped projects, prefilling the path and saving 
     token: 'drop',
     name: 'Website',
     slug: 'website',
+    spaceId: 'default',
   });
   expect(save).toHaveBeenCalledWith(
     expect.arrayContaining([

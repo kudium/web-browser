@@ -1110,3 +1110,20 @@ tutorials.push({
     ],
   ],
 });
+
+
+tutorials.push({
+  slug: "space-search", title: "Find tabs in your space", category: "Everyday browsing",
+  summary: "Filter tabs and groups without losing your workspace layout.", path: "Space sidebar → Search <space name>", image: "space-search", imageAlt: "Space search showing matching Figma tabs with favorites still visible.",
+  steps: [["Start from the space title", "Click Search followed by your space name. Type a title, website address, group, or collection name."], ["Choose a matching tab", "Search shows matching tabs in their group context. Favorites stay visible, so you can still open your everyday sites."], ["Return to the full space", "Clear the query or press Escape. The header keeps its height, so the list does not jump while you search."]],
+});
+tutorials.push({
+  slug: "notes", title: "Write notes beside your tabs", category: "Everyday browsing",
+  summary: "Keep project checklists and research in the browser.", path: "Notes → New note", image: "notes-workspace", imageAlt: "A fictional Atlas Studio launch checklist in the real visual note editor.",
+  steps: [["Create a project note", "Open Notes and create a note in the group where you need it. Give it a meaningful title and start writing."], ["Choose your view", "Use the view control to switch between the visual editor and Markdown. Long titles wrap so you can read the full name."], ["Manage settings when needed", "Open the options menu to change location, AI access, or locking. Ordinary notes and protected notes follow their respective access settings."]],
+});
+tutorials.push({
+  slug: "task-manager", title: "Find and manage resource-heavy tabs", category: "Everyday browsing",
+  summary: "Inspect CPU and memory usage before stopping a page.", path: "View → Task Manager, or Shift + Escape", image: "task-manager", imageAlt: "Kudium Task Manager showing live page resource metrics and filter controls.",
+  steps: [["Inspect live activities", "Open Task Manager and sort by CPU or memory. Filter to activities that can be ended, or show all activities."], ["Choose the right action", "Select a page and stop it, switch to it, or close its tab. The row context menu provides the same actions."], ["Review force-end effects", "An eligible shared process may contain more than one page. Review the confirmation before force-ending it. Protected browser interfaces stay protected."]],
+});

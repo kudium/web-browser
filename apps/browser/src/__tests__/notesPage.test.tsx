@@ -248,6 +248,12 @@ const openPlan = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
   return screen.findByRole('textbox', { name: 'Note content' });
 };
+const changeView = async (view: 'Visual' | 'Markdown') => {
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Change note view' }), {
+    key: 'ArrowDown',
+  });
+  fireEvent.click(await screen.findByRole('menuitemradio', { name: view }));
+};
 const twoNotes = () =>
   request.mockImplementation(async (input) => {
     if (input.action === 'notes')
@@ -259,10 +265,7 @@ const twoNotes = () =>
 test('edits and autosaves Markdown source then returns to visual editing', async () => {
   renderNotes();
   await openPlan();
-  fireEvent.click(screen.getByRole('button', { name: 'Note options' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Edit as Markdown' })
-  );
+  await changeView('Markdown');
   const source = screen.getByRole('textbox', { name: 'Note Markdown source' });
   expect(source).toHaveValue('Hello');
   fireEvent.change(source, { target: { value: '# Heading\n\n**Bold**' } });
@@ -274,10 +277,7 @@ test('edits and autosaves Markdown source then returns to visual editing', async
       })
     )
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Note options' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Use visual editor' })
-  );
+  await changeView('Visual');
   const visual = await screen.findByRole('textbox', { name: 'Note content' });
   expect(visual.querySelector('h1')).toHaveTextContent('Heading');
   expect(visual.querySelector('strong')).toHaveTextContent('Bold');
@@ -472,10 +472,7 @@ test('moves between title and visual body without edits or intercepting composit
 test('moves between title and Markdown source while preserving source Enter', async () => {
   renderNotes();
   await openPlan();
-  fireEvent.click(screen.getByRole('button', { name: 'Note options' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Edit as Markdown' })
-  );
+  await changeView('Markdown');
   const title = screen.getByRole('textbox', { name: 'Note title' });
   const source = screen.getByRole('textbox', {
     name: 'Note Markdown source',

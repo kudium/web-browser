@@ -34,8 +34,21 @@ describe("browser tutorials", () => {
       "/assets/product/demo/manifest.json",
       "/assets/product/demo/workspace-light.png",
       "/assets/product/demo/unknown.webp",
+      "/assets/product/demo/unknown.mp4",
     ]) {
       expect((await app.request(path)).status).toBe(404);
     }
+  });
+
+  test("the homepage serves refreshed screenshots and only its public recording", async () => {
+    const homepage = await (await app.request("/")).text();
+    for (const name of ["favorites-workspace", "folder-group", "space-search", "notes-workspace", "task-manager"]) {
+      expect(homepage).toContain(`/assets/product/demo/${name}.webp?v=12`);
+      expect((await app.request(`/assets/product/demo/${name}.webp`)).status).toBe(200);
+    }
+    const video = await app.request("/assets/product/demo/space-search.mp4");
+    expect(video.status).toBe(200);
+    expect(video.headers.get("content-type")).toBe("video/mp4");
+    expect((await video.arrayBuffer()).byteLength).toBeGreaterThan(1000);
   });
 });

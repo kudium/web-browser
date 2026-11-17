@@ -21,6 +21,8 @@
     "package:web": "npm --prefix apps/browser run package:web --",
     "test": "npm run test:browser --",
     "test:browser": "npm --prefix apps/browser run test --",
+    "test:browser:compatibility": "npm --prefix apps/browser run test:compatibility --",
+    "test:browser:notes-editor": "npm --prefix apps/browser run test:notes-editor --",
     "test:web": "bun run --cwd apps/web test",
     "check:web": "bun run --cwd apps/web check",
     "db:generate": "bun run --cwd apps/web db:generate",

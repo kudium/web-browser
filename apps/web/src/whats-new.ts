@@ -1,5 +1,21 @@
 export const whatsNew = [
   {
+    version: '1.0.17', date: '2026-11-16', title: 'A cleaner workspace, dependable project tools, and resource controls',
+    highlights: [
+      ['Refined spaces and favorites', 'Compact favorites with subtle depth, website-colored active borders, clearer group containment, and a space search that preserves favorites and filters matching tabs.'],
+      ['Reliable folder drops', 'Drop a folder into Developer to link the current group and open its terminal. Sidebar drops reuse the Create group editor and save the name, pages, selected space, and project folder.'],
+      ['Task Manager', 'Inspect live CPU and memory, filter and sort activities, and use row actions to stop pages, close tabs, or force-end eligible processes.'],
+      ['Notes that stay readable', 'Wrapped titles, a separate visual/Markdown view control, quieter settings, production editor loading fixes, and local recovery for failed panels.'],
+      ['Better everyday browsing', 'Fast recent-tab switching, latest-chat scrolling, compact space controls, improved website color detection and caching, and browser identity based on the actual runtime.'],
+      ['More useful autofill', 'Whole-form filling includes saved email fields, empty autofill actions stay hidden, and browsing saved data can fall back from a website to group and shared records.'],
+    ],
+    screenshots: [
+      { asset: 'space-search', alt: 'Find matching tabs in a real website workspace.', caption: 'Real public websites, filtered by space search.' },
+      { asset: 'notes-workspace', alt: 'Atlas Studio launch note in the updated editor.', caption: 'A fictional Atlas Studio checklist in the real visual editor.' },
+      { asset: 'task-manager', alt: 'Live resource metrics in Task Manager.', caption: 'Actual browser processes and page resource measurements.' },
+    ],
+  },
+  {
     version: '1.0.15',
     date: '2026-11-15',
     title: 'Quieter sync and smarter media controls',

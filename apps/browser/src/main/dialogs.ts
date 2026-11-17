@@ -426,7 +426,7 @@ export async function showBrowserDialog(
 }> {
   options.signal?.throwIfAborted();
   const cancel = options.cancelId ?? 0;
-  if (options.siteOrigin && !options.moreInformation) {
+  if (options.siteOrigin && !options.moreInformation && !options.inputs) {
     let site = options.siteOrigin;
     try {
       const url = new URL(site);
@@ -685,6 +685,9 @@ export function websitePermissionDialog(
       'Allow camera or microphone access?',
       'wants to use your camera or microphone.',
     ],
+    camera: ['Allow camera access?', 'wants to use your camera.'],
+    microphone: ['Allow microphone access?', 'wants to use your microphone.'],
+    'display-capture': ['Allow screen sharing?', 'wants to share a window or screen you choose.'],
     clipboardRead: ['Allow clipboard access?', 'wants to read your clipboard.'],
     fullscreen: ['Enter full screen?', 'wants to enter full screen.'],
   };

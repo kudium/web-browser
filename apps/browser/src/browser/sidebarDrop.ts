@@ -15,6 +15,7 @@ export interface DroppedGroupDraft {
   token: string;
   name: string;
   slug: string;
+  spaceId?: string;
 }
 export interface CreatedDroppedGroup {
   tab: IApp;

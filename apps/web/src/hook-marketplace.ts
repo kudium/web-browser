@@ -114,6 +114,19 @@ export function marketplaceStore(db: Database) {
       if (!user) throw new HTTPException(404, { message: 'publisher_not_found' });
       return user;
     },
+    async updatePublisherUsername(userId: string, input: string) {
+      const username = publisherUsername(input);
+      try {
+        const [user] = await db.update(authUser).set({ username, updatedAt: new Date() })
+          .where(eq(authUser.id, userId)).returning({ username: authUser.username });
+        if (!user) throw new HTTPException(404, { message: 'publisher_not_found' });
+        return user;
+      } catch (error: any) {
+        if ((error?.constraint_name || error?.cause?.constraint_name) === 'auth_users_username_unique')
+          throw new HTTPException(409, { message: 'That username is already taken. Choose another.' });
+        throw error;
+      }
+    },
     async list(
       query: HookQuery,
       cursor?: string,

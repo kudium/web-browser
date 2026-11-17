@@ -53,7 +53,7 @@ export function fillDocument(
             input.autocomplete === 'email' ||
             input.type === 'email')
       );
-      if (usernames.length === 1)
+      if (usernames.length === 1 && item.username)
         assignments.push([usernames[0], item.username, false]);
       else {
         const candidates = visible.filter(
@@ -62,7 +62,7 @@ export function fillDocument(
             input.type === 'text' &&
             /user|login|email/i.test(input.name + input.id)
         );
-        if (candidates.length === 1)
+        if (candidates.length === 1 && item.username)
           assignments.push([candidates[0], item.username, false]);
       }
       if (item.password) assignments.push([password, item.password, true]);

@@ -1,4 +1,8 @@
 import { injectBrowserAction } from 'electron-chrome-extensions/browser-action';
+import type {
+  TaskManagerRequest,
+  TaskManagerState,
+} from '../browser/taskManager';
 import {
   contextBridge,
   ipcRenderer,
@@ -102,9 +106,7 @@ import type {
 } from '../types';
 
 export type Channels =
-  | 'ipc-close-window'
-  | 'ipc-create-window'
-  | 'ipc-event-bus';
+  'ipc-close-window' | 'ipc-create-window' | 'ipc-event-bus';
 
 const assertLegacyChannel = (channel: Channels) => {
   if (
@@ -552,6 +554,20 @@ const electronHandler = {
         return Promise.reject(new Error('Drop a local file or folder.'));
       return ipcRenderer.invoke('sidebar-drop', filePath, spaceId);
     },
+    linkDroppedProject(
+      id: string,
+      file: File
+    ): Promise<DeveloperProject | null> {
+      const folderPath = webUtils.getPathForFile(file);
+      if (!folderPath)
+        return Promise.reject(new Error('Drop a local project folder.'));
+      return trackedInvoke(
+        'project_linked',
+        'project-folder-drop',
+        id,
+        folderPath
+      );
+    },
     createDroppedGroup(
       draft: import('../browser/sidebarDrop').DroppedGroupDraft
     ): Promise<import('../browser/sidebarDrop').CreatedDroppedGroup> {
@@ -666,6 +682,9 @@ const electronHandler = {
     },
   },
   browser: {
+    taskManager(request: TaskManagerRequest): Promise<TaskManagerState> {
+      return ipcRenderer.invoke('browser-task-manager', request);
+    },
     storageStatus(): Promise<{ available: boolean; needsRecovery: boolean }> {
       return ipcRenderer.invoke('browser-storage-ready');
     },
@@ -802,7 +821,7 @@ const electronHandler = {
           | 'passwords'
           | 'spaces'
           | 'hooks'
-        | 'updates';
+          | 'updates';
       }
     ): Promise<BrowserPreferences> {
       return ipcRenderer.invoke('browser-preferences', action, patch);

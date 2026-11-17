@@ -60,7 +60,7 @@ export const releases = pgTable('app_releases', {
 // Better Auth's schema keys are mapped explicitly; these names do not overlap sync_accounts.
 export const authUser = pgTable('auth_users', {
   id: text('id').primaryKey(), name: text('name').notNull(), email: text('email').notNull().unique(),
-  username: text('username').notNull().default(sql`'publisher-' || replace(gen_random_uuid()::text, '-', '')`).unique(),
+  username: text('username').notNull().default(sql`'publisher_' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)`).unique(),
   emailVerified: boolean('email_verified').notNull().default(false), image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

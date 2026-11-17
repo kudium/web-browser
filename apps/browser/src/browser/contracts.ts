@@ -26,6 +26,7 @@ import type {
   PreferenceInfo,
 } from './preferences';
 import type { IApp } from '../types';
+import type { TaskManagerRequest, TaskManagerState } from './taskManager';
 
 export interface BrowserTabRequest {
   action:
@@ -36,6 +37,7 @@ export interface BrowserTabRequest {
     | 'remove'
     | 'unload-group'
     | 'store'
+    | 'task-ended'
     | 'open-external';
   url?: string;
   background?: boolean;
@@ -183,6 +185,7 @@ export interface BrowserSnapshot {
 export type { BrowserPreferences } from './preferences';
 
 export interface BrowserClient {
+  taskManager(request: TaskManagerRequest): Promise<TaskManagerState>;
   removeGroup(
     id: string,
     allowArchive?: boolean

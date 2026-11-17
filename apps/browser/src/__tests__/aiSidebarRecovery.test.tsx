@@ -897,6 +897,7 @@ it('sends follow-ups to the queue while running and leaves Stop available', asyn
   );
   await screen.findByRole('button', { name: 'Queue message' });
   const input = screen.getByRole('textbox', { name: 'Task for AI' });
+  expect(screen.getByRole('button', { name: 'Stop AI task' }).querySelector('svg.lucide-x')).not.toBeNull();
   expect(input).toBeEnabled();
   fireEvent.change(input, { target: { value: 'Then check the links' } });
   fireEvent.keyDown(input, { key: 'Enter' });

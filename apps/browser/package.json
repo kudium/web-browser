@@ -49,7 +49,13 @@
     "package:web": "ts-node .erb/scripts/clean.js && npm run build && electron-builder build --config .erb/configs/electron-builder.web.cjs --publish never",
     "test": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts test",
     "test:packaged-security": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts packaged-security",
+    "test:compatibility": "node .erb/scripts/run-browser-compatibility.cjs",
+    "test:notes-editor": "node .erb/scripts/run-notes-editor.cjs",
+    "test:tab-switcher": "node .erb/scripts/run-tab-switcher.cjs",
+    "test:chat-scroll": "node .erb/scripts/run-browser-ui-smoke.cjs --ai-chat-scroll-only",
+    "test:space-footer": "node .erb/scripts/run-browser-ui-smoke.cjs --space-footer-only",
     "test:real-sites": "electron .erb/scripts/browser-ui-smoke.cjs --real-sites-only",
+    "test:task-manager": "electron .erb/scripts/browser-ui-smoke.cjs --task-manager-only",
     "test:kuditrust": "electron .erb/scripts/browser-ui-smoke.cjs --kuditrust-only",
     "lint": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/checks.ts lint",
     "postinstall": "node .erb/scripts/patch-native-messaging.cjs",
@@ -256,7 +262,8 @@
     "webpack-bundle-analyzer": "^5.4.2",
     "webpack-cli": "^7.3.1",
     "webpack-dev-server": "^6.1.0",
-    "webpack-merge": "^6.0.1"
+    "webpack-merge": "^6.0.1",
+    "webpack-subresource-integrity": "^5.1.0"
   },
   "build": {
     "productName": "Kudium Browser",
@@ -291,6 +298,10 @@
       },
       "type": "distribution",
       "hardenedRuntime": true,
+      "extendInfo": {
+        "NSCameraUsageDescription": "Kudium lets websites use your camera only after you allow access.",
+        "NSMicrophoneUsageDescription": "Kudium lets websites use your microphone only after you allow access."
+      },
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "gatekeeperAssess": false,
@@ -340,7 +351,7 @@
       "owner": "samtax01",
       "repo": "KudiumBrowser"
     },
-    "copyright": "Copyright \u00a9 2026 Kudium",
+    "copyright": "Copyright © 2026 Kudium",
     "protocols": [
       {
         "name": "Web pages",

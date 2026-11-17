@@ -4,7 +4,6 @@ import {
   Sparkles,
   Settings2,
   Code2,
-  Square,
   ArrowUp,
   Hand,
   Play,
@@ -29,6 +28,7 @@ import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { AIStarterActions } from './AIStarterActions';
 import { AIWorkingTabsBadge, AIWorkingTab } from './AIWorkingTabsBadge';
 import { useAIPagePreference } from '../../utils/useAIPagePreference';
+import { useChatAutoScroll } from '../../utils/hooks/useChatAutoScroll';
 import { NotesPage } from './NotesPage';
 import { RenderErrorBoundary } from './RenderErrorBoundary';
 import { ActivityPage } from './ActivityPage';
@@ -87,6 +87,7 @@ export function AISidebar({
   activeTabId,
   contextRequest,
   developerRequest = 0,
+  terminalOpenRequest = 0,
   menuPaneRequest,
   promptRequest,
   focusedTabId,
@@ -94,12 +95,15 @@ export function AISidebar({
   onTabContextMenu,
   onGroupContextMenu,
   onManageGroup,
+  visible = true,
 }: {
+  visible?: boolean;
   promptRequest?: { text: string; token: number; append?: boolean };
   workingTabs?: AIWorkingTab[];
   activeTabId?: string;
   focusedTabId?: string;
   developerRequest?: number;
+  terminalOpenRequest?: number;
   menuPaneRequest?: {
     pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
     token: number;
@@ -618,6 +622,13 @@ export function AISidebar({
       .then(setPermissions)
       .catch(showError);
   const log = useRef<HTMLDivElement>(null);
+  useChatAutoScroll(
+    log,
+    followLog,
+    visible && pane === 'assistant',
+    chatState?.selectedId,
+    changingChat
+  );
   useEffect(() => {
     connect();
     window.electron.ai
@@ -1386,6 +1397,7 @@ export function AISidebar({
       </AssistantPanelHost>
       <AssistantPanelHost panel="developer" active={pane === 'developer'}>
         <DeveloperSidebar
+          openTerminalRequest={terminalOpenRequest}
           onManageGroup={onManageGroup}
           active
           focusedTabId={focusedTabId}
@@ -2314,7 +2326,7 @@ export function AISidebar({
                       .catch((reason) => setError(reason.message))
                   }
                 >
-                  <Square size={14} />
+                  <X size={14} />
                 </button>
               ) : null}
               <button

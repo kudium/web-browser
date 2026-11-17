@@ -1,7 +1,7 @@
 /* eslint jsx-a11y/label-has-associated-control: ["error", { "controlComponents": ["TextField.Root", "TextArea"] }] */
 import { Dialog, Button, TextArea, TextField } from '@radix-ui/themes';
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Play, Pause, Trash2, Square } from 'lucide-react';
+import { Plus, Play, Pause, Trash2, X } from 'lucide-react';
 import { SettingsLibrary } from './SettingsLibrary';
 import { StorageRecoveryAction } from './StorageRecoveryAction';
 import { NativeContextMenu as ContextMenu } from './NativeContextMenu';
@@ -369,7 +369,7 @@ export function AITasksPanel({
                         type="button"
                         onClick={() => window.electron.ai.stop().catch(report)}
                       >
-                        <Square size={13} />
+                        <X size={13} />
                         Stop
                       </Button>
                     )}

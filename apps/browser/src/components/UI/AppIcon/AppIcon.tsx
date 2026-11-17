@@ -33,7 +33,13 @@ export function AppIcon({ icon, title }: Props) {
       {icon && loadedIcon === icon ? (
         <img src={loadedIcon} alt={title || ''} />
       ) : (
-        <Globe2 aria-hidden="true" size={22} />
+        <span className="app-icon-fallback-mark" aria-hidden="true">
+          <Globe2
+            size={22}
+            strokeWidth={1.8}
+            style={{ width: '70%', height: '70%', color: 'inherit', borderRadius: 0 }}
+          />
+        </span>
       )}
     </span>
   );

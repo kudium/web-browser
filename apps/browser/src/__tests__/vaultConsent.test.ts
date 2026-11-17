@@ -196,3 +196,54 @@ it('updates a legacy saved login without creating another record or silently rep
   expect(vault.edit(record.id).password).toBe('new');
   expect(vault.matching(url)).toHaveLength(1);
 });
+
+it('updates a password-only save for a single imported login after confirmation', () => {
+  const url = 'https://fixture.example';
+  vault.save({ ...record, kind: 'login', origin: url, username: 'sam', password: 'old', fields: [] });
+  const incoming = [{ name: 'Password', value: 'replacement', secret: true }];
+  expect(saveWebsiteFields(vault, url, undefined, incoming)).toEqual({ needsUpdate: true, saved: false });
+  expect(vault.edit(record.id).password).toBe('old');
+  saveWebsiteFields(vault, url, undefined, incoming, true);
+  expect(vault.edit(record.id).password).toBe('replacement');
+  expect(vault.matching(url)).toHaveLength(1);
+});
+
+it('updates a custom password alias rather than adding a second password field', () => {
+  const url = 'https://fixture.example';
+  vault.save({ ...record, kind: 'knowledge', origin: url, fields: [
+    { name: 'Account secret', aliases: ['current-password'], value: 'old', secret: true },
+  ] });
+  const incoming = [{ name: 'Password', value: 'replacement', secret: true }];
+  expect(saveWebsiteFields(vault, url, undefined, incoming)).toEqual({ needsUpdate: true, saved: false });
+  saveWebsiteFields(vault, url, undefined, incoming, true);
+  expect(vault.forFill(record.id, url).fields).toHaveLength(1);
+  expect(vault.forFill(record.id, url).fields[0].value).toBe('replacement');
+});
+
+it('rejects ambiguous password-only saves without changing either account', () => {
+  const url = 'https://fixture.example';
+  for (const username of ['first', 'second']) saveWebsiteFields(vault, url, undefined, [
+    { name: 'Username', value: username, secret: false },
+    { name: 'Password', value: `${username}-secret`, secret: true },
+  ]);
+  expect(() => saveWebsiteFields(vault, url, undefined, [{ name: 'Password', value: 'replacement', secret: true }], true)).toThrow('Choose an account');
+  expect(hasSavedWebsiteLogin(vault, url, undefined, 'first', 'first-secret')).toBe(true);
+  expect(hasSavedWebsiteLogin(vault, url, undefined, 'second', 'second-secret')).toBe(true);
+});
+
+it('bounds website labels and account titles without truncating saved values', () => {
+  const url = 'https://fixture.example';
+  const username = 'u'.repeat(200);
+  saveWebsiteFields(vault, url, undefined, [{ name: 'Username', value: 'first', secret: false }]);
+  saveWebsiteFields(vault, url, undefined, [
+    { name: 'Username', value: username, secret: false },
+    { name: 'p'.repeat(200), aliases: ['a'.repeat(200)], value: 'secret'.repeat(600), secret: true },
+  ]);
+  const saved = vault.matching(url).map((item) => vault.forFill(item.id, url)).find((item) => item.fields.some((field) => field.value === username))!;
+  expect(saved.title).toHaveLength(120);
+  expect(saved.fields[1].name).toHaveLength(120);
+  expect(saved.fields[1].aliases?.[0]).toHaveLength(120);
+  expect(saved.fields[1].value).toBe('secret'.repeat(600));
+  expect(() => saveWebsiteFields(vault, url, undefined, [{ name: 'Password', value: 'x'.repeat(4097), secret: true }])).toThrow('too long');
+  expect(vault.matching(url)).toHaveLength(2);
+});
