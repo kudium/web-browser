@@ -14,6 +14,8 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { validActivitySound } from '../browser/activitySound';
+import { validateLinkRoutingRules } from '../browser/linkRouting';
+import { browserProtection } from './browserProtection';
 import { version as projectVersion } from '../../package.json';
 import { watchIPCRequest } from './ipcRequestBinding';
 import { validateAdvanced } from '../browser/advancedPreferences';
@@ -101,6 +103,14 @@ export function validatePreferences(
     throw new Error('Invalid preferences');
   const validated: Partial<BrowserPreferences> = {};
   Object.entries(patch).forEach(([key, value]) => {
+    if(key === 'usageDiagnosticsConsentVersion' && (value === 0 || value === 1)) {
+      validated.usageDiagnosticsConsentVersion=value;
+      return;
+    }
+    if (key === 'linkRoutingRules') {
+      validated.linkRoutingRules = validateLinkRoutingRules(value);
+      return;
+    }
     if (key === 'activityNotifications' && typeof value === 'boolean') {
       validated.activityNotifications = value;
       return;
@@ -216,6 +226,8 @@ export function getBrowserPreferences(): Readonly<BrowserPreferences> {
   let preferences: BrowserPreferences;
   try {
     const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+    // Earlier builds persisted an automatic-on default, not explicit consent.
+    if(saved.usageDiagnosticsConsentVersion !== 1) saved.shareUsageDiagnostics=false;
     if (saved.shortcuts)
       saved.shortcuts = restoreShortcuts(
         saved.shortcuts,
@@ -304,6 +316,8 @@ function persist(preferences: BrowserPreferences) {
 }
 export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
   const next = { ...getBrowserPreferences(), ...validatePreferences(patch) };
+  if(typeof patch.shareUsageDiagnostics === 'boolean')
+    next.usageDiagnosticsConsentVersion=patch.shareUsageDiagnostics ? 1 : 0;
   if (!next.searchEngines.some((engine) => engine.id === next.searchEngine))
     throw new Error('Choose a default search engine from the list.');
   return persist(next);
@@ -407,6 +421,8 @@ export function registerPreferences(
       const owner = ownerOf(event);
       const requestBinding = watchIPCRequest(event, isTrusted);
       try {
+        if (action === 'protection-status') return browserProtection().status();
+        if (action === 'update-protection') return browserProtection().update();
         if (
           action === 'shortcut-capture-start' ||
           action === 'shortcut-capture-end'

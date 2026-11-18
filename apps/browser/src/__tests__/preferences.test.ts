@@ -95,6 +95,10 @@ jest.mock('fs', () => {
     renameSync: jest.fn(),
   };
 });
+jest.mock('../main/browserProtection', () => ({
+  applyProtectionStyles: jest.fn(),
+  browserProtection: () => ({status:()=>({phase:'ready',available:true}),block:()=>false,count:()=>0,reset:()=>{}}),
+}));
 jest.mock('../main/dialogs', () => ({
   ...jest.requireActual('../main/dialogs'),
   showBrowserDialog: jest.fn(),
@@ -570,4 +574,14 @@ it('defaults tab overflow to scroll and preserves an explicit dropdown choice', 
   updateBrowserPreferences({ tabOverflowMode: 'dropdown' });
   expect(getBrowserPreferences().tabOverflowMode).toBe('dropdown');
   updateBrowserPreferences({ tabOverflowMode: 'scroll' });
+});
+
+it('turns off old automatic diagnostics defaults and persists new explicit consent', () => {
+  const location=jest.spyOn(app,'getPath').mockReturnValue('/diagnostics-consent');
+  const read=jest.spyOn(fs,'readFileSync').mockReturnValue(JSON.stringify({shareUsageDiagnostics:true}));
+  try {
+    expect(getBrowserPreferences().shareUsageDiagnostics).toBe(false);
+    expect(updateBrowserPreferences({shareUsageDiagnostics:true})).toMatchObject({shareUsageDiagnostics:true,usageDiagnosticsConsentVersion:1});
+    expect(updateBrowserPreferences({shareUsageDiagnostics:false})).toMatchObject({shareUsageDiagnostics:false,usageDiagnosticsConsentVersion:0});
+  } finally {read.mockRestore();location.mockRestore();}
 });

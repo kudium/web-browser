@@ -1,14 +1,14 @@
 {
   "runtime": {
-    "electron": "45.0.0",
-    "chromium": "156.0.8078.48",
+    "electron": "45.3.2",
+    "chromium": "156.0.8078.100",
     "platform": "darwin",
     "arch": "arm64"
   },
   "extension": {
     "id": "ddkjiahejlhfcafbddmgiahcphecmpfh",
     "name": "uBlock Origin Lite",
-    "version": "2026.1110.1816",
+    "version": "2026.1116.1650",
     "manifestName": "__MSG_extName__",
     "reviewedName": "uBlock Origin Lite"
   },
@@ -25,7 +25,7 @@
   ],
   "workerErrors": [],
   "installVia": "extensions-menu",
-  "removeVia": "extensions-menu-group-access",
+  "removeVia": "store-button",
   "contentBlocking": [
     {
       "profile": "a",
@@ -43,7 +43,7 @@
       "result": {
         "ok": true,
         "text": "controlled tracker fixture",
-        "url": "http://ad.doubleclick.net:50391/advertising.js?profile=b",
+        "url": "http://ad.doubleclick.net:53889/advertising.js?profile=b",
         "redirected": false
       },
       "failures": [],
@@ -54,7 +54,7 @@
       "result": {
         "ok": true,
         "text": "controlled tracker fixture",
-        "url": "http://ad.doubleclick.net:50391/advertising.js?profile=private",
+        "url": "http://ad.doubleclick.net:53889/advertising.js?profile=private",
         "redirected": false
       },
       "failures": [],

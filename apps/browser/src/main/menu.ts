@@ -147,6 +147,7 @@ export default class MenuBuilder {
         },
         separator,
         this.action('Print…', 'print'),
+        this.action('Copy Clean Link', 'copy-clean-link'),
         ...(!mac
           ? [
               separator,

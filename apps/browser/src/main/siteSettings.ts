@@ -29,6 +29,7 @@ export type PermissionChoice = 'ask' | 'allow' | 'block';
 export interface SiteSettings {
   permissions: Record<string, PermissionChoice>;
   muted: boolean;
+  adBlocking?: boolean;
   developer?: SiteDeveloperConfig;
   hookRevisions?: HookRevision[];
 }
@@ -95,6 +96,7 @@ function normalize(value: unknown): SiteSettings {
   return {
     permissions,
     muted: site.muted === true,
+    adBlocking: site.adBlocking !== false,
     hookRevisions: Array.isArray(site.hookRevisions)
       ? retainHookRevisions(
           site.hookRevisions

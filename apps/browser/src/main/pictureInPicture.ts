@@ -2,23 +2,23 @@ import { randomUUID } from 'crypto';
 import type { ContextMenuParams, WebContents, WebFrameMain } from 'electron';
 import type { PictureInPictureState } from '../browser/contracts';
 
-type VideoState = { available: boolean; active: boolean; area: number };
+type VideoState = { available: boolean; active: boolean; area: number; autoArea?: number };
 
 /** Runs in the website, with no Node access or privileged browser bridge. */
 export async function pictureInPicturePage(
-  action: 'inspect' | 'toggle' | 'context',
+  action: 'inspect' | 'toggle' | 'context' | 'auto-enter' | 'auto-exit',
   key: string,
   source = ''
 ): Promise<VideoState> {
   const root = window as unknown as Record<
     string,
-    { key: string; clicked: HTMLVideoElement | null }
+    { key: string; clicked: HTMLVideoElement | null; automatic: HTMLVideoElement | null }
   >;
   const captureKey = '__kudium_browser_picture_in_picture';
   // Remember the exact right-clicked video, including videos in open shadow DOM.
   if (!root[captureKey]) {
     if (action !== 'inspect') throw new Error('Video document changed');
-    const memory = { key, clicked: null as HTMLVideoElement | null };
+    const memory = { key, clicked: null as HTMLVideoElement | null, automatic: null as HTMLVideoElement | null };
     Object.defineProperty(root, captureKey, { value: memory });
     document.addEventListener(
       'contextmenu',
@@ -60,6 +60,13 @@ export async function pictureInPicturePage(
     video.videoWidth > 0 &&
     typeof video.requestPictureInPicture === 'function';
   const active = document.pictureInPictureElement as HTMLVideoElement | null;
+  const automaticVideos = videos.filter(entry => supported(entry) && !entry.paused && !entry.ended &&
+    !entry.muted && entry.volume > 0 && !entry.loop && area(entry) >= 14400);
+  if (action === 'auto-exit') {
+    if (active && root[captureKey].automatic === active) await document.exitPictureInPicture();
+    root[captureKey].automatic = null;
+    return {available: false, active: Boolean(document.pictureInPictureElement), area: 0};
+  }
   const { clicked } = root[captureKey];
   let video: HTMLVideoElement | null | undefined;
   if (action === 'context') {
@@ -78,10 +85,17 @@ export async function pictureInPicturePage(
         .filter(
           (entry) =>
             supported(entry) && !entry.paused && !entry.ended && area(entry) > 0
+            && (action !== 'auto-enter' || (!entry.muted && entry.volume > 0 && !entry.loop && area(entry) >= 14400))
         )
         .sort((a, b) => area(b) - area(a))[0];
   }
-  if (action !== 'inspect') {
+  if (action === 'auto-enter') {
+    if (!active && video && supported(video)) {
+      await video.requestPictureInPicture();
+      root[captureKey].automatic = video;
+    }
+  } else if (action !== 'inspect') {
+    root[captureKey].automatic = null;
     if (!video) throw new Error('No supported video');
     if (active === video) await document.exitPictureInPicture();
     else {
@@ -94,6 +108,7 @@ export async function pictureInPicturePage(
     available: Boolean(video && supported(video)),
     active: Boolean(document.pictureInPictureElement),
     area: video ? area(video) : 0,
+    autoArea: Math.max(0,...automaticVideos.map(area)),
   };
 }
 
@@ -115,7 +130,7 @@ function bounded<T>(promise: Promise<T>): Promise<T> {
   });
 }
 
-/** Only explicit native-menu or trusted chrome clicks call toggle(). */
+/** Manual actions and opted-in tab transitions are controlled by browser chrome. */
 export class PictureInPictureController {
   state: PictureInPictureState = { available: false, active: false };
 
@@ -128,6 +143,12 @@ export class PictureInPictureController {
   private scanning = false;
 
   private busy = false;
+
+  private visibilityRevision = 0;
+
+  private automaticFrame?: WebFrameMain;
+
+  private shown = true;
 
   private candidates: { frame: WebFrameMain; state: VideoState }[] = [];
 
@@ -186,7 +207,7 @@ export class PictureInPictureController {
 
   private run(
     frame: WebFrameMain,
-    action: 'inspect' | 'toggle' | 'context',
+    action: 'inspect' | 'toggle' | 'context' | 'auto-enter' | 'auto-exit',
     source = ''
   ) {
     if (frame.detached || frame.isDestroyed())
@@ -255,8 +276,38 @@ export class PictureInPictureController {
     };
   }
 
+  async visibilityChanged(shown: boolean, enabled: boolean) {
+    this.shown = shown;
+    const transition = ++this.visibilityRevision;
+    const { revision } = this;
+    if (shown || !enabled) {
+      const frame = this.automaticFrame;
+      this.automaticFrame = undefined;
+      if (frame && this.owns(frame)) await this.run(frame, 'auto-exit').catch(() => {});
+      await this.refresh();
+      return;
+    }
+    if (!this.current(revision) || this.busy || this.state.active) return;
+    await this.refresh();
+    if (!this.current(revision) || transition !== this.visibilityRevision || this.shown || this.state.active) return;
+    const frame = this.candidates.slice().sort((a,b) => (b.state.autoArea || 0)-(a.state.autoArea || 0)).find(entry => entry.state.available && (entry.state.autoArea || 0)>0)?.frame;
+    if (!frame || !this.owns(frame)) return;
+    this.automaticFrame = frame;
+    this.busy = true;
+    try {
+      await this.run(frame, 'auto-enter');
+      if (!this.current(revision) || transition !== this.visibilityRevision || this.shown) {
+        if (this.owns(frame)) await this.run(frame, 'auto-exit').catch(() => {});
+        this.automaticFrame = undefined;
+      }
+    } catch { this.automaticFrame = undefined; }
+    finally { this.busy = false; await this.refresh(); }
+  }
+
   async toggle(params?: ContextMenuParams) {
     if (this.busy || this.disposed || this.contents.isDestroyed()) return;
+    this.visibilityRevision += 1;
+    this.automaticFrame = undefined;
     const { revision } = this;
     if (!params) await this.refresh();
     if (!this.current(revision)) return;
@@ -294,6 +345,8 @@ export class PictureInPictureController {
   dispose = () => {
     this.disposed = true;
     this.revision += 1;
+    this.visibilityRevision += 1;
+    this.automaticFrame = undefined;
     clearInterval(this.timer);
     this.contents.removeListener('did-start-navigation', this.navigation);
     this.contents.removeListener('dom-ready', this.refresh);

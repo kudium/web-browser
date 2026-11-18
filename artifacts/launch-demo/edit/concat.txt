@@ -1,0 +1,8 @@
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/intro.mp4'
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/workspace.mp4'
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/files.mp4'
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/editor.mp4'
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/terminal.mp4'
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/assistant.mp4'
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/hooks.mp4'
+file '/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/edit/outro.mp4'

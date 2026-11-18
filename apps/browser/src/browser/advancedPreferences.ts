@@ -27,6 +27,7 @@ export interface AdvancedPreferences {
   clearOnExit: boolean;
   referrer: 'default' | 'none' | 'origin';
   trackingProtection: boolean;
+  adBlocking: boolean;
   trackingExceptions: string[];
   webrtc:
     | 'default'
@@ -61,6 +62,7 @@ export const defaultAdvanced: AdvancedPreferences = {
   clearOnExit: false,
   referrer: 'default',
   trackingProtection: false,
+  adBlocking: true,
   trackingExceptions: [],
   webrtc: 'default',
   javascript: true,
@@ -260,6 +262,7 @@ export function validateAdvanced(value: unknown): AdvancedPreferences {
   [
     'clearOnExit',
     'trackingProtection',
+    'adBlocking',
     'javascript',
     'images',
     'autoplay',

@@ -173,6 +173,28 @@ describe('video selection and website restrictions', () => {
     await pictureInPicturePage('toggle', 'selection');
     expect(document.exitPictureInPicture).toHaveBeenCalled();
   });
+  it('automatic PiP ignores muted loops and closes only the player it opened', async () => {
+    const loop = video(1000);loop.muted=true;loop.loop=true;
+    const playing = video(640);
+    await pictureInPicturePage('inspect','automatic');
+    await pictureInPicturePage('auto-enter','automatic');
+    expect(playing.requestPictureInPicture).toHaveBeenCalledTimes(1);
+    expect(loop.requestPictureInPicture).not.toHaveBeenCalled();
+    await pictureInPicturePage('auto-exit','automatic');
+    expect(document.pictureInPictureElement).toBeNull();
+    await pictureInPicturePage('toggle','automatic');
+    const manual = document.pictureInPictureElement;
+    await pictureInPicturePage('auto-exit','automatic');
+    expect(document.pictureInPictureElement).toBe(manual);
+  });
+  it('does not start an automatic player for a page containing only muted video', async () => {
+    const muted = video();muted.muted=true;
+    const inspection=await pictureInPicturePage('inspect','muted');
+    expect(inspection.available).toBe(true);
+    expect(inspection.autoArea).toBe(0);
+    await pictureInPicturePage('auto-enter','muted');
+    expect(muted.requestPictureInPicture).not.toHaveBeenCalled();
+  });
   it('targets the exact right-clicked video even with duplicate sources', async () => {
     const first = video();
     const second = video();

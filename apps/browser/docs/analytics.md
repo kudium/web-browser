@@ -14,7 +14,7 @@ The free plan is selected. Autocapture, heatmaps, web vitals autocapture and ses
 
 Events include app version, OS platform and architecture. Anonymous UUIDs are stored locally in `telemetry-id`; they are not tied to email or GitHub identity. Person profiles and GeoIP enrichment are disabled. PostHog still receives the network request like any hosted service.
 
-`Privacy & security → Share usage and diagnostics` controls collection. It defaults on in packaged builds, is always disabled in development, and deletes the local identifier on opt-out. A transport gate prevents queued events from being sent after opt-out. Requests already dispatched cannot be recalled. SDK queues are bounded and memory-only; this is best-effort diagnostics, not an offline crash-report archive.
+`Privacy & security → Share usage and diagnostics` controls collection. In the current source it defaults off and requires an explicit choice to enable it. Older saved automatic-on preferences without a consent marker are disabled on upgrade; earlier published installers may still default on. Collection is always disabled in development and deletes the local identifier on opt-out. A transport gate prevents queued events from being sent after opt-out. Requests already dispatched cannot be recalled. SDK queues are bounded and memory-only; this is best-effort diagnostics, not an offline crash-report archive.
 
 Only trusted top-level Kudium UI windows can submit telemetry over IPC. Website tabs cannot submit analytics. Operation counts count instrumented actions, including file-list requests; use unique-install adoption charts to assess how many users use each feature. User cancellations returning null/false are not counted as successful usage.
 

@@ -21,6 +21,7 @@ import {
 } from '../../../browser/preferences';
 import { browser } from '../../../browser/client';
 import { GroupPicker } from '../../UI/GroupPicker';
+import { ProtectionStatus } from './ProtectionStatus';
 
 type Props = {
   section: string;
@@ -392,17 +393,14 @@ export function AdvancedSettings({
             )
           )}
           {row(
-            'Basic tracking protection',
-            'Blocks requests to a small built-in list: DoubleClick, Google Analytics, Google Syndication, Facebook Connect and TikTok Analytics. This is not a comprehensive ad blocker.',
-            toggle(
-              'Basic tracking protection',
-              draft.trackingProtection,
-              (value) => set('trackingProtection', value)
-            )
+            'Ad and tracker blocking',
+            'Block ads and trackers using maintained EasyList and EasyPrivacy rules. You can turn blocking off for a site in Site settings.',
+            toggle('Ad and tracker blocking',draft.adBlocking,(value) => set('adBlocking',value))
           )}
+          <ProtectionStatus enabled={preferences.advanced.adBlocking}/>
           {row(
-            'Tracking exceptions',
-            'Disable basic tracking protection on these website origins.',
+            'Protection exceptions',
+            'Turn blocking off for these website origins across all logins. For one login, use Site settings.',
             lines('Tracking exceptions', draft.trackingExceptions, (value) =>
               set('trackingExceptions', value)
             )

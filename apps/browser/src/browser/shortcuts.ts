@@ -30,6 +30,7 @@ export const shortcutActions = [
     keys: ['Mod+Shift+KeyR'],
   },
   { id: 'print', title: 'Print page', keys: ['Mod+KeyP'] },
+  { id: 'copy-clean-link', title: 'Copy clean link', keys: ['Mod+Shift+KeyC'] },
   { id: 'find', title: 'Find in page', keys: ['Mod+KeyF'] },
   {
     id: 'close-tab',
@@ -121,7 +122,8 @@ export function validateShortcuts(
       const key = canonical(binding, mac);
       if (new Set(key.split('+')).size !== parts.length)
         throw new Error('Duplicate modifier keys');
-      if (reserved.some((item) => canonical(item, mac) === key))
+      if (reserved.some((item) => canonical(item, mac) === key) &&
+        !(id === 'copy-clean-link' && key === canonical('Mod+Shift+KeyC', mac)))
         throw new Error(
           'This shortcut is reserved for editing or system controls'
         );

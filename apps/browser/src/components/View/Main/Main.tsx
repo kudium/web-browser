@@ -90,6 +90,7 @@ import {
   rememberedGroupTab,
 } from '../../../browser/groupFocus';
 import { aiGroupId } from '../../../browser/aiGroups';
+import { resolveLinkRoute } from '../../../browser/linkRouting';
 import type { DownloadRecord } from '../../../browser/downloads';
 import type { AIContextReference } from '../../../browser/aiContext';
 import { AI_CONTEXT_MIME } from '../../../browser/aiContext';
@@ -1544,6 +1545,7 @@ export function Main() {
             'reload',
             'reload-ignore-cache',
             'print',
+            'copy-clean-link',
             'zoom-in',
             'zoom-out',
             'zoom-reset',
@@ -1557,6 +1559,7 @@ export function Main() {
               | 'reload'
               | 'reload-ignore-cache'
               | 'print'
+              | 'copy-clean-link'
               | 'zoom-in'
               | 'zoom-out'
               | 'zoom-reset',
@@ -1742,7 +1745,7 @@ export function Main() {
   );
   useEffect(
     () =>
-      browser.onTabRequest((request) => {
+      browser.onTabRequest(async (request) => {
         if (request.action === 'task-ended' && request.id) {
           tabSwitcherRef.current.remove([request.id]);
           setClosedTabs((previous) => new Set([...previous, request.id!]));
@@ -1758,23 +1761,25 @@ export function Main() {
             const url = new URL(request.url);
             if (!['http:', 'https:'].includes(url.protocol)) return;
             const apps = AppManager.getAll();
+            const routing = await browser.preferences('get').then(p => p.linkRoutingRules || []).catch(() => []);
+            const route = resolveLinkRoute(url.href, routing, SpaceManager.getAll(), apps);
             const activeSpace = SpaceManager.getAll().find(
               (space) => space.id === SpaceManager.activeId()
             );
             const activeId =
               activeSpace?.selectedAppId || externalSource.current?.id;
-            const source = apps.find(
+            const source = route ? route.source : apps.find(
               (item) =>
                 item.id === activeId &&
                 !item.archived &&
                 !closedGroups.has(aiGroupId(item))
             );
             const destination = commandDestination(
-              apps,
+              route ? apps.filter(app => (app.spaceId || 'default') === route.spaceId) : apps,
               source,
               url.href,
               !source,
-              SpaceManager.activeId()
+              route?.spaceId || SpaceManager.activeId()
             );
             const item = destination.existing || destination.app;
             if (!item) return;

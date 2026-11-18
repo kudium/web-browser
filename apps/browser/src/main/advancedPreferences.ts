@@ -18,6 +18,8 @@ import {
   siteRule,
 } from '../browser/advancedPreferences';
 import { browserUserAgent } from './browserIdentity';
+import { browserProtection, applyProtectionStyles } from './browserProtection';
+import { getSiteSettings } from './siteSettings';
 import { addRequestRule } from './requestRules';
 import { addRequestHeaderRule } from './requestHeaderRules';
 import { clearSessionSiteData } from './siteData';
@@ -148,6 +150,7 @@ export function applyAdvancedContents(
   const target = contents.session;
   profiles.set(target, profile || profiles.get(target) || '');
   configurations.set(target, preferences);
+  applyProtectionStyles(contents, profile || profiles.get(target) || '', preferences.adBlocking, preferences.trackingExceptions);
   if (!originalIdentities.has(target))
     originalIdentities.set(
       target,
@@ -223,12 +226,11 @@ export function applyAdvancedContents(
         ((rule?.javascript ?? settings.javascript) === false &&
           details.resourceType === 'script') ||
         ((rule?.images ?? settings.images) === false &&
-          details.resourceType === 'image') ||
-        (settings.trackingProtection &&
-          !settings.trackingExceptions.includes(origin(page)) &&
-          details.resourceType !== 'mainFrame' &&
-          blockedTracker(details.url));
-      return block;
+          details.resourceType === 'image');
+      return block || Boolean(settings.adBlocking &&
+        !settings.trackingExceptions.includes(origin(page)) &&
+        getSiteSettings(profiles.get(target) || '', origin(page)).adBlocking !== false &&
+        browserProtection().block(details.url,page,details.resourceType,details.webContentsId ?? -1));
     });
     addRequestHeaderRule(target, (details, headers) => {
       const settings = configurations.get(target)!;

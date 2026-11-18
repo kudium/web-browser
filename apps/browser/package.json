@@ -157,6 +157,7 @@
     "@codemirror/language": "^6.13.1",
     "@codemirror/lint": "^6.9.8",
     "@codemirror/search": "^6.7.2",
+    "@ghostery/adblocker": "^2.20.3",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@radix-ui/themes": "^3.3.0",
     "@tiptap/extension-code-block-lowlight": "^3.34.0",

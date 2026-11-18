@@ -1,4 +1,5 @@
 import type { ActivitySoundName } from './activitySound';
+import type { LinkRoutingRule } from './linkRouting';
 import { AdvancedPreferences, defaultAdvanced } from './advancedPreferences';
 import { defaultSyncSettings, SyncSettings } from './cloudSync';
 import { defaultShortcuts, ShortcutBindings } from './shortcuts';
@@ -7,15 +8,18 @@ import { SearchEngine, defaultSearchEngines } from './searchEngines';
 /** Shared, engine-neutral preferences. Add controls to the registry below. */
 export interface BrowserPreferences {
   setupCompleted: boolean;
+  linkRoutingRules: LinkRoutingRule[];
   systemSpaceRetentionDays: number;
   advanced: AdvancedPreferences;
   automaticallyDownloadUpdates: boolean;
   automaticallyInstallUpdates: boolean;
   shareUsageDiagnostics: boolean;
+  usageDiagnosticsConsentVersion: number;
   writeBrowserInstructions: boolean;
   tabDisplayMode: 'horizontal' | 'hover' | 'click';
   tabOverflowMode: 'dropdown' | 'scroll';
   folderHoverPreviews: boolean;
+  automaticPictureInPicture: boolean;
   showUnpinnedGroups: boolean;
   addressBarPlacement: 'sidebar' | 'header';
   personalDataAutofill: boolean;
@@ -51,15 +55,18 @@ export interface BrowserPreferences {
 }
 export const defaultPreferences: BrowserPreferences = {
   setupCompleted: false,
+  linkRoutingRules: [],
   systemSpaceRetentionDays: 14,
   advanced: defaultAdvanced,
   automaticallyDownloadUpdates: true,
   automaticallyInstallUpdates: true,
-  shareUsageDiagnostics: true,
+  shareUsageDiagnostics: false,
+  usageDiagnosticsConsentVersion: 0,
   writeBrowserInstructions: true,
   tabDisplayMode: 'horizontal',
   tabOverflowMode: 'scroll',
   folderHoverPreviews: true,
+  automaticPictureInPicture: false,
   showUnpinnedGroups: false,
   addressBarPlacement: 'sidebar',
   personalDataAutofill: true,
@@ -104,6 +111,12 @@ export interface PreferenceControl {
   options?: { label: string; value: string | number }[];
 }
 export const preferenceControls: PreferenceControl[] = [
+  {
+    key: 'automaticPictureInPicture', section: 'websites',
+    title: 'Automatic picture in picture',
+    description: 'Pop out playing video when you switch tabs. Return to the tab to close the automatic player. Muted loops are excluded.',
+    kind: 'toggle',
+  },
   {
     key: 'personalDataAutofill',
     section: 'passwords',
@@ -376,6 +389,8 @@ export interface PreferenceInfo {
   versions: { kudiumbrowser: string; engine: string; chromium: string };
 }
 export type PreferenceAction =
+  | 'protection-status'
+  | 'update-protection'
   | 'network-test'
   | 'network-log-start'
   | 'network-log-stop'

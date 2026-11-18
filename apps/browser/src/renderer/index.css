@@ -5333,3 +5333,13 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
   .notes-page .editor-view-switch.rt-Button { padding:4px; gap:4px; font-size:11px; }
   .notes-page .editor-view-icon { display:none; }
 }
+
+.link-routing-settings { display:flex; flex-direction:column; gap:16px; }
+.link-routing-rule { padding:16px; border:1px solid var(--gray-a5); border-radius:12px; background:var(--gray-a2); display:flex; flex-direction:column; gap:14px; }
+.link-routing-rule-heading,.link-routing-toolbar,.link-routing-subdomains { display:flex; align-items:center; gap:10px; }
+.link-routing-rule-actions { display:flex; margin-left:auto; gap:4px; }
+.link-routing-field { display:flex; flex-direction:column; gap:8px; font-size:13px; }
+.link-routing-destination { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.link-routing-destination > button { max-width:100%; min-width:0; }
+.link-routing-subdomains { font-size:13px; color:var(--gray-11); }
+@media (max-width:600px) { .link-routing-destination {grid-template-columns:minmax(0,1fr);} }

@@ -1,0 +1,21 @@
+Kudium's bundled ad/tracker rules are derived from EasyList and EasyPrivacy.
+Source attribution: The EasyList authors (https://easylist.to/).
+Subscriptions:
+  https://easylist.to/easylist/easylist.txt
+  https://easylist.to/easylist/easyprivacy.txt
+Upstream source: https://github.com/easylist/easylist
+Licence policy: https://easylist.to/pages/licence.html
+
+These rules are distributed under Creative Commons Attribution-ShareAlike 3.0
+Unported. The rule data has been combined and serialized by @ghostery/adblocker;
+the derived rule data retains that licence. Kudium's application code is licensed
+separately. CC-BY-SA-3.0.txt contains the rule data licence.
+
+Source and reproduction recipe for the bundled serialized data:
+  apps/browser/src/browser/protectionSeed.json
+  apps/browser/.erb/scripts/update-protection-seed.cjs
+in https://github.com/kudium/web-browser
+
+The Ghostery adblocker library is provided under the Mozilla Public License 2.0.
+MPL-2.0.txt contains its licence. Its source is available at
+https://github.com/ghostery/adblocker; Kudium does not modify the library.

@@ -841,6 +841,7 @@ const electronHandler = {
       profileId?: string
     ): Promise<
       | PreferenceInfo
+      | import('../browser/protection').BrowserProtectionStatus
       | BrowserPreferences
       | CloudSyncStatus
       | { kind: 'diagnostic'; text: string }

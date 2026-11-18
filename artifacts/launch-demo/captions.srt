@@ -1,0 +1,38 @@
+1
+00:00:00,000 --> 00:00:06,000
+Kudium Browser. The web. Your code. One workspace.
+
+2
+00:00:06,000 --> 00:00:14,000
+Your project, beside the web.
+Link a local folder to a browser group.
+
+3
+00:00:14,000 --> 00:00:22,000
+Find the file. Keep your place.
+Browse project files alongside your reference tabs.
+
+4
+00:00:22,000 --> 00:00:30,000
+Make a change. Save it locally.
+A real edit in the built-in project editor.
+
+5
+00:00:30,000 --> 00:00:38,000
+Run your checks right here.
+A real Atlas Studio test run in the project terminal.
+
+6
+00:00:38,000 --> 00:00:46,000
+Bring your brief into the conversation.
+Project context attached to an unsent AI draft.
+
+7
+00:00:46,000 --> 00:00:54,000
+Make the web work your way.
+Website hooks · illustrative entries in the Atlas Studio demo.
+
+8
+00:00:54,000 --> 00:01:00,000
+Kudium Browser. Your web, code, and tools — together.
+Free and open source. browser.kudium.com

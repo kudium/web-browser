@@ -110,6 +110,24 @@ async function open(url) {
   view.setVisible(true);
   window.focus();
   view.webContents.focus();
+  await open(origin);
+  await view.webContents.executeJavaScript('window.ready');
+  await controller.visibilityChanged(false, true);
+  assert(!controller.state.active, 'Muted videos do not enter automatic PiP');
+  await controller.visibilityChanged(true, true);
+  await view.webContents.executeJavaScript('document.querySelector("#one").muted=false', true);
+  await controller.refresh();
+  await controller.visibilityChanged(false, true);
+  assert(controller.state.active, 'Leaving a playing video enters automatic PiP');
+  await controller.visibilityChanged(true, true);
+  assert(!controller.state.active, 'Returning closes automatic PiP');
+  await controller.toggle();
+  await controller.visibilityChanged(false, true);
+  await controller.visibilityChanged(true, true);
+  assert(controller.state.active, 'Automatic transitions preserve manual PiP');
+  await controller.toggle();
+  await Promise.all([controller.visibilityChanged(false, true), controller.visibilityChanged(true, true)]);
+  assert(!controller.state.active, 'Fast return does not leave automatic PiP open');
   let params;
   view.webContents.once('context-menu', (_event, value) => {
     params = value;
@@ -163,7 +181,7 @@ async function open(url) {
   await controller.refresh();
   assert(!controller.state.available, 'Website restrictions hide PiP action');
   console.log(
-    'PASS: native PiP entry/exit, exact right-click target, hidden/paused source tab, cross-origin iframe, restricted video, stale menu; production-minified controller.'
+    'PASS: native PiP entry/exit, automatic transitions, muted exclusion, manual preservation, rapid return, exact right-click target, hidden/paused source tab, cross-origin iframe, restricted video, stale menu; production-minified controller.'
   );
 })()
   .catch((error) => {
@@ -178,5 +196,6 @@ async function open(url) {
         .filter(Boolean)
         .map((instance) => new Promise((resolve) => instance.close(resolve)))
     );
+    fs.rmSync(root, { recursive: true, force: true });
     app.exit(process.exitCode || 0);
   });

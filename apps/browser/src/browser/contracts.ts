@@ -66,6 +66,7 @@ export interface BrowserState {
   sidebarMediaEligible?: boolean;
   pictureInPicture?: PictureInPictureState;
   siteSettings?: {
+    protection?: {enabled: boolean; globallyEnabled: boolean; blocked: number; status: import('./protection').BrowserProtectionStatus};
     origin: string;
     certificateError?: string;
     permissions: Record<string, 'ask' | 'allow' | 'block'>;
@@ -111,6 +112,7 @@ export interface BrowserCommand {
     | 'extensions'
     | 'menu'
     | 'print'
+    | 'copy-clean-link'
     | 'zoom-in'
     | 'zoom-out'
     | 'zoom-reset'
@@ -121,6 +123,7 @@ export interface BrowserCommand {
     | 'media-next'
     | 'toggle-mute'
     | 'toggle-picture-in-picture'
+    | 'toggle-ad-blocking'
     | 'set-permission'
     | 'reset-permissions'
     | 'close-group'
@@ -231,6 +234,7 @@ export interface BrowserClient {
     profileId?: string
   ): Promise<
     | PreferenceInfo
+    | import('./protection').BrowserProtectionStatus
     | BrowserPreferences
     | CloudSyncStatus
     | { kind: 'diagnostic'; text: string }

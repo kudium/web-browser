@@ -52,6 +52,15 @@ function menu(patch: Partial<ContextMenuParams> = {}) {
 
 beforeEach(() => jest.clearAllMocks());
 
+test('clean-link action copies the clicked link without changing its destination', () => {
+  const url = 'https://example.com/path?item=42&utm_source=mail';
+  const items = menu({ linkURL: url });
+  items.find((entry: any) => entry.label === 'Copy Clean Link').click();
+  expect(clipboard.writeText).toHaveBeenLastCalledWith('https://example.com/path?item=42');
+  items.find((entry: any) => entry.label === 'Open Link in New Tab').click();
+  expect(openTab).toHaveBeenLastCalledWith(url);
+});
+
 test('page menu includes navigation, saving, printing, extensions and inspection', () => {
   const items = menu({ x: 12, y: 34 });
   expect(items).toEqual(

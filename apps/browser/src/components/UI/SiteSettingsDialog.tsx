@@ -12,6 +12,7 @@ import {
   Code2,
   LockKeyhole,
   ShieldAlert,
+  ShieldCheck,
   MapPin,
   Bell,
   Camera,
@@ -161,6 +162,15 @@ export function SiteSettingsDialog({
                 <p className="site-origin">{site?.origin}</p>
               </div>
             </details>
+            {site?.protection && <div className="site-setting-row">
+              <span className="site-setting-icon"><ShieldCheck size={18}/></span>
+              <span className="site-setting-label">Block ads and trackers
+                <small className="preference-note">{!site.protection.globallyEnabled ? 'Enable blocking in Privacy & security.' : `${site.protection.blocked} requests blocked. ${site.protection.status.available ? 'Matching stays on this device.' : 'Rules are unavailable.'}`}</small>
+              </span>
+              <Switch aria-label="Block ads and trackers on this site" checked={site.protection.enabled}
+                disabled={!site.protection.globallyEnabled}
+                onCheckedChange={() => send('toggle-ad-blocking')} />
+            </div>}
             <div
               className="site-page-actions"
               role="group"

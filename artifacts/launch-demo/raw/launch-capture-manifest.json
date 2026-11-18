@@ -1,0 +1,112 @@
+{
+  "createdAt": "2026-11-17T14:03:59.065Z",
+  "launchClips": [
+    {
+      "name": "assistant",
+      "file": "/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/raw/assistant.mp4",
+      "seconds": 8,
+      "source": "Real production UI captures; native website views composited at their actual bounds.",
+      "verified": true
+    },
+    {
+      "name": "workspace",
+      "file": "/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/raw/workspace.mp4",
+      "seconds": 8,
+      "source": "Real production UI captures; native website views composited at their actual bounds.",
+      "verified": true
+    },
+    {
+      "name": "files",
+      "file": "/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/raw/files.mp4",
+      "seconds": 8,
+      "source": "Real production UI captures; native website views composited at their actual bounds.",
+      "verified": true
+    },
+    {
+      "name": "terminal",
+      "file": "/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/raw/terminal.mp4",
+      "seconds": 8,
+      "source": "Real production UI captures; native website views composited at their actual bounds.",
+      "verified": true
+    },
+    {
+      "name": "editor",
+      "file": "/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/raw/editor.mp4",
+      "seconds": 8,
+      "source": "Real production UI captures; native website views composited at their actual bounds.",
+      "verified": true
+    },
+    {
+      "name": "hooks",
+      "file": "/Users/samsonoyetola/workspace/touchbox/artifacts/launch-demo/raw/hooks.mp4",
+      "seconds": 8,
+      "source": "Real production UI captures; native website views composited at their actual bounds.",
+      "verified": true
+    }
+  ],
+  "checks": [
+    {
+      "image": "ai-context.png",
+      "expectedText": "project-brief.md",
+      "pages": [
+        {
+          "url": "http://127.0.0.1:4178/",
+          "title": "Atlas Studio · Project overview"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "image": "developer-workspace.png",
+      "expectedText": "atlas-studio",
+      "pages": [
+        {
+          "url": "http://127.0.0.1:4178/",
+          "title": "Atlas Studio · Project overview"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "image": "developer-files.png",
+      "expectedText": "README.md",
+      "pages": [
+        {
+          "url": "http://127.0.0.1:4178/",
+          "title": "Atlas Studio · Project overview"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "image": "developer-terminal.png",
+      "expectedText": "1 pass",
+      "pages": [
+        {
+          "url": "http://127.0.0.1:4178/",
+          "title": "Atlas Studio · Project overview"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "image": "project-files-light.png",
+      "expectedText": "README.md",
+      "pages": [],
+      "verified": true
+    },
+    {
+      "image": "project-editor-light.png",
+      "expectedText": "completion",
+      "pages": [],
+      "verified": true
+    },
+    {
+      "image": "site-hooks-light.png",
+      "expectedText": "Project page ready",
+      "pages": [],
+      "verified": true
+    }
+  ],
+  "notes": "Atlas Studio fictional fixture in a disposable profile and project copy. AI draft unsent. Hook entries illustrative. Native web pages captured at their actual view bounds. Playback sampled at 3fps."
+}

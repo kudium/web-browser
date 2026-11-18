@@ -10,6 +10,7 @@ import {
 } from 'electron';
 import { nativeMenuLabels, openTargetLabel } from '../browser/menuLabels';
 import { getBrowserPreferences } from './preferences';
+import { cleanLink } from '../utils/cleanLink';
 import {
   defaultSearchEngines,
   searchUrl,
@@ -70,6 +71,8 @@ export function showBrowserContextMenu(
         label: nativeMenuLabels.copyLinkAddress,
         click: () => clipboard.writeText(params.linkURL),
       },
+      { label: 'Copy Clean Link', enabled: canOpen(params.linkURL),
+        click: () => clipboard.writeText(cleanLink(params.linkURL)) },
     ]);
   }
   if (params.mediaType === 'image' && params.srcURL) {
@@ -239,6 +242,8 @@ export function showBrowserContextMenu(
       },
     },
     { label: nativeMenuLabels.print, click: () => contents.print() },
+    { label: 'Copy Clean Page Link', enabled: canOpen(contents.getURL()),
+      click: () => clipboard.writeText(cleanLink(contents.getURL())) },
   ]);
   group(hookActions);
   group(extensions);

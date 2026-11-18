@@ -28,6 +28,7 @@ it('persists site decisions, permits reversing a denial, and isolates profiles a
     expect(getSiteSettings('work', 'https://example.com')).toEqual({
       permissions: { geolocation: 'allow' },
       muted: true,
+      adBlocking: true,
     });
     expect(
       getSiteSettings('personal', 'https://example.com').permissions
@@ -42,7 +43,13 @@ it('persists site decisions, permits reversing a denial, and isolates profiles a
     expect(getSiteSettings('work', 'https://example.com')).toEqual({
       permissions: {},
       muted: true,
+      adBlocking: true,
     });
+    updateSiteSettings('work', 'https://example.com', { adBlocking: false });
+    expect(getSiteSettings('work', 'https://example.com').adBlocking).toBe(false);
+    expect(getSiteSettings('personal', 'https://example.com').adBlocking).not.toBe(false);
+    updateSiteSettings('work', 'https://example.com', { adBlocking: true });
+    expect(getSiteSettings('work', 'https://example.com').adBlocking).toBe(true);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -133,10 +140,12 @@ it('ignores malformed grants instead of treating them as permissions', () => {
     expect(getSiteSettings('work', 'https://example.com')).toEqual({
       permissions: { geolocation: 'allow' },
       muted: false,
+      adBlocking: true,
     });
     expect(getSiteSettings('work', 'https://other.example')).toEqual({
       permissions: {},
       muted: false,
+      adBlocking: true,
     });
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });

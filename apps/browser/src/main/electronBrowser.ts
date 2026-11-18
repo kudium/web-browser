@@ -10,6 +10,7 @@ import { EventEmitter } from 'events';
 import log from 'electron-log';
 import {
   BrowserWindow,
+  clipboard,
   Input,
   Event,
   WebContents,
@@ -74,6 +75,8 @@ import { AINewTabs } from './aiTabs';
 import { getBrowserWindows } from './browserWindows';
 import { WebsiteTabRecovery } from './websiteTabRecovery';
 import { PictureInPictureController } from './pictureInPicture';
+import { cleanLink } from '../utils/cleanLink';
+import { browserProtection } from './browserProtection';
 import { configureScreenSharing } from './screenSharing';
 import { registerSpaceGestures } from './spaceGestures';
 import { isBrowserCommand, isBrowserLayout } from './browserRequests';
@@ -98,6 +101,7 @@ import {
   applyBrowserPreferences,
   enablePagePinchZoom,
   getBrowserPreferences,
+  onBrowserPreferencesChanged,
   isAISettingsWindow,
 } from './preferences';
 import {
@@ -251,6 +255,11 @@ export function registerElectronBrowser(
         return;
       }
       if (action && contents !== window.webContents) {
+        if (action === 'copy-clean-link') {
+          event.preventDefault();
+          if (validURL(contents.getURL())) clipboard.writeText(cleanLink(contents.getURL()));
+          return;
+        }
         const history = contents.navigationHistory;
         if (action === 'back' || action === 'forward') {
           event.preventDefault();
@@ -322,7 +331,15 @@ export function registerElectronBrowser(
   >();
   let focusedId: string | undefined;
   let visible = new Set<string>();
+  let pipVisible = new Set<string>();
   let suspended = false;
+  let autoPiPEnabled = getBrowserPreferences().automaticPictureInPicture;
+  const stopPiPPreferences = onBrowserPreferencesChanged?.(() => {
+    const enabled = getBrowserPreferences().automaticPictureInPicture;
+    if(enabled === autoPiPEnabled)return;
+    autoPiPEnabled=enabled;
+    pictureInPicture.forEach((controller,id) => controller.visibilityChanged(pipVisible.has(id),enabled).catch(() => {}));
+  });
   let pendingOverlay: BrowserLayout | undefined;
   let overlayGeneration = 0;
   const playingMedia = new Set<string>();
@@ -352,6 +369,9 @@ export function registerElectronBrowser(
       siteSettings: origin
         ? {
             origin,
+            protection: {enabled: getBrowserPreferences().advanced.adBlocking && !getBrowserPreferences().advanced.trackingExceptions.includes(origin) && getSiteSettings(profile,origin).adBlocking !== false,
+              globallyEnabled: getBrowserPreferences().advanced.adBlocking && !getBrowserPreferences().advanced.trackingExceptions.includes(origin),
+              blocked: browserProtection().count(contents.id), status:browserProtection().status()},
             certificateError: certificateErrorFor(contents.session, origin),
             permissions: getSiteSettings(profile, origin).permissions,
             blocked: getBrowserPreferences().permissions === 'block',
@@ -556,8 +576,14 @@ export function registerElectronBrowser(
       return;
     }
     focusedId = layout.focusedId;
+    const wasVisible = pipVisible;
     suspended = Boolean(layout.suspended);
     visible = new Set(layout.visible.map((item) => item.id));
+    if (!suspended) pictureInPicture.forEach((controller, id) => {
+      if (wasVisible.has(id) !== visible.has(id))
+        controller.visibilityChanged(visible.has(id), getBrowserPreferences().automaticPictureInPicture).catch(() => {});
+    });
+    if (!suspended) pipVisible = new Set(visible);
     layout.apps.forEach((item) => {
       if (removals.blocks(item)) {
         configurations.set(item.id, configurations.get(item.id) || item);
@@ -1843,6 +1869,17 @@ export function registerElectronBrowser(
     }
     if (!contents || contents.isDestroyed()) return;
     switch (request.action) {
+      case 'toggle-ad-blocking': {
+        const origin = siteOrigin(contents.getURL());
+        if (origin && (!request.url || request.url === origin)) {
+          const profile = loginProfileKey(configurations.get(request.id) || ({} as IApp));
+          updateSiteSettings(profile,origin,{adBlocking:getSiteSettings(profile,origin).adBlocking === false});
+        }
+        break;
+      }
+      case 'copy-clean-link':
+        if (validURL(contents.getURL())) clipboard.writeText(cleanLink(contents.getURL()));
+        break;
       case 'toggle-picture-in-picture':
         if (request.id === focusedId && visible.has(request.id) && !suspended)
           pictureInPicture.get(request.id)?.toggle();
@@ -2666,6 +2703,7 @@ export function registerElectronBrowser(
     aiNewTabs.dispose();
     releaseExtensionOwner(window);
     disposeTasks();
+    stopPiPPreferences?.();
     clearInterval(discardTimer);
     pictureInPicture.forEach((controller) => controller.dispose());
     pictureInPicture.clear();

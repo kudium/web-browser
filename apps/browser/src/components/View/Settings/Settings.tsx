@@ -37,6 +37,7 @@ import { SyncSettings } from './SyncSettings';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { AdvancedSettings } from './AdvancedSettings';
 import { SearchEngineManager } from './SearchEngineManager';
+import { LinkRoutingSettings } from './LinkRoutingSettings';
 import { browser } from '../../../browser/client';
 import {
   BrowserPreferences,
@@ -52,6 +53,7 @@ import { TabOption } from './tabs/TabOption';
 
 // Add a navigation entry here and preference controls in browser/preferences.ts.
 const sections = [
+  {id: 'routing', title: 'Link routing', icon: Globe, description: 'Open links from other apps in a chosen Space or group login.'},
   {
     id: 'updates',
     title: 'Updates',
@@ -204,6 +206,7 @@ const sectionOrder = [
   'languages',
   'performance',
   'websites',
+  'routing',
   'network',
   'compatibility',
   'developer',
@@ -471,6 +474,7 @@ export function Settings() {
               </PreferenceHint>
             </header>
             {item.id === 'hooks' && <HooksSettings />}
+            {item.id === 'routing' && <LinkRoutingSettings rules={preferences.linkRoutingRules || []} busy={busy} save={async linkRoutingRules => save({linkRoutingRules})} />}
             {item.id === 'updates' && <AppUpdateSettings />}
             {item.id === 'import' && <BrowserImportSettings />}
             {item.id === 'ai' && (
