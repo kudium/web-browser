@@ -51,6 +51,13 @@ describe("release publication", () => {
       (await request(prefix + "/0", "PUT", Buffer.alloc(chunkSize + 1))).status
     ).toBe(413);
   });
+  test("migration recovery remains authenticated and rejects missing GitHub credentials", async () => {
+    const status = prefix + "/status";
+    expect((await app.request(status)).status).toBe(401);
+    expect((await request(status)).status).toBe(200);
+    expect((await app.request("/internal/releases/github-mirror", { method: "POST", body: "{}" })).status).toBe(401);
+    expect((await request("/internal/releases/github-mirror", "POST", "{}")).status).toBe(400);
+  });
   test("malformed completion and manifest JSON returns a client error", async () => {
     expect((await request(prefix + "/complete", "POST", "{")).status).toBe(400);
     expect(
@@ -165,4 +172,28 @@ describe("release publication", () => {
     expect((await publish(manifest)).status).toBe(200);
     expect(published).toEqual([[manifest]]);
   });
+  test("mirrors only checksum-verified cached files to the owned GitHub draft without publishing feeds", async () => {
+    const bytes = Buffer.alloc(chunkSize + 4, 65);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    let uploads = 0;
+    const mirror = new Hono();
+    mirror.onError((error, c) => error instanceof HTTPException ? c.json({ error: error.message }, error.status) : c.json({ error: "internal" }, 500));
+    mirror.route("/", releasePublishing({ root, token, origin: "https://browser.kudium.com" }, async () => { throw Error("must not publish"); }, async (url, init) => {
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test_github_token");
+      if (url.startsWith("https://api.github.com/repos/kudium/web-browser/releases/")) return Response.json({ tag_name: "v1.1.0-beta.1", draft: true, prerelease: true, assets: [] });
+      expect(url).toStartWith("https://uploads.github.com/repos/kudium/web-browser/releases/123/assets?");
+      uploads++;
+      const actual = Buffer.from(await (init?.body as Blob).arrayBuffer());
+      expect(checksum(actual)).toBe(checksum(bytes));
+      return Response.json({ size: actual.length, state: "uploaded", digest: `sha256:${sha256}` });
+    }));
+    const manifest: ReleaseManifest = { version: "1.1.0-beta.1", channel: "beta", platform: "linux", arch: "x64", notes: "", files: [{ url: "https://github.com/kudium/web-browser/releases/download/v1.1.0-beta.1/Browser.AppImage", size: bytes.length, sha512: checksum(bytes), sha256 }] };
+    const send = (m: ReleaseManifest) => mirror.request("/internal/releases/github-mirror", { method: "POST", headers: { Authorization: `Bearer ${token}`, "X-GitHub-Token": "test_github_token", "Content-Type": "application/json" }, body: JSON.stringify({ releaseId: 123, manifest: m }) });
+    expect((await send(manifest)).status).toBe(200);
+    expect(uploads).toBe(1);
+    expect((await send({ ...manifest, files: [{ ...manifest.files[0], sha256: "0".repeat(64) }] })).status).toBe(400);
+    expect((await send({ ...manifest, files: [{ ...manifest.files[0], url: manifest.files[0].url.replace("kudium/web-browser", "other/repository") }] })).status).toBe(400);
+    expect(uploads).toBe(1);
+  });
+
 });

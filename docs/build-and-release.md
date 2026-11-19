@@ -226,3 +226,16 @@ checks and records `publication.json` beside retained `release.json`. A Git tag,
 signed build, public GitHub release, or website deployment alone is insufficient.
 If manifest registration or live verification fails, report that users still see
 the old feed and resume the same authorized release with `--retry <tag>`.
+
+
+### Recovering the hosting migration
+
+Previously verified files in the legacy release volume can be mirrored into an
+existing GitHub draft via the authenticated `/internal/releases/github-mirror`
+route. It checks the legacy SHA-512 metadata and the actual file SHA-256, then
+streams the file from the server to the fixed `kudium/web-browser` repository.
+The caller supplies GitHub authorization transiently in a header; it is never
+stored or logged. This recovery does not register manifests or advance feeds.
+The normal local publisher subsequently verifies every GitHub asset and publishes
+both architecture feeds. Legacy chunk status can be inspected through the
+authenticated upload `/status` route to finish an already-started archive.

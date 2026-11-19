@@ -6,6 +6,7 @@ import {
   mkdir,
   open,
   readFile,
+  readdir,
   rename,
   rm,
   stat,
@@ -91,7 +92,8 @@ async function metadata(
 }
 export function releasePublishing(
   config: PublishingConfig,
-  publish: (manifests: ReleaseManifest[]) => Promise<void>
+  publish: (manifests: ReleaseManifest[]) => Promise<void>,
+  githubFetch: (url: string, init?: RequestInit) => Promise<Response> = fetch
 ) {
   const app = new Hono();
   app.use("/internal/releases/*", async (c, next) => {
@@ -202,6 +204,50 @@ export function releasePublishing(
       return c.json({ completed: true });
     }
   );
+  // Migration recovery: reuse verified legacy files without sending installers from the Mac again.
+  app.get("/internal/releases/uploads/:version/:platform/:arch/:filename/status", async (c) => {
+    const file = filePath(config.root, c.req.param());
+    const complete = await metadata(file);
+    if (complete) return c.json({ completed: true, ...complete });
+    const names = await readdir(file + ".parts").catch(() => [] as string[]);
+    const parts = await Promise.all(names.filter(name => /^(?:0|[1-9][0-9]{0,2})$/.test(name)).map(async name => ({ part: Number(name), size: (await stat(path.join(file + ".parts", name))).size })));
+    return c.json({ completed: false, parts });
+  });
+  app.post("/internal/releases/github-mirror", async (c) => {
+    const input = z.object({ releaseId: z.number().int().positive(), manifest: releaseSchema }).strict().safeParse(await c.req.json().catch(() => null));
+    const githubToken = c.req.header("X-GitHub-Token");
+    if (!input.success || !githubToken || !/^[A-Za-z0-9_]+$/.test(githubToken)) throw new HTTPException(400, { message: "invalid_mirror_request" });
+    const { manifest, releaseId } = input.data;
+    const repository = "kudium/web-browser";
+    const headers = { Authorization: `Bearer ${githubToken}`, Accept: "application/vnd.github+json", "User-Agent": "Kudium-Release-Migration" };
+    const response = await githubFetch(`https://api.github.com/repos/${repository}/releases/${releaseId}`, { headers, signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new HTTPException(400, { message: "github_release_unavailable" });
+    const release = await response.json() as { tag_name: string; draft: boolean; prerelease: boolean; assets: { name: string; size: number; digest: string }[] };
+    if (release.tag_name !== `v${manifest.version}` || !release.draft || release.prerelease !== (manifest.channel === "beta")) throw new HTTPException(400, { message: "invalid_mirror_release" });
+    const mirrored: string[] = [];
+    for (const asset of manifest.files) {
+      const prefix = `https://github.com/${repository}/releases/download/v${manifest.version}/`;
+      if (!asset.url.startsWith(prefix) || !asset.sha256) throw new HTTPException(400, { message: "invalid_github_asset" });
+      const name = asset.url.slice(prefix.length);
+      const file = filePath(config.root, { version: manifest.version, platform: manifest.platform, arch: manifest.arch, filename: name });
+      const meta = await metadata(file);
+      if (!meta || meta.size !== asset.size || meta.sha512 !== asset.sha512 || (await stat(file)).size !== asset.size) throw new HTTPException(400, { message: "unverified_artifact" });
+      const hash = createHash("sha256");
+      for await (const bytes of Bun.file(file).stream()) hash.update(bytes);
+      if (hash.digest("hex") !== asset.sha256) throw new HTTPException(400, { message: "artifact_checksum_mismatch" });
+      const existing = release.assets.find(item => item.name === name);
+      if (existing) {
+        if (existing.size !== asset.size || existing.digest !== `sha256:${asset.sha256}`) throw new HTTPException(409, { message: "immutable_artifact" });
+      } else {
+        const uploaded = await githubFetch(`https://uploads.github.com/repos/${repository}/releases/${releaseId}/assets?name=${encodeURIComponent(name)}`, { method: "POST", headers: { ...headers, "Content-Type": "application/octet-stream" }, body: Bun.file(file), signal: AbortSignal.timeout(120000) });
+        if (!uploaded.ok) throw new HTTPException(502, { message: "github_mirror_failed" });
+        const actual = await uploaded.json() as { size: number; digest: string; state: string };
+        if (actual.size !== asset.size || actual.digest !== `sha256:${asset.sha256}` || actual.state !== "uploaded") throw new HTTPException(502, { message: "github_mirror_checksum_mismatch" });
+      }
+      mirrored.push(name);
+    }
+    return c.json({ mirrored });
+  });
   app.post("/internal/releases/manifests", async (c) => {
     const input = z
       .array(releaseSchema)
