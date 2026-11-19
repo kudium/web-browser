@@ -11,6 +11,9 @@ exports.default = async function notarizeMacos(context) {
   }
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(context.appOutDir, `${appName}.app`);
+  const queue = require('./notarization-queue.cjs');
+  const operation = context.finalizeNotarization ? queue.finalize
+    : process.env.RELEASE_DEFER_NOTARIZATION === 'true' ? queue.submit : notarize;
   if (process.env.APPLE_API_KEY?.trim()) {
     if (!process.env.APPLE_API_KEY_ID || !process.env.APPLE_API_ISSUER)
       throw new Error(
@@ -25,7 +28,7 @@ exports.default = async function notarizeMacos(context) {
     );
     try {
       await fs.writeFile(key, process.env.APPLE_API_KEY, { mode: 0o600 });
-      await notarize({
+      await operation({
         appPath,
         appleApiKey: key,
         appleApiKeyId: process.env.APPLE_API_KEY_ID,
@@ -41,10 +44,18 @@ exports.default = async function notarizeMacos(context) {
     throw new Error(
       'Signed macOS releases require Apple API credentials or APPLE_ID, APPLE_ID_PASS and APPLE_TEAM_ID for notarization.'
     );
-  await notarize({
+  await operation({
     appPath,
     appleId: process.env.APPLE_ID,
     appleIdPassword: process.env.APPLE_ID_PASS,
     teamId: process.env.APPLE_TEAM_ID,
   });
 };
+
+if (require.main === module) {
+  const appPath = path.resolve(process.argv[2] || '');
+  if (!appPath.endsWith('.app')) throw new Error('Supply the signed application path');
+  exports.default({ electronPlatformName: 'darwin', appOutDir: path.dirname(appPath),
+    packager: { appInfo: { productFilename: path.basename(appPath, '.app') } }, finalizeNotarization: true })
+    .catch(error => { console.error(error.message); process.exitCode = 1; });
+}

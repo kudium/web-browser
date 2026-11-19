@@ -71,6 +71,15 @@ Build tool output goes to that log; the terminal displays each release stage.
 Both architectures must pass type checks, tests, signing/notarization checks and
 checksum validation before a tag is pushed or any channel is published.
 
+Both signed application bundles are submitted to Apple before waiting for review.
+Each build retains `notarization.json` with its submission ID, signed code hash
+and uploaded archive checksum. Short status requests retry transient failures
+without submitting again. Only an accepted, unchanged application is stapled and
+packaged into its final DMG/ZIP; both targets still undergo full verification.
+The finalization command can continue checking an existing submission after a
+status-command failure; this is not the publication `--retry` option and does
+not authorize publishing incomplete builds.
+
 The new commands are macOS-only. Windows/Linux publication remains available
 through the optional hosted release workflow once Windows signing is configured.
 

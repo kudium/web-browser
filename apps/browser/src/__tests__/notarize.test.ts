@@ -3,6 +3,8 @@ import path from 'node:path';
 import { notarize } from '@electron/notarize';
 
 jest.mock('@electron/notarize', () => ({ notarize: jest.fn() }));
+jest.mock('../../.erb/scripts/notarization-queue.cjs', () => ({ submit: jest.fn(), finalize: jest.fn() }));
+const queue = require('../../.erb/scripts/notarization-queue.cjs');
 const hook = require('../../.erb/scripts/notarize.js').default;
 
 const originalEnvironment = process.env;
@@ -20,6 +22,7 @@ beforeEach(() => {
   delete process.env.APPLE_ID_PASS;
   delete process.env.APPLE_TEAM_ID;
   delete process.env.RELEASE_SIGNING_REQUIRED;
+  delete process.env.RELEASE_DEFER_NOTARIZATION;
   jest.clearAllMocks();
 });
 afterEach(() => {
@@ -98,5 +101,15 @@ it('uses a protected temporary API key and removes it after success or failure',
 it('rejects incomplete API credentials before submission', async () => {
   process.env.APPLE_API_KEY = 'dummy-api-key';
   await expect(hook(context)).rejects.toThrow('APPLE_API_KEY_ID');
+  expect(notarize).not.toHaveBeenCalled();
+});
+
+it('submits deferred signed builds and finalizes the same queue without the legacy long wait', async () => {
+  Object.assign(process.env, { RELEASE_SIGNING_REQUIRED: 'true', RELEASE_DEFER_NOTARIZATION: 'true',
+    APPLE_ID: 'release@example.test', APPLE_ID_PASS: 'dummy-test-password', APPLE_TEAM_ID: 'TESTTEAM01' });
+  await hook(context);
+  expect(queue.submit).toHaveBeenCalledWith(expect.objectContaining({ appPath: path.join(context.appOutDir, 'Kudium Browser.app') }));
+  await hook({ ...context, finalizeNotarization: true });
+  expect(queue.finalize).toHaveBeenCalledTimes(1);
   expect(notarize).not.toHaveBeenCalled();
 });

@@ -47,7 +47,16 @@ export function buildSteps(checkout, artifacts, tag) {
   for (const arch of ['arm64', 'x64']) {
     const build = path.join(artifacts, 'builds', arch);
     steps.push(
-      ['npx', ['electron-builder', 'build', '--config', '.erb/configs/electron-builder.web.cjs', '--publish', 'never', '--mac', `--${arch}`, `-c.directories.output=${build}`], browser],
+      ['npx', ['electron-builder', 'build', '--config', '.erb/configs/electron-builder.web.cjs', '--publish', 'never', '--dir', '--mac', `--${arch}`, `-c.directories.output=${build}`], browser, { RELEASE_DEFER_NOTARIZATION: 'true' }],
+    );
+  }
+  // Submit both architectures before waiting for Apple's asynchronous review.
+  for (const arch of ['arm64', 'x64']) {
+    const build = path.join(artifacts, 'builds', arch);
+    const application = path.join(build, arch === 'arm64' ? 'mac-arm64' : 'mac', 'Kudium Browser.app');
+    steps.push(
+      ['node', ['.erb/scripts/notarize.js', application], browser],
+      ['npx', ['electron-builder', 'build', '--config', '.erb/configs/electron-builder.web.cjs', '--publish', 'never', '--prepackaged', application, '--mac', `--${arch}`, `-c.directories.output=${build}`], browser],
       ['node', ['scripts/ci/verify-macos-release.mjs', build], checkout],
       ['node', ['scripts/ci/collect-browser-release.mjs', 'darwin', arch, tag.includes('-beta.') ? 'beta' : 'stable'], checkout, { RELEASE_BUILD_DIR: build, RELEASE_ARTIFACTS_DIR: path.join(artifacts, 'installers') }],
     );

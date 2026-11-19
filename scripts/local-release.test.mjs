@@ -18,12 +18,19 @@ test('builds both architectures with separate output, verification and collectio
   const steps = buildSteps('/checkout with spaces', '/output with spaces', 'v1.2.3-beta.1');
   assert.deepEqual(steps.slice(0, 6).map(([command, args]) => [command, args[0]]), [['npm', 'ci'], ['node', 'node_modules/electron/install.js'], ['npx', 'tsc'], ['npm', 'test'], ['npm', 'run'], ['node', 'scripts/ci/prepare-browser-release.mjs']]);
   for (const arch of ['arm64', 'x64']) {
-    const index = steps.findIndex(([, args]) => args.includes(`--${arch}`));
+    const queued = steps.findIndex(([, args]) => args.includes(`--${arch}`) && args.includes('--dir'));
+    assert.equal(steps[queued][3].RELEASE_DEFER_NOTARIZATION, 'true');
+    const index = steps.findIndex(([, args]) => args.includes(`--${arch}`) && args.includes('--prepackaged'));
     assert.ok(index > 0);
+    assert.ok(queued < index);
+    assert.equal(steps[index - 1][1][0], '.erb/scripts/notarize.js');
     assert.ok(steps[index][1].includes(`-c.directories.output=/output with spaces/builds/${arch}`));
     assert.equal(steps[index + 1][1][0], 'scripts/ci/verify-macos-release.mjs');
     assert.deepEqual(steps[index + 2][1], ['scripts/ci/collect-browser-release.mjs', 'darwin', arch, 'beta']);
   }
+  const secondSubmission = steps.findIndex(([, args]) => args.includes('--dir') && args.includes('--x64'));
+  const firstWait = steps.findIndex(([, args]) => args[0] === '.erb/scripts/notarize.js');
+  assert.ok(secondSubmission < firstWait, 'Both signed builds enter the queue before waiting');
   assert.ok(!steps.some(([command]) => command === 'git'));
 });
 
