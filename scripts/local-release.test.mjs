@@ -16,7 +16,7 @@ test('commands validate channels, version options and matching retry tags', () =
 
 test('builds both architectures with separate output, verification and collection', () => {
   const steps = buildSteps('/checkout with spaces', '/output with spaces', 'v1.2.3-beta.1');
-  assert.deepEqual(steps.slice(0, 5).map(([command, args]) => [command, args[0]]), [['npm', 'ci'], ['npx', 'tsc'], ['npm', 'test'], ['npm', 'run'], ['node', 'scripts/ci/prepare-browser-release.mjs']]);
+  assert.deepEqual(steps.slice(0, 6).map(([command, args]) => [command, args[0]]), [['npm', 'ci'], ['node', 'node_modules/electron/install.js'], ['npx', 'tsc'], ['npm', 'test'], ['npm', 'run'], ['node', 'scripts/ci/prepare-browser-release.mjs']]);
   for (const arch of ['arm64', 'x64']) {
     const index = steps.findIndex(([, args]) => args.includes(`--${arch}`));
     assert.ok(index > 0);

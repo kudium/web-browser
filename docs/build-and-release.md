@@ -41,6 +41,10 @@ build the selected commit in an isolated local clone. Your working checkout and
 its version files are preserved. Versions are embedded in the build checkout,
 using the same preparation script as hosted releases.
 
+The isolated build explicitly runs Electron's runtime installer after `npm ci`,
+before tests. Electron 45 no longer performs that step automatically; its installer
+verifies the upstream distribution checksum and can reuse the local download cache.
+
 Custom Electron runtime preparation is separate from installer releases. The
 `runtime:prepare`, `runtime:sync`, `runtime:build` and `runtime:verify` commands
 prepare pinned source and local Mac distributions without pushing, signing or
