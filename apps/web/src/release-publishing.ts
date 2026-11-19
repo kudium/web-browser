@@ -32,7 +32,8 @@ const completion = z
   .object({
     size: z.number().int().positive().max(maxSize),
     sha512: digest,
-    parts: z.number().int().min(1).max(128),
+    parts: z.number().int().min(1).max(1024),
+    chunkBytes: z.union([z.literal(1024 * 1024), z.literal(chunkSize)]).optional(),
   })
   .strict();
 export type PublishingConfig = { root: string; token: string; origin: string };
@@ -116,7 +117,7 @@ export function releasePublishing(
     async (c) => {
       const file = filePath(config.root, c.req.param());
       const part = c.req.param("part");
-      if (!/^(?:0|[1-9][0-9]{0,2})$/.test(part) || Number(part) >= 128)
+      if (!/^(?:0|[1-9][0-9]{0,3})$/.test(part) || Number(part) >= 1024)
         throw new HTTPException(400, { message: "invalid_part" });
       if (await metadata(file))
         throw new HTTPException(409, { message: "artifact_already_completed" });
@@ -146,10 +147,11 @@ export function releasePublishing(
       const input = completion.safeParse(await c.req.json().catch(() => null));
       if (
         !input.success ||
-        Math.ceil(input.data.size / chunkSize) !== input.data.parts
+        Math.ceil(input.data.size / (input.data.chunkBytes ?? chunkSize)) !== input.data.parts
       )
         throw new HTTPException(400, { message: "invalid_completion" });
       const { size, sha512, parts } = input.data;
+      const assemblyChunkSize = input.data.chunkBytes ?? chunkSize;
       const existing = await metadata(file);
       if (existing) {
         if (existing.size !== size || existing.sha512 !== sha512)
@@ -170,7 +172,7 @@ export function releasePublishing(
             throw new HTTPException(400, { message: "missing_chunk" });
           }
           const expected =
-            index === parts - 1 ? size - index * chunkSize : chunkSize;
+            index === parts - 1 ? size - index * assemblyChunkSize : assemblyChunkSize;
           if (bytes.length !== expected)
             throw new HTTPException(400, { message: "invalid_chunk_size" });
           hash.update(bytes);
@@ -210,7 +212,7 @@ export function releasePublishing(
     const complete = await metadata(file);
     if (complete) return c.json({ completed: true, ...complete });
     const names = await readdir(file + ".parts").catch(() => [] as string[]);
-    const parts = await Promise.all(names.filter(name => /^(?:0|[1-9][0-9]{0,2})$/.test(name)).map(async name => ({ part: Number(name), size: (await stat(path.join(file + ".parts", name))).size })));
+    const parts = await Promise.all(names.filter(name => /^(?:0|[1-9][0-9]{0,3})$/.test(name)).map(async name => ({ part: Number(name), size: (await stat(path.join(file + ".parts", name))).size })));
     return c.json({ completed: false, parts });
   });
   app.post("/internal/releases/github-mirror", async (c) => {

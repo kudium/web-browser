@@ -58,6 +58,18 @@ describe("release publication", () => {
     expect((await app.request("/internal/releases/github-mirror", { method: "POST", body: "{}" })).status).toBe(401);
     expect((await request("/internal/releases/github-mirror", "POST", "{}")).status).toBe(400);
   });
+  test("recovers slow transfers with explicit one MiB chunks and full checksum verification", async () => {
+    const route = prefix.replace("Browser.AppImage", "Small.AppImage");
+    const bytes = Buffer.alloc(1024 * 1024 + 4, 42);
+    for (let part = 0; part < 2; part++) {
+      const chunk = bytes.subarray(part * 1024 * 1024, (part + 1) * 1024 * 1024);
+      expect((await request(route + "/" + part, "PUT", chunk, { "X-Chunk-Sha512": checksum(chunk) })).status).toBe(200);
+    }
+    expect((await request(route + "/status")).status).toBe(200);
+    expect((await request(route + "/complete", "POST", JSON.stringify({ size: bytes.length, sha512: checksum(bytes), parts: 2, chunkBytes: 1024 * 1024 }), { "Content-Type": "application/json" })).status).toBe(200);
+    const download = await app.request("/downloads/1.1.0-beta.1/linux/x64/Small.AppImage");
+    expect(checksum(new Uint8Array(await download.arrayBuffer()))).toBe(checksum(bytes));
+  });
   test("malformed completion and manifest JSON returns a client error", async () => {
     expect((await request(prefix + "/complete", "POST", "{")).status).toBe(400);
     expect(

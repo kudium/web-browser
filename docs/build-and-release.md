@@ -239,3 +239,8 @@ stored or logged. This recovery does not register manifests or advance feeds.
 The normal local publisher subsequently verifies every GitHub asset and publishes
 both architecture feeds. Legacy chunk status can be inspected through the
 authenticated upload `/status` route to finish an already-started archive.
+
+For a slow connection, retained chunk recovery accepts explicit `chunkBytes: 1048576`
+with up to 1024 parts, while existing uploads keep their eight MiB default.
+Use one MiB chunks to stay below proxy request-body timeouts; completion still
+requires the original full installer size and SHA-512.
