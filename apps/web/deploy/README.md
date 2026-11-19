@@ -43,11 +43,13 @@ metadata and incomplete chunks stay private.
 
 ## Release publication and retention
 
-CI uploads signed installers in 8 MiB chunks to authenticated `/internal/releases/`
-endpoints. Bun verifies chunk and whole-file SHA-512 checksums before exposing
-immutable `/downloads/<version>/<platform>/<arch>/<filename>` files. CI publishes
-all four target manifests in one database transaction after uploading every file.
-The backend then serves the stable or beta updater feeds.
+Local releases upload signed installers and blockmaps to public GitHub Releases
+in `kudium/web-browser`. Only authenticated manifest JSON reaches this backend.
+The backend accepts exact versioned GitHub asset URLs after checking the public
+release channel, uploaded state, size and SHA-256 digest through GitHub's API.
+Keep `https://github.com` in `RELEASE_ASSET_ORIGINS` alongside the website origin.
+Existing `/updates` URLs continue serving SHA-512 metadata with GitHub download
+URLs. Legacy local downloads and their persistent release volume remain intact.
 
 An ordinary `package:browser` build retains the GitHub feed. `package:web` embeds
 this service's channel, platform, and architecture feed. Existing installations

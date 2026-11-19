@@ -59,6 +59,12 @@ defines these commands, run from the repository root on a Mac:
 
 ### Credentials, outputs and publication
 
+- A requested release is complete only after publication succeeds and live
+  release history plus both macOS architecture update feeds advertise the
+  selected version. Check these public endpoints before saying "released" or
+  "published"; a verified build, Git tag, or website deployment is insufficient.
+  If publication fails, continue the authorized release with `--retry <tag>`
+  when safe, or report the exact blocker and that users still see the old feed.
 - Signing uses `Developer ID Application: Kudium LTD (79VCL28M9P)` and its
   private key in Keychain. Apple Distribution alone is insufficient. The user
   must enter Keychain passwords locally; never request passwords/key contents in chat.
@@ -73,10 +79,13 @@ defines these commands, run from the repository root on a Mac:
   Versioned artifacts: `release-artifacts/local/<tag>/`, retaining `builds/`,
   `installers/`, the isolated `source/` clone, `release.json` and `build.log`.
   These directories are Git-ignored; installer binaries are not committed.
-- Publication uploads verified installers directly from the Mac to
-  `https://browser.kudium.com` using `scripts/ci/publish-browser-release.mjs`.
-  It is separate from building and does not require a GitHub build runner.
-  GitHub receives the source commit and version tag, not installer binaries.
+- Publication uploads verified installers and blockmaps from the Mac to public
+  GitHub Releases in `kudium/web-browser`, using `scripts/ci/publish-browser-release.mjs`.
+  It requires authenticated `gh` with release write access, not a GitHub runner.
+  Only manifest JSON goes to `https://browser.kudium.com`; the existing web update
+  feeds point to GitHub assets. Verify local SHA-512 and GitHub SHA-256 checksums,
+  public access, release history and both Mac feeds before reporting completion.
+  Retry the same tag if feed registration fails after GitHub upload.
 - The backend keeps published version manifests and exposes `/releases` and
   `/v1/releases?channel=all&page=1` for release history, notes and downloads.
   Stable/beta auto-update feeds still select the latest matching version.

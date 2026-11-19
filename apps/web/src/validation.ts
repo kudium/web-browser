@@ -13,7 +13,7 @@ export const targetSchema = z.object({ platform: z.enum(['darwin', 'win32', 'lin
 export const releaseSchema = targetSchema.extend({
   version: z.string().refine(v => valid(v) === v, 'Canonical semver required'),
   notes: z.string().max(20000).default(''),
-  files: z.array(z.object({ url: z.url().refine(v => { const u = new URL(v); return u.protocol === 'https:' && !u.username && !u.password && !u.hash; }), sha512: base64(64, 64), size: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }).strict()).min(1).max(10),
+  files: z.array(z.object({ url: z.url().refine(v => { const u = new URL(v); return u.protocol === 'https:' && !u.username && !u.password && !u.hash; }), sha512: base64(64, 64), sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(), size: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }).strict()).min(1).max(10),
 }).strict().refine(v => v.channel !== 'stable' || prerelease(v.version) === null, 'Stable releases cannot have prerelease versions');
 export type ReleaseManifest = z.infer<typeof releaseSchema>;
 export function allowedAssets(manifest: ReleaseManifest, origins: string[]) {

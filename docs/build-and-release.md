@@ -1,6 +1,6 @@
 # Build and release pipeline
 
-Repository: https://github.com/kudium/web-browser (private).
+Repository: https://github.com/kudium/web-browser (public).
 Website: https://browser.kudium.com.
 
 ## Every change
@@ -104,6 +104,11 @@ Use owner-only permissions (`chmod 600` on this file) and keep it outside the
 repository. `KUDIUM_RELEASE_CONFIG` can select another absolute config path.
 Existing shell environment variables override file settings. API key contents
 are loaded privately for the build and are never printed by the release runner.
+Install GitHub CLI (`gh`) and authenticate with permission to write releases in
+`kudium/web-browser`. Release preflight checks this before building. Local `gh`
+credentials stay outside the repository; manually authorized hosted fallback jobs
+use their contents-write `GH_TOKEN`.
+
 An Apple ID/app-specific password/team ID environment configuration is also
 supported by the existing notarization hook. No publication token is needed for
 `release:test`.
@@ -119,8 +124,9 @@ npm run release:stable -- --retry v1.0.2
 ```
 
 The runner checks the retained version/source record, rechecks the signed update
-ZIPs and installer digests, pushes the existing tag, and retries immutable uploads
-without rebuilding. Never change a published version's artifacts. If a build
+ZIPs and installer digests, pushes the existing tag, and retries matching GitHub
+assets and manifest registration without rebuilding. If GitHub publication succeeded
+but feed registration failed, the same retry reuses the published assets. Never change a published version's artifacts. If a build
 fails before it has verified both architectures, inspect its log and move the
 failed artifact folder aside before rebuilding; incomplete builds cannot be
 published with `--retry`.
@@ -161,9 +167,23 @@ checksums; macOS and Windows installers also use operating-system code signing.
 
 ## Downloads and updates
 
-Installers are uploaded in verified chunks, completed immutably, then the selected targets’
-manifests are registered atomically in PostgreSQL. Public downloads do not require
-GitHub access. The server exposes `/updates/stable/<platform>/<arch>/latest*.yml`
+Signed installers and blockmaps are uploaded from the local Mac to public GitHub
+Releases in `kudium/web-browser`. No GitHub Actions runner is used. The publisher
+creates a draft for the source tag, verifies all local SHA-512 checksums, uploads
+both architectures, compares sizes and SHA-256 digests with GitHub's asset API,
+then publishes the release and verifies public download access. Existing assets
+must match exactly; published assets are never overwritten or added to.
+
+Only the small release-manifest JSON goes to
+`https://browser.kudium.com/internal/releases/manifests`. The backend verifies
+the exact repository/tag, public release channel, asset sizes and GitHub SHA-256
+digests before atomically registering all targets. Manifest SHA-512 checksums
+remain available to electron-updater. Installer bytes no longer use Kudium's
+chunk-upload endpoint. Existing hosted installers remain available.
+
+Installed browsers retain their existing update-feed URLs; no manual reinstall
+is needed for builds already using the web feed. The feeds and website downloads
+point directly to public GitHub release assets. Public downloads require no login. The server exposes `/updates/stable/<platform>/<arch>/latest*.yml`
 and `/updates/beta/<platform>/<arch>/beta*.yml` for electron-updater.
 
 macOS publication includes ZIPs for updates and DMGs for manual installation.
@@ -195,3 +215,13 @@ and `application/octet-stream`. Keep these exclusions when changing domains or
 resetting labels: gzip on installers removes file lengths and prevents the CDN
 from serving byte ranges. The publisher also verifies response checksums if a
 CDN omits `Content-Length`.
+
+
+## Release completion evidence
+
+A release is complete only after public release history and every selected update
+feed advertise the version and GitHub asset URLs. The publisher performs these
+checks and records `publication.json` beside retained `release.json`. A Git tag,
+signed build, public GitHub release, or website deployment alone is insufficient.
+If manifest registration or live verification fails, report that users still see
+the old feed and resume the same authorized release with `--retry <tag>`.

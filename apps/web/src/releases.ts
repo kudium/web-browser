@@ -51,7 +51,7 @@ export async function registerReleases(db: Database, manifests: ReleaseManifest[
         const [existing] = await tx.select().from(releases).where(and(eq(releases.version, manifest.version), eq(releases.platform, manifest.platform), eq(releases.arch, manifest.arch), eq(releases.channel, manifest.channel)));
         if (!existing || JSON.stringify(existing.manifest) !== JSON.stringify(manifest)) {
           // PostgreSQL jsonb key ordering is not stable. Compare normalized fields.
-          const normalize = (m: ReleaseManifest) => JSON.stringify([m.version, m.platform, m.arch, m.channel, m.notes, m.files.map(f => [f.url, f.sha512, f.size])]);
+          const normalize = (m: ReleaseManifest) => JSON.stringify([m.version, m.platform, m.arch, m.channel, m.notes, m.files.map(f => [f.url, f.sha512, f.size, f.sha256])]);
           if (!existing || normalize(existing.manifest) !== normalize(manifest)) throw new HTTPException(409, { message: 'immutable_release' });
         }
       }

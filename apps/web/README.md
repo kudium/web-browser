@@ -122,7 +122,7 @@ Deploy migration `0003_messy_falcon.sql` with the web update before distributing
 
 ## Releases
 
-The GitHub pipeline uploads installers through the authenticated chunk publisher,
+The local release publisher uploads installers to public GitHub Releases and sends verified manifest JSON to the backend,
 verifies their checksums, and registers all targets atomically. It needs no
 production database credentials. See [build and release](../../docs/build-and-release.md)
 for beta/stable tags, signing secrets, and deployment setup.

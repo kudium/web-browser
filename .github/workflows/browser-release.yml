@@ -18,7 +18,7 @@ on:
         type: choice
         options: [macos, all]
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: browser-release
   cancel-in-progress: false
@@ -64,6 +64,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
           RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
         run: |
           names="MAC_CSC_LINK MAC_CSC_KEY_PASSWORD RELEASE_PUBLISH_TOKEN"
@@ -156,6 +157,7 @@ jobs:
           path: release-artifacts
       - name: Upload verified installers and publish channel feeds
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.tag }}
         run: node scripts/ci/publish-browser-release.mjs release-artifacts ${{ needs.prepare.outputs.targets }}

@@ -11,7 +11,7 @@ on:
         required: true
         type: string
 permissions:
-  contents: read
+  contents: write
   actions: read
 concurrency:
   group: browser-release
@@ -41,6 +41,7 @@ jobs:
           run-id: ${{ inputs.run_id }}
       - name: Verify public downloads and publish feeds
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
           RELEASE_VERSION: ${{ inputs.tag }}
         run: node scripts/ci/publish-browser-release.mjs release-artifacts macos

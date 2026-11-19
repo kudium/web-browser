@@ -91,6 +91,8 @@ function credentials() {
     ? ['APPLE_API_KEY_ID', 'APPLE_API_ISSUER', 'RELEASE_PUBLISH_TOKEN']
     : ['APPLE_ID', 'APPLE_ID_PASS', 'APPLE_TEAM_ID', 'RELEASE_PUBLISH_TOKEN'];
   for (const name of required) if (!env[name]?.trim()) throw new Error(`Missing ${name}. Configure ${configPath} or your shell environment; never commit secrets.`);
+  const github = spawnSync('gh', ['auth', 'status'], { encoding: 'utf8' });
+  if (github.error || github.status !== 0) throw new Error('Authenticate GitHub CLI with release write access before building');
   const identities = spawnSync('security', ['find-identity', '-v', '-p', 'codesigning'], { encoding: 'utf8' });
   if (!identities.stdout?.includes(identity)) throw new Error('Install the Kudium Developer ID certificate and private key in Keychain first');
   return env;

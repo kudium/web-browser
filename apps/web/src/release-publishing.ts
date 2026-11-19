@@ -16,6 +16,8 @@ import { valid } from "semver";
 import { z } from "zod";
 import { releaseSchema, type ReleaseManifest } from "./validation";
 
+import { verifyGitHubAssets } from "./github-release-assets";
+
 export const chunkSize = 8 * 1024 * 1024;
 const maxSize = chunkSize * 128;
 const digest = z
@@ -221,6 +223,7 @@ export function releasePublishing(
       targets.add(target);
       for (const asset of manifest.files) {
         const url = new URL(asset.url);
+        if (url.origin === "https://github.com") continue;
         const prefix = `/downloads/${manifest.version}/${manifest.platform}/${manifest.arch}/`;
         if (
           url.origin !== config.origin ||
@@ -245,6 +248,7 @@ export function releasePublishing(
           throw new HTTPException(400, { message: "unverified_artifact" });
       }
     }
+    await verifyGitHubAssets(input.data);
     await publish(input.data);
     return c.json({
       published: input.data.map((m) => `${m.platform}/${m.arch}/${m.channel}`),
