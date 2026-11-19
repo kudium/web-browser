@@ -48,7 +48,8 @@ if (!release) {
   const notesFile = path.resolve(root, '../github-release-notes.md');
   await fs.writeFile(notesFile, notes || `Kudium Browser ${version}`);
   gh(['release', 'create', tag, '--repo', repository, '--verify-tag', '--draft', '--title', `Kudium Browser ${version}`, '--notes-file', notesFile, ...(channel === 'beta' ? ['--prerelease'] : [])]);
-  release = gh(['api', `repos/${repository}/releases/tags/${tag}`], true);
+  release = gh(['api', '--paginate', '--slurp', `repos/${repository}/releases`], true).flat().find(r => r.tag_name === tag);
+  if (!release) throw new Error('Created draft release is unavailable');
 }
 if (release.prerelease !== (channel === 'beta')) throw new Error('Existing GitHub release has the wrong channel');
 for (const asset of uploads) {
@@ -63,7 +64,7 @@ for (const asset of uploads) {
     gh(['release', 'upload', tag, asset.file, '--repo', repository]);
   }
 }
-release = gh(['api', `repos/${repository}/releases/tags/${tag}`], true);
+release = gh(['api', `repos/${repository}/releases/${release.id}`], true);
 for (const asset of uploads) {
   const actual = release.assets.find(a => a.name === asset.name);
   if (!actual || actual.size !== asset.size || actual.digest !== `sha256:${asset.sha256}` || actual.state !== 'uploaded')
