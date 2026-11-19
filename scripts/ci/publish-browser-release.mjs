@@ -61,7 +61,14 @@ for (const asset of uploads) {
   } else {
     if (!release.draft) throw new Error('Never add or replace assets in an already published release');
     console.log(`Uploading to GitHub: ${asset.name}`);
-    gh(['release', 'upload', tag, asset.file, '--repo', repository]);
+    // IPv4 avoids stalled uploads on networks with unreliable IPv6 routing.
+    // Feed curl's credentials through stdin, never argv, logs or a repository file.
+    const githubToken = gh(['auth', 'token']).trim();
+    const upload = spawnSync('curl', ['--ipv4', '--http1.1', '--fail-with-body', '--silent', '--show-error', '--speed-limit', '1024', '--speed-time', '60', '--request', 'POST', '--upload-file', asset.file, '--config', '-', `https://uploads.github.com/repos/${repository}/releases/${release.id}/assets?name=${encodeURIComponent(asset.name)}`], {
+      encoding: 'utf8', maxBuffer: 1024 * 1024,
+      input: `header = ${JSON.stringify(`Authorization: Bearer ${githubToken}`)}\nheader = "Content-Type: application/octet-stream"\n`,
+    });
+    if (upload.error || upload.status !== 0) throw new Error(`GitHub asset upload failed: ${upload.stderr?.trim() || upload.error?.message}`);
   }
 }
 release = gh(['api', `repos/${repository}/releases/${release.id}`], true);
