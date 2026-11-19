@@ -170,7 +170,8 @@ checksums; macOS and Windows installers also use operating-system code signing.
 Signed installers and blockmaps are uploaded from the local Mac to public GitHub
 Releases in `kudium/web-browser`. No GitHub Actions runner is used. The publisher
 creates a draft for the source tag, verifies all local SHA-512 checksums, uploads
-both architectures, compares sizes and SHA-256 digests with GitHub's asset API,
+up to three files concurrently over IPv4 using curl with credentials passed through
+stdin, covering both architectures, compares sizes and SHA-256 digests with GitHub's asset API,
 then publishes the release and verifies public download access. Existing assets
 must match exactly; published assets are never overwritten or added to.
 

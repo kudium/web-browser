@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { validateManifests } from './browser-release-targets.mjs';
 
@@ -52,6 +52,7 @@ if (!release) {
   if (!release) throw new Error('Created draft release is unavailable');
 }
 if (release.prerelease !== (channel === 'beta')) throw new Error('Existing GitHub release has the wrong channel');
+const missing = [];
 for (const asset of uploads) {
   const existing = release.assets.find(a => a.name === asset.name);
   if (existing) {
@@ -60,17 +61,33 @@ for (const asset of uploads) {
     console.log(`Verified existing GitHub asset: ${asset.name}`);
   } else {
     if (!release.draft) throw new Error('Never add or replace assets in an already published release');
-    console.log(`Uploading to GitHub: ${asset.name}`);
-    // IPv4 avoids stalled uploads on networks with unreliable IPv6 routing.
-    // Feed curl's credentials through stdin, never argv, logs or a repository file.
-    const githubToken = gh(['auth', 'token']).trim();
-    const upload = spawnSync('curl', ['--ipv4', '--http1.1', '--fail-with-body', '--silent', '--show-error', '--speed-limit', '1024', '--speed-time', '60', '--request', 'POST', '--upload-file', asset.file, '--config', '-', `https://uploads.github.com/repos/${repository}/releases/${release.id}/assets?name=${encodeURIComponent(asset.name)}`], {
-      encoding: 'utf8', maxBuffer: 1024 * 1024,
-      input: `header = ${JSON.stringify(`Authorization: Bearer ${githubToken}`)}\nheader = "Content-Type: application/octet-stream"\n`,
-    });
-    if (upload.error || upload.status !== 0) throw new Error(`GitHub asset upload failed: ${upload.stderr?.trim() || upload.error?.message}`);
+    missing.push(asset);
   }
 }
+const githubToken = missing.length ? gh(['auth', 'token']).trim() : '';
+async function uploadAsset(asset) {
+  console.log(`Uploading to GitHub: ${asset.name}`);
+  // IPv4 avoids stalled uploads on networks with unreliable IPv6 routing.
+  // Credentials go through stdin, never argv, logs or a repository file.
+  await new Promise((resolve, reject) => {
+    const child = spawn('curl', ['--ipv4', '--http1.1', '--fail-with-body', '--silent', '--show-error', '--speed-limit', '1024', '--speed-time', '60', '--request', 'POST', '--upload-file', asset.file, '--config', '-', `https://uploads.github.com/repos/${repository}/releases/${release.id}/assets?name=${encodeURIComponent(asset.name)}`]);
+    let detail = '';
+    child.stdout.resume();
+    child.stderr.on('data', bytes => { detail = (detail + bytes.toString()).slice(-8192); });
+    child.on('error', reject);
+    child.on('close', code => code === 0 ? resolve() : reject(new Error(`GitHub asset upload failed (${asset.name}): ${detail.trim()}`)));
+    child.stdin.on('error', () => {});
+    child.stdin.end([`header = ${JSON.stringify(`Authorization: Bearer ${githubToken}`)}`, 'header = "Content-Type: application/octet-stream"', ''].join(String.fromCharCode(10)));
+  });
+  console.log(`Uploaded to GitHub: ${asset.name}`);
+}
+// Independent files share a bounded queue; every result settles before publication.
+let next = 0;
+const results = await Promise.allSettled(Array.from({ length: Math.min(3, missing.length) }, async () => {
+  while (next < missing.length) await uploadAsset(missing[next++]);
+}));
+const failed = results.filter(result => result.status === 'rejected');
+if (failed.length) throw new AggregateError(failed.map(result => result.reason), 'GitHub uploads incomplete; retry the retained draft');
 release = gh(['api', `repos/${repository}/releases/${release.id}`], true);
 for (const asset of uploads) {
   const actual = release.assets.find(a => a.name === asset.name);
