@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { selectRelease } from './ci/select-browser-release.mjs';
 import { validateManifests } from './ci/browser-release-targets.mjs';
@@ -174,5 +174,14 @@ export function main(args = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try { main(); } catch (error) { console.error(error.message); process.exitCode = 1; }
+  let awake;
+  try {
+    if (process.platform === 'darwin' && !process.argv.includes('--dry-run')) {
+      awake = spawn('/usr/bin/caffeinate', ['-ims', '-w', String(process.pid)], { stdio: 'ignore' });
+      awake.on('error', error => console.error(`Could not prevent idle sleep: ${error.message}`));
+      console.log('Preventing idle sleep during release. Keep the lid open and connect power; lid closure can still interrupt uploads.');
+    }
+    main();
+  } catch (error) { console.error(error.message); process.exitCode = 1; }
+  finally { awake?.kill(); }
 }

@@ -28,6 +28,12 @@ The manual **Web checks (manual)** workflow validates only; it does not deploy.
 
 Run these from the repository root on a Mac:
 
+Real release commands prevent idle sleep while running. Keep the Mac plugged in
+with its lid open until publication finishes: closing the lid can suspend network
+transfers despite the sleep assertion, causing timeouts and connection resets.
+A publication retry reuses completed GitHub assets, but an interrupted large file
+must upload again because GitHub asset uploads are not resumable.
+
 | Command | Result |
 | --- | --- |
 | `npm run release:test` | Builds your current edits for this Mac. Creates a local DMG/ZIP without pushing, publishing, or changing the release version. Test builds are unsigned and unnotarized. |
