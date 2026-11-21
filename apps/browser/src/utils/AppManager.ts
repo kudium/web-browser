@@ -113,6 +113,7 @@ export const AppManager = {
           'protectionGroupId',
           'extensionInstallTarget',
           'sessionName',
+          'sessionChromeColor',
           'sessionSlug',
           'sessionIconEmoji',
           'sessionIconImage',

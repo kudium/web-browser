@@ -30,10 +30,11 @@ import { registerHookMarketplace, openHookInstallLink } from './hookMarketplace'
 import { aiGroupId } from '../browser/aiGroups';
 import { projectFileNavigation } from './projectFileNavigation';
 import { onWindowClosed } from './windowLifecycle';
-import { suspendSidebarPanels, setSidebarPanelSession } from './sidebarPanels';
+import { suspendSidebarPanels, setSidebarPanelSession, sidebarPanelHostFor } from './sidebarPanels';
 import { extensionDocumentId, assertExtensionDocument } from './extensionDocuments';
 import { extensionCreatedTab } from '../browser/extensionTabs';
 import { extensionActiveTab } from './extensionSidePanels';
+import { registerExtensionWorkspace } from './extensionWorkspaceGroups';
 import { presentSnapshots } from './snapshotPresentation';
 import {
   getGroupRemovalJournal,
@@ -161,6 +162,22 @@ export function registerElectronBrowser(
       : window.webContents.send('browser-state', state);
   let developerWindows: ReturnType<typeof registerSiteDeveloperWindows>;
   let synchronizingExtensions = false;
+  const groupMutations = new Map<string, { window: BrowserWindow; changes: { id: string; changes: Partial<IApp> }[]; finish(error?: string): void }>();
+  const releaseExtensionWorkspace = privateMode ? () => {} : registerExtensionWorkspace({
+    apps: () => [...configurations.values()],
+    contents: (id) => views.get(id)?.webContents,
+    window: (id) => hostFor(id),
+    profile: (session) => [...configurations.values()].map(loginProfileKey).find((id) => getExtensionProfile(id)?.session === session),
+    assertAccess: (app) => {
+      if (isGroupLocked(app) || removals.blocks(app)) throw new Error('Unlock this group before changing it');
+    },
+    update: (owner, changes) => new Promise<void>((resolve, reject) => {
+      const mutationId = randomUUID();
+      const timer = setTimeout(() => { groupMutations.delete(mutationId); reject(new Error('The workspace did not save the group change')); }, 10000);
+      groupMutations.set(mutationId, { window: owner, changes, finish(error) { clearTimeout(timer); error ? reject(new Error(error)) : resolve(); } });
+      owner.webContents.send('browser-tab-request', { action: 'extension-group-update', mutationId, groupChanges: changes });
+    }),
+  });
   const retiringTabs = new Set<number>();
   const closingHosts = new WeakSet<BrowserWindow>();
   const watchClosing = (host: BrowserWindow) => {
@@ -1559,6 +1576,17 @@ export function registerElectronBrowser(
     )
       return;
     const window = requestWindow;
+    if (request.action === 'extension-group-result') {
+      const pending = groupMutations.get(request.mutationId || '');
+      if (!pending || pending.window !== window) return;
+      groupMutations.delete(request.mutationId!);
+      if (!request.error) for (const patch of pending.changes) {
+        const current = configurations.get(patch.id);
+        if (current) configurations.set(patch.id, { ...current, ...patch.changes });
+      }
+      pending.finish(request.error);
+      return;
+    }
     if (request.action === 'focus-chrome') {
       if (window.isFocused()) window.webContents.focus();
       return;
@@ -2530,7 +2558,22 @@ export function registerElectronBrowser(
     const chromeFocused = source.webContents.isFocused();
     if (windows) windows.setLayout(source, layout);
     else applyLayout(layout);
-    setSidebarPanelSession(source, layout.focusedId ? views.get(layout.focusedId)?.webContents.session : undefined);
+    const panelHost = sidebarPanelHostFor(source);
+    const groupTargets = new Map<string, IApp>();
+    for (const app of configurations.values()) if (!app.archived && !isGroupLocked(app) && !removals.blocks(app) && hostFor(app.id) === source) {
+      const key = groupKey(app);
+      if (!groupTargets.has(key) || app.id === layout.focusedId) groupTargets.set(key, app);
+    }
+    panelHost?.setTargets([...groupTargets].map(([id, app]) => ({ id, title: app.sessionName || app.name, profileId: loginProfileKey(app) })), (id) => {
+      const item = id ? groupTargets.get(id) : configurations.get(layout.focusedId || '');
+      const contents = item && views.get(item.id)?.webContents;
+      setSidebarPanelSession(source, contents?.session);
+      if (id && item && !contents) source.webContents.send('browser-tab-request', { action: 'select-group', groupId: id });
+      if (contents && item) {
+        try { synchronizingExtensions = true; getExtensionProfile(loginProfileKey(item))?.api.selectTab(contents); }
+        finally { synchronizingExtensions = false; }
+      }
+    });
     // Reparenting/showing a WebContentsView must not take the first responder
     // away from the sidebar or an address field the user is interacting with.
     if (chromeFocused && !source.webContents.isDestroyed())
@@ -2611,6 +2654,9 @@ export function registerElectronBrowser(
         }
       );
   const dispose = () => {
+    releaseExtensionWorkspace();
+    for (const pending of groupMutations.values()) pending.finish('Browser window closed');
+    groupMutations.clear();
     if (disposed) return;
     disposed = true;
     if (privateMode) clearPrivateSiteSettings(privateProfilePrefix);

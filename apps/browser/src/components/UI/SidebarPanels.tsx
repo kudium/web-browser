@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useEffect, useState } from 'react';
 import {
   X,
-  ChevronDown,
+  SquareStack,
+  LocateFixed,
+  CircleAlert,
   ArrowUpRight,
   SquareArrowDownLeft,
 } from 'lucide-react';
@@ -9,16 +11,35 @@ import { browser } from '../../browser/client';
 import type { SidebarPanelState } from '../../browser/sidebarPanels';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { ChromeIconButton } from './ChromeIconButton';
+import { GroupPicker } from './GroupPicker';
+import { EmptyState } from './EmptyState';
 
 /** Shared slot for isolated native feature content; geometry belongs to this shell. */
 export function SidebarPanels({
   state,
   active,
+  onClose,
 }: {
   state: SidebarPanelState;
   active: boolean;
+  onClose: () => void;
 }) {
   const slot = useRef<HTMLDivElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const restoredTarget = useRef(false);
+  useEffect(() => {
+    if (restoredTarget.current || !state.targets?.length) return;
+    restoredTarget.current = true;
+    try {
+      const saved = localStorage.getItem('kudium-sidebar-panel-target');
+      if (saved && state.targets.some((target) => target.id === saved))
+        void browser
+          .sidebarPanels({ action: 'target', groupId: saved })
+          .catch(() => {});
+    } catch {
+      /* Optional target preference. */
+    }
+  }, [state.targets]);
   useLayoutEffect(() => {
     const id = state.activeId;
     if (!id) return undefined;
@@ -32,6 +53,7 @@ export function SidebarPanels({
           id,
           bounds:
             active &&
+            !pickerOpen &&
             !state.floating &&
             rect &&
             rect.width > 0 &&
@@ -59,7 +81,14 @@ export function SidebarPanels({
         .sidebarPanels({ action: 'layout', id, bounds: null })
         .catch(() => {});
     };
-  }, [active, state.activeId, state.panels, state.floating]);
+  }, [
+    active,
+    pickerOpen,
+    state.activeId,
+    state.openRequest,
+    state.panels,
+    state.floating,
+  ]);
   return (
     <section
       className="ai-sidebar-pane sidebar-feature-pane"
@@ -67,27 +96,56 @@ export function SidebarPanels({
       aria-label="Sidebar panels"
     >
       <AssistantPageHeader>
-        <div className="sidebar-feature-picker">
-          <select
-            aria-label="Sidebar panel"
-            value={state.activeId || ''}
-            onChange={(event) => {
-              void browser
-                .sidebarPanels({ action: 'activate', id: event.target.value })
-                .catch(() => {});
-            }}
-          >
-            <option value="" disabled>
-              Choose a panel
-            </option>
-            {state.panels.map((panel) => (
-              <option key={panel.id} value={panel.id}>
-                {panel.title}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={14} aria-hidden="true" />
-        </div>
+        <GroupPicker
+          label="Sidebar panel"
+          unselectedLabel="Choose a panel"
+          placeholder="Search panels…"
+          options={state.panels.map((panel) => ({
+            id: panel.id,
+            name: panel.title,
+          }))}
+          value={state.activeId || ''}
+          disabled={!state.panels.length}
+          triggerClassName="sidebar-feature-panel-picker"
+          optionIcon={() => <SquareStack size={14} />}
+          onOpenChange={setPickerOpen}
+          onChange={(id) => {
+            void browser
+              .sidebarPanels({ action: 'activate', id })
+              .catch(() => {});
+          }}
+        />
+        <GroupPicker
+          label="Panel tab group"
+          value={state.targetGroup || ''}
+          disabled={!state.targets?.length}
+          options={[
+            {
+              id: '',
+              name: 'Auto · current group',
+              leadingIcon: <LocateFixed size={14} />,
+            },
+            ...(state.targets || []).map((target) => ({
+              id: target.id,
+              name: target.title,
+            })),
+          ]}
+          triggerClassName="sidebar-feature-group-picker"
+          onOpenChange={setPickerOpen}
+          onChange={(id) => {
+            const groupId = id || undefined;
+            try {
+              groupId
+                ? localStorage.setItem('kudium-sidebar-panel-target', groupId)
+                : localStorage.removeItem('kudium-sidebar-panel-target');
+            } catch {
+              /* Optional preference. */
+            }
+            void browser
+              .sidebarPanels({ action: 'target', groupId })
+              .catch(() => {});
+          }}
+        />
         <ChromeIconButton
           icon={state.floating ? SquareArrowDownLeft : ArrowUpRight}
           label={state.floating ? 'Dock panel back' : 'Undock panel'}
@@ -101,14 +159,72 @@ export function SidebarPanels({
         <ChromeIconButton
           icon={X}
           label="Close sidebar panel"
-          onClick={() => {
-            void browser.sidebarPanels({ action: 'close' }).catch(() => {});
-          }}
+          onClick={onClose}
         />
       </AssistantPageHeader>
-      {state.error && <p role="alert">{state.error}</p>}
-      {!state.activeId && <p>Choose a panel to open it here.</p>}
-      {state.floating && <p>This panel is open in a separate window.</p>}
+      {state.error ? (
+        <div role="alert">
+          <EmptyState
+            icon={<CircleAlert size={24} />}
+            title="Panel couldn't load"
+            description={state.error}
+            action={
+              state.activeId
+                ? {
+                    label: 'Try again',
+                    onClick: () => {
+                      void browser
+                        .sidebarPanels({
+                          action: 'activate',
+                          id: state.activeId!,
+                        })
+                        .catch(() => {});
+                    },
+                  }
+                : undefined
+            }
+          />
+        </div>
+      ) : !state.activeId ? (
+        <EmptyState
+          icon={<SquareStack size={24} />}
+          title={
+            state.panels.length ? 'Your side panels' : 'No panels in this group'
+          }
+          description={
+            state.panels.length
+              ? 'Open an extension or tool here. It will use the tab group selected above.'
+              : 'Choose another tab group, or install an extension that supports side panels.'
+          }
+          action={
+            state.panels[0]
+              ? {
+                  label: `Open ${state.panels[0].title}`,
+                  onClick: () => {
+                    void browser
+                      .sidebarPanels({
+                        action: 'activate',
+                        id: state.panels[0].id,
+                      })
+                      .catch(() => {});
+                  },
+                }
+              : undefined
+          }
+        />
+      ) : state.floating ? (
+        <EmptyState
+          icon={<ArrowUpRight size={24} />}
+          title="Panel is in its own window"
+          description="Bring it back here to keep working in the sidebar."
+          action={{
+            label: 'Dock panel back',
+            onClick: () => {
+              void browser.sidebarPanels({ action: 'dock' }).catch(() => {});
+            },
+          }}
+        />
+      ) : null}
       <div className="sidebar-feature-content" ref={slot} />
     </section>
   );

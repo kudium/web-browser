@@ -30,6 +30,9 @@ const {
 const {
   attachExtensionBrowserAPIs,
 } = require('../../src/main/extensionBrowserAPIs.ts');
+const {
+  registerExtensionWorkspace,
+} = require('../../src/main/extensionWorkspaceGroups.ts');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-side-panel-smoke-'));
 app.setPath('userData', path.join(root, 'profile'));
 app.on('window-all-closed', () => {});
@@ -132,6 +135,34 @@ app
         },
       });
       api.addTab(tab.webContents, chrome);
+      let workspace = [
+        {
+          id: 'control',
+          sessionId: 'original',
+          sessionProfileId: `smoke-${type}`,
+          name: 'Control',
+          sessionName: 'Original',
+          url: 'https://example.com',
+          icon: '',
+        },
+      ];
+      const releaseWorkspace = registerExtensionWorkspace({
+        apps: () => workspace,
+        contents: (id) => (id === 'control' ? tab.webContents : undefined),
+        window: () => chrome,
+        profile: (value) => (value === profile ? `smoke-${type}` : undefined),
+        assertAccess: () => {},
+        update: async (_window, changes) => {
+          workspace = workspace.map((item) => ({
+            ...item,
+            ...changes.find((change) => change.id === item.id)?.changes,
+          }));
+          fs.writeFileSync(
+            path.join(dir, 'workspace.json'),
+            JSON.stringify(workspace),
+          );
+        },
+      });
       await tab.webContents.loadURL(
         `chrome-extension://${extension.id}/control.html`,
       );
@@ -140,6 +171,14 @@ app
       );
       await tab.webContents.executeJavaScript(
         `chrome.tabGroups.update(${groupId}, {title:'Task output',color:'blue',collapsed:true})`,
+      );
+      assert.equal(workspace[0].sessionName, 'Task output');
+      assert.equal(workspace[0].sessionProfileId, `smoke-${type}`);
+      assert.notEqual(workspace[0].sessionId, 'original');
+      assert.equal(
+        JSON.parse(fs.readFileSync(path.join(dir, 'workspace.json')))[0]
+          .sessionChromeColor,
+        'blue',
       );
       assert.equal(
         (
@@ -165,6 +204,7 @@ app
           .length,
         0,
       );
+      releaseWorkspace();
       const server = require('node:http').createServer((_request, response) =>
         response.end('<title>Debugger fixture</title><h1>Original</h1>'),
       );

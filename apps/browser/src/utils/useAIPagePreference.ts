@@ -39,6 +39,7 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
           'developer',
           'notes',
           'activity',
+          'panels',
         ].includes(saved)
           ? saved
           : fallback;

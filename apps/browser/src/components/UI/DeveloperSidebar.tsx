@@ -21,6 +21,7 @@ import { HookIcon } from './HookIcon';
 import { AppIcon } from './AppIcon/AppIcon';
 import { AssistantPageHeader } from './AssistantPageHeader';
 import { GroupPicker } from './GroupPicker';
+import { EmptyState } from './EmptyState';
 import { useAppList } from '../../utils/hooks/useAppList';
 import { ScreenManager } from '../../utils/AppManager';
 import { lockedGroup, useGroupAccess } from '../../utils/groupAccess';
@@ -372,15 +373,10 @@ export function DeveloperSidebar({
       )}
       <div className="developer-sidebar-pages" aria-busy={loading && !!source}>
         {!source ? (
-          <div className="developer-sidebar-empty">
-            <HookIcon size={24} />
-            <h3>Manage site hooks</h3>
-            <p>
-              {options.length
+          <EmptyState icon={<HookIcon size={24} />} title="Manage site hooks"
+            description={options.length
                 ? 'Choose a group to see its pages and scripts.'
-                : 'Create or unlock a group to manage its scripts.'}
-            </p>
-          </div>
+                : 'Create or unlock a group to manage its scripts.'} />
         ) : (
           <>
             <DeveloperProjectSection

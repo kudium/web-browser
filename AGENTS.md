@@ -2,6 +2,15 @@
 This project is linked to Kudium Browser. Read [BROWSER.md](BROWSER.md) for browser integration and linked group context.
 <!-- kudium:browser-reference:end -->
 
+## Shared browser UI and extension adapters
+
+Read [apps/browser/docs/sidebar-panels.md](apps/browser/docs/sidebar-panels.md)
+before changing sidebar hosts or extension adapters. Reuse `GroupPicker`,
+`AssistantPageHeader`, and `EmptyState`; keep the panel and tab-group pickers in
+one header row. Do not duplicate picker, placeholder, permission, navigation, or
+group-storage logic. Route extension operations into the existing Kudium model
+and workspace save path instead of maintaining a second implementation.
+
 ## Builds, versions and releases
 
 Read [docs/build-and-release.md](docs/build-and-release.md) before changing or

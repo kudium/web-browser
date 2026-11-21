@@ -86,9 +86,15 @@ Muse from Meta 2.1.12 declares `panel/index.html` and uses `open` and
 API it requests, such as `debugger` or `tabGroups`.
 The browser API adapter supplies tab-group membership, group properties,
 queries, and lifecycle events, plus tab-bound debugger attachment, commands,
-targets, events, and detachment. Group state lasts for the profile engine's
-lifetime. Chrome tab groups are extension metadata; they do not create workspace
-groups or persist across app restarts. Group moves between windows and nested
+targets, events, and detachment. Group state comes from the saved workspace.
+There is no separate in-memory group engine. Without a workspace host,
+queries are empty and mutations reject explicitly.
+`main/extensionWorkspaceGroups.ts` projects saved Kudium groups into stable
+Chrome IDs. `tabs.group` creates or joins a real Kudium group through the normal
+workspace save path; title, color and collapse updates persist and appear in the
+group sidebar. Moving tabs retains the login profile and checks both source and
+destination group access. `tabs.ungroup` creates standalone Kudium groups while
+reporting Chrome's ungrouped ID (`-1`). Group moves and nested
 debugger sessions are currently rejected explicitly. Debugger commands support
 tab-level domains used by Muse (including Runtime, Page, Input and Emulation),
 not browser-wide Target or Browser commands. Privileged pages, foreign-profile
@@ -106,6 +112,16 @@ execution; those require acceptance testing with a Muse account. The generic
 release fixture checks group operations and a real CDP command on a disposable
 HTTP page for both classic and module workers.
 
+The panel header uses the shared sidebar toolbar and a full-width native content
+slot. Its target defaults to **Auto · current group**. Picking a group keeps the
+extension's active-tab context in that group's profile; an unloaded target is
+selected so its native tab can start. The picker cannot install an extension or
+grant access to another profile. Only approved extensions in the target profile
+appear. Unavailable or locked targets fall back to Auto. Selection and target
+preferences survive restarts, and native content remains alive when the sidebar
+is hidden. Extensions remain responsible for persisting their own internal
+conversation state across application restarts.
+
 ## Verification
 
 Run TypeScript and the browser unit tests. The new registry and adapter tests
@@ -114,9 +130,28 @@ and cleanup. Run the real fixture separately from `apps/browser`:
 
 ```sh
 npm run test:extension-side-panels
+node .erb/scripts/run-extension-side-panel-smoke.cjs --ui
 ```
 
 The fixture uses disposable profiles and verifies both worker types, native
 extension content, permissions, user gestures, tab-scoped panels, lifecycle
 events, profile switches, and unloading. It does not alter the user's installed
 extensions or browsing profile.
+The UI fixture bundles the actual shared header and stylesheet, checks the
+full-width native viewport, switches content through layout IPC, preserves a
+typed draft across hiding/reopening, and restores panel/target preferences after
+a renderer restart.
+
+## Reuse rules
+
+Use `GroupPicker` for tab-group selection and other searchable header choices;
+the panel and tab-group pickers belong in the same `AssistantPageHeader` row.
+Use `EmptyState` for sidebar placeholders, with feature-owned text, icon and an
+optional action. Panels and Developer share it. Do not copy their markup, picker
+search/keyboard logic, or styling into another feature.
+
+Extension adapters translate Chrome contracts into the existing Kudium model;
+they must not create a second group store, save path, permission mechanism, or
+popup navigation system. Workspace changes use `AppManager` and its existing
+access checks. Native panel content is hidden while a shared picker is open so
+its popover can receive input, then restored without recreating the content.

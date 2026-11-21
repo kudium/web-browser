@@ -101,10 +101,12 @@ export function AISidebar({
   sidebarPanels = EMPTY_SIDEBAR_PANELS,
   sidebarPane,
   onSidebarPaneChange,
+  onSidebarClose,
 }: {
   sidebarPanels?: SidebarPanelState;
   sidebarPane?: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels';
   onSidebarPaneChange?: (pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels') => void;
+  onSidebarClose?: () => void;
   visible?: boolean;
   promptRequest?: { text: string; token: number; append?: boolean };
   workingTabs?: AIWorkingTab[];
@@ -1400,7 +1402,7 @@ export function AISidebar({
         } else addFiles(Array.from(event.dataTransfer.files));
       }}
     >
-      <SidebarPanels state={sidebarPanels} active={visible && pane === 'panels'} />
+      <SidebarPanels state={sidebarPanels} active={visible && pane === 'panels'} onClose={onSidebarClose || (() => setPane('assistant'))} />
       <AssistantPanelHost panel="activity" active={pane === 'activity'}>
         <div
           className="ai-sidebar-pane ai-activity-pane"

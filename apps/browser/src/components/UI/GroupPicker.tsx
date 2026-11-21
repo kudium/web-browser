@@ -46,6 +46,7 @@ export function GroupPicker({
   footer,
   triggerDetail,
   triggerContent,
+  unselectedLabel = 'Choose a group',
 }: {
   options: GroupOption[];
   value: string;
@@ -64,6 +65,7 @@ export function GroupPicker({
   footer?: ReactNode;
   triggerDetail?: string;
   triggerContent?: ReactNode;
+  unselectedLabel?: string;
 }) {
   const tabs = AppManager.getAll();
   const renderIcon = (option: GroupOption) => {
@@ -167,7 +169,7 @@ export function GroupPicker({
           {!triggerContent && (
             <>
               <span className="group-picker-label">
-                {selected?.name || (allowCustom && value) || 'Choose a group'}
+                {selected?.name || (allowCustom && value) || unselectedLabel}
               </span>
               {triggerDetail && (
                 <span className="group-picker-detail">{triggerDetail}</span>

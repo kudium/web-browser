@@ -229,22 +229,23 @@ export function Main() {
   }>();
   const [savedAIOpen, setSavedAIOpen] = useAIPagePreference('open', false);
   const [savedAIPane, setSavedAIPane] = useAIPagePreference('pane', 'assistant');
-  const [nativePanelActive, setNativePanelActive] = useState(false);
-  const nativePanelRequested = useRef(false);
+  const [nativePanelActive, setNativePanelActive] = useState(savedAIPane === 'panels' && savedAIOpen);
+  const nativePanelRequested = useRef(savedAIPane === 'panels' && savedAIOpen);
   const aiOpen = savedAIOpen || nativePanelActive;
   const aiOpenValue = useRef(aiOpen);
   aiOpenValue.current = aiOpen;
-  const aiPane = nativePanelActive ? 'panels' : savedAIPane === 'panels' ? 'assistant' : savedAIPane;
+  const aiPane = nativePanelActive ? 'panels' : savedAIPane;
   const setAIPane = useCallback((pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels') => {
     nativePanelRequested.current = pane === 'panels';
     setNativePanelActive(pane === 'panels');
-    if (pane !== 'panels') setSavedAIPane(pane);
-  }, [setSavedAIPane]);
+    setSavedAIPane(pane);
+    if (pane === 'panels') setSavedAIOpen(true);
+  }, [setSavedAIPane, setSavedAIOpen]);
   const setAIOpen = useCallback((next: boolean | ((previous: boolean) => boolean)) => {
     const open = typeof next === 'function' ? next(aiOpenValue.current) : next;
     aiOpenValue.current = open;
     if (!open) { nativePanelRequested.current = false; setNativePanelActive(false); }
-    if (!open || !nativePanelRequested.current) setSavedAIOpen(open);
+    setSavedAIOpen(open);
   }, [setSavedAIOpen]);
   const sidebarPanels = useSidebarPanels();
   const lastPanelRequest = useRef(0);
@@ -258,6 +259,8 @@ export function Main() {
       setAIMounted(true);
       nativePanelRequested.current = true;
       setNativePanelActive(true);
+      setSavedAIPane('panels');
+      setSavedAIOpen(true);
     }
   }, [sidebarPanels.activeId, sidebarPanels.openRequest]);
   const [unreadNotes, setUnreadNotes] = useState(0);
@@ -1812,6 +1815,17 @@ export function Main() {
   useEffect(
     () =>
       browser.onTabRequest(async (request) => {
+        if (request.action === 'extension-group-update') {
+          let error: string | undefined;
+          try {
+            const patches = new Map((request.groupChanges || []).map((patch) => [patch.id, patch.changes]));
+            const apps = AppManager.getAll();
+            if (!patches.size || [...patches.keys()].some((id) => !apps.some((app) => app.id === id))) throw new Error('Tab is unavailable in this window');
+            AppManager.set(apps.map((app) => patches.has(app.id) ? { ...app, ...patches.get(app.id) } : app));
+          } catch (failure) { error = String(failure); }
+          browser.command({ id: '', action: 'extension-group-result', mutationId: request.mutationId, error });
+          return;
+        }
         if (request.action === 'task-ended' && request.id) {
           tabSwitcherRef.current.remove([request.id]);
           setClosedTabs((previous) => new Set([...previous, request.id!]));
@@ -2683,7 +2697,9 @@ export function Main() {
       item.spaceId || 'default',
       groupKey(item),
     ]);
-    const expanded = expandedGroups.includes(expansionKey);
+    const expanded = item.sessionChromeCollapsed === undefined
+      ? expandedGroups.includes(expansionKey)
+      : !item.sessionChromeCollapsed;
     const renaming =
       renameTarget?.id === item.id && renameTarget.axis === 'vertical';
     const Row = renaming ? 'div' : 'button';
@@ -2760,6 +2776,9 @@ export function Main() {
                   if (renaming) return;
                   if (folderView && !locked) {
                     closePreview();
+                    if (item.sessionChromeCollapsed !== undefined) {
+                      AppManager.set(AppManager.getAll().map((app) => groupKey(app) === groupKey(item) ? { ...app, sessionChromeCollapsed: expanded } : app));
+                    }
                     setExpandedGroups((previous) =>
                       expanded
                         ? previous.filter((id) => id !== expansionKey)
@@ -5098,6 +5117,7 @@ export function Main() {
                 sidebarPanels={sidebarPanels}
                 sidebarPane={aiPane}
                 onSidebarPaneChange={setAIPane}
+                onSidebarClose={() => setAIOpen(false)}
                 workingTabs={aiWorkingTabs.map((tab) => ({
                   id: tab.id,
                   name: tab.customName || states[tab.id]?.title || tab.name,

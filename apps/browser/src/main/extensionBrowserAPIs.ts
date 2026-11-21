@@ -1,16 +1,11 @@
 import type { BrowserWindow, Extension, Session, WebContents } from 'electron';
 import type { ElectronChromeExtensions } from 'electron-chrome-extensions';
+import { extensionWorkspaceGroups } from './extensionWorkspaceGroups';
+import type { WorkspaceChromeGroup as Group } from './extensionWorkspaceGroups';
 
 interface Event {
   extension?: Extension;
   sender: WebContents;
-}
-interface Group {
-  id: number;
-  windowId: number;
-  title?: string;
-  color: string;
-  collapsed: boolean;
 }
 interface Context {
   session: Session;
@@ -87,36 +82,43 @@ export function attachExtensionBrowserAPIs(api: ElectronChromeExtensions) {
       if (extension.manifest.permissions?.includes('tabGroups'))
         ctx.router.sendEvent(extension.id, name, { ...info });
   };
-  const groups = new Map<number, Group>();
-  const membership = new Map<number, number>();
-  let nextGroup = 1;
   const tab = (id: number) => {
     const contents = ctx.store.getTabById(integer(id));
     if (!contents || contents.isDestroyed() || contents.session !== ctx.session)
       throw new Error('Tab is unavailable in this profile');
     return contents;
   };
-  const group = (id: number) => {
-    const result = groups.get(integer(id));
-    if (!result) throw new Error('Tab group does not exist');
-    return result;
+  const workspaceForMutation = () => {
+    const workspace = extensionWorkspaceGroups(ctx.session);
+    if (!workspace)
+      throw new Error('This extension has no workspace group host');
+    return workspace;
   };
   const assign = ctx.store.impl.assignTabDetails;
   ctx.store.impl.assignTabDetails = (details, contents) => {
     assign?.(details, contents);
-    details.groupId = membership.get(contents.id) ?? -1;
+    const workspace = extensionWorkspaceGroups(ctx.session);
+    try {
+      details.groupId = workspace ? workspace.tabGroup(contents) : -1;
+    } catch {
+      details.groupId = -1;
+    }
   };
   const changed = (id: number, groupId: number) => {
     const details = ctx.store.tabDetailsCache.get(id);
     if (details) details.groupId = groupId;
     ctx.router.sendEvent(undefined, 'tabs.onUpdated', id, { groupId }, details);
   };
-  const empty = () => {
-    for (const [id, info] of groups)
-      if (![...membership.values()].includes(id)) {
-        groups.delete(id);
-        groupEvent('tabGroups.onRemoved', info);
-      }
+  const workspaceEvents = (before: Group[], after: Group[]) => {
+    for (const old of before)
+      if (!after.some((info) => info.id === old.id))
+        groupEvent('tabGroups.onRemoved', old);
+    for (const info of after) {
+      const old = before.find((item) => item.id === info.id);
+      if (!old) groupEvent('tabGroups.onCreated', info);
+      else if (JSON.stringify(old) !== JSON.stringify(info))
+        groupEvent('tabGroups.onUpdated', info);
+    }
   };
   handle('tabs.group', (_event: Event, options: any) => {
     object(options);
@@ -125,58 +127,54 @@ export function attachExtensionBrowserAPIs(api: ElectronChromeExtensions) {
       : [options.tabIds];
     if (!ids.length || ids.length > 1000) throw new Error('Invalid tab IDs');
     const tabs = ids.map(tab);
-    const windows = tabs.map((contents: WebContents) =>
-      ctx.store.tabToWindow.get(contents),
-    );
-    if (
-      !windows[0] ||
-      windows.some((window: BrowserWindow) => window !== windows[0])
-    )
-      throw new Error('Grouped tabs must belong to one window');
-    let info: Group;
-    if (options.groupId !== undefined) info = group(options.groupId);
-    else {
+    const workspace = extensionWorkspaceGroups(ctx.session);
+    if (workspace) {
+      const before = workspace.query();
       if (
         options.createProperties?.windowId !== undefined &&
-        options.createProperties.windowId !== windows[0]!.id
+        tabs.some(
+          (contents: WebContents) =>
+            ctx.store.tabToWindow.get(contents)?.id !==
+            options.createProperties.windowId,
+        )
       )
-        throw new Error(
-          'Moving tabs between windows is not supported by tabs.group',
-        );
-      info = {
-        id: nextGroup++,
-        windowId: windows[0]!.id,
-        collapsed: false,
-        color: 'grey',
-      };
-      groups.set(info.id, info);
-      groupEvent('tabGroups.onCreated', info);
+        throw new Error('Moving tabs between windows is not supported');
+      if (options.groupId !== undefined) integer(options.groupId);
+      return workspace.group(tabs, options.groupId).then((id) => {
+        for (const contents of tabs) changed(contents.id, id);
+        workspaceEvents(before, workspace.query());
+        return id;
+      });
     }
-    if (info.windowId !== windows[0]!.id)
-      throw new Error('Tab group belongs to another window');
-    for (const contents of tabs) {
-      membership.set(contents.id, info.id);
-      changed(contents.id, info.id);
-    }
-    empty();
-    return info.id;
+    throw new Error('This extension has no workspace group host');
   });
   handle('tabs.ungroup', (_event: Event, ids: number | number[]) => {
     const tabs = (Array.isArray(ids) ? ids : [ids]).map(tab);
-    for (const contents of tabs) {
-      membership.delete(contents.id);
-      changed(contents.id, -1);
+    const workspace = extensionWorkspaceGroups(ctx.session);
+    if (workspace) {
+      const before = workspace.query();
+      return workspace.ungroup(tabs).then(() => {
+        for (const contents of tabs)
+          changed(contents.id, workspace.tabGroup(contents));
+        workspaceEvents(before, workspace.query());
+      });
     }
-    empty();
+    throw new Error('This extension has no workspace group host');
   });
-  handle('tabGroups.get', (_event: Event, id: number) => ({ ...group(id) }), {
-    permission: 'tabGroups',
-  });
+  handle(
+    'tabGroups.get',
+    (_event: Event, id: number) => ({
+      ...workspaceForMutation().get(integer(id)),
+    }),
+    {
+      permission: 'tabGroups',
+    },
+  );
   handle(
     'tabGroups.query',
     (_event: Event, options: any = {}) => {
       object(options);
-      return [...groups.values()]
+      return (extensionWorkspaceGroups(ctx.session)?.query() || [])
         .filter((info) =>
           ['windowId', 'title', 'color', 'collapsed'].every(
             (key) =>
@@ -191,7 +189,8 @@ export function attachExtensionBrowserAPIs(api: ElectronChromeExtensions) {
     'tabGroups.update',
     (_event: Event, id: number, options: any) => {
       object(options);
-      const info = group(id);
+      const workspace = workspaceForMutation();
+      workspace.get(integer(id));
       if (
         options.title !== undefined &&
         (typeof options.title !== 'string' || options.title.length > 512)
@@ -204,10 +203,10 @@ export function attachExtensionBrowserAPIs(api: ElectronChromeExtensions) {
         typeof options.collapsed !== 'boolean'
       )
         throw new Error('Invalid group collapse state');
-      for (const key of ['title', 'color', 'collapsed'])
-        if (options[key] !== undefined) (info as any)[key] = options[key];
-      groupEvent('tabGroups.onUpdated', info);
-      return { ...info };
+      return workspace.update(id, options).then((updated) => {
+        groupEvent('tabGroups.onUpdated', updated);
+        return updated;
+      });
     },
     { permission: 'tabGroups' },
   );
@@ -218,19 +217,6 @@ export function attachExtensionBrowserAPIs(api: ElectronChromeExtensions) {
     },
     { permission: 'tabGroups' },
   );
-  ctx.store.on('tab-removed', (id: number) => {
-    membership.delete(id);
-    empty();
-  });
-  ctx.store.on('tab-added', (contents: WebContents) => {
-    const info = groups.get(membership.get(contents.id) ?? -1);
-    if (info && ctx.store.tabToWindow.get(contents)?.id !== info.windowId) {
-      membership.delete(contents.id);
-      changed(contents.id, -1);
-      empty();
-    }
-  });
-
   const attachments = new Map<
     number,
     { extensionId: string; contents: WebContents }

@@ -272,8 +272,8 @@ export function attachExtensionSidePanels(
             path: options.path,
           });
           host.register({
-            info: { id: key, title: extension.name, kind: 'extension' },
-            groupId: `extension:${profileId}:${extension.id}`,
+            info: { id: key, title: extension.name, kind: 'extension', key: `extension:${extension.id}` },
+            groupId: `extension:${extension.id}`,
             contentKey: url,
             available: () => {
               const current = currentOptions(extension, window);

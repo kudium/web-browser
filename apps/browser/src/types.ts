@@ -20,6 +20,9 @@ export interface IApp {
   protectionGroupId?: string;
   extensionInstallTarget?: string;
   sessionName?: string;
+  sessionChromeColor?: string;
+  sessionChromeCollapsed?: boolean;
+  sessionChromeUngrouped?: boolean;
   sessionSlug?: string;
   sessionIconEmoji?: string;
   sessionIconImage?: string;

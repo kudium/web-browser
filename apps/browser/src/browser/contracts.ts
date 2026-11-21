@@ -39,7 +39,10 @@ export interface BrowserTabRequest {
     | 'unload-group'
     | 'store'
     | 'task-ended'
-    | 'open-external';
+    | 'open-external'
+    | 'extension-group-update';
+  groupChanges?: { id: string; changes: Partial<IApp> }[];
+  mutationId?: string;
   url?: string;
   background?: boolean;
   profileId?: string;
@@ -100,6 +103,7 @@ export interface BrowserLayout {
 export interface BrowserCommand {
   id: string;
   action:
+    | 'extension-group-result'
     | 'focus-chrome'
     | 'back'
     | 'forward'
@@ -143,6 +147,8 @@ export interface BrowserCommand {
   prompt?: string;
   grantId?: string;
   hookId?: string;
+  mutationId?: string;
+  error?: string;
   permission?: string;
   choice?: 'ask' | 'allow' | 'block';
 }

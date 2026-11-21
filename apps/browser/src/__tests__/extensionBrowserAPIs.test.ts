@@ -1,6 +1,7 @@
 /** @jest-environment node */
 import { EventEmitter } from 'events';
 import { attachExtensionBrowserAPIs } from '../main/extensionBrowserAPIs';
+import { registerExtensionWorkspace } from '../main/extensionWorkspaceGroups';
 
 function fixture() {
   const handlers = new Map<
@@ -81,40 +82,66 @@ function fixture() {
   };
 }
 
-test('groups are validated before mutation, maintain tab membership and filter event recipients', () => {
-  const { call, handlers, a, b, store, sendEvent } = fixture();
-  expect(handlers.get('tabGroups.get')?.permission).toBe('tabGroups');
-  expect(() => call('tabs.group', { tabIds: [a.id, 999] })).toThrow(
-    'unavailable',
-  );
-  expect(call('tabGroups.query', {})).toEqual([]);
-  const id = call('tabs.group', { tabIds: [a.id, b.id] });
-  expect(store.tabDetailsCache.get(a.id)?.groupId).toBe(id);
-  expect(
-    call('tabGroups.update', id, {
-      title: 'Muse task',
-      color: 'blue',
-      collapsed: true,
-    }),
-  ).toMatchObject({ title: 'Muse task', color: 'blue', collapsed: true });
-  expect(() =>
-    call('tabGroups.update', id, { title: 'wrong', color: 'invalid' }),
-  ).toThrow('color');
-  expect(call('tabGroups.get', id).title).toBe('Muse task');
-  const details: any = {};
-  store.impl.assignTabDetails(details, a);
-  expect(details.groupId).toBe(id);
-  call('tabs.ungroup', a.id);
-  expect(store.tabDetailsCache.get(a.id)?.groupId).toBe(-1);
-  store.emit('tab-removed', b.id);
-  expect(call('tabGroups.query', {})).toEqual([]);
-  const groupEvents = sendEvent.mock.calls.filter((event) =>
-    event[1].startsWith('tabGroups.'),
-  );
-  expect(groupEvents.every((event) => event[0] === 'owner')).toBe(true);
-  expect(groupEvents.some((event) => event[1] === 'tabGroups.onRemoved')).toBe(
-    true,
-  );
+test('groups are validated before mutation, maintain tab membership and filter event recipients', async () => {
+  const { call, handlers, a, b, store, sendEvent, session } = fixture();
+  let apps = [a, b].map((tab) => ({
+    id: String(tab.id),
+    name: 'Tab',
+    url: 'https://example.com',
+    icon: '',
+    sessionId: String(tab.id),
+    sessionProfileId: 'profile',
+    sessionChromeUngrouped: true,
+  }));
+  const release = registerExtensionWorkspace({
+    apps: () => apps,
+    contents: (id) => [a, b].find((tab) => String(tab.id) === id) as any,
+    window: () => store.tabToWindow.get(a) as any,
+    profile: (value) => (value === session ? 'profile' : undefined),
+    assertAccess: () => {},
+    update: async (_window, changes) => {
+      apps = apps.map((app) => ({
+        ...app,
+        ...changes.find((change) => change.id === app.id)?.changes,
+      }));
+    },
+  });
+  try {
+    expect(handlers.get('tabGroups.get')?.permission).toBe('tabGroups');
+    expect(() => call('tabs.group', { tabIds: [a.id, 999] })).toThrow(
+      'unavailable',
+    );
+    expect(call('tabGroups.query', {})).toEqual([]);
+    const id = await call('tabs.group', { tabIds: [a.id, b.id] });
+    expect(store.tabDetailsCache.get(a.id)?.groupId).toBe(id);
+    expect(
+      await call('tabGroups.update', id, {
+        title: 'Muse task',
+        color: 'blue',
+        collapsed: true,
+      }),
+    ).toMatchObject({ title: 'Muse task', color: 'blue', collapsed: true });
+    expect(() =>
+      call('tabGroups.update', id, { title: 'wrong', color: 'invalid' }),
+    ).toThrow('color');
+    expect(call('tabGroups.get', id).title).toBe('Muse task');
+    const details: any = {};
+    store.impl.assignTabDetails(details, a);
+    expect(details.groupId).toBe(id);
+    await call('tabs.ungroup', a.id);
+    expect(store.tabDetailsCache.get(a.id)?.groupId).toBe(-1);
+    await call('tabs.ungroup', b.id);
+    expect(call('tabGroups.query', {})).toEqual([]);
+    const groupEvents = sendEvent.mock.calls.filter((event) =>
+      event[1].startsWith('tabGroups.'),
+    );
+    expect(groupEvents.every((event) => event[0] === 'owner')).toBe(true);
+    expect(
+      groupEvents.some((event) => event[1] === 'tabGroups.onRemoved'),
+    ).toBe(true);
+  } finally {
+    release();
+  }
 });
 
 test('debugger ownership, profile boundaries and privileged targets are enforced', async () => {

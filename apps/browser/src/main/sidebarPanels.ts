@@ -4,6 +4,7 @@ import type {
   SidebarPanelInfo,
   SidebarPanelRequest,
   SidebarPanelState,
+  SidebarPanelTarget,
 } from '../browser/sidebarPanels';
 
 export interface SidebarPanelProvider {
@@ -27,6 +28,10 @@ export class SidebarPanelRegistry {
   activeSession?: Session;
   private activeId?: string;
   private preferredGroup?: string;
+  targetGroup?: string;
+  private targets: SidebarPanelTarget[] = [];
+  private onTarget?: (id?: string) => void;
+  private lastBounds?: { x: number; y: number; width: number; height: number };
   private request = 0;
   private error?: string;
   private floating?: {
@@ -43,6 +48,8 @@ export class SidebarPanelRegistry {
       activeId: this.activeId,
       openRequest: this.request,
       floating: Boolean(this.floating),
+      targets: this.targets,
+      targetGroup: this.targetGroup,
       ...(this.error && { error: this.error }),
     };
   }
@@ -95,7 +102,7 @@ export class SidebarPanelRegistry {
     }
     this.publish();
   }
-  activate(id: string) {
+  activate(id: string, reveal = true) {
     const entry = this.entries.get(id);
     if (!entry || entry.provider.available?.() === false)
       throw new Error('Sidebar panel is unavailable in this tab.');
@@ -112,7 +119,8 @@ export class SidebarPanelRegistry {
     this.activeId = id;
     this.preferredGroup = entry.provider.groupId;
     this.error = undefined;
-    this.request += 1;
+    if (reveal) this.request += 1;
+    if (this.lastBounds) this.layout(id, this.lastBounds);
     entry.provider.opened?.();
     this.publish();
   }
@@ -138,6 +146,25 @@ export class SidebarPanelRegistry {
   setSession(session?: Session) {
     if (session === this.activeSession) return;
     this.activeSession = session;
+    this.refresh();
+  }
+  setTargets(targets: SidebarPanelTarget[], onTarget: (id?: string) => void) {
+    const changed = JSON.stringify(targets) !== JSON.stringify(this.targets);
+    this.targets = targets;
+    this.onTarget = onTarget;
+    if (
+      this.targetGroup &&
+      !targets.some((target) => target.id === this.targetGroup)
+    )
+      this.targetGroup = undefined;
+    onTarget(this.targetGroup);
+    if (changed) this.publish();
+  }
+  setTarget(groupId?: string) {
+    if (groupId && !this.targets.some((target) => target.id === groupId))
+      throw new Error('Group is unavailable');
+    this.targetGroup = groupId;
+    this.onTarget?.(groupId);
     this.refresh();
   }
   layout(
@@ -171,6 +198,7 @@ export class SidebarPanelRegistry {
       bounds.y + bounds.height > height + 1
     )
       return;
+    this.lastBounds = bounds;
     if (!entry.view || entry.view.webContents.isDestroyed()) {
       try {
         entry.view = entry.provider.createView();
@@ -345,8 +373,13 @@ export function registerSidebarPanelWindow(window: BrowserWindow) {
       if (!request || typeof request !== 'object')
         throw new Error('Invalid sidebar panel request');
       if (request.action === 'activate' && typeof request.id === 'string')
-        host.activate(request.id);
+        host.activate(request.id, request.reveal !== false);
       else if (request.action === 'close') host.close();
+      else if (
+        request.action === 'target' &&
+        (request.groupId === undefined || typeof request.groupId === 'string')
+      )
+        host.setTarget(request.groupId);
       else if (request.action === 'undock') host.undock();
       else if (request.action === 'dock') host.dock();
       else if (

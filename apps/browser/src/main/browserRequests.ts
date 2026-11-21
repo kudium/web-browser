@@ -44,6 +44,7 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
           'spaceId',
           'folderId',
           'collectionName',
+          'sessionChromeColor',
         ].every((key) => optionalText(item[key])) ||
         ![
           'sessionName',
@@ -65,6 +66,8 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
           'archived',
           'sessionNameCustom',
           'sessionNameGenerated',
+          'sessionChromeCollapsed',
+          'sessionChromeUngrouped',
         ].every(
           (key) => item[key] === undefined || typeof item[key] === 'boolean'
         ) ||
@@ -103,6 +106,7 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
   );
 }
 const commands = new Set<BrowserCommand['action']>([
+  'extension-group-result',
   'focus-chrome',
   'back',
   'forward',
@@ -147,6 +151,7 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
     text(value.id) &&
     typeof value.action === 'string' &&
     commands.has(value.action as BrowserCommand['action']) &&
+    (value.action !== 'extension-group-result' || (text(value.mutationId, 100) && optionalText(value.error))) &&
     (value.url === undefined || text(value.url, 65536)) &&
     (value.action !== 'set-site-developer' ||
       (validDeveloperConfig(value.developer) &&

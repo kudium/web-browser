@@ -39,6 +39,39 @@ function fixture() {
   return { host, window, views, createView };
 }
 
+test('group targeting resolves through the trusted host and restores Auto when a group disappears', () => {
+  const { host } = fixture();
+  const target = jest.fn();
+  host.setTargets([{ id: 'work', title: 'Work', profileId: 'work-profile' }], target);
+  host.setTarget('work');
+  expect(target).toHaveBeenLastCalledWith('work');
+  expect(host.state().targetGroup).toBe('work');
+  expect(() => host.setTarget('foreign')).toThrow('unavailable');
+  host.setTargets([], target);
+  expect(target).toHaveBeenLastCalledWith(undefined);
+  expect(host.state().targetGroup).toBeUndefined();
+});
+
+test('reselecting a panel immediately reuses its last viewport without losing native content', () => {
+  const { host, views, createView } = fixture();
+  host.register({ info: { id: 'extension', title: 'Extension', kind: 'extension' }, contentKey: 'v1', createView });
+  host.activate('extension');
+  host.layout('extension', { x: 600, y: 50, width: 400, height: 650 });
+  host.layout('extension', null);
+  host.activate('extension');
+  expect(createView).toHaveBeenCalledTimes(1);
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+  expect(host.state().openRequest).toBe(2);
+});
+
+test('restoring selection does not take over another sidebar page', () => {
+  const { host, createView } = fixture();
+  host.register({ info: { id: 'extension', title: 'Extension', kind: 'extension' }, contentKey: 'v1', createView });
+  host.activate('extension', false);
+  expect(host.state().activeId).toBe('extension');
+  expect(host.state().openRequest).toBe(0);
+});
+
 test('feature panels share a stable view, resize safely and hide behind workspace overlays', () => {
   const { host, views, createView } = fixture();
   host.register({
@@ -143,6 +176,8 @@ test('sidebar IPC accepts only the registered window main frame', () => {
     ),
   ).toEqual({
     panels: [],
+    targets: [],
+    targetGroup: undefined,
     openRequest: 0,
     activeId: undefined,
     floating: false,
