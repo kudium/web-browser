@@ -3073,6 +3073,13 @@ export function Main() {
               .catch((error) => setMoveMessage(String(error)));
         }}
       />
+      {sidebarPanels.panels.length > 0 && <ChromeIconButton
+        icon={Library}
+        className="ai-toolbar-toggle"
+        label="Toggle sidebar panels"
+        aria-expanded={aiOpen && aiPane === 'panels'}
+        onClick={() => toggleSidebarPane('panels')}
+      />}
       <ChromeIconButton
         icon={Code2}
         className="ai-toolbar-toggle"
@@ -3084,13 +3091,6 @@ export function Main() {
           toggleSidebarPane('developer');
         }}
       />
-      {sidebarPanels.panels.length > 0 && <ChromeIconButton
-        icon={Library}
-        className="ai-toolbar-toggle"
-        label="Toggle sidebar panels"
-        aria-expanded={aiOpen && aiPane === 'panels'}
-        onClick={() => toggleSidebarPane('panels')}
-      />}
       <ChromeIconButton
         icon={Bell}
         className="ai-toolbar-toggle"
