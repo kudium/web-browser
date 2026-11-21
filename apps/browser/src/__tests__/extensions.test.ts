@@ -473,6 +473,10 @@ it('requires install consent, persists per-app scope and exposes worker failures
       message:
         'Extension could not be installed. Try again or review local extension settings.',
     });
+    expect(showBrowserDialog).toHaveBeenCalledWith(owner, expect.objectContaining({
+      message: 'Extension could not be installed',
+      technicalDetail: `Extension: ${'a'.repeat(32)}\nError: Extension installation timed out. Try again.`,
+    }));
     expect(storeContents.listenerCount('did-start-navigation')).toBe(0);
   } finally {
     jest.useRealTimers();

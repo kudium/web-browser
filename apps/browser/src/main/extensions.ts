@@ -826,6 +826,23 @@ export function configureExtensionStore(
       return { result: 'success' };
     } catch (error) {
       failures.set(`${destination.id}:${id}`, String(error));
+      // Failed packages may never enter the catalog, so their error cannot be
+      // reached from an installed extension's menu. Keep technical details in
+      // the trusted local dialog, rather than exposing paths to the store page.
+      if (!owner.isDestroyed() && trusted(event)) {
+        try {
+          await showBrowserDialog(owner, {
+            title: 'Install extension',
+            message: 'Extension could not be installed',
+            detail: 'Open Details below to see why installation failed.',
+            technicalDetailLabel: 'Details',
+            technicalDetail: `Extension: ${id}\n${String(error)}`,
+            buttons: ['Done'],
+          });
+        } catch {
+          // A closing window must not prevent rollback and package cleanup.
+        }
+      }
       return {
         result: 'install_error',
         message:
@@ -1039,9 +1056,7 @@ export function extensionMenu(
             label: 'Install this extension…',
             click: async () => {
               try {
-                const result = await installStoreExtension(contents!, owner);
-                if (result.result === 'install_error')
-                  throw new Error(result.message);
+                await installStoreExtension(contents!, owner);
               } catch (error) {
                 await showBrowserDialog(owner, {
                   title: 'Install extension',
