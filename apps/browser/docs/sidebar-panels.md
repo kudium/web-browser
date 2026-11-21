@@ -172,6 +172,11 @@ Use `assistant-page-body-wide` for content that needs the full sidebar width
 with one compact gutter. Do not stack sidebar padding, body padding and list
 padding; Developer uses this shared body layout for its project controls and
 page/file content. Card padding belongs inside the card, not around the list.
+Full-width panel content may reclaim horizontal padding only. Let the shared
+frame's flex layout own its height; never use negative bottom margins to extend
+content past the border. Native panel views use the frame's inner corner radius
+and must end inside its bottom border. The native UI fixture checks this edge;
+window-bound clipping remains a fallback, not a substitute for frame sizing.
 
 Extension adapters translate Chrome contracts into the existing Kudium model;
 they must not create a second group store, save path, permission mechanism, or

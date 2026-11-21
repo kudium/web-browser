@@ -137,13 +137,16 @@ app
       'Selecting a panel must create its content immediately',
     );
     const geometry = await window.webContents.executeJavaScript(
-      `(()=>{const pane=document.querySelector('.ai-sidebar').getBoundingClientRect();const slot=document.querySelector('.sidebar-feature-content').getBoundingClientRect();return {pane:pane.width,slot:slot.width,top:slot.top,height:slot.height}})()`,
+      `(()=>{const frame=document.querySelector('.ai-sidebar');const pane=frame.getBoundingClientRect();const slot=document.querySelector('.sidebar-feature-content').getBoundingClientRect();return {pane:pane.width,slot:slot.width,top:slot.top,height:slot.height,innerBottom:pane.bottom-parseFloat(getComputedStyle(frame).borderBottomWidth)}})()`,
     );
     assert(
       geometry.slot >= geometry.pane - 3,
       'Content must use the full shell width',
     );
     assert.equal(views.get('one').getBounds().width, Math.floor(geometry.slot));
+    const panelBounds = views.get('one').getBounds();
+    assert(panelBounds.y + panelBounds.height <= geometry.innerBottom,
+      'Native panel content must end inside the shared frame bottom border');
     const alignment = await window.webContents.executeJavaScript(`(()=>{
       const normal=document.querySelector('.fixture-reference-header'),panel=document.querySelector('.sidebar-feature-pane .assistant-page-header');
       return {normalHeight:normal.getBoundingClientRect().height,panelHeight:panel.getBoundingClientRect().height,

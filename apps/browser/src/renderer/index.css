@@ -5430,7 +5430,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 /* One native content slot shared by extension and future feature panels. */
 .sidebar-feature-pane { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; }
 .sidebar-feature-pane[hidden] { display:none; }
-.sidebar-feature-pane { margin:0 calc(-1 * var(--ai-content-inset, 18px)) -12px; overflow:hidden; }
+.sidebar-feature-pane { margin-inline:calc(-1 * var(--ai-content-inset, 18px)); overflow:hidden; }
 .sidebar-feature-panel-picker { flex:1 1 55%; }
 .sidebar-feature-group-picker { flex:1 1 45%; color:var(--gray-11); }
 .sidebar-feature-content { flex:1; min-width:0; min-height:0; }

@@ -27,6 +27,7 @@ function fixture() {
     const view = {
       setVisible: jest.fn(),
       setBounds: jest.fn(),
+      setBorderRadius: jest.fn(),
       webContents: Object.assign(new EventEmitter(), {
         isDestroyed: () => false,
         close: jest.fn(),
@@ -67,6 +68,7 @@ test('reselecting a panel immediately reuses its last viewport without losing na
   host.layout('extension', null);
   host.activate('extension');
   expect(createView).toHaveBeenCalledTimes(1);
+  expect(views[0].setBorderRadius).toHaveBeenLastCalledWith(8);
   expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
   expect(host.state().openRequest).toBe(2);
 });

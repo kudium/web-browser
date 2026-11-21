@@ -226,6 +226,7 @@ export class SidebarPanelRegistry {
         return;
       }
     }
+    entry.view.setBorderRadius(8);
     entry.view.setBounds(clipped);
     entry.shown = true;
     entry.view.setVisible(!this.suspended);
@@ -251,6 +252,7 @@ export class SidebarPanelRegistry {
     }
     if (!entry.view) return;
     const view = entry.view;
+    view.setBorderRadius(0);
     const child = new BrowserWindow({
       parent: this.window,
       title: entry.provider.info.title,
