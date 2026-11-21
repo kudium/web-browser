@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+jest.mock('../main/extensionBrowserAPIs', () => ({ attachExtensionBrowserAPIs: jest.fn() }));
 jest.mock('../main/extensionSidePanels', () => ({ attachExtensionSidePanels: jest.fn() }));
 import fs from 'fs';
 import { ElectronChromeExtensions } from 'electron-chrome-extensions';

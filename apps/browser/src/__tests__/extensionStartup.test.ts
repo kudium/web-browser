@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 jest.mock('../main/extensionSidePanels', () => ({ attachExtensionSidePanels: jest.fn() }));
+jest.mock('../main/extensionBrowserAPIs', () => ({ attachExtensionBrowserAPIs: jest.fn() }));
 import fs from 'fs';
 import { applyExtensions, extensionMenu } from '../main/extensions';
 

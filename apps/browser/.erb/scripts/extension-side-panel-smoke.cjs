@@ -6,6 +6,7 @@ const fs = require('node:fs'),
   path = require('node:path'),
   assert = require('node:assert/strict');
 const ts = require('typescript');
+require('./patch-extension-browser-apis.cjs').patchInstalled();
 require('./patch-extension-side-panel.cjs').patchInstalled();
 require.extensions['.ts'] = (module, file) =>
   module._compile(
@@ -26,6 +27,7 @@ const {
 const {
   attachExtensionSidePanels,
 } = require('../../src/main/extensionSidePanels.ts');
+const { attachExtensionBrowserAPIs } = require('../../src/main/extensionBrowserAPIs.ts');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-side-panel-smoke-'));
 app.setPath('userData', path.join(root, 'profile'));
 app.on('window-all-closed', () => {});
@@ -46,7 +48,7 @@ app
           manifest_version: 3,
           name: `${type} sidebar`,
           version: '1',
-          permissions: ['sidePanel', 'storage'],
+          permissions: ['sidePanel', 'storage', 'tabGroups', 'debugger'],
           action: {},
           side_panel: { default_path: 'panel.html' },
           background: {
@@ -70,7 +72,9 @@ app
       fs.writeFileSync(
         path.join(dir, 'worker.js'),
         `chrome.runtime.onMessage.addListener((message, sender, respond) => {
-      const operation = message.command === 'options' ? chrome.sidePanel.getOptions({}) :
+      const operation = message.command === 'groups' ? chrome.tabGroups.query({}) :
+        message.command === 'targets' ? chrome.debugger.getTargets() :
+        message.command === 'options' ? chrome.sidePanel.getOptions({}) :
         message.command === 'behavior' ? chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:true}) :
         chrome.sidePanel.open({windowId:message.windowId});
       operation.then(value => respond({ok:true,value}), error => respond({ok:false,error:error.message}));
@@ -96,6 +100,7 @@ app
       );
       const api = new ElectronChromeExtensions({ session: profile });
       attachExtensionSidePanels(api, `smoke-${type}`);
+      attachExtensionBrowserAPIs(api);
       const extension = await profile.extensions.loadExtension(dir);
       const tab = new WebContentsView({
         webPreferences: {
@@ -109,6 +114,25 @@ app
       await tab.webContents.loadURL(
         `chrome-extension://${extension.id}/control.html`,
       );
+      const groupId = await tab.webContents.executeJavaScript(`chrome.tabs.group({tabIds:[${tab.webContents.id}]})`);
+      await tab.webContents.executeJavaScript(`chrome.tabGroups.update(${groupId}, {title:'Task output',color:'blue',collapsed:true})`);
+      assert.equal((await tab.webContents.executeJavaScript(`chrome.tabs.get(${tab.webContents.id})`)).groupId, groupId);
+      assert.equal((await tab.webContents.executeJavaScript(`chrome.tabGroups.get(${groupId})`)).title, 'Task output');
+      await tab.webContents.executeJavaScript(`chrome.tabs.ungroup(${tab.webContents.id})`);
+      assert.equal((await tab.webContents.executeJavaScript('chrome.tabGroups.query({})')).length, 0);
+      const server = require('node:http').createServer((_request, response) => response.end('<title>Debugger fixture</title><h1>Original</h1>'));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const debugTab = new WebContentsView({webPreferences:{session:profile,sandbox:true,contextIsolation:true,nodeIntegration:false}});
+      api.addTab(debugTab.webContents, chrome);
+      await debugTab.webContents.loadURL(`http://127.0.0.1:${server.address().port}/`);
+      await tab.webContents.executeJavaScript(`chrome.debugger.attach({tabId:${debugTab.webContents.id}}, '1.3')`);
+      const command = await tab.webContents.executeJavaScript(`chrome.debugger.sendCommand({tabId:${debugTab.webContents.id}}, 'Runtime.evaluate', {expression:'document.querySelector("h1").textContent="Updated by extension"'})`);
+      assert.equal(command.result.value, 'Updated by extension');
+      assert.equal(await debugTab.webContents.executeJavaScript('document.querySelector("h1").textContent'), 'Updated by extension');
+      await tab.webContents.executeJavaScript(`chrome.debugger.detach({tabId:${debugTab.webContents.id}})`);
+      assert.equal(debugTab.webContents.debugger.isAttached(), false);
+      debugTab.webContents.close(); server.close();
+      api.selectTab(tab.webContents);
       const rpc = (message) =>
         tab.webContents.executeJavaScript(
           `chrome.runtime.sendMessage(${JSON.stringify(message)})`,
@@ -122,6 +146,8 @@ app
         await pause(30);
       }
       assert.equal(options?.ok, true, `${type} worker sidePanel API`);
+      assert.equal((await rpc({ command: 'groups' })).ok, true, `${type} worker tabGroups API`);
+      assert.equal((await rpc({ command: 'targets' })).ok, true, `${type} worker debugger API`);
       assert.equal(options.value.path, 'panel.html');
       await tab.webContents.executeJavaScript(
         `window.panelEvents=[];chrome.sidePanel.onOpened.addListener(info=>panelEvents.push({type:'opened',info}));chrome.sidePanel.onClosed.addListener(info=>panelEvents.push({type:'closed',info}));`,

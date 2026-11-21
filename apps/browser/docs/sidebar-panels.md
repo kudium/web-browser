@@ -68,13 +68,25 @@ toolbar click. Specify one `windowId` or `tabId`; tab targets must be active.
 Muse from Meta 2.1.12 declares `panel/index.html` and uses `open` and
 `setPanelBehavior`. Sidebar support does not imply support for every other
 API it requests, such as `debugger` or `tabGroups`.
-An actual Muse runtime check confirmed that its background worker fails during
-startup while registering `chrome.tabGroups.onUpdated`, because `tabGroups` is
-not implemented. The panel remains empty. Muse is not currently compatible;
-successful package installation and the generic sidebar fixture are not proof
-that Muse works. It also uses debugger commands and tab grouping operations,
-which need real implementations and compatibility testing rather than no-op
-API placeholders.
+The browser API adapter supplies tab-group membership, group properties,
+queries, and lifecycle events, plus tab-bound debugger attachment, commands,
+targets, events, and detachment. Group state lasts for the profile engine's
+lifetime. Chrome tab groups are extension metadata; they do not create workspace
+groups or persist across app restarts. Group moves between windows and nested
+debugger sessions are currently rejected explicitly. Debugger commands support
+tab-level domains used by Muse (including Runtime, Page, Input and Emulation),
+not browser-wide Target or Browser commands. Privileged pages, foreign-profile
+tabs, and attachments owned by another extension are rejected. Navigating an
+attached tab into a privileged page detaches its debugger; removing a tab or
+unloading its extension also cleans up attachments.
+
+Run `npm run test:muse-compatibility` to download and validate the actual Muse
+package in a temporary profile, start its worker, and verify its rendered
+signed-out panel and pop-out path. This separate network check does not use the
+user's sign-in or installed package. It is not proof of signed-in chat or task
+execution; those require acceptance testing with a Muse account. The generic
+release fixture checks group operations and a real CDP command on a disposable
+HTTP page for both classic and module workers.
 
 ## Verification
 

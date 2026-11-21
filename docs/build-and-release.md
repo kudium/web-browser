@@ -66,6 +66,10 @@ Beta/stable builds also run `test:extension-side-panels` before packaging. This
 uses real extension frames and classic/module workers in disposable Mac
 profiles to verify the sidebar API, resource isolation, tab-specific options,
 active-profile changes, user-gesture enforcement, events and unload cleanup.
+It also verifies tab-group membership/properties and tab-bound debugger commands
+against a disposable HTTP page. The separate `test:muse-compatibility` command
+downloads the actual Muse package to check worker startup and signed-out UI;
+it is a manual network check, not a signed-in chat/task acceptance test.
 See [sidebar panels](../apps/browser/docs/sidebar-panels.md) for the reusable
 React/native host contracts and extension compatibility boundaries.
 

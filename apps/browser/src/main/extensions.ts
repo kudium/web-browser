@@ -22,6 +22,7 @@ import { watchIPCRequest } from './ipcRequestBinding';
 import { prepareExtensionPackage } from './extensionPackage';
 import { configureExtensionStoreCompatibility } from './extensionStoreCompatibility';
 import { attachExtensionSidePanels } from './extensionSidePanels';
+import { attachExtensionBrowserAPIs } from './extensionBrowserAPIs';
 
 function packageName(
   prepared: Awaited<ReturnType<typeof prepareExtensionPackage>>
@@ -467,6 +468,7 @@ export async function applyExtensions(
       Promise.resolve(false),
   });
   attachExtensionSidePanels(api, profileId);
+  attachExtensionBrowserAPIs(api);
   const profile: Profile = {
     revision: 0,
     id: profileId,

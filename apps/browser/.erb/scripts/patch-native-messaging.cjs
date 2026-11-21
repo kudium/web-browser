@@ -97,6 +97,7 @@ ${launch}`
 }
 function patchInstalled() {
   require('./patch-extension-side-panel.cjs').patchInstalled();
+  require('./patch-extension-browser-apis.cjs').patchInstalled();
   require('./patch-deepmerge.cjs').patchInstalled();
   require('./prepare-project-terminal.cjs').prepareProjectTerminal();
   require('./patch-extension-actions.cjs').patchInstalled();

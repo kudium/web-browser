@@ -12,6 +12,8 @@ const compatibilityPermissions = new Set([
   'contextMenus',
   'cookies',
   'sidePanel',
+  'tabGroups',
+  'debugger',
   // The dependency exposes a limited downloads shim, not the full Chrome API.
   'downloads',
 ]);
