@@ -68,6 +68,13 @@ toolbar click. Specify one `windowId` or `tabId`; tab targets must be active.
 Muse from Meta 2.1.12 declares `panel/index.html` and uses `open` and
 `setPanelBehavior`. Sidebar support does not imply support for every other
 API it requests, such as `debugger` or `tabGroups`.
+An actual Muse runtime check confirmed that its background worker fails during
+startup while registering `chrome.tabGroups.onUpdated`, because `tabGroups` is
+not implemented. The panel remains empty. Muse is not currently compatible;
+successful package installation and the generic sidebar fixture are not proof
+that Muse works. It also uses debugger commands and tab grouping operations,
+which need real implementations and compatibility testing rather than no-op
+API placeholders.
 
 ## Verification
 
