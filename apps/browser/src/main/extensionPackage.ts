@@ -26,9 +26,23 @@ export async function prepareExtensionPackage(
   cachedPath?: string
 ) {
   assertCurrent();
-  const source = cachedPath || (await downloadExtension(id, cacheRoot));
-  assertCurrent();
-  let directory = await fs.mkdtemp(path.join(userData, '.extension-install-'));
+  // The upstream downloader renames into a fixed <version>_0 directory.
+  // Give every attempt its own cache so repeats never collide with existing
+  // downloads or packages used by another group/process.
+  const downloadRoot = cachedPath
+    ? undefined
+    : await fs.mkdtemp(path.join(userData, '.extension-download-'));
+  let source: string;
+  let directory: string;
+  try {
+    source = cachedPath || (await downloadExtension(id, downloadRoot!));
+    assertCurrent();
+    directory = await fs.mkdtemp(path.join(userData, '.extension-install-'));
+  } catch (error) {
+    if (downloadRoot)
+      await fs.rm(downloadRoot, { recursive: true, force: true });
+    throw error;
+  }
   let retained = false;
   const records: { relative: string; hash: string; size: number }[] = [];
   const paths = new Set<string>();
@@ -303,5 +317,8 @@ export async function prepareExtensionPackage(
   } catch (error) {
     await dispose();
     throw error;
+  } finally {
+    if (downloadRoot)
+      await fs.rm(downloadRoot, { recursive: true, force: true });
   }
 }

@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { generateKeyPairSync } from 'crypto';
+import { downloadExtension } from 'electron-chrome-web-store';
 import {
   extensionKeyId,
   prepareExtensionPackage,
@@ -11,6 +12,57 @@ import {
 jest.mock('electron-chrome-web-store', () => ({
   downloadExtension: jest.fn(),
 }));
+
+it('isolates repeated downloads of the same version and preserves the existing cache', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'kudium-package-repeat-'));
+  const cache = path.join(root, 'cache');
+  const key = generateKeyPairSync('rsa', { modulusLength: 1024 })
+    .publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+  const id = extensionKeyId(key);
+  const old = path.join(cache, id, '2.1.12_0');
+  await fs.mkdir(old, { recursive: true });
+  await fs.writeFile(path.join(old, 'keep.txt'), 'installed package');
+  const roots: string[] = [];
+  const downloader = jest.mocked(downloadExtension);
+  downloader.mockImplementation(async (_id, downloadCache) => {
+    roots.push(downloadCache);
+    const staging = path.join(downloadCache, id, 'incoming');
+    await fs.mkdir(staging, { recursive: true });
+    await fs.writeFile(path.join(staging, 'manifest.json'), JSON.stringify({
+      manifest_version: 3, name: 'Muse fixture', version: '2.1.12', key,
+    }));
+    const destination = path.join(downloadCache, id, '2.1.12_0');
+    await fs.rename(staging, destination);
+    return destination;
+  });
+  try {
+    const attempts = await Promise.all([
+      prepareExtensionPackage(id, cache, root, () => {}),
+      prepareExtensionPackage(id, cache, root, () => {}),
+    ]);
+    try {
+      expect(new Set(roots).size).toBe(2);
+      for (const downloadCache of roots) {
+        expect(downloadCache).not.toBe(cache);
+        await expect(fs.stat(downloadCache)).rejects.toMatchObject({ code: 'ENOENT' });
+      }
+      for (const prepared of attempts) {
+        await prepared.validate();
+        await prepared.commit();
+      }
+      expect(attempts[0].path()).not.toBe(attempts[1].path());
+      expect(await fs.readFile(path.join(old, 'keep.txt'), 'utf8')).toBe('installed package');
+    } finally {
+      await Promise.all(attempts.map((prepared) => prepared.dispose()));
+    }
+    downloader.mockRejectedValueOnce(new Error('Download failed'));
+    await expect(prepareExtensionPackage(id, cache, root, () => {})).rejects.toThrow('Download failed');
+    expect(await fs.readdir(root)).toEqual(['cache']);
+  } finally {
+    downloader.mockReset();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
 
 it('owns a bounded package copy, reviews actual permissions and rejects changed or added files', async () => {
   const root = await fs.mkdtemp(
