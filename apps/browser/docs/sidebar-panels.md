@@ -156,6 +156,11 @@ outside the sidebar inset; it restores the same header alignment without adding
 padding to the content. Do not add page-specific header padding, height, borders,
 or control sizing. Page classes may arrange feature actions and accommodate a
 pinned history rail, but must preserve the common header design.
+Headers must be the first element in each page's layout and occupy the shared
+`--assistant-page-header-height` slot. Keep scrolling and pinned-history offsets
+in the content below that slot, never on the header or its whole page container.
+The native UI fixture switches between the retained Chat, Notes and Activity
+layouts and checks their header rectangles, including scrolling Activity.
 
 Extension adapters translate Chrome contracts into the existing Kudium model;
 they must not create a second group store, save path, permission mechanism, or

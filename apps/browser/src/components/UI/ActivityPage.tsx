@@ -316,6 +316,7 @@ export function ActivityPage({
           </Popover.Content>
         </Popover.Root>
       </AssistantPageHeader>
+      <div className="activity-page-body">
       {error && <p role="alert">{error}</p>}
       {!entries.length && !error && (
         <div className="activity-empty">
@@ -538,6 +539,7 @@ export function ActivityPage({
             </div>
           </article>
         ))}
+      </div>
       </div>
     </section>
   );

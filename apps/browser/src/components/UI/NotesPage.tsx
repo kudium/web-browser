@@ -414,57 +414,6 @@ export function NotesPage({
       } ${draft ? 'notes-has-draft' : 'notes-library-only'}`}
       aria-label="Notes"
     >
-      {historyOpen && (
-        <div
-          ref={history}
-          id="notes-history-panel"
-          className="ai-chat-history-panel notes-history-panel"
-        >
-          <HistorySidebarFrame
-            title="Notes"
-            label="Note history"
-            pinned={historyPinned}
-            busy={busy}
-            onPin={() => setHistoryPinned(!historyPinned)}
-            onClose={() => {
-              setHistoryOpen(false);
-              requestAnimationFrame(() => historyToggle.current?.focus());
-            }}
-            onNew={create}
-          >
-            <div className="notes-search-controls">
-              {groupFilter}
-              <HistorySearchInput
-                label="Search note titles"
-                placeholder="Search notes"
-                value={query}
-                onChange={setQuery}
-              />
-            </div>
-            <NotesHistoryList
-              notes={visible}
-              groupNames={Object.fromEntries(
-                groups.map(([id, tab]) => [id, tab.sessionName || tab.name])
-              )}
-              selectedId={draft?.id}
-              busy={busy}
-              searching={!!query}
-              onSelect={select}
-              onRename={renameNote}
-              onDelete={setDeleteTarget}
-              onReorder={reorder}
-            />
-            {notes.length > visible.length && (
-              <small>{visible.length} matching notes</small>
-            )}
-          </HistorySidebarFrame>
-        </div>
-      )}
-      {error && (
-        <div className="notes-error" role="alert">
-          {error}
-        </div>
-      )}
       <AssistantPageHeader className="notes-toolbar" edgeToEdge>
         {draft ? (
           <HistoryToolbar
@@ -719,6 +668,57 @@ export function NotesPage({
           </>
         )}
       </AssistantPageHeader>
+      {historyOpen && (
+        <div
+          ref={history}
+          id="notes-history-panel"
+          className="ai-chat-history-panel notes-history-panel"
+        >
+          <HistorySidebarFrame
+            title="Notes"
+            label="Note history"
+            pinned={historyPinned}
+            busy={busy}
+            onPin={() => setHistoryPinned(!historyPinned)}
+            onClose={() => {
+              setHistoryOpen(false);
+              requestAnimationFrame(() => historyToggle.current?.focus());
+            }}
+            onNew={create}
+          >
+            <div className="notes-search-controls">
+              {groupFilter}
+              <HistorySearchInput
+                label="Search note titles"
+                placeholder="Search notes"
+                value={query}
+                onChange={setQuery}
+              />
+            </div>
+            <NotesHistoryList
+              notes={visible}
+              groupNames={Object.fromEntries(
+                groups.map(([id, tab]) => [id, tab.sessionName || tab.name])
+              )}
+              selectedId={draft?.id}
+              busy={busy}
+              searching={!!query}
+              onSelect={select}
+              onRename={renameNote}
+              onDelete={setDeleteTarget}
+              onReorder={reorder}
+            />
+            {notes.length > visible.length && (
+              <small>{visible.length} matching notes</small>
+            )}
+          </HistorySidebarFrame>
+        </div>
+      )}
+      {error && (
+        <div className="notes-error" role="alert">
+          {error}
+        </div>
+      )}
       <div
         className="notes-editor"
         hidden={!draft && historyOpen && !historyPinned}

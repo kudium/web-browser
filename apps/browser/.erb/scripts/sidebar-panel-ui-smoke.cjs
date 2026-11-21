@@ -27,7 +27,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const timer = setTimeout(() => app.exit(1), 30000);
 fs.writeFileSync(
   path.join(root, 'preload.cjs'),
-  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',browser:{sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
+  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
 );
 fs.writeFileSync(
   path.join(root, 'fixture.tsx'),
@@ -40,10 +40,14 @@ import {useSidebarPanels} from ${JSON.stringify(path.resolve('src/utils/useSideb
 import {AssistantPageHeader} from ${JSON.stringify(path.resolve('src/components/UI/AssistantPageHeader'))};
 import {ChromeIconButton} from ${JSON.stringify(path.resolve('src/components/UI/ChromeIconButton'))};
 import {X} from 'lucide-react';
+import {NotesPage} from ${JSON.stringify(path.resolve('src/components/UI/NotesPage'))};
+import {ActivityPage} from ${JSON.stringify(path.resolve('src/components/UI/ActivityPage'))};
+import {SidebarPanelHost} from ${JSON.stringify(path.resolve('src/components/UI/SidebarPanelHost'))};
 import ${JSON.stringify(require.resolve('@radix-ui/themes/styles.css'))};
 import ${JSON.stringify(path.resolve('src/renderer/index.css'))};
 function Fixture(){const state=useSidebarPanels();const [active,setActive]=React.useState(true);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><aside className="ai-sidebar" style={{height:600,width:368}}><AssistantPageHeader className="fixture-reference-header"><h2>Reference page</h2><ChromeIconButton icon={X} label="Reference action" onClick={()=>{}}/></AssistantPageHeader><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
-createRoot(document.getElementById('root')).render(<Fixture/>);`,
+function PageSwitches(){const [page,setPage]=React.useState('chat');return <Theme appearance="dark"><nav>{['chat','notes','activity'].map(id=><button id={'switch-'+id} onClick={()=>setPage(id)}>{id}</button>)}</nav><aside className="ai-sidebar" style={{height:600,width:Number(new URLSearchParams(location.search).get('width'))||368}}><SidebarPanelHost id="chat" title="Chat" active={page==='chat'}><div className="ai-sidebar-pane ai-assistant-layout ai-history-open ai-history-pinned"><AssistantPageHeader><h2>Chat</h2></AssistantPageHeader><div className="ai-messages">Content</div></div></SidebarPanelHost><SidebarPanelHost id="notes" title="Notes" active={page==='notes'}><NotesPage/></SidebarPanelHost><SidebarPanelHost id="activity" title="Activity" active={page==='activity'}><ActivityPage active={page==='activity'}/></SidebarPanelHost></aside></Theme>}
+createRoot(document.getElementById('root')).render(location.search.includes('switches')?<PageSwitches/>:<Fixture/>);`,
 );
 require('esbuild').buildSync({
   entryPoints: [path.join(root, 'fixture.tsx')],
@@ -192,6 +196,29 @@ app
       'Remember selection after a renderer restart',
     );
     assert.equal(host.state().targetGroup, 'work');
+    for (const width of [368,640]) {
+    await window.loadFile(path.join(root,'index.html'),{query:{switches:'1',width:String(width)}});
+    const bounds=[];
+    for (const page of ['chat','notes','activity','chat','notes','activity']) {
+      await window.webContents.executeJavaScript(`document.querySelector('#switch-${page}').click()`);
+      await pause(180);
+      if (page==='chat' && width===640) assert((await window.webContents.executeJavaScript(`parseFloat(getComputedStyle(document.querySelector('.ai-messages')).marginLeft)`))>0,'Wide pinned history must be exercised');
+      const rect=await window.webContents.executeJavaScript(`(()=>{const header=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0);const box=header.getBoundingClientRect(),actions=header.querySelector('.assistant-page-header-actions').getBoundingClientRect();return {top:box.top,height:box.height,left:actions.left,right:actions.right}})()`);
+      if(page==='activity') {
+        await window.webContents.executeJavaScript(`document.querySelector('.activity-page-body').scrollTop=200`);
+        assert((await window.webContents.executeJavaScript(`document.querySelector('.activity-page-body').scrollTop`))>0,'Activity must actually scroll');
+        const top=await window.webContents.executeJavaScript(`document.querySelector('.activity-heading').getBoundingClientRect().top`);
+        assert.equal(top,rect.top,'Scrolling Activity must not move its header');
+      }
+      bounds.push({page,...rect});
+    }
+    for(const result of bounds) {
+      assert.equal(result.top,bounds[0].top,JSON.stringify(bounds));
+      assert.equal(result.height,bounds[0].height,JSON.stringify(bounds));
+      assert.equal(result.left,bounds[0].left,JSON.stringify(bounds));
+      assert.equal(result.right,bounds[0].right,JSON.stringify(bounds));
+    }
+    }
     window.destroy();
     clearTimeout(timer);
     fs.rmSync(root, {

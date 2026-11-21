@@ -1,4 +1,5 @@
 @import '@radix-ui/themes/styles.css';
+:root { --assistant-page-header-height:36px; }
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; overflow: hidden; }
@@ -2086,7 +2087,7 @@ browser-action-list::part(action):focus-visible {
 
 /* Chat history opens from the left edge without narrowing the small composer. */
 .ai-assistant-layout {position:relative;}
-.ai-chat-history-panel {position:absolute;inset:28px auto 0 calc(-1 * var(--ai-content-inset, 18px));width:min(240px,calc(100% + var(--ai-content-inset, 18px) + var(--ai-content-inset, 18px) - 16px));z-index:5;display:flex;min-height:0;box-shadow:8px 0 20px var(--gray-a3);}
+.ai-chat-history-panel {position:absolute;inset:var(--assistant-page-header-height) auto 0 calc(-1 * var(--ai-content-inset, 18px));width:min(240px,calc(100% + var(--ai-content-inset, 18px) + var(--ai-content-inset, 18px) - 16px));z-index:5;display:flex;min-height:0;box-shadow:8px 0 20px var(--gray-a3);}
 .ai-chat-history-panel .ai-chat-history {width:100%;min-width:0;min-height:0;background:var(--gray-2);border-right:1px solid var(--gray-a5);border-radius:0;}
 .ai-chat-history-heading {gap:4px;}
 .ai-chat-history-heading strong {flex:1;}
@@ -2101,7 +2102,7 @@ browser-action-list::part(action):focus-visible {
 .ai-conversation-toolbar .ai-history-toggle:hover, .ai-conversation-toolbar .ai-history-toggle[aria-expanded=true] {background:var(--gray-a3);color:var(--gray-12);}
 .ai-conversation-toolbar .ai-history-toggle:focus-visible {outline:2px solid var(--accent-8);outline-offset:2px;}
 @container (min-width:540px) {
-  .ai-assistant-layout.ai-history-open.ai-history-pinned {padding-left:calc(212px - var(--ai-content-inset, 18px) + 12px);}
+  .ai-assistant-layout.ai-history-open.ai-history-pinned > :not(.assistant-page-header):not(.ai-chat-history-panel) {margin-left:calc(212px - var(--ai-content-inset, 18px) + 12px);}
   .ai-history-pinned .ai-chat-history-panel {width:212px;box-shadow:none;}
 }
 
@@ -3311,7 +3312,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .notes-page .notes-filter-button .group-picker-label { white-space:nowrap; }
 .notes-empty { display:flex; flex-direction:column; gap:12px; align-items:center; margin:auto; color:var(--gray-10); font-size:12px; }
 .notes-error { margin:8px 0; font-size:12px; color:var(--red-11); overflow-wrap:anywhere; }
-.notes-history-panel.ai-chat-history-panel { inset:30px auto 0 0; width:min(212px,calc(100% - 28px)); }
+.notes-history-panel.ai-chat-history-panel { inset:var(--assistant-page-header-height) auto 0 0; width:min(212px,calc(100% - 28px)); }
 .notes-history-panel .ai-chat-history-row > button { display:flex; align-items:center; gap:8px; text-align:left; font-size:12px; }
 .notes-history-panel .ai-chat-history-row > button > span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .notes-options-popup { width:min(240px,calc(100vw - 32px)); display:flex; flex-direction:column; gap:12px; padding:12px !important; }
@@ -3463,7 +3464,6 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .history-toolbar button:hover { background:var(--gray-a3); }
 .history-toolbar button:focus-visible { outline:2px solid var(--accent-8); outline-offset:1px; }
 .history-toolbar button:disabled { opacity:.45; cursor:default; }
-.notes-page.ai-history-open .notes-history-panel { top:0; }
 .notes-rich-surface { flex:1; min-height:0; overflow:auto; }
 .notes-rich-editor { min-height:100%; outline:none; font:var(--note-font-size,16px)/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; overflow-wrap:anywhere; }
 .notes-rich-editor > :first-child { margin-top:0; }
@@ -3523,7 +3523,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
   .notes-page.notes-has-draft.ai-history-open.ai-history-pinned .notes-editor { padding-left:264px; }
 }
 @container notes-pane (max-width:539px) {
-  .notes-page.notes-has-draft.ai-history-open .notes-history-panel { position:absolute; inset:0 auto 0 0; width:min(212px,calc(100% - 56px)); max-width:100%; height:100%; box-sizing:border-box; border:0; box-shadow:none; }
+  .notes-page.notes-has-draft.ai-history-open .notes-history-panel { position:absolute; inset:var(--assistant-page-header-height) auto 0 0; width:min(212px,calc(100% - 56px)); max-width:100%; height:calc(100% - var(--assistant-page-header-height)); box-sizing:border-box; border:0; box-shadow:none; }
   .notes-page.notes-has-draft.ai-history-open .notes-history-panel .ai-chat-history { background:var(--gray-2); }
   .notes-page.notes-has-draft.ai-history-open.ai-history-pinned .notes-editor { padding-left:var(--ai-content-inset, 18px); }
 }
@@ -3547,7 +3547,8 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .notes-history-row > button:first-child > svg { flex-shrink:0; }
 
 /* Compact neutral Activity library. */
-.activity-page { padding:0 0 12px; height:100%; overflow:auto; font-family:var(--default-font-family); }
+.activity-page { display:flex; flex:1; flex-direction:column; min-height:0; height:100%; overflow:hidden; font-family:var(--default-font-family); }
+.activity-page-body { flex:1; min-height:0; overflow:auto; padding-bottom:12px; }
 .activity-page .activity-read-all { display:inline-flex; align-items:center; gap:5px; padding:5px 6px; border:0; border-radius:5px; background:transparent; color:var(--gray-11); font:inherit; font-size:11px; line-height:16px; cursor:pointer; }
 .activity-read-all:disabled { opacity:.4; cursor:default; }
 .activity-read-all:not(:disabled):hover { background:var(--gray-a3); color:var(--gray-12); }
@@ -3615,7 +3616,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .assistant-panel-content > .ai-sidebar-pane { flex:1; min-height:0; }
 
 /* All Assistant pages use the existing toolbar for placement controls. */
-.assistant-page-header { display:flex; align-items:center; flex-shrink:0; gap:8px; min-height:36px; height:auto; padding:4px 0; box-sizing:border-box; }
+.assistant-page-header { display:flex; align-items:center; flex:0 0 var(--assistant-page-header-height); gap:8px; min-height:var(--assistant-page-header-height); height:var(--assistant-page-header-height); padding:4px 0; box-sizing:border-box; }
 .assistant-page-header.assistant-page-header-edge { padding-inline:var(--ai-content-inset, 18px); }
 .assistant-page-header[hidden] { display:none; }
 .assistant-page-header-actions { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
@@ -3624,6 +3625,8 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .assistant-page-header .group-picker-trigger { min-width:0; gap:6px; height:26px; padding:0 6px; background:transparent; box-shadow:none; font-size:12px; justify-content:flex-start; }
 .assistant-page-header .group-picker-trigger:hover { background:var(--gray-a3); }
 .assistant-page-header .group-picker-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.assistant-page-header .rt-TextFieldRoot { height:28px; }
+.assistant-page-header .rt-TextFieldInput { height:100%; font-size:12px; }
 .assistant-page-header h2 { margin:0; font-size:14px; line-height:20px; font-weight:600; }
 .assistant-page-header .ai-compact-actions { margin-left:auto; }
 .assistant-page-header:is(.activity-heading, .notes-landing-heading) h2 { margin-right:auto; }
@@ -3631,9 +3634,6 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 
 /* Notes keeps the same single header in its library and editor states. */
 .notes-page > .assistant-page-header .history-toolbar { gap:6px; }
-@container notes-pane (min-width:540px) {
-  .notes-page.notes-has-draft.ai-history-open.ai-history-pinned > .assistant-page-header { padding-left:264px; }
-}
 
 .developer-sidebar-page .developer-hook-status { align-self:flex-start; max-width:100%; padding:2px 6px; border-radius:4px; background:var(--gray-a3); color:var(--gray-11); font-size:10px; line-height:14px; }
 .developer-sidebar-page .developer-hook-status[data-state='active'] { display:inline-flex; align-items:center; gap:5px; background:var(--green-a3); color:var(--green-11); font-weight:500; }
@@ -4086,7 +4086,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .ai-access-popover .group-picker-results > button > svg { flex-shrink:0; width:14px; height:14px; }
 
 /* A pinned library stays a sidebar even before selecting its first note. */
-.notes-page.notes-library-only.ai-history-open.ai-history-pinned .notes-history-panel { position:absolute; inset:0 auto 0 0; width:min(212px,calc(100% - 56px)); height:100%; box-sizing:border-box; flex:none; border-right:1px solid var(--gray-a4); }
+.notes-page.notes-library-only.ai-history-open.ai-history-pinned .notes-history-panel { position:absolute; inset:var(--assistant-page-header-height) auto 0 0; width:min(212px,calc(100% - 56px)); height:calc(100% - var(--assistant-page-header-height)); box-sizing:border-box; flex:none; border-right:1px solid var(--gray-a4); }
 .notes-page.notes-library-only.ai-history-open.ai-history-pinned .notes-editor { padding-left:224px; }
 .notes-sidebar-empty { margin:auto; padding:16px; text-align:center; color:var(--gray-11); font-size:12px; }
 @container notes-pane (max-width:320px) {
@@ -5328,8 +5328,6 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .notes-display-options .notes-font-size { margin-top:0; }
 .notes-options-popup .notes-save-status { font-size:11px; }
 @container notes-pane (max-width:360px) {
-  .notes-page > .assistant-page-header .assistant-page-header-actions { gap:3px; }
-  .notes-page > .assistant-page-header .history-toolbar { gap:2px; }
   .notes-page .editor-view-switch.rt-Button { padding:4px; gap:4px; font-size:11px; }
   .notes-page .editor-view-icon { display:none; }
 }
