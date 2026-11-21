@@ -465,7 +465,7 @@ export function NotesPage({
           {error}
         </div>
       )}
-      <AssistantPageHeader className="notes-toolbar">
+      <AssistantPageHeader className="notes-toolbar" edgeToEdge>
         {draft ? (
           <HistoryToolbar
             toggleRef={historyToggle}

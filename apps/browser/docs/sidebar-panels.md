@@ -150,6 +150,13 @@ Use `EmptyState` for sidebar placeholders, with feature-owned text, icon and an
 optional action. Panels and Developer share it. Do not copy their markup, picker
 search/keyboard logic, or styling into another feature.
 
+`AssistantPageHeader` owns row height, vertical spacing, action sizes and picker
+appearance for every sidebar page. Use `edgeToEdge` when a page's content extends
+outside the sidebar inset; it restores the same header alignment without adding
+padding to the content. Do not add page-specific header padding, height, borders,
+or control sizing. Page classes may arrange feature actions and accommodate a
+pinned history rail, but must preserve the common header design.
+
 Extension adapters translate Chrome contracts into the existing Kudium model;
 they must not create a second group store, save path, permission mechanism, or
 popup navigation system. Workspace changes use `AppManager` and its existing

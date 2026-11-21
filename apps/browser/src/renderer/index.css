@@ -2008,8 +2008,7 @@ browser-action-list::part(action):focus-visible {
 @container (max-width:290px) { .ai-sidebar-tab-label { display:none; } .ai-sidebar-tab-icon { display:grid; place-items:center; } }
 .developer-sidebar { display:flex; flex:1; flex-direction:column; min-height:0; min-width:0; }
 .developer-sidebar[hidden] { display:none; }
-.developer-sidebar-toolbar { display:flex; align-items:center; flex-shrink:0; gap:8px; padding:16px 12px 12px; }
-.developer-sidebar-toolbar .group-picker-trigger { flex:1; min-width:0; justify-content:flex-start; white-space:nowrap; gap:8px; font-size:12px; }
+.developer-sidebar-toolbar .group-picker-trigger { flex:1; }
 .developer-sidebar-toolbar .rt-TextFieldRoot { flex:1; min-width:0; }
 .ai-sidebar .developer-sidebar-toolbar .rt-TextFieldInput:focus-visible { outline:none; }
 .developer-sidebar-toolbar .group-picker-label { flex:1; min-width:0; text-align:left; white-space:nowrap; }
@@ -2092,7 +2091,6 @@ browser-action-list::part(action):focus-visible {
 .ai-chat-history-heading {gap:4px;}
 .ai-chat-history-heading strong {flex:1;}
 .ai-chat-history-list {flex:1;max-height:none;min-height:0;}
-.ai-conversation-toolbar {display:flex;align-items:center;min-height:28px;flex-shrink:0;}
 .ai-compact-actions {display:flex;align-items:center;gap:4px;margin-left:auto;}
 .ai-compact-actions > button {display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--gray-11);cursor:pointer;}
 .ai-compact-actions > button:hover {background:var(--gray-a3);color:var(--gray-12);}
@@ -2315,7 +2313,6 @@ body.project-terminal-dragging, body.project-terminal-dragging * { cursor:row-re
 .ai-overlay-layer .icon-picker-emoji-entry > .rt-TextFieldRoot { flex-basis:140px; }
 
 /* Developer navigation: group identity above quiet, exclusive content actions. */
-.developer-sidebar-toolbar { padding-bottom:8px; }
 .developer-sidebar-toolbar > .rt-IconButton { flex-shrink:0; margin:0; }
 .developer-pages-view > .rt-TextFieldRoot { margin:4px 0 12px; }
 .ai-sidebar .developer-pages-view .rt-TextFieldInput:focus-visible { outline:none; }
@@ -2324,8 +2321,6 @@ body.project-terminal-dragging, body.project-terminal-dragging * { cursor:row-re
 .ai-overlay-layer .group-picker { width:min(320px, calc(100cqw - 24px)); }
 
 /* One segmented view control, followed by a separate set of project actions. */
-.developer-sidebar-toolbar .group-picker-trigger { color:var(--gray-12); background:var(--gray-a3); box-shadow:inset 0 0 0 1px var(--gray-a3); }
-.developer-sidebar-toolbar .group-picker-trigger:hover { background:var(--gray-a4); }
 .developer-project-actions { align-items:center; flex-wrap:nowrap; gap:10px; margin-top:4px; container-type:inline-size; container-name:developer-toolbar; }
 .developer-project-views { display:flex; flex-shrink:0; gap:2px; padding:2px; border-radius:7px; background:var(--gray-a2); box-shadow:inset 0 0 0 1px var(--gray-a4); }
 .developer-project-views .rt-Button { box-sizing:border-box; height:26px; width:64px; min-width:64px; margin:0; padding:0 8px; border-radius:5px; font-size:12px; font-weight:400; color:var(--gray-11); box-shadow:none; }
@@ -3306,8 +3301,6 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .notes-page .notes-filter-active { color:var(--accent-11); background:var(--accent-a3); }
 /* Notes share chat-history navigation and keep writing surfaces undecorated. */
 .notes-page { margin:0 calc(-1 * var(--ai-content-inset, 18px)); position:relative; container-type:inline-size; container-name:notes-pane; display:flex; flex:1; flex-direction:column; min-width:0; min-height:0; overflow:hidden; color:var(--gray-12); }
-.notes-toolbar { display:flex; align-items:center; gap:6px; height:30px; padding:2px 0; flex-shrink:0; }
-.notes-toolbar .rt-IconButton { margin:0; width:26px; min-width:26px; flex:0 0 26px; box-sizing:border-box; height:26px; color:var(--gray-11); }
 .notes-toolbar-spacer { flex:1; }
 .notes-save-status { color:var(--gray-10); font-size:11px; }
 .notes-editor { position:relative; flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; gap:12px; padding:14px 0 4px; }
@@ -3555,8 +3548,6 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 
 /* Compact neutral Activity library. */
 .activity-page { padding:0 0 12px; height:100%; overflow:auto; font-family:var(--default-font-family); }
-.activity-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:48px; padding:0 4px; }
-.activity-heading h2 { margin:0; font-size:14px; line-height:20px; font-weight:600; }
 .activity-page .activity-read-all { display:inline-flex; align-items:center; gap:5px; padding:5px 6px; border:0; border-radius:5px; background:transparent; color:var(--gray-11); font:inherit; font-size:11px; line-height:16px; cursor:pointer; }
 .activity-read-all:disabled { opacity:.4; cursor:default; }
 .activity-read-all:not(:disabled):hover { background:var(--gray-a3); color:var(--gray-12); }
@@ -3609,8 +3600,6 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .notes-history-panel .notes-history-row > button:first-child, .notes-landing-list .notes-history-row > button:first-child { min-height:60px; padding:12px; }
 .notes-row-title { font-size:13px; line-height:18px; font-weight:500; }
 .notes-row-preview { font-size:12px; line-height:17px; }
-.notes-landing-heading { display:flex; align-items:center; justify-content:space-between; min-height:28px; }
-.notes-landing-heading .rt-IconButton { margin:0; }
 .history-search-input.rt-TextFieldRoot { background:var(--gray-a3); box-shadow:none; border-radius:7px; }
 .notes-history-row .ai-chat-row-actions { opacity:0; pointer-events:none; }
 .notes-history-row:hover .ai-chat-row-actions, .notes-history-row:focus-within .ai-chat-row-actions { opacity:1; pointer-events:auto; }
@@ -3626,18 +3615,21 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .assistant-panel-content > .ai-sidebar-pane { flex:1; min-height:0; }
 
 /* All Assistant pages use the existing toolbar for placement controls. */
-.ai-sidebar .assistant-page-header { display:flex; align-items:center; flex-shrink:0; gap:8px; min-height:36px; height:auto; padding:4px 0; }
-.ai-sidebar .assistant-page-header[hidden] { display:none; }
+.assistant-page-header { display:flex; align-items:center; flex-shrink:0; gap:8px; min-height:36px; height:auto; padding:4px 0; box-sizing:border-box; }
+.assistant-page-header.assistant-page-header-edge { padding-inline:var(--ai-content-inset, 18px); }
+.assistant-page-header[hidden] { display:none; }
 .assistant-page-header-actions { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
 .assistant-page-header .chrome-icon-button { flex-shrink:0; color:var(--gray-11); }
-.assistant-page-header :is(.rt-IconButton, .chrome-icon-button) { margin:0; width:26px; min-width:26px; height:26px; }
+.assistant-page-header :is(.rt-IconButton, .chrome-icon-button) { margin:0; width:26px; min-width:26px; height:26px; color:var(--gray-11); }
+.assistant-page-header .group-picker-trigger { min-width:0; gap:6px; height:26px; padding:0 6px; background:transparent; box-shadow:none; font-size:12px; justify-content:flex-start; }
+.assistant-page-header .group-picker-trigger:hover { background:var(--gray-a3); }
+.assistant-page-header .group-picker-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .assistant-page-header h2 { margin:0; font-size:14px; line-height:20px; font-weight:600; }
 .assistant-page-header .ai-compact-actions { margin-left:auto; }
 .assistant-page-header:is(.activity-heading, .notes-landing-heading) h2 { margin-right:auto; }
 .notes-empty > .assistant-page-header { align-self:stretch; }
 
 /* Notes keeps the same single header in its library and editor states. */
-.ai-sidebar .notes-page > .assistant-page-header { padding:4px var(--ai-content-inset, 18px); }
 .notes-page > .assistant-page-header .history-toolbar { gap:6px; }
 @container notes-pane (min-width:540px) {
   .notes-page.notes-has-draft.ai-history-open.ai-history-pinned > .assistant-page-header { padding-left:264px; }
@@ -5440,12 +5432,8 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .sidebar-feature-pane { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; }
 .sidebar-feature-pane[hidden] { display:none; }
 .sidebar-feature-pane { margin:0 calc(-1 * var(--ai-content-inset, 18px)) -12px; overflow:hidden; }
-.sidebar-feature-pane .assistant-page-header { flex-shrink:0; padding:6px 12px; border-bottom:1px solid var(--gray-a3); }
-.sidebar-feature-pane .group-picker-trigger { min-width:0; gap:5px; height:28px; padding:0 5px; background:transparent; box-shadow:none; font-size:12px; }
 .sidebar-feature-panel-picker { flex:1 1 55%; }
 .sidebar-feature-group-picker { flex:1 1 45%; color:var(--gray-11); }
-.sidebar-feature-pane .group-picker-trigger:hover { background:var(--gray-a3); }
-.sidebar-feature-pane .group-picker-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sidebar-feature-content { flex:1; min-width:0; min-height:0; }
 .feature-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:36px 24px; text-align:center; color:var(--gray-11); }
 .feature-empty-state-icon { display:grid; place-items:center; width:44px; height:44px; border-radius:12px; background:var(--gray-a3); color:var(--gray-10); }

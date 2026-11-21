@@ -95,7 +95,7 @@ export function SidebarPanels({
       hidden={!active}
       aria-label="Sidebar panels"
     >
-      <AssistantPageHeader>
+      <AssistantPageHeader edgeToEdge>
         <GroupPicker
           label="Sidebar panel"
           unselectedLabel="Choose a panel"

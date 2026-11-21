@@ -37,9 +37,12 @@ import {createRoot} from ${JSON.stringify(require.resolve('react-dom/client'))};
 import {Theme} from '@radix-ui/themes';
 import {SidebarPanels} from ${JSON.stringify(path.resolve('src/components/UI/SidebarPanels'))};
 import {useSidebarPanels} from ${JSON.stringify(path.resolve('src/utils/useSidebarPanels'))};
+import {AssistantPageHeader} from ${JSON.stringify(path.resolve('src/components/UI/AssistantPageHeader'))};
+import {ChromeIconButton} from ${JSON.stringify(path.resolve('src/components/UI/ChromeIconButton'))};
+import {X} from 'lucide-react';
 import ${JSON.stringify(require.resolve('@radix-ui/themes/styles.css'))};
 import ${JSON.stringify(path.resolve('src/renderer/index.css'))};
-function Fixture(){const state=useSidebarPanels();const [active,setActive]=React.useState(true);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><aside className="ai-sidebar" style={{height:600,width:368}}><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
+function Fixture(){const state=useSidebarPanels();const [active,setActive]=React.useState(true);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><aside className="ai-sidebar" style={{height:600,width:368}}><AssistantPageHeader className="fixture-reference-header"><h2>Reference page</h2><ChromeIconButton icon={X} label="Reference action" onClick={()=>{}}/></AssistantPageHeader><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
 createRoot(document.getElementById('root')).render(<Fixture/>);`,
 );
 require('esbuild').buildSync({
@@ -137,6 +140,15 @@ app
       'Content must use the full shell width',
     );
     assert.equal(views.get('one').getBounds().width, Math.floor(geometry.slot));
+    const alignment = await window.webContents.executeJavaScript(`(()=>{
+      const normal=document.querySelector('.fixture-reference-header'),panel=document.querySelector('.sidebar-feature-pane .assistant-page-header');
+      return {normalHeight:normal.getBoundingClientRect().height,panelHeight:panel.getBoundingClientRect().height,
+        normalStart:normal.querySelector('.assistant-page-header-actions').getBoundingClientRect().x,panelStart:panel.querySelector('.assistant-page-header-actions').getBoundingClientRect().x,
+        normalAction:normal.querySelector('button').getBoundingClientRect().height,panelAction:panel.querySelector('button').getBoundingClientRect().height};
+    })()`);
+    assert.equal(alignment.normalHeight, alignment.panelHeight, 'Shared header heights must match');
+    assert.equal(alignment.normalStart, alignment.panelStart, 'Full-width content must retain the shared header inset');
+    assert.equal(alignment.normalAction, alignment.panelAction, 'Shared controls must have the same height');
     await views
       .get('one')
       .webContents.executeJavaScript(
