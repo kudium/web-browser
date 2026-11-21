@@ -1,4 +1,4 @@
-import { Button } from '@radix-ui/themes';
+import { Button, Link } from '@radix-ui/themes';
 import { useAppUpdates } from '../../../utils/useAppUpdates';
 
 export function AppUpdateSettings() {
@@ -11,22 +11,22 @@ export function AppUpdateSettings() {
     state.status === 'checking'
       ? 'Checking for updates…'
       : state.status === 'downloading'
-      ? `Downloading update${
-          state.progress === undefined
-            ? '…'
-            : ` · ${Math.round(state.progress)}%`
-        }`
-      : ready
-      ? `Version ${state.version} is ready to install.`
-      : available
-      ? `Version ${state.version} is available.`
-      : state.status === 'unavailable'
-      ? 'Updates are available in installed release builds.'
-      : state.status === 'error'
-      ? 'Could not check for updates.'
-      : state.checkedAt
-      ? 'You’re up to date.'
-      : 'Check for a newer version of Kudium Browser.';
+        ? `Downloading update${
+            state.progress === undefined
+              ? '…'
+              : ` · ${Math.round(state.progress)}%`
+          }`
+        : ready
+          ? `Version ${state.version} is ready to install.`
+          : available
+            ? `Version ${state.version} is available.`
+            : state.status === 'unavailable'
+              ? 'Automatic updates aren’t available in this build. Download the latest version manually.'
+              : state.status === 'error'
+                ? 'Could not check for updates.'
+                : state.checkedAt
+                  ? 'You’re up to date.'
+                  : 'Check for a newer version of Kudium Browser.';
   return (
     <div className="app-update-settings">
       <div>
@@ -39,6 +39,23 @@ export function AppUpdateSettings() {
         {(error || state.message) && state.status !== 'unavailable' && (
           <p role="alert">{error || state.message}</p>
         )}
+        <p>
+          <Link
+            href="https://browser.kudium.com/download"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Download manually
+          </Link>
+          {' · '}
+          <Link
+            href="https://browser.kudium.com/whats-new"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            What’s new
+          </Link>
+        </p>
       </div>
       <Button
         size="1"
@@ -51,10 +68,10 @@ export function AppUpdateSettings() {
         {ready
           ? 'Restart to update'
           : available
-          ? 'Download update'
-          : state.status === 'downloading'
-          ? 'Downloading…'
-          : 'Check for updates'}
+            ? 'Download update'
+            : state.status === 'downloading'
+              ? 'Downloading…'
+              : 'Check for updates'}
       </Button>
     </div>
   );

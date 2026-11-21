@@ -34,25 +34,25 @@ it('offers download then restart, keeps progress disabled and unsubscribes', asy
   fireEvent.click(
     await screen.findByRole('button', {
       name: 'Update available. Download update',
-    })
+    }),
   );
   await waitFor(() =>
-    expect(browser.appUpdates).toHaveBeenCalledWith('download')
+    expect(browser.appUpdates).toHaveBeenCalledWith('download'),
   );
   act(() =>
-    update({ status: 'downloading', currentVersion: '1.0.1', progress: 42 })
+    update({ status: 'downloading', currentVersion: '1.0.1', progress: 42 }),
   );
   expect(
-    screen.getByRole('button', { name: /Downloading 42%/ })
+    screen.getByRole('button', { name: /Downloading 42%/ }),
   ).toBeDisabled();
   act(() =>
-    update({ status: 'ready', currentVersion: '1.0.1', version: '1.0.2' })
+    update({ status: 'ready', currentVersion: '1.0.1', version: '1.0.2' }),
   );
   fireEvent.click(
-    screen.getByRole('button', { name: 'Update ready. Restart to update' })
+    screen.getByRole('button', { name: 'Update ready. Restart to update' }),
   );
   await waitFor(() =>
-    expect(browser.appUpdates).toHaveBeenCalledWith('install')
+    expect(browser.appUpdates).toHaveBeenCalledWith('install'),
   );
   unmount();
   expect(unsubscribe).toHaveBeenCalled();
@@ -60,7 +60,7 @@ it('offers download then restart, keeps progress disabled and unsubscribes', asy
 it('has an accessible action in compact mode', async () => {
   render(<AppUpdateBanner compact />);
   expect(
-    await screen.findByRole('button', { name: /Download update/ })
+    await screen.findByRole('button', { name: /Download update/ }),
   ).toHaveAttribute('title', expect.stringContaining('1.0.2'));
   expect(screen.queryByText('Download update')).toBeNull();
 });
@@ -70,17 +70,17 @@ it('ignores stale initial status after a pushed update and surfaces action error
     () =>
       new Promise<AppUpdateState>((done) => {
         resolve = done;
-      })
+      }),
   );
   render(<AppUpdateBanner />);
   act(() =>
-    update({ status: 'ready', currentVersion: '1.0.1', version: '1.0.2' })
+    update({ status: 'ready', currentVersion: '1.0.1', version: '1.0.2' }),
   );
   await act(async () => resolve({ status: 'idle', currentVersion: '1.0.1' }));
   (browser.appUpdates as jest.Mock).mockRejectedValueOnce(new Error('offline'));
   fireEvent.click(screen.getByRole('button', { name: /Restart to update/ }));
   expect(await screen.findByRole('status')).toHaveTextContent(
-    'Unable to complete'
+    'Unable to complete',
   );
 });
 it('provides a manual check in Preferences', async () => {
@@ -91,9 +91,43 @@ it('provides a manual check in Preferences', async () => {
   render(
     <Theme>
       <AppUpdateSettings />
-    </Theme>
+    </Theme>,
   );
   await screen.findByText('Kudium Browser 1.0.1');
   fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
   await waitFor(() => expect(browser.appUpdates).toHaveBeenCalledWith('check'));
 });
+
+it.each(['unavailable', 'error'] as const)(
+  'keeps manual download and release notes accessible when updates are %s',
+  async (status) => {
+    (browser.appUpdates as jest.Mock).mockResolvedValue({
+      status,
+      currentVersion: '1.0.18',
+    });
+    render(
+      <Theme>
+        <AppUpdateSettings />
+      </Theme>,
+    );
+    await screen.findByText('Kudium Browser 1.0.18');
+    const download = screen.getByRole('link', { name: 'Download manually' });
+    expect(download).toHaveAttribute(
+      'href',
+      'https://browser.kudium.com/download',
+    );
+    expect(download).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('link', { name: 'What’s new' })).toHaveAttribute(
+      'href',
+      'https://browser.kudium.com/whats-new',
+    );
+    if (status === 'unavailable') {
+      expect(
+        screen.getByRole('button', { name: 'Check for updates' }),
+      ).toBeDisabled();
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Download the latest version manually.',
+      );
+    }
+  },
+);
