@@ -371,7 +371,7 @@ export function DeveloperSidebar({
           Linking project folder…
         </p>
       )}
-      <div className="developer-sidebar-pages" aria-busy={loading && !!source}>
+      <div className="developer-sidebar-pages assistant-page-body-wide" aria-busy={loading && !!source}>
         {!source ? (
           <EmptyState icon={<HookIcon size={24} />} title="Manage site hooks"
             description={options.length

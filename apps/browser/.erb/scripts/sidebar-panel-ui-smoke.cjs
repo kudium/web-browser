@@ -200,6 +200,15 @@ app
     host.layout('two', { x:100, y:73, width:360, height:viewport.height-73+3 });
     assert.equal(views.get('two').getBounds().height, viewport.height-73, 'A three-pixel overflow must clip the native view, not blank it');
     host.close();
+    const developerWidth = await window.webContents.executeJavaScript(`(()=>{
+      const sidebar=document.querySelector('.ai-sidebar'),body=document.createElement('div');
+      body.className='developer-sidebar-pages assistant-page-body-wide';
+      body.innerHTML='<div class="developer-project">Project controls</div><div class="developer-pages-view"><div class="developer-sidebar-page">Page</div></div>';
+      sidebar.appendChild(body);
+      const width=body.querySelector('.developer-sidebar-page').getBoundingClientRect().width,available=sidebar.clientWidth;
+      body.remove();return {width,available};
+    })()`);
+    assert(developerWidth.width >= developerWidth.available-18,'Developer content must use one compact gutter, not stacked padding');
     for (const width of [368,640]) {
     await window.loadFile(path.join(root,'index.html'),{query:{switches:'1',width:String(width)}});
     const bounds=[];
