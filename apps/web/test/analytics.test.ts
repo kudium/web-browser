@@ -64,10 +64,11 @@ test('saved declines and privacy signals override regional defaults', async () =
   }
 });
 
-test('failed region lookup asks for consent without sending analytics', async () => {
+test('failed region lookup enables analytics without a prompt', async () => {
   const state = await run('https://browser.kudium.com', null, null);
-  expect(state.scripts).toHaveLength(0);
-  expect(state.panel.hidden).toBe(false);
+  expect(state.scripts).toHaveLength(1);
+  expect(state.panel.hidden).toBe(true);
+  expect(state.storage.has('kudium.analytics-consent.v1')).toBe(false);
 });
 
 

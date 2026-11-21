@@ -59,13 +59,13 @@
     const saved = read();
     if (saved === 'granted') { start(); return; }
     if (saved === 'denied') return;
-    let consentRequired = true;
+    let consentRequired = false;
     try {
       const response = await fetch('/analytics-policy', {
         credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(5000),
       });
-      if (response.ok) consentRequired = (await response.json()).consentRequired !== false;
-    } catch { /* Unknown region keeps the opt-in default. */ }
+      if (response.ok) consentRequired = (await response.json()).consentRequired === true;
+    } catch { /* Unknown region uses the default-on policy. */ }
     if (choiceMade) return;
     if (consentRequired) panel.hidden = false;
     else start(); // Do not persist automatic enablement as explicit consent.

@@ -23,8 +23,9 @@ and website deployment remain separate operations.
 
 Public website Analytics uses `/analytics-policy` to decide whether to ask for
 consent. An offline `geoip-country` database determines the visitor country;
-refresh its pinned package periodically. The EEA, UK, Switzerland and unknown
-locations require opt-in; other locations default to enabled. Saved declines,
+refresh its pinned package periodically. Confirmed EEA, UK and Switzerland
+locations require opt-in; other and unknown locations default to enabled,
+including when the policy request fails or times out. Saved declines,
 Do Not Track and Global Privacy Control override automatic enablement. Advertising
 features remain disabled and account/auth pages never load Analytics. Country
 lookup uses the socket IP or the last X-Forwarded-For address appended by an

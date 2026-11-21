@@ -13,7 +13,7 @@ const optInCountries = new Set([
 ]);
 
 export function countryRequiresConsent(country?: string | null) {
-  return !country || !/^[A-Z]{2}$/.test(country) || optInCountries.has(country);
+  return typeof country === 'string' && optInCountries.has(country);
 }
 
 function normalize(ip: string) {
@@ -21,7 +21,7 @@ function normalize(ip: string) {
 }
 
 export function analyticsConsentRequired(peer?: string, forwardedFor?: string) {
-  if (!peer) return true;
+  if (!peer) return false;
   peer = normalize(peer);
   // Trust the last address appended by our internal reverse proxy, never a
   // client-supplied country header or the first, spoofable X-Forwarded-For entry.
@@ -29,7 +29,7 @@ export function analyticsConsentRequired(peer?: string, forwardedFor?: string) {
     peer === '::1' || /^(fc|fd|fe80:)/i.test(peer);
   const candidate = internalProxy && forwardedFor && forwardedFor.length <= 4096
     ? normalize(forwardedFor.split(',').at(-1)!.trim()) : peer;
-  if (!isIP(candidate)) return true;
+  if (!isIP(candidate)) return false;
   try { return countryRequiresConsent(lookup(candidate)?.country); }
-  catch { return true; }
+  catch { return false; }
 }
