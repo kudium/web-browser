@@ -31,7 +31,9 @@ import { aiGroupId } from '../browser/aiGroups';
 import { projectFileNavigation } from './projectFileNavigation';
 import { onWindowClosed } from './windowLifecycle';
 import { suspendSidebarPanels, setSidebarPanelSession } from './sidebarPanels';
-import { navigateExtensionPage } from './extensionPageNavigation';
+import { extensionDocumentId, assertExtensionDocument } from './extensionDocuments';
+import { extensionCreatedTab } from '../browser/extensionTabs';
+import { extensionActiveTab } from './extensionSidePanels';
 import { presentSnapshots } from './snapshotPresentation';
 import {
   getGroupRemovalJournal,
@@ -193,8 +195,6 @@ export function registerElectronBrowser(
     string,
     { time: number; message: string }
   >();
-  const popups = new Map<string, Set<BrowserWindow>>();
-  const popupSources = new WeakMap<BrowserWindow, IApp>();
   const keyboardCleanup = new Set<() => void>();
   const keyboardMenuResets = new Set<() => void>();
   window.on('blur', () => {
@@ -429,17 +429,6 @@ export function registerElectronBrowser(
     const view = views.get(id);
     if (view) {
       removeView(view);
-      const ownedPopups = popups.get(id);
-      ownedPopups?.forEach((popup) => {
-        if (!popup.isDestroyed()) popup.close();
-      });
-      // A popup may cancel its close; keep tracking it so removal cannot clear
-      // a session while one of the group's windows is still using it.
-      if (
-        !ownedPopups ||
-        [...ownedPopups].every((popup) => popup.isDestroyed())
-      )
-        popups.delete(id);
       retiringTabs.add(view.webContents.id);
       getExtensionProfile(
         loginProfileKey(configurations.get(id) || ({} as IApp))
@@ -603,6 +592,7 @@ export function registerElectronBrowser(
       if (
         typeof item.id !== 'string' ||
         (!validURL(item.url) &&
+          !extensionDocumentId(item.url) &&
           item.url !== 'about:blank' &&
           !projectFileNavigation(item.url, item))
       )
@@ -644,7 +634,7 @@ export function registerElectronBrowser(
           adopted?.view ||
           new WebContentsView({
             webPreferences: {
-              ...(!privateMode && { preload: siteDeveloperPreload() }),
+              ...(!privateMode && !extensionDocumentId(item.url) && { preload: siteDeveloperPreload() }),
               ...(privateMode
                 ? { session: window.webContents.session }
                 : {
@@ -773,72 +763,23 @@ export function registerElectronBrowser(
               window,
               {
                 createTab: async (details) => {
-                  if (removals.blocks(item))
+                  const activeContents = extensionActiveTab(getExtensionProfile(profileId)?.api, details.windowId);
+                  const activeEntry = [...views].find(([, candidate]) => candidate.webContents === activeContents);
+                  const sourceItem = (activeEntry && configurations.get(activeEntry[0])) || configurations.get(item.id) || item;
+                  const targetWindow = hostFor(sourceItem.id);
+                  if (loginProfileKey(sourceItem) !== profileId)
+                    throw new Error('Extension target group is unavailable');
+                  if (removals.blocks(sourceItem))
                     throw new Error('This group is being removed.');
-                  if (isGroupLocked(configurations.get(item.id) || item))
+                  if (isGroupLocked(sourceItem))
                     throw new Error('Unlock this group before opening tabs.');
-                  const url = details.url || item.url;
-                  const extensionPage = url.startsWith('chrome-extension://');
+                  const url = details.url || sourceItem.url;
+                  const extensionPage = Boolean(extensionDocumentId(url));
                   if (!extensionPage && !validURL(url))
                     throw new Error(
                       'This extension requested an unsupported page address.'
                     );
-                  if (
-                    extensionPage ||
-                    new URL(url).origin !== new URL(item.url).origin
-                  ) {
-                    if (
-                      extensionPage &&
-                      !contents.session.extensions.getExtension(
-                        new URL(url).hostname
-                      )
-                    )
-                      throw new Error(
-                        'Extension is unavailable in this group.'
-                      );
-                    const popup = new BrowserWindow({
-                      parent: window,
-                      show: false,
-                      width: 960,
-                      height: 720,
-                      webPreferences: {
-                        session: contents.session,
-                        sandbox: true,
-                        contextIsolation: true,
-                        nodeIntegration: false,
-                      },
-                    });
-                    applyBrowserPreferences(popup.webContents);
-                    const api = getExtensionProfile(profileId)?.api;
-                    api?.addTab(popup.webContents, popup);
-                    const owned =
-                      popups.get(item.id) || new Set<BrowserWindow>();
-                    popupSources.set(popup, { ...item });
-                    owned.add(popup);
-                    popups.set(item.id, owned);
-                    popup.on('closed', () => owned.delete(popup));
-                    try {
-                      navigateExtensionPage(popup, url, {
-                        active: details.active,
-                        assertAccess: () => {
-                          if (removals.blocks(item) || isGroupLocked(configurations.get(item.id) || item))
-                            throw new Error('Group access was revoked.');
-                        },
-                        reportError: (error) => showBrowserDialog(popup, {
-                          title: 'Extension page',
-                          message: 'This page could not load',
-                          detail: 'Check your connection and try reloading the page.',
-                          technicalDetailLabel: 'Details',
-                          technicalDetail: String(error),
-                          buttons: ['Done'],
-                        }),
-                      });
-                      return [popup.webContents, popup];
-                    } catch (error) {
-                      if (!popup.isDestroyed()) popup.destroy();
-                      throw error;
-                    }
-                  }
+                  if (extensionPage) assertExtensionDocument(url, contents.session);
                   const id = randomUUID();
                   const tab = new Promise<WebContents>((resolve, reject) => {
                     let timeout: ReturnType<typeof setTimeout>;
@@ -859,18 +800,12 @@ export function registerElectronBrowser(
                       tabWaiters.delete(id);
                     });
                   });
-                  window.webContents.send('browser-tab-request', {
+                  targetWindow.webContents.send('browser-tab-request', {
                     action: 'create',
-                    app: {
-                      ...item,
-                      id,
-                      url,
-                      favorite: false,
-                      pinned: false,
-                      customName: undefined,
-                    },
+                    background: details.active === false,
+                    app: extensionCreatedTab(sourceItem, id, url),
                   });
-                  return [await tab, window];
+                  return [await tab, targetWindow];
                 },
                 selectTab: (tab) => {
                   if (synchronizingExtensions || window.isDestroyed()) return;
@@ -925,7 +860,7 @@ export function registerElectronBrowser(
             disposition === 'background-tab' ||
             disposition === 'foreground-tab';
           if (
-            (!validURL(url) && url !== 'about:blank') ||
+            (!validURL(url) && !extensionDocumentId(url) && url !== 'about:blank') ||
             (!linkTab &&
               !(behavior?.popups ?? getBrowserPreferences().allowPopups))
           )
@@ -936,7 +871,7 @@ export function registerElectronBrowser(
             overrideBrowserWindowOptions: {
               webPreferences: {
                 session: contents.session,
-                ...(!privateMode && { preload: siteDeveloperPreload() }),
+                ...(!privateMode && !extensionDocumentId(url) && { preload: siteDeveloperPreload() }),
                 sandbox: true,
                 contextIsolation: true,
                 nodeIntegration: false,
@@ -1066,6 +1001,7 @@ export function registerElectronBrowser(
           }
           if (
             !validURL(url) &&
+            !extensionDocumentId(url) &&
             url !== 'about:blank' &&
             !projectFileNavigation(url, configurations.get(item.id) || item)
           )
@@ -1358,7 +1294,9 @@ export function registerElectronBrowser(
               sleeping.delete(item.id);
               // Navigation failures are displayed by did-fail-load.
               // eslint-disable-next-line promise/no-nesting
-              return contents.loadURL(tabResumeURL(current)).catch(() => {});
+              const destination = tabResumeURL(current);
+              if (extensionDocumentId(destination)) assertExtensionDocument(destination, contents.session);
+              return contents.loadURL(destination).catch(() => {});
             }
             return null;
           })
@@ -1516,20 +1454,6 @@ export function registerElectronBrowser(
       pictureInPicture.delete(id);
       views.delete(id);
       removeView(view);
-      const ownedPopups = popups.get(id);
-      ownedPopups?.forEach((popup) => {
-        if (!popup.isDestroyed()) {
-          if (force) popup.destroy();
-          else popup.close();
-        }
-      });
-      // A popup may cancel its close; keep tracking it so removal cannot clear
-      // a session while one of the group's windows is still using it.
-      if (
-        !ownedPopups ||
-        [...ownedPopups].every((popup) => popup.isDestroyed())
-      )
-        popups.delete(id);
       hiddenSince.delete(id);
       edited.delete(id);
       sidebarMediaSessions.get(id)?.dispose();
@@ -2324,7 +2248,6 @@ export function registerElectronBrowser(
         !edited.has(id) &&
         !playingMedia.has(id) &&
         !pictureInPicture.get(id)?.state.active &&
-        !popups.get(id)?.size &&
         !contents.isDestroyed() &&
         !contents.isLoading() &&
         !contents.isCurrentlyAudible() &&
@@ -2380,8 +2303,7 @@ export function registerElectronBrowser(
           hiddenSince.get(id) !== candidateHiddenSince ||
           Date.now() - (candidateHiddenSince || 0) <
             getBrowserPreferences().discardAfterMinutes * 60000 ||
-          contents.isDevToolsOpened() ||
-          Boolean(popups.get(id)?.size)
+          contents.isDevToolsOpened()
         ) {
           hiddenSince.set(id, Date.now());
           return undefined;
@@ -2666,16 +2588,6 @@ export function registerElectronBrowser(
                 view.webContents.isDestroyed()
               );
             }) &&
-            [...popups.entries()].every(([id, entries]) => {
-              return [...entries].every((popup) => {
-                const item = popupSources.get(popup) || configurations.get(id);
-                return (
-                  !item ||
-                  !sameRemovalGroup(item, source) ||
-                  popup.isDestroyed()
-                );
-              });
-            }) &&
             [...websiteTabs.values()].every(
               (entry) =>
                 !sameRemovalGroup(entry.source, source) ||
@@ -2689,16 +2601,6 @@ export function registerElectronBrowser(
               ([id, view]) =>
                 loginProfileKey(configurations.get(id) || ({} as IApp)) !==
                   profile || view.webContents.isDestroyed()
-            ) &&
-            [...popups.entries()].every(([id, entries]) =>
-              [...entries].every((popup) => {
-                const item = popupSources.get(popup) || configurations.get(id);
-                return (
-                  !item ||
-                  loginProfileKey(item) !== profile ||
-                  popup.isDestroyed()
-                );
-              })
             ) &&
             [...websiteTabs.values()].every(
               (entry) =>
@@ -2743,12 +2645,6 @@ export function registerElectronBrowser(
     views.forEach((view) => {
       if (!view.webContents.isDestroyed()) view.webContents.close();
     });
-    popups.forEach((owned) =>
-      owned.forEach((popup) => {
-        if (!popup.isDestroyed()) popup.close();
-      })
-    );
-    popups.clear();
     views.clear();
   };
   onWindowClosed(window, dispose);

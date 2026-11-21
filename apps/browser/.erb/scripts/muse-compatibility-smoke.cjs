@@ -32,9 +32,6 @@ const {
 const {
   attachExtensionBrowserAPIs,
 } = require('../../src/main/extensionBrowserAPIs.ts');
-const {
-  navigateExtensionPage,
-} = require('../../src/main/extensionPageNavigation.ts');
 const root = fs.mkdtempSync(
   path.join(os.tmpdir(), 'kudium-muse-compatibility-'),
 );
@@ -77,16 +74,12 @@ app
       'data:text/html,<title>Muse compatibility check — temporary profile</title>',
     );
     const openedTabs = [];
-    const popupWindows = [];
+    const authTabs = [];
     const api = new ElectronChromeExtensions({
       session: profile,
       createTab: async (details) => {
         openedTabs.push(details);
-        const popup = new BrowserWindow({
-          parent: chrome,
-          show: false,
-          width: 700,
-          height: 600,
+        const authTab = new WebContentsView({
           webPreferences: {
             session: profile,
             sandbox: true,
@@ -94,16 +87,18 @@ app
             nodeIntegration: false,
           },
         });
-        popupWindows.push(popup);
-        api.addTab(popup.webContents, popup);
-        navigateExtensionPage(popup, details.url, {
-          active: details.active,
-          assertAccess: () => {},
-          reportError: async (error) => {
-            errors.push(String(error));
-          },
+        authTabs.push(authTab);
+        chrome.contentView.addChildView(authTab);
+        authTab.setBounds({ x: 0, y: 60, width: 580, height: 560 });
+        api.addTab(authTab.webContents, chrome);
+        void authTab.webContents.loadURL(details.url).catch((error) => {
+          if (error.code !== 'ERR_ABORTED') errors.push(String(error));
         });
-        return [popup.webContents, popup];
+        if (details.active !== false) {
+          api.selectTab(authTab.webContents);
+          authTab.webContents.focus();
+        }
+        return [authTab.webContents, chrome];
       },
     });
     attachExtensionSidePanels(api, 'muse-compatibility');
@@ -178,25 +173,24 @@ app
       button: 'left',
       clickCount: 1,
     });
-    for (let i = 0; i < 100 && !popupWindows[0]?.isVisible(); i++)
-      await pause(50);
+    for (let i = 0; i < 100 && !authTabs.length; i++) await pause(50);
     assert(
       openedTabs.length > 0,
       'Native mouse click dispatches Muse sign-in to tabs.create',
     );
     assert.equal(new URL(openedTabs[0].url).hostname, 'muse.ai');
     assert(
-      popupWindows[0].isVisible(),
-      'Sign-in window is visible before navigation completes',
+      chrome.contentView.children.includes(authTabs[0]),
+      'Sign-in tab is hosted by the existing window',
     );
     assert.equal(
-      popupWindows[0].webContents.session,
+      authTabs[0].webContents.session,
       profile,
       'Authentication retains its extension profile',
     );
     let authText = '';
     for (let i = 0; i < 200; i++) {
-      authText = await popupWindows[0].webContents.executeJavaScript(
+      authText = await authTabs[0].webContents.executeJavaScript(
         'document.body.innerText',
       );
       if (/Mobile number or email/.test(authText)) break;
@@ -221,7 +215,8 @@ app
     );
     host.dock();
     profile.extensions.removeExtension(extension.id);
-    for (const popup of popupWindows) if (!popup.isDestroyed()) popup.destroy();
+    for (const authTab of authTabs)
+      if (!authTab.webContents.isDestroyed()) authTab.webContents.close();
     tab.webContents.close();
     chrome.destroy();
     await prepared.dispose();
@@ -233,7 +228,7 @@ app
     });
     clearTimeout(timeout);
     console.log(
-      `PASS Muse ${prepared.manifest.version}: real worker, rendered panel, native Sign in click, visible authentication window in its own profile, and pop-out. Authentication form loaded; completed login/chat/task execution was not tested.`,
+      `PASS Muse ${prepared.manifest.version}: real worker, rendered panel, native Sign in click, authentication tab in its own profile, and pop-out. Authentication form loaded; completed login/chat/task execution was not tested.`,
     );
     app.exit(0);
   })

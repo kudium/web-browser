@@ -669,27 +669,38 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
   );
   const createExtensionTab = (applyExtensions as jest.Mock).mock.calls[0][4]
     .createTab;
-  const [auxiliaryContents, auxiliaryWindow] = await createExtensionTab({
+  const extensionTabPromise = createExtensionTab({
     url: 'https://outside.example/help',
   });
-  expect(BrowserWindow).toHaveBeenCalledWith(
-    expect.objectContaining({
-      parent: window,
-      webPreferences: expect.objectContaining({
-        session: views[0].webContents.session,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      }),
-    })
+  const [requestName, request] = window.webContents.send.mock.calls.at(-1)!;
+  expect(requestName).toBe('browser-tab-request');
+  expect(request).toEqual(expect.objectContaining({
+    action: 'create',
+    background: false,
+    app: expect.objectContaining({
+      url: 'https://outside.example/help',
+      sessionId: 'one',
+      openerTabId: 'one',
+    }),
+  }));
+  emit(window.webContents, [...apps, request.app], [request.app.id]);
+  const [auxiliaryContents, auxiliaryWindow] = await extensionTabPromise;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(BrowserWindow).not.toHaveBeenCalled();
+  expect(auxiliaryWindow).toBe(window);
+  const auxiliaryView = (WebContentsView as unknown as jest.Mock).mock.results
+    .map((result) => result.value)
+    .find((view) => view.webContents === auxiliaryContents);
+  expect(auxiliaryView.options.webPreferences.partition).toBe(
+    views[0].options.webPreferences.partition
   );
-  expect(auxiliaryContents.session).toBe(views[0].webContents.session);
-  expect(auxiliaryContents.session).not.toBe(views[1].webContents.session);
-  expect(auxiliaryWindow.loadURL).toHaveBeenCalledWith(
+  expect(auxiliaryView.options.webPreferences.partition).not.toBe(
+    views[1].options.webPreferences.partition
+  );
+  expect(auxiliaryContents.loadURL).toHaveBeenCalledWith(
     'https://outside.example/help'
   );
-  expect(auxiliaryWindow.show).toHaveBeenCalled();
-  expect(auxiliaryContents.focus).toHaveBeenCalled();
+  emit();
   await expect(
     createExtensionTab({ url: ['javascript', 'alert(1)'].join(':') })
   ).rejects.toThrow('unsupported page address');

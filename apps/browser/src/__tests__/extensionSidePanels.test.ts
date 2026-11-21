@@ -5,6 +5,7 @@ import { EventEmitter } from 'events';
 import {
   attachExtensionSidePanels,
   extensionPanelURL,
+  extensionActiveTab,
 } from '../main/extensionSidePanels';
 
 let mockRoot: string;
@@ -113,6 +114,7 @@ function fixture(extraHandlers: Array<[string, any]> = []) {
     host,
     originalActivate,
     profileSession,
+    api,
     unload: () => {
       loaded = false;
       extensions.emit('extension-unloaded', {}, extension);
@@ -247,6 +249,14 @@ test('authentication windows without sidebar hosts do not abort tab creation or 
   expect(() => f.store.emit('tab-added', { id: 43 })).not.toThrow();
   expect(f.providers.size).toBe(1);
   expect([...f.providers.values()][0].info.id).toContain(':1:');
+});
+
+test('tab creation follows the active tab when groups share an extension profile', () => {
+  const f = fixture();
+  expect(extensionActiveTab(f.api as any, 1)?.id).toBe(10);
+  f.setTab(11);
+  expect(extensionActiveTab(f.api as any, 1)?.id).toBe(11);
+  expect(extensionActiveTab(f.api as any, 999)).toBeUndefined();
 });
 
 test('sidebar API requests use the logical owning window instead of an unrelated focused window', () => {

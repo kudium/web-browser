@@ -48,6 +48,20 @@ interface Context {
   };
 }
 
+/** Resolve the active browser tab in the request's profile/window, not a stale callback tab. */
+export function extensionActiveTab(
+  api: ElectronChromeExtensions | undefined,
+  windowId?: number,
+) {
+  const ctx = (api as unknown as { ctx: Context } | undefined)?.ctx;
+  if (!ctx) return undefined;
+  const owner =
+    windowId === undefined || windowId === -2
+      ? ctx.store.getCurrentWindow()
+      : ctx.store.getWindowById(windowId);
+  return owner ? ctx.store.getActiveTabFromWindow(owner) : undefined;
+}
+
 /** Keep relative panel resources inside the reviewed, loaded extension package. */
 export function extensionPanelURL(
   extension: Pick<Extension, 'id' | 'path'>,

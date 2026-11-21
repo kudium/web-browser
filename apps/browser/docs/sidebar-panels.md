@@ -50,9 +50,15 @@ Extension pages retain their logical workspace owner when popped out:
 `windows.getCurrent`, `tabs.query({currentWindow:true})`, and `tabs.create`
 without an explicit window use that owner rather than an unrelated focused
 authentication window. Native extension views are not added to browser tab
-lists. New extension windows show at creation while navigation runs in the
-background; failures appear in a local dialog instead of leaving an invisible
-window pending a network response.
+lists. `tabs.create` requests use regular Kudium tabs in the existing group,
+including cross-site authentication pages. They retain the group's profile
+and use normal navigation, history, and context menus. Extension-package
+documents also use group tabs, validated against the loaded package in that
+profile, with no workspace preload. New tabs clear the source tab's forced
+default URL and stale restoration/customization state. The automatic popup
+route and its separate lifecycle bookkeeping have been removed. Replacing an extension's
+sidebar document with an authentication website is not the behavior of
+`tabs.create`, and website embedding restrictions still apply.
 
 ## Chrome extension side panels
 
@@ -95,7 +101,7 @@ package in a temporary profile, start its worker, and verify its rendered
 signed-out panel and pop-out path. This separate network check does not use the
 user's sign-in or installed package. It also clicks the real Sign in button
 with native mouse input and checks the account input in the authentication
-window, using the same profile. It is not proof of completed login, chat or task
+tab, using the same profile. It is not proof of completed login, chat or task
 execution; those require acceptance testing with a Muse account. The generic
 release fixture checks group operations and a real CDP command on a disposable
 HTTP page for both classic and module workers.

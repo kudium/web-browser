@@ -27,8 +27,9 @@ const {
 const {
   attachExtensionSidePanels,
 } = require('../../src/main/extensionSidePanels.ts');
-const { attachExtensionBrowserAPIs } = require('../../src/main/extensionBrowserAPIs.ts');
-const { navigateExtensionPage } = require('../../src/main/extensionPageNavigation.ts');
+const {
+  attachExtensionBrowserAPIs,
+} = require('../../src/main/extensionBrowserAPIs.ts');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-side-panel-smoke-'));
 app.setPath('userData', path.join(root, 'profile'));
 app.on('window-all-closed', () => {});
@@ -99,15 +100,26 @@ app
       await chrome.loadURL(
         'data:text/html,<title>Disposable sidebar host</title>',
       );
-      const openedWindows = [];
-      const api = new ElectronChromeExtensions({ session: profile, createTab: async (details) => {
-        const popup = new BrowserWindow({ parent: chrome, show: false, width: 600, height: 500,
-          webPreferences: { session: profile, sandbox: true, contextIsolation: true, nodeIntegration: false } });
-        api.addTab(popup.webContents, popup);
-        navigateExtensionPage(popup, details.url, {active:details.active,assertAccess:()=>{},reportError:async(error)=>{throw error;}});
-        openedWindows.push(popup);
-        return [popup.webContents, popup];
-      } });
+      const createdTabs = [];
+      const api = new ElectronChromeExtensions({
+        session: profile,
+        createTab: async (details) => {
+          const created = new WebContentsView({
+            webPreferences: {
+              session: profile,
+              sandbox: true,
+              contextIsolation: true,
+              nodeIntegration: false,
+            },
+          });
+          chrome.contentView.addChildView(created);
+          created.setBounds({ x: 0, y: 20, width: 600, height: 60 });
+          api.addTab(created.webContents, chrome);
+          void created.webContents.loadURL(details.url).catch(() => {});
+          createdTabs.push(created);
+          return [created.webContents, chrome];
+        },
+      });
       attachExtensionSidePanels(api, `smoke-${type}`);
       attachExtensionBrowserAPIs(api);
       const extension = await profile.extensions.loadExtension(dir);
@@ -123,22 +135,68 @@ app
       await tab.webContents.loadURL(
         `chrome-extension://${extension.id}/control.html`,
       );
-      const groupId = await tab.webContents.executeJavaScript(`chrome.tabs.group({tabIds:[${tab.webContents.id}]})`);
-      await tab.webContents.executeJavaScript(`chrome.tabGroups.update(${groupId}, {title:'Task output',color:'blue',collapsed:true})`);
-      assert.equal((await tab.webContents.executeJavaScript(`chrome.tabs.get(${tab.webContents.id})`)).groupId, groupId);
-      assert.equal((await tab.webContents.executeJavaScript(`chrome.tabGroups.get(${groupId})`)).title, 'Task output');
-      await tab.webContents.executeJavaScript(`chrome.tabs.ungroup(${tab.webContents.id})`);
-      assert.equal((await tab.webContents.executeJavaScript('chrome.tabGroups.query({})')).length, 0);
-      const server = require('node:http').createServer((_request, response) => response.end('<title>Debugger fixture</title><h1>Original</h1>'));
+      const groupId = await tab.webContents.executeJavaScript(
+        `chrome.tabs.group({tabIds:[${tab.webContents.id}]})`,
+      );
+      await tab.webContents.executeJavaScript(
+        `chrome.tabGroups.update(${groupId}, {title:'Task output',color:'blue',collapsed:true})`,
+      );
+      assert.equal(
+        (
+          await tab.webContents.executeJavaScript(
+            `chrome.tabs.get(${tab.webContents.id})`,
+          )
+        ).groupId,
+        groupId,
+      );
+      assert.equal(
+        (
+          await tab.webContents.executeJavaScript(
+            `chrome.tabGroups.get(${groupId})`,
+          )
+        ).title,
+        'Task output',
+      );
+      await tab.webContents.executeJavaScript(
+        `chrome.tabs.ungroup(${tab.webContents.id})`,
+      );
+      assert.equal(
+        (await tab.webContents.executeJavaScript('chrome.tabGroups.query({})'))
+          .length,
+        0,
+      );
+      const server = require('node:http').createServer((_request, response) =>
+        response.end('<title>Debugger fixture</title><h1>Original</h1>'),
+      );
       await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-      const debugTab = new WebContentsView({webPreferences:{session:profile,sandbox:true,contextIsolation:true,nodeIntegration:false}});
+      const debugTab = new WebContentsView({
+        webPreferences: {
+          session: profile,
+          sandbox: true,
+          contextIsolation: true,
+          nodeIntegration: false,
+        },
+      });
       api.addTab(debugTab.webContents, chrome);
-      await debugTab.webContents.loadURL(`http://127.0.0.1:${server.address().port}/`);
-      await tab.webContents.executeJavaScript(`chrome.debugger.attach({tabId:${debugTab.webContents.id}}, '1.3')`);
-      const command = await tab.webContents.executeJavaScript(`chrome.debugger.sendCommand({tabId:${debugTab.webContents.id}}, 'Runtime.evaluate', {expression:'document.querySelector("h1").textContent="Updated by extension"'})`);
+      await debugTab.webContents.loadURL(
+        `http://127.0.0.1:${server.address().port}/`,
+      );
+      await tab.webContents.executeJavaScript(
+        `chrome.debugger.attach({tabId:${debugTab.webContents.id}}, '1.3')`,
+      );
+      const command = await tab.webContents.executeJavaScript(
+        `chrome.debugger.sendCommand({tabId:${debugTab.webContents.id}}, 'Runtime.evaluate', {expression:'document.querySelector("h1").textContent="Updated by extension"'})`,
+      );
       assert.equal(command.result.value, 'Updated by extension');
-      assert.equal(await debugTab.webContents.executeJavaScript('document.querySelector("h1").textContent'), 'Updated by extension');
-      await tab.webContents.executeJavaScript(`chrome.debugger.detach({tabId:${debugTab.webContents.id}})`);
+      assert.equal(
+        await debugTab.webContents.executeJavaScript(
+          'document.querySelector("h1").textContent',
+        ),
+        'Updated by extension',
+      );
+      await tab.webContents.executeJavaScript(
+        `chrome.debugger.detach({tabId:${debugTab.webContents.id}})`,
+      );
       assert.equal(debugTab.webContents.debugger.isAttached(), false);
       debugTab.webContents.close();
       api.selectTab(tab.webContents);
@@ -155,8 +213,16 @@ app
         await pause(30);
       }
       assert.equal(options?.ok, true, `${type} worker sidePanel API`);
-      assert.equal((await rpc({ command: 'groups' })).ok, true, `${type} worker tabGroups API`);
-      assert.equal((await rpc({ command: 'targets' })).ok, true, `${type} worker debugger API`);
+      assert.equal(
+        (await rpc({ command: 'groups' })).ok,
+        true,
+        `${type} worker tabGroups API`,
+      );
+      assert.equal(
+        (await rpc({ command: 'targets' })).ok,
+        true,
+        `${type} worker debugger API`,
+      );
       assert.equal(options.value.path, 'panel.html');
       await tab.webContents.executeJavaScript(
         `window.panelEvents=[];chrome.sidePanel.onOpened.addListener(info=>panelEvents.push({type:'opened',info}));chrome.sidePanel.onClosed.addListener(info=>panelEvents.push({type:'closed',info}));`,
@@ -194,37 +260,85 @@ app
       );
       assert.equal(entry.view.webContents.session, profile);
       const originalView = entry.view;
-      await originalView.webContents.executeJavaScript(`window.open('http://127.0.0.1:${server.address().port}/')`, true);
-      for (let i=0;i<100 && !openedWindows.length;i++) await pause(20);
-      assert(openedWindows.length, 'An extension panel can open a page in a non-sidebar window');
-      assert(openedWindows[0].isVisible());
-      assert.equal(openedWindows[0].webContents.session, profile);
-      for(let i=0;i<100 && openedWindows[0].webContents.isLoading();i++) await pause(20);
-      assert.equal(await openedWindows[0].webContents.executeJavaScript('document.title'), 'Debugger fixture');
-      openedWindows[0].destroy(); server.close();
-      await originalView.webContents.executeJavaScript('window.panelDraft = "keep this output"');
+      await originalView.webContents.executeJavaScript(
+        `window.open('http://127.0.0.1:${server.address().port}/')`,
+        true,
+      );
+      for (let i = 0; i < 100 && !createdTabs.length; i++) await pause(20);
+      assert(
+        createdTabs.length,
+        'An extension panel can create a tab in its existing window',
+      );
+      assert(chrome.contentView.children.includes(createdTabs[0]));
+      assert.equal(createdTabs[0].webContents.session, profile);
+      for (let i = 0; i < 100 && createdTabs[0].webContents.isLoading(); i++)
+        await pause(20);
+      assert.equal(
+        await createdTabs[0].webContents.executeJavaScript('document.title'),
+        'Debugger fixture',
+      );
+      createdTabs[0].webContents.close();
+      api.selectTab(tab.webContents);
+      server.close();
+      await originalView.webContents.executeJavaScript(
+        'window.panelDraft = "keep this output"',
+      );
       host.undock();
       assert.equal(host.state().floating, true);
-      assert.equal(await originalView.webContents.executeJavaScript('chrome.windows.getCurrent().then(window=>window.id)'), chrome.id);
-      assert(await originalView.webContents.executeJavaScript(`chrome.tabs.query({currentWindow:true}).then(tabs=>tabs.every(tab=>tab.windowId===${chrome.id} && tab.id!==${originalView.webContents.id}))`));
+      assert.equal(
+        await originalView.webContents.executeJavaScript(
+          'chrome.windows.getCurrent().then(window=>window.id)',
+        ),
+        chrome.id,
+      );
+      assert(
+        await originalView.webContents.executeJavaScript(
+          `chrome.tabs.query({currentWindow:true}).then(tabs=>tabs.every(tab=>tab.windowId===${chrome.id} && tab.id!==${originalView.webContents.id}))`,
+        ),
+      );
       let floating = host.floating.window;
-      for (let i = 0; i < 100 && floating.webContents.isLoading(); i++) await pause(20);
+      for (let i = 0; i < 100 && floating.webContents.isLoading(); i++)
+        await pause(20);
       assert(floating.contentView.children.includes(originalView));
       assert(!chrome.contentView.children.includes(originalView));
       host.layout(host.state().activeId, null);
-      assert.equal(await originalView.webContents.executeJavaScript('window.panelDraft'), 'keep this output');
-      assert.equal(await floating.webContents.executeJavaScript('typeof require'), 'undefined');
-      await floating.webContents.executeJavaScript('document.querySelector("a").click()');
+      assert.equal(
+        await originalView.webContents.executeJavaScript('window.panelDraft'),
+        'keep this output',
+      );
+      assert.equal(
+        await floating.webContents.executeJavaScript('typeof require'),
+        'undefined',
+      );
+      await floating.webContents.executeJavaScript(
+        'document.querySelector("a").click()',
+      );
       for (let i = 0; i < 100 && host.state().floating; i++) await pause(20);
-      assert.equal(host.state().floating, false, 'Dock back control returns the view');
+      assert.equal(
+        host.state().floating,
+        false,
+        'Dock back control returns the view',
+      );
       assert(chrome.contentView.children.includes(originalView));
-      host.layout(host.state().activeId, { x: 650, y: 100, width: 300, height: 500 });
+      host.layout(host.state().activeId, {
+        x: 650,
+        y: 100,
+        width: 300,
+        height: 500,
+      });
       host.undock();
       floating = host.floating.window;
       floating.close();
-      assert.equal(host.state().floating, false, 'Closing the floating window docks its content');
+      assert.equal(
+        host.state().floating,
+        false,
+        'Closing the floating window docks its content',
+      );
       assert.equal(entry.view, originalView);
-      assert.equal(await originalView.webContents.executeJavaScript('window.panelDraft'), 'keep this output');
+      assert.equal(
+        await originalView.webContents.executeJavaScript('window.panelDraft'),
+        'keep this output',
+      );
       assert.equal(
         await entry.view.webContents.executeJavaScript('typeof require'),
         'undefined',
@@ -303,7 +417,10 @@ app
       assert.equal(host.state().panels.length, 0);
       assert.equal(host.state().activeId, undefined);
       assert.equal(host.state().floating, false);
-      assert(profileWindow.isDestroyed(), 'Profile change removes floating extension content');
+      assert(
+        profileWindow.isDestroyed(),
+        'Profile change removes floating extension content',
+      );
       profile.extensions.removeExtension(extension.id);
       assert.equal(host.state().panels.length, 0);
       tab.webContents.close();
