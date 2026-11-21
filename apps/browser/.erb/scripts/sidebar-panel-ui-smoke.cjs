@@ -1,5 +1,5 @@
 /* Real shared header, layout IPC and persistent native content in a disposable profile. */
-const { app, BrowserWindow, WebContentsView } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -27,7 +27,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const timer = setTimeout(() => app.exit(1), 30000);
 fs.writeFileSync(
   path.join(root, 'preload.cjs'),
-  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
+  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
 );
 fs.writeFileSync(
   path.join(root, 'fixture.tsx'),
@@ -45,7 +45,9 @@ import {ActivityPage} from ${JSON.stringify(path.resolve('src/components/UI/Acti
 import {SidebarPanelHost} from ${JSON.stringify(path.resolve('src/components/UI/SidebarPanelHost'))};
 import ${JSON.stringify(require.resolve('@radix-ui/themes/styles.css'))};
 import ${JSON.stringify(path.resolve('src/renderer/index.css'))};
-function Fixture(){const state=useSidebarPanels();const [active,setActive]=React.useState(true);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><aside className="ai-sidebar" style={{height:600,width:368}}><AssistantPageHeader className="fixture-reference-header"><h2>Reference page</h2><ChromeIconButton icon={X} label="Reference action" onClick={()=>{}}/></AssistantPageHeader><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
+import {useNativeOverlay} from ${JSON.stringify(path.resolve('src/utils/hooks/useNativeOverlay'))};
+import {BrowserOptionsMenu} from ${JSON.stringify(path.resolve('src/components/UI/BrowserOptionsMenu'))};
+function Fixture(){const overlay=useNativeOverlay();React.useEffect(()=>window.electron.fixtureOverlay(overlay),[overlay]);const state=useSidebarPanels();const [active,setActive]=React.useState(true);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><div className="browser-viewport" style={{position:"fixed",left:650,top:100,width:40,height:500}}/><BrowserOptionsMenu pageAvailable={true} onSelect={()=>{}}/><aside className="ai-sidebar" style={{height:600,width:368}}><AssistantPageHeader className="fixture-reference-header"><h2>Reference page</h2><ChromeIconButton icon={X} label="Reference action" onClick={()=>{}}/></AssistantPageHeader><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
 function PageSwitches(){const [page,setPage]=React.useState('chat');return <Theme appearance="dark"><nav>{['chat','notes','activity'].map(id=><button id={'switch-'+id} onClick={()=>setPage(id)}>{id}</button>)}</nav><aside className="ai-sidebar" style={{height:600,width:Number(new URLSearchParams(location.search).get('width'))||368}}><SidebarPanelHost id="chat" title="Chat" active={page==='chat'}><div className="ai-sidebar-pane ai-assistant-layout ai-history-open ai-history-pinned"><AssistantPageHeader><h2>Chat</h2></AssistantPageHeader><div className="ai-messages">Content</div></div></SidebarPanelHost><SidebarPanelHost id="notes" title="Notes" active={page==='notes'}><NotesPage/></SidebarPanelHost><SidebarPanelHost id="activity" title="Activity" active={page==='activity'}><ActivityPage active={page==='activity'}/></SidebarPanelHost></aside></Theme>}
 createRoot(document.getElementById('root')).render(location.search.includes('switches')?<PageSwitches/>:<Fixture/>);`,
 );
@@ -77,6 +79,9 @@ app
     });
     registerSidebarPanelWindow(window);
     const host = sidebarPanelsFor(window);
+    ipcMain.on('fixture-overlay', (event, value) => {
+      if (event.sender === window.webContents) host.setSuspended(value);
+    });
     const views = new Map();
     for (const id of ['one', 'two'])
       host.register({
@@ -147,6 +152,14 @@ app
     const panelBounds = views.get('one').getBounds();
     assert(panelBounds.y + panelBounds.height <= geometry.innerBottom,
       'Native panel content must end inside the shared frame bottom border');
+    await window.webContents.executeJavaScript(`document.querySelector('button[aria-label="Browser options"]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,pointerType:'mouse',ctrlKey:false}))`);
+    for (let i = 0; i < 50 && views.get('one').getVisible(); i++) await pause(50);
+    assert.equal(views.get('one').getVisible(), false,
+      'Shared overlay handling must hide the native panel beneath Browser options');
+    await window.webContents.executeJavaScript(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`);
+    for (let i = 0; i < 50 && !views.get('one').getVisible(); i++) await pause(50);
+    assert.equal(views.get('one').getVisible(), true,
+      'Dismissing Browser options must restore the retained native panel');
     const alignment = await window.webContents.executeJavaScript(`(()=>{
       const normal=document.querySelector('.fixture-reference-header'),panel=document.querySelector('.sidebar-feature-pane .assistant-page-header');
       return {normalHeight:normal.getBoundingClientRect().height,panelHeight:panel.getBoundingClientRect().height,

@@ -4,15 +4,14 @@ const developmentOverlaySelector =
   '#react-refresh-overlay, #webpack-dev-server-client-overlay';
 const overlaySelector = `.rt-BaseDialogOverlay, [data-radix-popper-content-wrapper], ${developmentOverlaySelector}`;
 
-// Native WebContentsViews sit above renderer portals. Scoped AI portals fit beside
-// them; global Radix overlays need the existing snapshot/suspension treatment.
+// Native website and sidebar WebContentsViews sit above renderer portals.
+// Reuse the same overlap detection and suspension for every native surface.
 export function hasGlobalOverlay(root: ParentNode = document) {
   return Array.from(
     root.querySelectorAll<HTMLElement>(
       `.rt-BaseDialogOverlay[data-state="open"], [data-radix-popper-content-wrapper], ${developmentOverlaySelector}`
     )
   ).some((element) => {
-    if (element.closest('.ai-overlay-layer')) return false;
     const content = element.matches(
       `.rt-BaseDialogOverlay, ${developmentOverlaySelector}`
     )
@@ -25,9 +24,9 @@ export function hasGlobalOverlay(root: ParentNode = document) {
     if (!content || content.hidden || !content.getClientRects().length)
       return false;
     const viewports = Array.from(
-      root.querySelectorAll<HTMLElement>('.browser-viewport')
+      root.querySelectorAll<HTMLElement>('.browser-viewport, .sidebar-feature-content')
     ).filter((viewport) => viewport.getClientRects().length);
-    if (!viewports.length) return true;
+    if (!viewports.length) return !element.closest('.ai-overlay-layer');
     const bounds = content.getBoundingClientRect();
     return viewports.some((viewport) => {
       const page = viewport.getBoundingClientRect();

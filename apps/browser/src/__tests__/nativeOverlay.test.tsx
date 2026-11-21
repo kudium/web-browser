@@ -118,3 +118,28 @@ it('keeps sidebar hints and popovers outside the page from suspending native vie
   content.className = 'sidebar-tooltip';
   expect(hasGlobalOverlay(root)).toBe(false);
 });
+
+it.each(['', 'ai-overlay-layer'])(
+  'suspends for menus overlapping a native panel, including scoped portals (%s)',
+  (scope) => {
+    const root = document.createElement('div');
+    root.innerHTML = `<div class="browser-viewport"></div><div class="sidebar-feature-content"></div><div class="${scope}"><div data-radix-popper-content-wrapper><div data-state="open"></div></div></div>`;
+    const page = root.querySelector<HTMLElement>('.browser-viewport')!;
+    const panel = root.querySelector<HTMLElement>('.sidebar-feature-content')!;
+    const menu = root.querySelector<HTMLElement>('[data-state]')!;
+    [page, panel, menu].forEach(visible);
+    page.getBoundingClientRect = () =>
+      ({ left: 0, right: 600, top: 60, bottom: 700 } as DOMRect);
+    panel.getBoundingClientRect = () =>
+      ({ left: 620, right: 1000, top: 100, bottom: 700 } as DOMRect);
+    menu.getBoundingClientRect = () =>
+      ({ left: 700, right: 950, top: 70, bottom: 400 } as DOMRect);
+    expect(hasGlobalOverlay(root)).toBe(true);
+    menu.dataset.state = 'closed';
+    expect(hasGlobalOverlay(root)).toBe(false);
+    menu.dataset.state = 'open';
+    panel.hidden = true;
+    Object.defineProperty(panel, 'getClientRects', { value: () => [] });
+    expect(hasGlobalOverlay(root)).toBe(false);
+  }
+);

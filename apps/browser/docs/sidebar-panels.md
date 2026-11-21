@@ -183,3 +183,8 @@ they must not create a second group store, save path, permission mechanism, or
 popup navigation system. Workspace changes use `AppManager` and its existing
 access checks. Native panel content is hidden while a shared picker is open so
 its popover can receive input, then restored without recreating the content.
+Global menus and dialogs use `useNativeOverlay` and the existing window layout
+suspension for both website viewports and native sidebar content. Include every
+native surface in the shared overlap detection, including scoped portals that
+overlap a panel; do not add separate menu-specific suspension state. The native
+UI fixture opens Browser options and checks panel hiding and restoration.
