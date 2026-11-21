@@ -19,6 +19,7 @@ it.each([
   const callbacks: Record<string, Function> = {};
   let available: unknown = records;
   const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel === 'personal-data-autofill-focus') return false;
     if (channel.endsWith('enabled')) return true;
     if (channel === 'personal-data-autofill-availability') return available;
     return null;
@@ -50,6 +51,7 @@ it.each(['signup', 'ambiguous login', 'failed check', 'stale check'])('hides una
   let release!: (value: unknown) => void;
   const waiting = new Promise((resolve) => { release = resolve; });
   const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel === 'personal-data-autofill-focus') return false;
     if (channel.endsWith('enabled')) return true;
     if (channel === 'personal-data-autofill-availability') {
       if (mode === 'failed check') throw new Error('Locked');

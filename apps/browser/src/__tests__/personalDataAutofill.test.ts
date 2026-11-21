@@ -2,6 +2,8 @@ import { installPersonalDataAutofill } from '../browser/personalDataAutofill';
 import { personalDataMatching } from '../browser/personalDataMatching';
 import { defaultPreferences } from '../browser/preferences';
 
+const settle = async () => { for (let turn = 0; turn < 8; turn++) await Promise.resolve(); };
+
 it('defaults the field picker to enabled', () => {
   expect(defaultPreferences.personalDataAutofill).toBe(true);
 });
@@ -20,6 +22,7 @@ it('saves a named password with its form account and explains a failed save befo
   });
   let attempts = 0;
   const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel === 'personal-data-autofill-focus') return false;
     if (channel.endsWith('enabled')) return true;
     if (channel === 'personal-data-autofill-records') return [];
     if (channel === 'personal-data-autofill-save-field') {
@@ -37,7 +40,7 @@ it('saves a named password with its form account and explains a failed save befo
     for (let turn = 0; turn < 10; turn++) await Promise.resolve();
   };
   try {
-    await Promise.resolve(); inputs[1].focus();
+    await settle(); inputs[1].focus();
     await click('.trigger');
     await click('[aria-label="Save input for this website"]');
     expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-save-field', {
@@ -57,7 +60,7 @@ it('saves a named password with its form account and explains a failed save befo
 it('offers autofill on matching fields and passwords, and removes it when disabled', async () => {
   const callbacks: Record<string, Function> = {};
   const bridge = {
-    invoke: jest.fn(async () => true),
+    invoke: jest.fn(async (channel: string) => channel.endsWith('enabled')),
     on: jest.fn((channel, callback) => { callbacks[channel] = callback; }),
   };
   document.body.innerHTML = '<input autocomplete="email" type="email"><input type="password">';
@@ -66,10 +69,11 @@ it('offers autofill on matching fields and passwords, and removes it when disabl
   email.getClientRects = () => [{ width: 200, height: 30 }] as any;
   password.getClientRects = email.getClientRects;
   const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
-  await Promise.resolve();
+  await settle();
   email.focus();
   expect(document.documentElement.querySelector('div[style*="2147483647"]')).not.toBeNull();
-  expect(bridge.invoke).toHaveBeenCalledTimes(2);
+  expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-enabled');
+  expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-focus');
   expect(email.value).toBe('');
   password.focus();
   expect(document.documentElement.querySelector('div[style*="2147483647"]')).not.toBeNull();
@@ -113,10 +117,12 @@ it.each(['picker', 'quick', 'chooser', 'timeout', 'suggestion', 'password sugges
   const waitingRecords = new Promise<typeof records>((resolve) => { releaseRecords = resolve; });
   let attempts = 0;
   const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel === 'personal-data-autofill-focus') return false;
     if (channel.endsWith('enabled')) return true;
     if (channel === 'personal-data-autofill-position') return null;
     if (channel === 'personal-data-autofill-secret') return 'protected-password';
     if (channel === 'personal-data-autofill-availability') return records;
+    if (channel !== 'personal-data-autofill-records') return null;
     if (++attempts === 1) {
       if (mode === 'timeout') return new Promise(() => {});
       throw new Error('Authentication cancelled');
@@ -133,17 +139,17 @@ it.each(['picker', 'quick', 'chooser', 'timeout', 'suggestion', 'password sugges
   for (const input of [email, name, password]) input.getClientRects = () => [{ width: 200, height: 30 }] as any;
   const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
   try {
-    await Promise.resolve(); (mode === 'password suggestion' ? password : email).focus();
-    await Promise.resolve(); await Promise.resolve();
+    await settle(); (mode === 'password suggestion' ? password : email).focus();
+    await settle(); await settle();
     expect(shadow!.host.closest('[role=dialog]')).not.toBeNull();
     const outside = jest.fn(); document.addEventListener('click', outside);
     shadow!.querySelector('.trigger')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
     expect(outside).not.toHaveBeenCalled(); document.removeEventListener('click', outside);
     const trigger = shadow!.querySelector(['picker', 'suggestion', 'password suggestion'].includes(mode) ? '.trigger' : '.quick-fill')!;
     clicks.get(trigger)!({ isTrusted: true });
-    await Promise.resolve(); await Promise.resolve();
+    await settle(); await settle();
     if (mode === 'timeout') {
-      jest.advanceTimersByTime(15000); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      jest.advanceTimersByTime(15000); await settle(); await settle(); await settle();
       expect(shadow!.querySelector('.message-error')?.textContent).toBe('Personal Data took too long to respond. Try again.');
     }
     const retry = Array.from(shadow!.querySelectorAll('button')).find((button) => button.textContent === 'Retry')!;
@@ -159,7 +165,7 @@ it.each(['picker', 'quick', 'chooser', 'timeout', 'suggestion', 'password sugges
     await opening; for (let turn = 0; turn < 10; turn++) await Promise.resolve();
     if (mode !== 'quick' && mode !== 'timeout') {
       expect(email.value).toBe('');
-      const fill = Array.from(shadow!.querySelectorAll<HTMLButtonElement>('.panel button')).find((button) => mode === 'suggestion' ? button.getAttribute('aria-label') === 'Fill form with Work: work@example.com' : button.textContent === (mode === 'chooser' ? 'Work' : mode === 'password suggestion' ? 'Fill form · Password' : 'Fill this form'))!;
+      const fill = Array.from(shadow!.querySelectorAll<HTMLButtonElement>('.panel button')).find((button) => mode === 'suggestion' ? button.getAttribute('aria-label') === 'Fill email: work@example.com' : button.textContent === (mode === 'chooser' ? 'Work' : mode === 'password suggestion' ? 'Fill form · Password' : 'Fill this form'))!;
       if (mode === 'picker') expect(fill.parentElement?.className).toBe('heading');
       if (mode === 'picker') {
         const key = (value: string) => hostKey!({ isTrusted: true, key: value, preventDefault: jest.fn(), stopPropagation: jest.fn() });
@@ -169,12 +175,13 @@ it.each(['picker', 'quick', 'chooser', 'timeout', 'suggestion', 'password sugges
         key('ArrowUp'); key('ArrowDown');
         fill.focus(); key('Enter');
       } else clicks.get(fill)!({ isTrusted: true });
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      await settle(); await settle(); await settle();
     }
     expect(email.value).toBe('work@example.com');
-    expect(name.value).toBe('Sam');
-    expect(password.value).toBe('protected-password');
-    expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-secret', { id: 'work', fieldIndex: 2 });
+    expect(name.value).toBe(mode === 'suggestion' ? '' : 'Sam');
+    expect(password.value).toBe(mode === 'suggestion' ? '' : 'protected-password');
+    if (mode === 'suggestion') expect(bridge.invoke).not.toHaveBeenCalledWith('personal-data-autofill-secret', expect.anything());
+    else expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-secret', { id: 'work', fieldIndex: 2 });
     expect(submit).not.toHaveBeenCalled();
   } finally {
     dispose(); attach.mockRestore(); on.mockRestore(); hostOn.mockRestore(); delete (HTMLDivElement.prototype as any).addEventListener;
@@ -197,29 +204,29 @@ it.each(['Hide for now', 'Disable for this website', 'Close Personal Data'])('ge
     onOriginal.call(this, type, listener, options);
   });
   const callbacks: Record<string, Function> = {};
-  const bridge = { invoke: jest.fn(async (channel: string, _input?: any) => channel.endsWith('enabled') ? true : channel === 'personal-data-autofill-secret' ? 'saved-secret-value' : [{ id: 'work', kind: 'profile', title: 'Work', fields: [{ name: 'API key', secret: true, value: '', fieldIndex: 2 }] }]), on: jest.fn((channel, callback) => { callbacks[channel] = callback; }) };
+  const bridge = { invoke: jest.fn(async (channel: string, _input?: any) => channel === 'personal-data-autofill-focus' ? false : channel.endsWith('enabled') ? true : channel === 'personal-data-autofill-secret' ? 'saved-secret-value' : [{ id: 'work', kind: 'profile', title: 'Work', fields: [{ name: 'API key', secret: true, value: '', fieldIndex: 2 }] }]), on: jest.fn((channel, callback) => { callbacks[channel] = callback; }) };
   document.body.innerHTML = '<form><input type="email" value="sam@example.com"><input type="password" autocomplete="new-password"><input type="password" name="confirm" autocomplete="new-password"></form>';
   const fields = Array.from(document.querySelectorAll<HTMLInputElement>('input'));
   fields.forEach((input) => { input.getClientRects = () => [{ width: 200, height: 30 }] as any; });
   const click = async (text: string) => {
     const button = Array.from(shadow!.querySelectorAll('button')).find((entry) => entry.textContent === text || entry.getAttribute('aria-label') === text)!;
     clicks.get(button)!({ isTrusted: true });
-    await Promise.resolve(); await Promise.resolve();
+    await settle(); await settle();
   };
   const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
   try {
-    await Promise.resolve(); fields[1].focus();
+    await settle(); fields[1].focus();
     clicks.get(shadow!.querySelector('button')!)!({ isTrusted: true });
-    await Promise.resolve(); await Promise.resolve();
+    await settle(); await settle();
     expect(fields[1].value).toBe('');
-    expect(shadow!.querySelector('.panel > div:not(.header) button')?.textContent).toBe('Generate strong password');
+    expect(Array.from(shadow!.querySelectorAll('.panel button')).some(button => button.textContent === 'Generate strong password')).toBe(true);
     expect(shadow!.querySelector('.panel')?.textContent).not.toContain('saved-secret-value');
     await click('Fill API key');
     expect(fields[1].value).toBe('saved-secret-value');
     expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-secret', { id: 'work', fieldIndex: 2 });
     fields[0].focus(); fields[1].focus();
     clicks.get(shadow!.querySelector('button')!)!({ isTrusted: true });
-    await Promise.resolve(); await Promise.resolve();
+    await settle(); await settle();
     await click('Generate strong password');
     const prompt = shadow!.querySelector('.message');
     expect(prompt?.textContent).toBe('Strong password filled. Save it to Personal Data?');
@@ -282,7 +289,7 @@ it.each([[false, 'submit'], [true, 'submit'], [false, 'click'], [false, 'enter']
     if (type === 'click') clicks.set(this, callback);
     buttonOn.call(this, type, callback, options);
   });
-  const bridge = { invoke: jest.fn(async (channel: string, input?: any) => channel === 'personal-data-login-save'
+  const bridge = { invoke: jest.fn(async (channel: string, input?: any) => channel === 'personal-data-autofill-focus' ? false : channel === 'personal-data-login-save'
     ? updating && !input?.confirmUpdate ? { needsUpdate: true } : { saved: true, updated: updating }
     : channel === 'personal-data-login-pending' ? { pending: true, navigated: method === 'redirect' } : true), on: jest.fn() };
   document.body.innerHTML = '<form><input type="email" value="sam@example.com"><input type="password" value="existing-password"></form>';
@@ -290,7 +297,7 @@ it.each([[false, 'submit'], [true, 'submit'], [false, 'click'], [false, 'enter']
   Array.from(form.querySelectorAll('input')).forEach((input) => { input.getClientRects = () => [{ width: 200, height: 30 }] as any; });
   let dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
   try {
-    await Promise.resolve();
+    await settle();
     submit!({ isTrusted: false, target: form });
     expect(bridge.invoke).not.toHaveBeenCalledWith('personal-data-login-candidate', expect.anything());
     if (method === 'click') {
@@ -306,36 +313,36 @@ it.each([[false, 'submit'], [true, 'submit'], [false, 'click'], [false, 'enter']
       form.querySelector('input[type=email]')!.remove(); secret.value = 'existing-password';
       submit!({ isTrusted: true, target: form });
     } else submit!({ isTrusted: true, target: form });
-    await Promise.resolve(); await Promise.resolve();
+    await settle(); await settle();
     expect(bridge.invoke).toHaveBeenCalledWith('personal-data-login-candidate', { username: method === 'multi' ? '' : 'sam@example.com', password: 'existing-password' });
-    jest.advanceTimersByTime(1000); await Promise.resolve();
-    expect(bridge.invoke).not.toHaveBeenCalledWith('personal-data-login-pending');
+    jest.advanceTimersByTime(1000); await settle();
+    expect(shadow?.querySelector('[aria-label="Save website login"]') ?? null).toBeNull();
     document.body.innerHTML = method === 'submit' ? '<button>Log out</button>' : '<button>My account</button>';
     document.querySelector('button')!.getClientRects = () => [{ width: 100, height: 30 }] as any;
     if (method === 'redirect') {
-      dispose(); dispose = installPersonalDataAutofill(bridge, personalDataMatching.score); await Promise.resolve();
+      dispose(); dispose = installPersonalDataAutofill(bridge, personalDataMatching.score); await settle();
     }
     // MFA, active loading, and delayed errors must not look like successful login.
     for (const markup of ['<input autocomplete="one-time-code">', '<div aria-busy="true"></div>', '<div role="alert">Incorrect login. Try again</div>']) {
       const blocker = document.createElement('div'); blocker.innerHTML = markup; document.body.append(blocker);
       blocker.firstElementChild!.getClientRects = () => [{ width: 100, height: 30 }] as any;
-      for (let tick = 0; tick < 4; tick++) { jest.advanceTimersByTime(500); await Promise.resolve(); await Promise.resolve(); }
+      for (let tick = 0; tick < 4; tick++) { jest.advanceTimersByTime(500); await settle(); await settle(); }
       expect(shadow?.querySelector('[aria-label="Save website login"]')).toBeFalsy();
       blocker.remove();
     }
-    for (let tick = 0; tick < 3; tick++) { jest.advanceTimersByTime(1000); await Promise.resolve(); await Promise.resolve(); }
+    for (let tick = 0; tick < 3; tick++) { jest.advanceTimersByTime(1000); await settle(); await settle(); }
     expect(shadow!.querySelector('[aria-label="Save website login"]')).not.toBeNull();
     document.querySelector('button')!.focus(); window.dispatchEvent(new Event('scroll'));
     expect(shadow!.querySelector('[aria-label="Save website login"]')).not.toBeNull();
     expect(bridge.invoke).not.toHaveBeenCalledWith('personal-data-login-save');
     const save = Array.from(shadow!.querySelectorAll('button')).find((button) => button.textContent === 'Save login')!;
-    clicks.get(save)!({ isTrusted: true }); await Promise.resolve(); await Promise.resolve();
+    clicks.get(save)!({ isTrusted: true }); await settle(); await settle();
     expect(bridge.invoke).toHaveBeenCalledWith('personal-data-login-save');
     if (updating) {
       expect(shadow!.querySelector('.message-success')).toBeNull();
       const update = Array.from(shadow!.querySelectorAll('button')).find((button) => button.textContent === 'Update existing data')!;
       clicks.get(update)!({ isTrusted: true });
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      await settle(); await settle(); await settle();
       expect(bridge.invoke).toHaveBeenCalledWith('personal-data-login-save', { confirmUpdate: true });
     }
     expect(shadow!.querySelector('.message-success')?.textContent).toBe(updating ? 'Website login updated.' : 'Login saved for this website.');
@@ -357,6 +364,7 @@ it('drags around an input, remembers its website placement, and suppresses the d
   });
   let saved: any = null;
   const bridge = { invoke: jest.fn(async (channel: string, value?: any) => {
+    if (channel === 'personal-data-autofill-focus') return false;
     if (channel === 'personal-data-autofill-position') { if (value) saved = value; return saved; }
     return channel.endsWith('enabled') ? true : [];
   }), on: jest.fn() };
@@ -368,7 +376,7 @@ it('drags around an input, remembers its website placement, and suppresses the d
   });
   let dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
   try {
-    await Promise.resolve(); inputs[0].focus();
+    await settle(); inputs[0].focus();
     const trigger = shadow!.querySelector('button')!;
     trigger.setPointerCapture = jest.fn(); trigger.hasPointerCapture = () => false;
     const events = handlers.get(trigger)!;
@@ -384,7 +392,7 @@ it('drags around an input, remembers its website placement, and suppresses the d
     expect((shadow!.host as HTMLElement).style.top).toBe('162px');
     dispose();
     dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
-    await Promise.resolve(); await Promise.resolve();
+    await settle(); await settle();
     expect((shadow!.host as HTMLElement).style.left).toBe('56px');
     expect((shadow!.host as HTMLElement).style.top).toBe('162px');
   } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
@@ -403,6 +411,7 @@ it('browses unmatched saved values and fills only the focused field', async () =
     originalOn.call(this, type, listener, options);
   });
   const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel === 'personal-data-autofill-focus') return false;
     if (channel.endsWith('enabled')) return true;
     if (channel.endsWith('position')) return null;
     return [{ id: 'personal', kind: 'profile', title: 'Personal profile', fields: [
@@ -420,7 +429,7 @@ it('browses unmatched saved values and fills only the focused field', async () =
     clicks.get(entry)!({ isTrusted: true });
   };
   try {
-    await Promise.resolve(); inputs[0].focus();
+    await settle(); inputs[0].focus();
     clicks.get(shadow.querySelector('.trigger')!)!({ isTrusted: true });
     for (let i = 0; i < 5; i++) await Promise.resolve();
     expect(shadow.textContent).toContain('No suggested matches for this field.');
@@ -436,7 +445,7 @@ it('browses unmatched saved values and fills only the focused field', async () =
     search.value = 'personal'; search.dispatchEvent(new Event('input'));
     click('Fill Nickname: Samson');
     expect(inputs[0].value).toBe('Samson'); expect(inputs[1].value).toBe('');
-    expect(shadow.querySelector('.panel')).toBeNull();
+    expect(shadow.host.isConnected).toBe(false);
   } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
 });
 
@@ -465,6 +474,7 @@ it.each(['profile email', 'duplicate email', 'conflicting emails', 'existing ema
   const submit = jest.fn(); document.querySelector('form')!.addEventListener('submit', submit);
   if (mode === 'existing email') inputs[0].value = 'typed@example.com';
   const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel === 'personal-data-autofill-focus') return false;
     if (channel.endsWith('enabled')) return true;
     if (channel === 'personal-data-autofill-records' || channel === 'personal-data-autofill-availability') return records;
     if (channel === 'personal-data-autofill-secret') return 'account-password';

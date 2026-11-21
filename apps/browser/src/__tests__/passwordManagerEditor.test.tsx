@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { PasswordManager } from '../components/View/Settings/PasswordManager';
+import { defaultPreferences } from '../browser/preferences';
 
 Object.assign(global, {
   ResizeObserver: jest.fn(() => ({
@@ -49,7 +50,11 @@ beforeEach(() => {
     electron: {
       passwordManager: request,
       onPasswordManagerLock: () => () => {},
-      browser: { confirm: jest.fn().mockResolvedValue(true) },
+      browser: {
+        confirm: jest.fn().mockResolvedValue(true),
+        preferences: jest.fn(async (_action, patch) => ({ ...defaultPreferences, ...patch })),
+        onPreferences: () => () => {},
+      },
     },
   });
 });
