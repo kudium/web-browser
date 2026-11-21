@@ -59,6 +59,18 @@ defines these commands, run from the repository root on a Mac:
 
 ### Credentials, outputs and publication
 
+- Never repeat the v1.0.18/v1.0.19 updater incident: Electron Builder's `--dir`
+  mode skips automatic `app-update.yml` generation. Signed release apps must
+  include `Contents/Resources/app-update.yml` before signing, with the correct
+  provider, channel and architecture feed. Verify it inside both architectures'
+  final ZIPs and DMGs along with signatures; never bypass the ZIP metadata gate.
+- Publication verification does not prove that the user's installed app can
+  update. Before saying the installed updater is working, check the installed
+  version, its update metadata and a successful update check in its logs or UI.
+  If only the release and feeds were verified, say that explicitly. Versions
+  1.0.18 and 1.0.19 disable their updater and require one manual installation of
+  corrected v1.0.20 or later. Do not promise these versions an automatic fix,
+  edit a signed installed bundle, or overwrite published artifacts.
 - A requested release is complete only after publication succeeds and live
   release history plus both macOS architecture update feeds advertise the
   selected version. Check these public endpoints before saying "released" or

@@ -58,6 +58,15 @@ omitted this file and cannot check for updates; affected users need to install
 the corrected stable DMG manually once. Never modify an installed signed bundle
 or overwrite an already published version to repair this.
 
+Incident prevention: inspect the update metadata in both architectures' final
+ZIPs and DMGs, and retain signature, notarization and Gatekeeper verification.
+Do not bypass the metadata gate. A successful build or public feed check alone
+does not prove the installed updater works. When confirming an installed app,
+check its actual version, metadata and a successful update check in logs or UI.
+Report release verification separately from installed-app verification. The
+manual recovery release for 1.0.18/1.0.19 is 1.0.20 or later; those broken
+versions cannot discover the correction automatically.
+
 Custom Electron runtime preparation is separate from installer releases. The
 `runtime:prepare`, `runtime:sync`, `runtime:build` and `runtime:verify` commands
 prepare pinned source and local Mac distributions without pushing, signing or
