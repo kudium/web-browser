@@ -27,7 +27,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const timer = setTimeout(() => app.exit(1), 30000);
 fs.writeFileSync(
   path.join(root, 'preload.cjs'),
-  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
+  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
 );
 fs.writeFileSync(
   path.join(root, 'fixture.tsx'),
@@ -48,7 +48,10 @@ import ${JSON.stringify(path.resolve('src/renderer/index.css'))};
 import {useNativeOverlay} from ${JSON.stringify(path.resolve('src/utils/hooks/useNativeOverlay'))};
 import {BrowserOptionsMenu} from ${JSON.stringify(path.resolve('src/components/UI/BrowserOptionsMenu'))};
 function Fixture(){const overlay=useNativeOverlay();React.useEffect(()=>window.electron.fixtureOverlay(overlay),[overlay]);const state=useSidebarPanels();const [active,setActive]=React.useState(true);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><div className="browser-viewport" style={{position:"fixed",left:650,top:100,width:40,height:500}}/><BrowserOptionsMenu pageAvailable={true} onSelect={()=>{}}/><aside className="ai-sidebar" style={{height:600,width:368}}><AssistantPageHeader className="fixture-reference-header"><h2>Reference page</h2><ChromeIconButton icon={X} label="Reference action" onClick={()=>{}}/></AssistantPageHeader><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
-function PageSwitches(){const [page,setPage]=React.useState('chat');return <Theme appearance="dark"><nav>{['chat','notes','activity'].map(id=><button id={'switch-'+id} onClick={()=>setPage(id)}>{id}</button>)}</nav><aside className="ai-sidebar" style={{height:600,width:Number(new URLSearchParams(location.search).get('width'))||368}}><SidebarPanelHost id="chat" title="Chat" active={page==='chat'}><div className="ai-sidebar-pane ai-assistant-layout ai-history-open ai-history-pinned"><AssistantPageHeader><h2>Chat</h2></AssistantPageHeader><div className="ai-messages">Content</div></div></SidebarPanelHost><SidebarPanelHost id="notes" title="Notes" active={page==='notes'}><NotesPage/></SidebarPanelHost><SidebarPanelHost id="activity" title="Activity" active={page==='activity'}><ActivityPage active={page==='activity'}/></SidebarPanelHost></aside></Theme>}
+import {DeveloperSidebar} from ${JSON.stringify(path.resolve('src/components/UI/DeveloperSidebar'))};
+import {STORAGE_KEY} from ${JSON.stringify(path.resolve('src/utils/constant'))};
+localStorage.setItem(STORAGE_KEY.USER_APPS,JSON.stringify([{id:'home',name:'about:blank',url:'about:blank',sessionId:'work',sessionName:'Work',sessionSlug:'work',groupDisplay:'folder',icon:''}]));
+function PageSwitches(){const [page,setPage]=React.useState('chat');return <Theme appearance="dark"><nav>{['chat','developer','notes','activity'].map(id=><button key={id} id={'switch-'+id} onClick={()=>setPage(id)}>{id}</button>)}</nav><aside className="ai-sidebar" style={{height:600,width:Number(new URLSearchParams(location.search).get('width'))||368}}><SidebarPanelHost id="chat" title="Chat" active={page==='chat'}><div className="ai-sidebar-pane ai-assistant-layout ai-history-open ai-history-pinned"><AssistantPageHeader><h2>Chat</h2></AssistantPageHeader><div className="ai-messages">Content</div></div></SidebarPanelHost><SidebarPanelHost id="developer" title="Developer" active={page==='developer'}><DeveloperSidebar active={page==='developer'} focusedTabId="home"/></SidebarPanelHost><SidebarPanelHost id="notes" title="Notes" active={page==='notes'}><NotesPage/></SidebarPanelHost><SidebarPanelHost id="activity" title="Activity" active={page==='activity'}><ActivityPage active={page==='activity'}/></SidebarPanelHost></aside></Theme>}
 createRoot(document.getElementById('root')).render(location.search.includes('switches')?<PageSwitches/>:<Fixture/>);`,
 );
 require('esbuild').buildSync({
@@ -78,6 +81,9 @@ app
       },
     });
     registerSidebarPanelWindow(window);
+    window.webContents.on('console-message', (event) => {
+      if (event.level === 'error') console.error(event.message);
+    });
     const host = sidebarPanelsFor(window);
     ipcMain.on('fixture-overlay', (event, value) => {
       if (event.sender === window.webContents) host.setSuspended(value);
@@ -231,11 +237,19 @@ app
     for (const width of [368,640]) {
     await window.loadFile(path.join(root,'index.html'),{query:{switches:'1',width:String(width)}});
     const bounds=[];
-    for (const page of ['chat','notes','activity','chat','notes','activity']) {
+    for (const page of ['chat','developer','notes','activity','chat','developer','notes','activity']) {
       await window.webContents.executeJavaScript(`document.querySelector('#switch-${page}').click()`);
       await pause(180);
       if (page==='chat' && width===640) assert((await window.webContents.executeJavaScript(`parseFloat(getComputedStyle(document.querySelector('.ai-messages')).marginLeft)`))>0,'Wide pinned history must be exercised');
       const rect=await window.webContents.executeJavaScript(`(()=>{const header=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0);const box=header.getBoundingClientRect(),actions=header.querySelector('.assistant-page-header-actions').getBoundingClientRect();return {top:box.top,height:box.height,left:actions.left,right:actions.right}})()`);
+      const controls=await window.webContents.executeJavaScript(`(()=>{const h=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0);return [...h.querySelectorAll('.chrome-icon-button')].map(b=>{const r=b.getBoundingClientRect();return {label:b.getAttribute('aria-label'),width:r.width,height:r.height,top:r.top,bottom:r.bottom}})})()`);
+      for(const control of controls) {
+        assert.equal(control.width,26,`${page}: ${control.label} must use shared control width`);
+        assert.equal(control.height,26,`${page}: ${control.label} must use shared control height`);
+        assert(control.top>=rect.top && control.bottom<=rect.top+rect.height,`${page}: controls must fit within the header`);
+      }
+      const clippedBy=await window.webContents.executeJavaScript(`(()=>{const h=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0),r=h.getBoundingClientRect();for(let p=h.parentElement;p;p=p.parentElement){const s=getComputedStyle(p),b=p.getBoundingClientRect();if(['hidden','auto','scroll','clip'].includes(s.overflowX)&&(r.left<b.left-1||r.right>b.right+1))return p.className}return null})()`);
+      assert.equal(clippedBy,null,`${page}: shared header must not be clipped by its page container`);
       if(page==='activity') {
         await window.webContents.executeJavaScript(`document.querySelector('.activity-page-body').scrollTop=200`);
         assert((await window.webContents.executeJavaScript(`document.querySelector('.activity-page-body').scrollTop`))>0,'Activity must actually scroll');

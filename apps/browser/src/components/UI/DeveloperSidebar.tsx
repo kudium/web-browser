@@ -20,6 +20,7 @@ import { TextField, IconButton, Switch } from '@radix-ui/themes';
 import { HookIcon } from './HookIcon';
 import { AppIcon } from './AppIcon/AppIcon';
 import { AssistantPageHeader } from './AssistantPageHeader';
+import { ChromeIconButton } from './ChromeIconButton';
 import { GroupPicker } from './GroupPicker';
 import { EmptyState } from './EmptyState';
 import { useAppList } from '../../utils/hooks/useAppList';
@@ -336,23 +337,15 @@ export function DeveloperSidebar({
           onContextMenu={onGroupContextMenu}
           disabled={!options.length}
         />
-        <IconButton
-          size="1"
-          variant="ghost"
-          color="gray"
-          aria-label="Manage developer group"
-          title="Manage group"
+        <ChromeIconButton
+          icon={Settings2}
+          label="Manage developer group"
           disabled={!source || !onManageGroup}
           onClick={() => source && onManageGroup?.(source.id)}
-        >
-          <Settings2 size={16} />
-        </IconButton>
-        <IconButton
-          size="1"
-          variant="ghost"
-          color="gray"
-          aria-label="Global hooks"
-          title="Global hooks"
+        />
+        <ChromeIconButton
+          icon={HookIcon}
+          label="Global hooks"
           onClick={() => {
             setShortcutError('');
             browser
@@ -361,9 +354,7 @@ export function DeveloperSidebar({
                 setShortcutError(String(reason).replace(/^Error: /, ''))
               );
           }}
-        >
-          <HookIcon size={16} aria-hidden="true" />
-        </IconButton>
+        />
       </AssistantPageHeader>
       {shortcutError && <p role="alert">{shortcutError}</p>}
       {linkingFolder && (

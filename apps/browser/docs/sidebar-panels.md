@@ -175,6 +175,13 @@ page/file content. Card padding belongs inside the card, not around the list.
 Shared sidebar headers use this same compact 8px inset. Normal headers reclaim
 the outer content padding; edge-to-edge headers already occupy the full width.
 Keep this alignment in the shared header rules, never in page-specific offsets.
+Use `ChromeIconButton` for header icon actions, including Radix popup triggers;
+do not mix Radix ghost-button sizes with chrome controls. Shared picker icons
+are 16px and header controls are 26px, including their flex basis. Page containers
+must not clip the shared header's reclaimed inset; put overflow scrolling on
+the body below it. Verify actual Developer, Notes and Activity components at
+368px and 640px, including control dimensions and clipping, and visually inspect
+the running app's headers instead of relying only on toolbar rectangles.
 Full-width panel content may reclaim horizontal padding only. Let the shared
 frame's flex layout own its height; never use negative bottom margins to extend
 content past the border. Native panel views use the frame's inner corner radius

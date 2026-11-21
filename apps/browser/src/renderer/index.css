@@ -3547,7 +3547,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .notes-history-row > button:first-child > svg { flex-shrink:0; }
 
 /* Compact neutral Activity library. */
-.activity-page { display:flex; flex:1; flex-direction:column; min-height:0; height:100%; overflow:hidden; font-family:var(--default-font-family); }
+.activity-page { display:flex; flex:1; flex-direction:column; min-height:0; height:100%; overflow:visible; font-family:var(--default-font-family); }
 .activity-page-body { flex:1; min-height:0; overflow:auto; padding-bottom:12px; }
 .activity-page .activity-read-all { display:inline-flex; align-items:center; gap:5px; padding:5px 6px; border:0; border-radius:5px; background:transparent; color:var(--gray-11); font:inherit; font-size:11px; line-height:16px; cursor:pointer; }
 .activity-read-all:disabled { opacity:.4; cursor:default; }
@@ -3623,8 +3623,10 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .assistant-page-header[hidden] { display:none; }
 .assistant-page-header-actions { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
 .assistant-page-header .chrome-icon-button { flex-shrink:0; color:var(--gray-11); }
-.assistant-page-header :is(.rt-IconButton, .chrome-icon-button) { margin:0; width:26px; min-width:26px; height:26px; color:var(--gray-11); }
-.assistant-page-header .group-picker-trigger { min-width:0; gap:6px; height:26px; padding:0 6px; background:transparent; box-shadow:none; font-size:12px; justify-content:flex-start; }
+.assistant-page-header :is(.rt-IconButton, .chrome-icon-button) { margin:0; flex:0 0 26px; width:26px; min-width:26px; height:26px; color:var(--gray-11); }
+.assistant-page-header .group-picker-trigger { min-width:0; gap:6px; height:26px; padding:0 6px 0 0; background:transparent; box-shadow:none; font-size:12px; justify-content:flex-start; }
+.assistant-page-header .group-icon-slot { flex:0 0 16px; width:16px; height:16px; }
+.assistant-page-header .group-icon-slot > svg { width:16px; height:16px; }
 .assistant-page-header .group-picker-trigger:hover { background:var(--gray-a3); }
 .assistant-page-header .group-picker-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .assistant-page-header .rt-TextFieldRoot { height:28px; }

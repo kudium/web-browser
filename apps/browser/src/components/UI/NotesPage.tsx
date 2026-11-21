@@ -3,6 +3,7 @@ import {
   renderFailureMessage,
 } from './RenderErrorBoundary';
 import { AssistantPageHeader } from './AssistantPageHeader';
+import { ChromeIconButton } from './ChromeIconButton';
 import { EditorViewSwitch } from './EditorViewSwitch';
 /* Native controls have visible or accessible labels. */
 /* eslint-disable react/require-default-props, jsx-a11y/label-has-associated-control */
@@ -431,16 +432,12 @@ export function NotesPage({
         )}
         <div className="notes-toolbar-spacer" />
         {!draft && (
-          <IconButton
-            size="1"
-            variant="ghost"
-            color="gray"
-            aria-label="New note"
+          <ChromeIconButton
+            icon={Plus}
+            label="New note"
             disabled={busy}
             onClick={create}
-          >
-            <Plus size={16} />
-          </IconButton>
+          />
         )}
         {draft && (
           <>
@@ -454,14 +451,7 @@ export function NotesPage({
             />
             <Popover.Root open={optionsOpen} onOpenChange={setOptionsOpen}>
               <Popover.Trigger>
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  aria-label="Note options"
-                  title="Note options"
-                >
-                  <MoreHorizontal size={16} />
-                </IconButton>
+                <ChromeIconButton icon={MoreHorizontal} label="Note options" />
               </Popover.Trigger>
               <PanelPopoverContent className="notes-options-popup" size="1">
                 <div className="notes-display-options">
