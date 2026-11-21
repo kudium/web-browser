@@ -1,4 +1,5 @@
-import { Button, Link } from '@radix-ui/themes';
+import { Button } from '@radix-ui/themes';
+import { Download, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAppUpdates } from '../../../utils/useAppUpdates';
 
 export function AppUpdateSettings() {
@@ -39,40 +40,50 @@ export function AppUpdateSettings() {
         {(error || state.message) && state.status !== 'unavailable' && (
           <p role="alert">{error || state.message}</p>
         )}
-        <p>
-          <Link
+      </div>
+      <div className="app-update-actions">
+        <Button
+          size="2"
+          variant="solid"
+          disabled={working || state.status === 'unavailable'}
+          onClick={() =>
+            void run(ready ? 'install' : available ? 'download' : 'check')
+          }
+        >
+          <RefreshCw size={16} aria-hidden="true" />
+          {ready
+            ? 'Restart to update'
+            : available
+              ? 'Download update'
+              : state.status === 'downloading'
+                ? 'Downloading…'
+                : 'Check for updates'}
+        </Button>
+        <Button
+          size="2"
+          variant={state.status === 'unavailable' ? 'solid' : 'outline'}
+          asChild
+        >
+          <a
             href="https://browser.kudium.com/download"
             target="_blank"
             rel="noopener noreferrer"
           >
+            <Download size={16} aria-hidden="true" />
             Download manually
-          </Link>
-          {' · '}
-          <Link
+          </a>
+        </Button>
+        <Button size="2" variant="outline" asChild>
+          <a
             href="https://browser.kudium.com/whats-new"
             target="_blank"
             rel="noopener noreferrer"
           >
+            <ExternalLink size={16} aria-hidden="true" />
             What’s new
-          </Link>
-        </p>
+          </a>
+        </Button>
       </div>
-      <Button
-        size="1"
-        variant="soft"
-        disabled={working || state.status === 'unavailable'}
-        onClick={() =>
-          void run(ready ? 'install' : available ? 'download' : 'check')
-        }
-      >
-        {ready
-          ? 'Restart to update'
-          : available
-            ? 'Download update'
-            : state.status === 'downloading'
-              ? 'Downloading…'
-              : 'Check for updates'}
-      </Button>
     </div>
   );
 }

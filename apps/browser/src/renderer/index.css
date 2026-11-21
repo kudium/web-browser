@@ -2850,9 +2850,10 @@ body.project-terminal-dragging, body.project-terminal-dragging * { cursor:row-re
 .app-update-compact .app-update-button { width: 28px; height: 28px; padding: 0; justify-content: center; border-radius: 8px; }
 .app-update-compact .app-update-copy { font-size: 10px; }
 .browser-chrome > .app-update-banner { margin: auto 5px; }
-.app-update-settings { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 12px; }
+.app-update-settings { display: flex; flex-direction: column; align-items: stretch; gap: 14px; margin: 8px 0 12px; }
 .app-update-settings p { margin: 3px 0 0; font-size: 12px; color: var(--gray-11); }
-.app-update-settings button { flex-shrink: 0; }
+.app-update-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 12px; border-top: 1px solid var(--gray-a6); }
+.app-update-actions .rt-Button { flex-shrink: 0; min-height: 36px; }
 .app-update-settings strong { font-size: 13px; font-weight: 500; }
 
 .sync-visual-page { display:grid; width:100%; min-width:0; box-sizing:border-box; gap:var(--preference-gap,12px); }
