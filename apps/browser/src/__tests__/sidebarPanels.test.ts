@@ -141,6 +141,11 @@ test('sidebar IPC accepts only the registered window main frame', () => {
       { sender: window.webContents, senderFrame: window.webContents.mainFrame },
       { action: 'list' },
     ),
-  ).toEqual({ panels: [], openRequest: 0, activeId: undefined });
+  ).toEqual({
+    panels: [],
+    openRequest: 0,
+    activeId: undefined,
+    floating: false,
+  });
   window.emit('closed');
 });

@@ -8,11 +8,14 @@ export interface SidebarPanelState {
   activeId?: string;
   openRequest: number;
   error?: string;
+  floating?: boolean;
 }
 export type SidebarPanelRequest =
   | { action: 'list' }
   | { action: 'activate'; id: string }
   | { action: 'close' }
+  | { action: 'undock' }
+  | { action: 'dock' }
   | {
       action: 'layout';
       id: string;

@@ -5444,5 +5444,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .sidebar-feature-pane { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; }
 .sidebar-feature-pane[hidden] { display:none; }
 .sidebar-feature-pane .assistant-page-header { flex-shrink:0; }
-.sidebar-feature-pane select { min-width:0; max-width:100%; flex:1; padding:6px 8px; border:1px solid var(--gray-a6); border-radius:6px; background:var(--color-panel-solid); color:var(--gray-12); }
+.sidebar-feature-picker { position:relative; flex:1; min-width:0; }
+.sidebar-feature-picker > svg { position:absolute; right:12px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--gray-11); }
+.sidebar-feature-pane select { appearance:none; width:100%; min-width:0; padding:6px 34px 6px 10px; border:1px solid var(--gray-a6); border-radius:6px; background:var(--color-panel-solid); color:var(--gray-12); text-overflow:ellipsis; }
 .sidebar-feature-content { flex:1; min-width:0; min-height:0; }

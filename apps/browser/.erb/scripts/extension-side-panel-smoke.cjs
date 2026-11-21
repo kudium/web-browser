@@ -158,6 +158,28 @@ app
         /Panel output/,
       );
       assert.equal(entry.view.webContents.session, profile);
+      const originalView = entry.view;
+      await originalView.webContents.executeJavaScript('window.panelDraft = "keep this output"');
+      host.undock();
+      assert.equal(host.state().floating, true);
+      let floating = host.floating.window;
+      for (let i = 0; i < 100 && floating.webContents.isLoading(); i++) await pause(20);
+      assert(floating.contentView.children.includes(originalView));
+      assert(!chrome.contentView.children.includes(originalView));
+      host.layout(host.state().activeId, null);
+      assert.equal(await originalView.webContents.executeJavaScript('window.panelDraft'), 'keep this output');
+      assert.equal(await floating.webContents.executeJavaScript('typeof require'), 'undefined');
+      await floating.webContents.executeJavaScript('document.querySelector("a").click()');
+      for (let i = 0; i < 100 && host.state().floating; i++) await pause(20);
+      assert.equal(host.state().floating, false, 'Dock back control returns the view');
+      assert(chrome.contentView.children.includes(originalView));
+      host.layout(host.state().activeId, { x: 650, y: 100, width: 300, height: 500 });
+      host.undock();
+      floating = host.floating.window;
+      floating.close();
+      assert.equal(host.state().floating, false, 'Closing the floating window docks its content');
+      assert.equal(entry.view, originalView);
+      assert.equal(await originalView.webContents.executeJavaScript('window.panelDraft'), 'keep this output');
       assert.equal(
         await entry.view.webContents.executeJavaScript('typeof require'),
         'undefined',
@@ -228,11 +250,15 @@ app
       assert.equal(host.state().activeId, undefined);
       api.selectTab(tab.webContents);
       assert(host.state().activeId);
+      host.undock();
+      const profileWindow = host.floating.window;
       host.setSession(
         session.fromPartition(`persist:other-side-panel-${type}`),
       );
       assert.equal(host.state().panels.length, 0);
       assert.equal(host.state().activeId, undefined);
+      assert.equal(host.state().floating, false);
+      assert(profileWindow.isDestroyed(), 'Profile change removes floating extension content');
       profile.extensions.removeExtension(extension.id);
       assert.equal(host.state().panels.length, 0);
       tab.webContents.close();

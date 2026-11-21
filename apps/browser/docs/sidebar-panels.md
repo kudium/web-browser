@@ -36,8 +36,11 @@ view available without remounting. Remove the provider when its feature ends.
 The shared registry handles selection, resize bounds, unavailable content,
 view cleanup, error reporting, and hiding behind workspace dialogs and the tab
 switcher. The `SidebarPanels` renderer component supplies the shared header,
-selector, close action, and native content slot. Native panels are docked in
-this first implementation; they do not use the React portal's undocking path.
+selector, close action, pop-out action, and native content slot. Native panels
+move their existing view into a sandboxed window with a Dock back control.
+Docking or closing that window returns the same view without reloading its
+content or changing its session. Profile changes and unloading still remove
+unavailable content while it is floating.
 Extension requests open only their owning window, without persisting a
 cross-window Assistant pane change.
 

@@ -29,6 +29,11 @@ export class SidebarPanelRegistry {
   private preferredGroup?: string;
   private request = 0;
   private error?: string;
+  private floating?: {
+    window: BrowserWindow;
+    id: string;
+    view: WebContentsView;
+  };
   constructor(private window: BrowserWindow) {}
   state(): SidebarPanelState {
     return {
@@ -37,6 +42,7 @@ export class SidebarPanelRegistry {
         .map(({ provider }) => provider.info),
       activeId: this.activeId,
       openRequest: this.request,
+      floating: Boolean(this.floating),
       ...(this.error && { error: this.error }),
     };
   }
@@ -58,6 +64,7 @@ export class SidebarPanelRegistry {
     this.refresh();
   }
   private destroyView(view: WebContentsView) {
+    if (this.floating?.view === view) this.dock();
     if (!this.window.isDestroyed())
       this.window.contentView.removeChildView(view);
     if (!view.webContents.isDestroyed()) view.webContents.close();
@@ -73,6 +80,7 @@ export class SidebarPanelRegistry {
   refresh() {
     const current = this.entries.get(this.activeId || '');
     if (!current || current.provider.available?.() === false) {
+      this.dock();
       current?.view?.setVisible(false);
       current?.provider.closed?.();
       const next =
@@ -96,6 +104,7 @@ export class SidebarPanelRegistry {
       entry.view = undefined;
     }
     if (this.activeId !== id) {
+      this.dock();
       const old = this.entries.get(this.activeId || '');
       old?.view?.setVisible(false);
       old?.provider.closed?.();
@@ -108,6 +117,7 @@ export class SidebarPanelRegistry {
     this.publish();
   }
   close() {
+    this.dock();
     const entry = this.entries.get(this.activeId || '');
     entry?.view?.setVisible(false);
     entry?.provider.closed?.();
@@ -120,7 +130,9 @@ export class SidebarPanelRegistry {
     this.suspended = value;
     for (const [id, entry] of this.entries)
       entry.view?.setVisible(
-        !value && id === this.activeId && Boolean(entry.shown),
+        !value &&
+          id === this.activeId &&
+          (Boolean(entry.shown) || this.floating?.id === id),
       );
   }
   setSession(session?: Session) {
@@ -133,6 +145,7 @@ export class SidebarPanelRegistry {
     bounds: { x: number; y: number; width: number; height: number } | null,
   ) {
     const entry = this.entries.get(id);
+    if (this.floating?.id === id) return;
     if (
       id !== this.activeId ||
       !entry ||
@@ -199,7 +212,106 @@ export class SidebarPanelRegistry {
     entry.shown = true;
     entry.view.setVisible(!this.suspended);
   }
+  /** Reparent the existing view so extension state/session survive placement changes. */
+  undock() {
+    if (this.floating) {
+      this.floating.window.focus();
+      return;
+    }
+    const id = this.activeId;
+    const entry = id && this.entries.get(id);
+    if (!id || !entry || entry.provider.available?.() === false || this.error)
+      return;
+    if (!entry.view) {
+      const bounds = this.window.getContentBounds();
+      this.layout(id, {
+        x: 0,
+        y: 0,
+        width: Math.min(500, bounds.width),
+        height: Math.min(600, bounds.height),
+      });
+    }
+    if (!entry.view) return;
+    const view = entry.view;
+    const child = new BrowserWindow({
+      parent: this.window,
+      title: entry.provider.info.title,
+      width: 520,
+      height: 720,
+      minWidth: 320,
+      minHeight: 240,
+      show: false,
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    child.setMenu(null);
+    this.window.contentView.removeChildView(view);
+    child.contentView.addChildView(view);
+    this.floating = { window: child, id, view };
+    entry.shown = false;
+    const resize = () => {
+      if (child.isDestroyed() || this.floating?.window !== child) return;
+      const { width, height } = child.getContentBounds();
+      view.setBounds({ x: 0, y: 44, width, height: Math.max(1, height - 44) });
+      view.setVisible(!this.suspended);
+    };
+    child.on('resize', resize);
+    child.on('close', (event) => {
+      if (this.floating?.window !== child) return;
+      event.preventDefault();
+      this.dock();
+    });
+    const dockURL = 'https://kudium.invalid/dock-sidebar-panel';
+    child.webContents.on('will-navigate', (event, url) => {
+      event.preventDefault();
+      if (url === dockURL) this.dock();
+    });
+    child.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    const title = entry.provider.info.title.replace(
+      /[&<>"']/g,
+      (value) =>
+        ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        })[value]!,
+    );
+    const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>:root{color-scheme:light dark}body{margin:0;font:13px system-ui;background:light-dark(#fff,#202020);color:light-dark(#222,#eee)}header{height:44px;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid #8885}span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}a{color:inherit;text-decoration:none;padding:5px 10px;border:1px solid #8887;border-radius:6px}a:hover{background:#8883}</style><header><span>${title}</span><a href="${dockURL}" aria-label="Dock panel back">↙ Dock back</a></header>`;
+    resize();
+    void child
+      .loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+      .then(() => {
+        if (this.floating?.window === child && !child.isDestroyed())
+          child.show();
+      })
+      .catch(() => {
+        if (this.floating?.window === child) this.dock();
+      });
+    this.publish();
+  }
+  dock() {
+    const floating = this.floating;
+    if (!floating) return;
+    this.floating = undefined;
+    if (!floating.window.isDestroyed())
+      floating.window.contentView.removeChildView(floating.view);
+    if (
+      !this.window.isDestroyed() &&
+      !floating.view.webContents.isDestroyed()
+    ) {
+      this.window.contentView.addChildView(floating.view);
+      floating.view.setVisible(false);
+    }
+    if (!floating.window.isDestroyed()) floating.window.destroy();
+    this.publish();
+  }
   dispose() {
+    this.dock();
     for (const entry of this.entries.values())
       if (entry.view) this.destroyView(entry.view);
     this.entries.clear();
@@ -235,6 +347,8 @@ export function registerSidebarPanelWindow(window: BrowserWindow) {
       if (request.action === 'activate' && typeof request.id === 'string')
         host.activate(request.id);
       else if (request.action === 'close') host.close();
+      else if (request.action === 'undock') host.undock();
+      else if (request.action === 'dock') host.dock();
       else if (
         request.action === 'layout' &&
         typeof request.id === 'string' &&

@@ -1,5 +1,10 @@
 import { useLayoutEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import {
+  X,
+  ChevronDown,
+  ArrowUpRight,
+  SquareArrowDownLeft,
+} from 'lucide-react';
 import { browser } from '../../browser/client';
 import type { SidebarPanelState } from '../../browser/sidebarPanels';
 import { AssistantPageHeader } from './AssistantPageHeader';
@@ -26,7 +31,11 @@ export function SidebarPanels({
           action: 'layout',
           id,
           bounds:
-            active && rect && rect.width > 0 && rect.height > 0
+            active &&
+            !state.floating &&
+            rect &&
+            rect.width > 0 &&
+            rect.height > 0
               ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
               : null,
         })
@@ -50,7 +59,7 @@ export function SidebarPanels({
         .sidebarPanels({ action: 'layout', id, bounds: null })
         .catch(() => {});
     };
-  }, [active, state.activeId, state.panels]);
+  }, [active, state.activeId, state.panels, state.floating]);
   return (
     <section
       className="ai-sidebar-pane sidebar-feature-pane"
@@ -58,24 +67,37 @@ export function SidebarPanels({
       aria-label="Sidebar panels"
     >
       <AssistantPageHeader>
-        <select
-          aria-label="Sidebar panel"
-          value={state.activeId || ''}
-          onChange={(event) => {
+        <div className="sidebar-feature-picker">
+          <select
+            aria-label="Sidebar panel"
+            value={state.activeId || ''}
+            onChange={(event) => {
+              void browser
+                .sidebarPanels({ action: 'activate', id: event.target.value })
+                .catch(() => {});
+            }}
+          >
+            <option value="" disabled>
+              Choose a panel
+            </option>
+            {state.panels.map((panel) => (
+              <option key={panel.id} value={panel.id}>
+                {panel.title}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} aria-hidden="true" />
+        </div>
+        <ChromeIconButton
+          icon={state.floating ? SquareArrowDownLeft : ArrowUpRight}
+          label={state.floating ? 'Dock panel back' : 'Undock panel'}
+          disabled={!state.activeId || Boolean(state.error)}
+          onClick={() => {
             void browser
-              .sidebarPanels({ action: 'activate', id: event.target.value })
+              .sidebarPanels({ action: state.floating ? 'dock' : 'undock' })
               .catch(() => {});
           }}
-        >
-          <option value="" disabled>
-            Choose a panel
-          </option>
-          {state.panels.map((panel) => (
-            <option key={panel.id} value={panel.id}>
-              {panel.title}
-            </option>
-          ))}
-        </select>
+        />
         <ChromeIconButton
           icon={X}
           label="Close sidebar panel"
@@ -86,6 +108,7 @@ export function SidebarPanels({
       </AssistantPageHeader>
       {state.error && <p role="alert">{state.error}</p>}
       {!state.activeId && <p>Choose a panel to open it here.</p>}
+      {state.floating && <p>This panel is open in a separate window.</p>}
       <div className="sidebar-feature-content" ref={slot} />
     </section>
   );
