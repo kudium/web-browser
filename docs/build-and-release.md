@@ -62,6 +62,13 @@ The isolated build explicitly runs Electron's runtime installer after `npm ci`,
 before tests. Electron 45 no longer performs that step automatically; its installer
 verifies the upstream distribution checksum and can reuse the local download cache.
 
+Beta/stable builds also run `test:extension-side-panels` before packaging. This
+uses real extension frames and classic/module workers in disposable Mac
+profiles to verify the sidebar API, resource isolation, tab-specific options,
+active-profile changes, user-gesture enforcement, events and unload cleanup.
+See [sidebar panels](../apps/browser/docs/sidebar-panels.md) for the reusable
+React/native host contracts and extension compatibility boundaries.
+
 Signed release apps include `Contents/Resources/app-update.yml` before signing,
 including when the initial build uses `--dir`. ZIP and DMG verification rejects missing
 metadata or the wrong channel/architecture feed. Versions 1.0.18 and 1.0.19

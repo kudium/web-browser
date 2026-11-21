@@ -33,6 +33,8 @@ import { NotesPage } from './NotesPage';
 import { RenderErrorBoundary } from './RenderErrorBoundary';
 import { ActivityPage } from './ActivityPage';
 import { AssistantPanelHost, focusAssistantPanel } from './AssistantPanelHost';
+import { SidebarPanels } from './SidebarPanels';
+import { EMPTY_SIDEBAR_PANELS, SidebarPanelState } from '../../browser/sidebarPanels';
 import { HistoryToolbar } from './HistorySidebarFrame';
 import { AIChatSwitcher } from './AIChatSwitcher';
 import type {
@@ -96,7 +98,13 @@ export function AISidebar({
   onGroupContextMenu,
   onManageGroup,
   visible = true,
+  sidebarPanels = EMPTY_SIDEBAR_PANELS,
+  sidebarPane,
+  onSidebarPaneChange,
 }: {
+  sidebarPanels?: SidebarPanelState;
+  sidebarPane?: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels';
+  onSidebarPaneChange?: (pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels') => void;
   visible?: boolean;
   promptRequest?: { text: string; token: number; append?: boolean };
   workingTabs?: AIWorkingTab[];
@@ -152,7 +160,9 @@ export function AISidebar({
   const [models, setModels] = useState<string[]>([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [cursor, setCursor] = useState(0);
-  const [pane, setPane] = useAIPagePreference('pane', 'assistant');
+  const [savedPane, setSavedPane] = useAIPagePreference('pane', 'assistant');
+  const pane = sidebarPane ?? savedPane;
+  const setPane = onSidebarPaneChange ?? setSavedPane;
 
   const [showStats] = useAIPagePreference('showStats', true);
   const [notesScopeRequest, setNotesScopeRequest] = useState<
@@ -1320,7 +1330,7 @@ export function AISidebar({
     { value: overlayContainer },
     <aside
       className="ai-sidebar"
-      aria-label="Assistant"
+      aria-label={pane === 'panels' ? 'Sidebar panels' : 'Assistant'}
       onContextMenu={(event) => {
         if (
           (event.target as HTMLElement).closest(
@@ -1345,6 +1355,7 @@ export function AISidebar({
             },
             { id: 'notes', label: 'Notes', enabled: pane !== 'notes' },
             { id: 'activity', label: 'Activity', enabled: pane !== 'activity' },
+            ...(sidebarPanels.panels.length ? [{ id: 'panels', label: 'Panels', enabled: pane !== 'panels' }] : []),
             { type: 'separator' },
             { id: 'settings', label: 'AI settings…' },
           ])
@@ -1354,7 +1365,7 @@ export function AISidebar({
               choice === 'tasks' ||
               choice === 'developer' ||
               choice === 'notes' ||
-              choice === 'activity'
+              choice === 'activity' || choice === 'panels'
             )
               setPane(choice);
             if (choice === 'settings') openSettings();
@@ -1389,6 +1400,7 @@ export function AISidebar({
         } else addFiles(Array.from(event.dataTransfer.files));
       }}
     >
+      <SidebarPanels state={sidebarPanels} active={visible && pane === 'panels'} />
       <AssistantPanelHost panel="activity" active={pane === 'activity'}>
         <div
           className="ai-sidebar-pane ai-activity-pane"

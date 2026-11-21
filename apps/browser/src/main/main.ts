@@ -59,6 +59,7 @@ import { registerHookLanguage } from './hookLanguage';
 import { registerActivity } from './activity';
 import { registerBrowserMigration } from './browserMigration';
 import { registerAppUpdates, startAppUpdates } from './appUpdates';
+import { registerSidebarPanelWindow } from './sidebarPanels';
 import { registerSystemSpaceRetention } from './systemSpaceRetention';
 import { registerHistory } from './history';
 import MenuBuilder from './menu';
@@ -338,6 +339,7 @@ export const createNewWindow = async ({
       openInstalledSiteHook(owner.webContents, target, hookId);
     } });
   }
+  if (view === 'main') registerSidebarPanelWindow(newWindow);
   const windowKey = additional ? `browser-${newWindow.id}` : view;
   activeWindows[windowKey] = newWindow;
   if (savedSize) rememberWindowSize(newWindow, sizeFile);

@@ -95,6 +95,8 @@ it('allows only named Assistant blank windows from the main host and protects th
   expect(popup({ url: 'about:blank', frameName: 'unrelated' }).action).toBe(
     'deny'
   );
+  expect(popup({ url: 'about:blank', frameName: 'kudium-sidebar-hook-output' }).action).toBe('allow');
+  expect(popup({ url: 'about:blank', frameName: 'kudium-sidebar-../private' }).action).toBe('deny');
   expect(
     popup({ url: 'https://example.com', frameName: 'kudium-assistant-notes' })
       .action

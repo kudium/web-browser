@@ -1,7 +1,10 @@
 import type { BrowserClient } from './contracts';
+import { EMPTY_SIDEBAR_PANELS } from './sidebarPanels';
 
 // The renderer uses this contract; transport selection belongs to this adapter.
 export const browser: BrowserClient = {
+  sidebarPanels: (request) => window.electron?.browser?.sidebarPanels?.(request) ?? Promise.resolve(EMPTY_SIDEBAR_PANELS),
+  onSidebarPanels: (callback) => window.electron?.browser?.onSidebarPanels?.(callback) ?? (() => {}),
   taskManager: (request) => window.electron.browser.taskManager(request),
   nativeAppearance: (appearance) =>
     window.electron?.browser?.nativeAppearance?.(appearance) ??

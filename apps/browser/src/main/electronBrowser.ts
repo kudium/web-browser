@@ -30,6 +30,7 @@ import { registerHookMarketplace, openHookInstallLink } from './hookMarketplace'
 import { aiGroupId } from '../browser/aiGroups';
 import { projectFileNavigation } from './projectFileNavigation';
 import { onWindowClosed } from './windowLifecycle';
+import { suspendSidebarPanels, setSidebarPanelSession } from './sidebarPanels';
 import { presentSnapshots } from './snapshotPresentation';
 import {
   getGroupRemovalJournal,
@@ -2599,9 +2600,11 @@ export function registerElectronBrowser(
         ? window
         : undefined);
     if (!source || !isBrowserLayout(layout)) return;
+    suspendSidebarPanels(source, Boolean(layout.suspended || layout.tabSwitcher));
     const chromeFocused = source.webContents.isFocused();
     if (windows) windows.setLayout(source, layout);
     else applyLayout(layout);
+    setSidebarPanelSession(source, layout.focusedId ? views.get(layout.focusedId)?.webContents.session : undefined);
     // Reparenting/showing a WebContentsView must not take the first responder
     // away from the sidebar or an address field the user is interacting with.
     if (chromeFocused && !source.webContents.isDestroyed())

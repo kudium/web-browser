@@ -41,6 +41,7 @@ export function buildSteps(checkout, artifacts, tag) {
     ['node', ['--test', 'scripts/release-update-metadata.test.cjs'], checkout],
     ['npx', ['tsc', '--noEmit'], browser],
     ['npm', ['test', '--', '--runInBand', '--roots', 'src', '--config', '.erb/configs/jest.ci.cjs'], browser],
+    ['npm', ['run', 'test:extension-side-panels'], browser],
     ['npm', ['run', 'test:migrations'], browser],
     ['node', ['scripts/ci/prepare-browser-release.mjs', tag], checkout],
     ['npm', ['run', 'build'], browser],

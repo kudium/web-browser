@@ -21,6 +21,7 @@ import { showBrowserDialog } from './dialogs';
 import { watchIPCRequest } from './ipcRequestBinding';
 import { prepareExtensionPackage } from './extensionPackage';
 import { configureExtensionStoreCompatibility } from './extensionStoreCompatibility';
+import { attachExtensionSidePanels } from './extensionSidePanels';
 
 function packageName(
   prepared: Awaited<ReturnType<typeof prepareExtensionPackage>>
@@ -465,6 +466,7 @@ export async function applyExtensions(
       handlers.requestPermissions?.(extension, permissions) ||
       Promise.resolve(false),
   });
+  attachExtensionSidePanels(api, profileId);
   const profile: Profile = {
     revision: 0,
     id: profileId,

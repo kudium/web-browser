@@ -5,7 +5,7 @@ type AIPagePreferences = {
   open: boolean;
   historyOpen: boolean;
   historyPinned: boolean;
-  pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
+  pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels';
   preview: boolean;
   showStats: boolean;
   noteFontSize: number;
@@ -75,7 +75,7 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
             setValue(saved);
         } else if (key === 'pane') {
           if (
-            ['assistant', 'tasks', 'developer', 'notes', 'activity'].includes(
+            ['assistant', 'tasks', 'developer', 'notes', 'activity', 'panels'].includes(
               saved
             )
           )

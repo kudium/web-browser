@@ -1,4 +1,5 @@
 import type { AppUpdateAction, AppUpdateState } from './appUpdates';
+import type { SidebarPanelRequest, SidebarPanelState } from './sidebarPanels';
 import type { SiteDeveloperConfig, SiteDeveloperState } from './siteDeveloper';
 import type { PageCaptureRequest, PageCaptureResult } from './pageCapture';
 import type { HistoryAction, HistoryRecord } from './history';
@@ -188,6 +189,8 @@ export interface BrowserSnapshot {
 export type { BrowserPreferences } from './preferences';
 
 export interface BrowserClient {
+  sidebarPanels(request: SidebarPanelRequest): Promise<SidebarPanelState>;
+  onSidebarPanels(callback: (state: SidebarPanelState) => void): () => void;
   taskManager(request: TaskManagerRequest): Promise<TaskManagerState>;
   removeGroup(
     id: string,

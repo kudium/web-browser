@@ -5439,3 +5439,10 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .icon-picker-custom-color:not([data-selected]) .icon-picker-color-swatch::before { content:''; position:absolute; inset:2px; border-radius:50%; background:var(--color-panel-solid); }
 .icon-picker-custom-color svg { position:relative; }
 .icon-picker-custom-color input[type=color] { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; opacity:0; cursor:pointer; }
+
+/* One native content slot shared by extension and future feature panels. */
+.sidebar-feature-pane { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; }
+.sidebar-feature-pane[hidden] { display:none; }
+.sidebar-feature-pane .assistant-page-header { flex-shrink:0; }
+.sidebar-feature-pane select { min-width:0; max-width:100%; flex:1; padding:6px 8px; border:1px solid var(--gray-a6); border-radius:6px; background:var(--color-panel-solid); color:var(--gray-12); }
+.sidebar-feature-content { flex:1; min-width:0; min-height:0; }

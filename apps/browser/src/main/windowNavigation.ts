@@ -62,9 +62,8 @@ export function protectWindowNavigation(
     if (
       assistantPanels &&
       url === 'about:blank' &&
-      /^kudium-assistant-(assistant|notes|activity|tasks|developer)$/.test(
-        frameName
-      )
+      (/^kudium-assistant-(assistant|notes|activity|tasks|developer)$/.test(frameName) ||
+        /^kudium-sidebar-[a-z][a-z0-9-]{0,63}$/.test(frameName))
     ) {
       return {
         action: 'allow',

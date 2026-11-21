@@ -57,6 +57,7 @@ import {
 import { HorizontalTabList } from '../../UI/HorizontalTabList';
 import { FindBar } from '../../UI/FindBar';
 import { useSidebarPaneToggle } from '../../../utils/hooks/useSidebarPaneToggle';
+import { useSidebarPanels } from '../../../utils/useSidebarPanels';
 import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
 import { Archive } from '../Settings/tabs/Archive';
 import { spaceFooterMenu } from '../../../browser/spaceFooterMenu';
@@ -225,12 +226,39 @@ export function Main() {
     mode?: 'scope';
     token: number;
   }>();
-  const [aiOpen, setAIOpen] = useAIPagePreference('open', false);
-  const [aiPane, setAIPane] = useAIPagePreference('pane', 'assistant');
+  const [savedAIOpen, setSavedAIOpen] = useAIPagePreference('open', false);
+  const [savedAIPane, setSavedAIPane] = useAIPagePreference('pane', 'assistant');
+  const [nativePanelActive, setNativePanelActive] = useState(false);
+  const nativePanelRequested = useRef(false);
+  const aiOpen = savedAIOpen || nativePanelActive;
+  const aiOpenValue = useRef(aiOpen);
+  aiOpenValue.current = aiOpen;
+  const aiPane = nativePanelActive ? 'panels' : savedAIPane === 'panels' ? 'assistant' : savedAIPane;
+  const setAIPane = useCallback((pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels') => {
+    nativePanelRequested.current = pane === 'panels';
+    setNativePanelActive(pane === 'panels');
+    if (pane !== 'panels') setSavedAIPane(pane);
+  }, [setSavedAIPane]);
+  const setAIOpen = useCallback((next: boolean | ((previous: boolean) => boolean)) => {
+    const open = typeof next === 'function' ? next(aiOpenValue.current) : next;
+    aiOpenValue.current = open;
+    if (!open) { nativePanelRequested.current = false; setNativePanelActive(false); }
+    if (!open || !nativePanelRequested.current) setSavedAIOpen(open);
+  }, [setSavedAIOpen]);
+  const sidebarPanels = useSidebarPanels();
+  const lastPanelRequest = useRef(0);
 
   const [aiMounted, setAIMounted] = useState(
     () => aiOpen || hasFloatingAssistantPanels()
   );
+  useEffect(() => {
+    if (sidebarPanels.activeId && sidebarPanels.openRequest > lastPanelRequest.current) {
+      lastPanelRequest.current = sidebarPanels.openRequest;
+      setAIMounted(true);
+      nativePanelRequested.current = true;
+      setNativePanelActive(true);
+    }
+  }, [sidebarPanels.activeId, sidebarPanels.openRequest]);
   const [unreadNotes, setUnreadNotes] = useState(0);
   const [unreadActivity, setUnreadActivity] = useState(0);
   useEffect(() => {
@@ -3093,6 +3121,13 @@ export function Main() {
         aria-expanded={aiOpen && aiPane === 'assistant'}
         onClick={() => toggleSidebarPane('assistant')}
       />
+      {sidebarPanels.panels.length > 0 && <ChromeIconButton
+        icon={Library}
+        className="ai-toolbar-toggle"
+        label="Toggle sidebar panels"
+        aria-expanded={aiOpen && aiPane === 'panels'}
+        onClick={() => toggleSidebarPane('panels')}
+      />}
     </>
   );
   const renderAddressBar = () => (
@@ -5059,6 +5094,9 @@ export function Main() {
               />
               <AISidebar
                 visible={aiOpen}
+                sidebarPanels={sidebarPanels}
+                sidebarPane={aiPane}
+                onSidebarPaneChange={setAIPane}
                 workingTabs={aiWorkingTabs.map((tab) => ({
                   id: tab.id,
                   name: tab.customName || states[tab.id]?.title || tab.name,

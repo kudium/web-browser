@@ -10,6 +10,7 @@ import {
   webUtils,
 } from 'electron';
 import type { AppUpdateAction, AppUpdateState } from '../browser/appUpdates';
+import type { SidebarPanelRequest, SidebarPanelState } from '../browser/sidebarPanels';
 import type {
   BrowserWindowRequest,
   BrowserWindowState,
@@ -841,6 +842,14 @@ const electronHandler = {
     },
     appUpdates(action: AppUpdateAction): Promise<AppUpdateState> {
       return ipcRenderer.invoke('browser-app-updates', action);
+    },
+    sidebarPanels(request: SidebarPanelRequest): Promise<SidebarPanelState> {
+      return ipcRenderer.invoke('browser-sidebar-panels', request);
+    },
+    onSidebarPanels(callback: (state: SidebarPanelState) => void) {
+      const listener = (_event: IpcRendererEvent, state: SidebarPanelState) => callback(state);
+      ipcRenderer.on('browser-sidebar-panels-changed', listener);
+      return () => ipcRenderer.removeListener('browser-sidebar-panels-changed', listener);
     },
     onAppUpdates(callback: (state: AppUpdateState) => void) {
       const listener = (_event: IpcRendererEvent, state: AppUpdateState) =>
