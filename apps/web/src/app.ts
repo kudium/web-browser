@@ -21,8 +21,9 @@ import { tutorials } from './tutorials';
 import { whatsNewPage } from './pages';
 import { privacyPage } from './privacy';
 import { managedSync, managedKeyRecord } from './managed-sync';
+import { analyticsConsentRequired } from './analytics-policy';
 export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey, hookAdminIds }: { hookAdminIds?: string[]; syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
-  const app = new Hono<{ Variables: { account: string; styleNonce: string } }>();
+  const app = new Hono<{ Bindings: { remoteAddress?: string }; Variables: { account: string; styleNonce: string } }>();
   const store = syncStore(db);
   const managed = syncMasterKey ? managedSync(store, syncMasterKey) : undefined;
   const authenticate = auth ? authenticateSession(auth) : testAuthenticate;
@@ -97,6 +98,10 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
     c.header('Cache-Control', 'public, max-age=3600');
     c.header('Content-Type', filename.endsWith('.png') ? 'image/png' : 'image/webp');
     return c.body(await file.arrayBuffer());
+  });
+  app.get('/analytics-policy', c => {
+    c.header('Cache-Control', 'private, no-store');
+    return c.json({ consentRequired: analyticsConsentRequired(c.env?.remoteAddress, c.req.header('x-forwarded-for')) });
   });
   app.get('/assets/analytics.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/analytics.js', import.meta.url)).text()); });
   app.get('/assets/download.js', async c => { c.header('Content-Type', 'text/javascript; charset=utf-8'); return c.body(await Bun.file(new URL('../public/download.js', import.meta.url)).text()); });

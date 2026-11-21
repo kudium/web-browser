@@ -21,6 +21,16 @@ API/auth/sync integration tests require a dedicated PostgreSQL 18 test database.
 Verify the website Docker build before deploying. Desktop installer publication
 and website deployment remain separate operations.
 
+Public website Analytics uses `/analytics-policy` to decide whether to ask for
+consent. An offline `geoip-country` database determines the visitor country;
+refresh its pinned package periodically. The EEA, UK, Switzerland and unknown
+locations require opt-in; other locations default to enabled. Saved declines,
+Do Not Track and Global Privacy Control override automatic enablement. Advertising
+features remain disabled and account/auth pages never load Analytics. Country
+lookup uses the socket IP or the last X-Forwarded-For address appended by an
+internal reverse proxy. Keep the backend behind that proxy and preserve its
+client-IP forwarding; never use browser language or a client country header.
+
 GitHub workflows remain available for explicitly authorized manual fallback use.
 The manual **Web checks (manual)** workflow validates only; it does not deploy.
 

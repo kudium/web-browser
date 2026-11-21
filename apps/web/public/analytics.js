@@ -5,6 +5,7 @@
   const key = 'kudium.analytics-consent.v1';
   const panel = document.querySelector('[data-analytics-consent]');
   let started = false;
+  let choiceMade = false;
   const read = () => { try { return localStorage.getItem(key); } catch { return null; } };
   const gtag = function () { window.dataLayer.push(arguments); };
   const start = () => {
@@ -31,6 +32,7 @@
     document.head.append(script);
   };
   const choose = (choice) => {
+    choiceMade = true;
     try { localStorage.setItem(key, choice); } catch { /* Choice still applies to this page. */ }
     panel.hidden = true;
     if (choice === 'granted') start();
@@ -52,6 +54,21 @@
     panel.hidden = false;
     panel.querySelector('button')?.focus();
   });
-  if (read() === 'granted') start();
-  else if (!read() && !navigator.globalPrivacyControl && navigator.doNotTrack !== '1') panel.hidden = false;
+  const initialize = async () => {
+    if (navigator.globalPrivacyControl || navigator.doNotTrack === '1') return;
+    const saved = read();
+    if (saved === 'granted') { start(); return; }
+    if (saved === 'denied') return;
+    let consentRequired = true;
+    try {
+      const response = await fetch('/analytics-policy', {
+        credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(5000),
+      });
+      if (response.ok) consentRequired = (await response.json()).consentRequired !== false;
+    } catch { /* Unknown region keeps the opt-in default. */ }
+    if (choiceMade) return;
+    if (consentRequired) panel.hidden = false;
+    else start(); // Do not persist automatic enablement as explicit consent.
+  };
+  void initialize();
 })();
