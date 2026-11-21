@@ -12,6 +12,7 @@ const mockHosts = new Map<any, any>();
 const mockViews: any[] = [];
 jest.mock('../main/sidebarPanels', () => ({
   sidebarPanelsFor: (window: any) => mockHosts.get(window),
+  sidebarPanelHostFor: (window: any) => mockHosts.get(window),
 }));
 jest.mock('electron', () => ({
   app: { getPath: () => mockRoot },
@@ -28,7 +29,7 @@ jest.mock('electron', () => ({
   }),
 }));
 
-function fixture() {
+function fixture(extraHandlers: Array<[string, any]> = []) {
   const extension = {
     id: 'a'.repeat(32),
     name: 'Panel fixture',
@@ -76,6 +77,7 @@ function fixture() {
   const originalActivate = jest.fn();
   const handlers = new Map<string, any>([
     ['browserAction.activate', { callback: originalActivate }],
+    ...extraHandlers,
   ]);
   const router = {
     handlers,
@@ -235,4 +237,43 @@ test('extension unloading destroys its registrations', () => {
   expect(f.providers.size).toBeGreaterThan(0);
   f.unload();
   expect(f.providers.size).toBe(0);
+});
+
+test('authentication windows without sidebar hosts do not abort tab creation or refresh', () => {
+  const f = fixture();
+  const popup = { id: 42, isDestroyed: () => false, webContents: {} };
+  f.store.windows.add(popup);
+  expect(() => f.store.emit('window-added', popup)).not.toThrow();
+  expect(() => f.store.emit('tab-added', { id: 43 })).not.toThrow();
+  expect(f.providers.size).toBe(1);
+  expect([...f.providers.values()][0].info.id).toContain(':1:');
+});
+
+test('sidebar API requests use the logical owning window instead of an unrelated focused window', () => {
+  const create = jest.fn((_event, options) => options);
+  const query = jest.fn((_event, options) => options);
+  const f = fixture([
+    ['tabs.create', { callback: create }],
+    ['tabs.query', { callback: query }],
+    ['windows.getCurrent', { callback: () => ({ id: 999 }) }],
+    ['windows.get', { callback: (_event: any, id: number) => ({ id }) }],
+  ]);
+  const view = [...f.providers.values()][0].createView();
+  const event = { ...f.event, type: 'frame', sender: view.webContents };
+  expect(
+    f.router.handlers
+      .get('tabs.create')
+      .callback(event, { url: 'https://example.com/' }),
+  ).toMatchObject({ windowId: 1 });
+  expect(
+    f.router.handlers
+      .get('tabs.query')
+      .callback(event, { currentWindow: true, active: true }),
+  ).toEqual({ currentWindow: false, active: true, windowId: 1 });
+  expect(f.router.handlers.get('windows.getCurrent').callback(event)).toEqual({
+    id: 1,
+  });
+  expect(f.router.handlers.get('windows.getCurrent').callback(f.event)).toEqual(
+    { id: 999 },
+  );
 });

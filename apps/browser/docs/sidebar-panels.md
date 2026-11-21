@@ -44,6 +44,16 @@ unavailable content while it is floating.
 Extension requests open only their owning window, without persisting a
 cross-window Assistant pane change.
 
+Authentication and other ordinary popup windows can share the extension's
+profile without owning a sidebar host. Sidebar refresh skips those windows.
+Extension pages retain their logical workspace owner when popped out:
+`windows.getCurrent`, `tabs.query({currentWindow:true})`, and `tabs.create`
+without an explicit window use that owner rather than an unrelated focused
+authentication window. Native extension views are not added to browser tab
+lists. New extension windows show at creation while navigation runs in the
+background; failures appear in a local dialog instead of leaving an invisible
+window pending a network response.
+
 ## Chrome extension side panels
 
 `main/extensionSidePanels.ts` adapts the existing authenticated extension router
@@ -83,7 +93,9 @@ unloading its extension also cleans up attachments.
 Run `npm run test:muse-compatibility` to download and validate the actual Muse
 package in a temporary profile, start its worker, and verify its rendered
 signed-out panel and pop-out path. This separate network check does not use the
-user's sign-in or installed package. It is not proof of signed-in chat or task
+user's sign-in or installed package. It also clicks the real Sign in button
+with native mouse input and checks the account input in the authentication
+window, using the same profile. It is not proof of completed login, chat or task
 execution; those require acceptance testing with a Muse account. The generic
 release fixture checks group operations and a real CDP command on a disposable
 HTTP page for both classic and module workers.

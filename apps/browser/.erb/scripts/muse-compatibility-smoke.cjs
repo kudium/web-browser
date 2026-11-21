@@ -32,6 +32,9 @@ const {
 const {
   attachExtensionBrowserAPIs,
 } = require('../../src/main/extensionBrowserAPIs.ts');
+const {
+  navigateExtensionPage,
+} = require('../../src/main/extensionPageNavigation.ts');
 const root = fs.mkdtempSync(
   path.join(os.tmpdir(), 'kudium-muse-compatibility-'),
 );
@@ -73,7 +76,36 @@ app
     await chrome.loadURL(
       'data:text/html,<title>Muse compatibility check — temporary profile</title>',
     );
-    const api = new ElectronChromeExtensions({ session: profile });
+    const openedTabs = [];
+    const popupWindows = [];
+    const api = new ElectronChromeExtensions({
+      session: profile,
+      createTab: async (details) => {
+        openedTabs.push(details);
+        const popup = new BrowserWindow({
+          parent: chrome,
+          show: false,
+          width: 700,
+          height: 600,
+          webPreferences: {
+            session: profile,
+            sandbox: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+          },
+        });
+        popupWindows.push(popup);
+        api.addTab(popup.webContents, popup);
+        navigateExtensionPage(popup, details.url, {
+          active: details.active,
+          assertAccess: () => {},
+          reportError: async (error) => {
+            errors.push(String(error));
+          },
+        });
+        return [popup.webContents, popup];
+      },
+    });
     attachExtensionSidePanels(api, 'muse-compatibility');
     attachExtensionBrowserAPIs(api);
     const extension = await profile.extensions.loadExtension(prepared.path());
@@ -112,7 +144,9 @@ app
       /Sign in to Muse/,
       'Actual Muse panel renders its signed-out screen',
     );
-    await profile.serviceWorkers.startWorkerForScope(`chrome-extension://${extension.id}/`);
+    await profile.serviceWorkers.startWorkerForScope(
+      `chrome-extension://${extension.id}/`,
+    );
     assert.equal(
       await view.webContents.executeJavaScript(
         'document.querySelector("#root").childElementCount > 0',
@@ -120,6 +154,66 @@ app
       true,
     );
     assert.equal(errors.length, 0, `Muse runtime errors: ${errors.join('; ')}`);
+    const button = await view.webContents.executeJavaScript(
+      `(() => { const button=[...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Sign in'); if(!button) return null; const rect=button.getBoundingClientRect(); return {x:Math.round(rect.x+rect.width/2),y:Math.round(rect.y+rect.height/2),disabled:button.disabled}; })()`,
+    );
+    assert(button && !button.disabled, 'Muse sign-in button is actionable');
+    view.webContents.focus();
+    view.webContents.sendInputEvent({
+      type: 'mouseMove',
+      x: button.x,
+      y: button.y,
+    });
+    view.webContents.sendInputEvent({
+      type: 'mouseDown',
+      x: button.x,
+      y: button.y,
+      button: 'left',
+      clickCount: 1,
+    });
+    view.webContents.sendInputEvent({
+      type: 'mouseUp',
+      x: button.x,
+      y: button.y,
+      button: 'left',
+      clickCount: 1,
+    });
+    for (let i = 0; i < 100 && !popupWindows[0]?.isVisible(); i++)
+      await pause(50);
+    assert(
+      openedTabs.length > 0,
+      'Native mouse click dispatches Muse sign-in to tabs.create',
+    );
+    assert.equal(new URL(openedTabs[0].url).hostname, 'muse.ai');
+    assert(
+      popupWindows[0].isVisible(),
+      'Sign-in window is visible before navigation completes',
+    );
+    assert.equal(
+      popupWindows[0].webContents.session,
+      profile,
+      'Authentication retains its extension profile',
+    );
+    let authText = '';
+    for (let i = 0; i < 200; i++) {
+      authText = await popupWindows[0].webContents.executeJavaScript(
+        'document.body.innerText',
+      );
+      if (/Mobile number or email/.test(authText)) break;
+      await pause(100);
+    }
+    assert.match(
+      authText,
+      /Mobile number or email/,
+      'Muse authentication page renders its account input',
+    );
+    assert.equal(
+      await view.webContents.executeJavaScript(
+        'chrome.windows.getCurrent().then(window=>window.id)',
+      ),
+      chrome.id,
+      'Panel keeps its logical owner after authentication opens',
+    );
     host.undock();
     assert.match(
       await view.webContents.executeJavaScript('document.body.innerText'),
@@ -127,6 +221,7 @@ app
     );
     host.dock();
     profile.extensions.removeExtension(extension.id);
+    for (const popup of popupWindows) if (!popup.isDestroyed()) popup.destroy();
     tab.webContents.close();
     chrome.destroy();
     await prepared.dispose();
@@ -138,7 +233,7 @@ app
     });
     clearTimeout(timeout);
     console.log(
-      `PASS Muse ${prepared.manifest.version}: real worker startup, visible sign-in UI, native sidebar and pop-out. Signed-in chat/task execution was not tested.`,
+      `PASS Muse ${prepared.manifest.version}: real worker, rendered panel, native Sign in click, visible authentication window in its own profile, and pop-out. Authentication form loaded; completed login/chat/task execution was not tested.`,
     );
     app.exit(0);
   })

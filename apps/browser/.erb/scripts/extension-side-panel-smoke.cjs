@@ -28,6 +28,7 @@ const {
   attachExtensionSidePanels,
 } = require('../../src/main/extensionSidePanels.ts');
 const { attachExtensionBrowserAPIs } = require('../../src/main/extensionBrowserAPIs.ts');
+const { navigateExtensionPage } = require('../../src/main/extensionPageNavigation.ts');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-side-panel-smoke-'));
 app.setPath('userData', path.join(root, 'profile'));
 app.on('window-all-closed', () => {});
@@ -98,7 +99,15 @@ app
       await chrome.loadURL(
         'data:text/html,<title>Disposable sidebar host</title>',
       );
-      const api = new ElectronChromeExtensions({ session: profile });
+      const openedWindows = [];
+      const api = new ElectronChromeExtensions({ session: profile, createTab: async (details) => {
+        const popup = new BrowserWindow({ parent: chrome, show: false, width: 600, height: 500,
+          webPreferences: { session: profile, sandbox: true, contextIsolation: true, nodeIntegration: false } });
+        api.addTab(popup.webContents, popup);
+        navigateExtensionPage(popup, details.url, {active:details.active,assertAccess:()=>{},reportError:async(error)=>{throw error;}});
+        openedWindows.push(popup);
+        return [popup.webContents, popup];
+      } });
       attachExtensionSidePanels(api, `smoke-${type}`);
       attachExtensionBrowserAPIs(api);
       const extension = await profile.extensions.loadExtension(dir);
@@ -131,7 +140,7 @@ app
       assert.equal(await debugTab.webContents.executeJavaScript('document.querySelector("h1").textContent'), 'Updated by extension');
       await tab.webContents.executeJavaScript(`chrome.debugger.detach({tabId:${debugTab.webContents.id}})`);
       assert.equal(debugTab.webContents.debugger.isAttached(), false);
-      debugTab.webContents.close(); server.close();
+      debugTab.webContents.close();
       api.selectTab(tab.webContents);
       const rpc = (message) =>
         tab.webContents.executeJavaScript(
@@ -185,9 +194,19 @@ app
       );
       assert.equal(entry.view.webContents.session, profile);
       const originalView = entry.view;
+      await originalView.webContents.executeJavaScript(`window.open('http://127.0.0.1:${server.address().port}/')`, true);
+      for (let i=0;i<100 && !openedWindows.length;i++) await pause(20);
+      assert(openedWindows.length, 'An extension panel can open a page in a non-sidebar window');
+      assert(openedWindows[0].isVisible());
+      assert.equal(openedWindows[0].webContents.session, profile);
+      for(let i=0;i<100 && openedWindows[0].webContents.isLoading();i++) await pause(20);
+      assert.equal(await openedWindows[0].webContents.executeJavaScript('document.title'), 'Debugger fixture');
+      openedWindows[0].destroy(); server.close();
       await originalView.webContents.executeJavaScript('window.panelDraft = "keep this output"');
       host.undock();
       assert.equal(host.state().floating, true);
+      assert.equal(await originalView.webContents.executeJavaScript('chrome.windows.getCurrent().then(window=>window.id)'), chrome.id);
+      assert(await originalView.webContents.executeJavaScript(`chrome.tabs.query({currentWindow:true}).then(tabs=>tabs.every(tab=>tab.windowId===${chrome.id} && tab.id!==${originalView.webContents.id}))`));
       let floating = host.floating.window;
       for (let i = 0; i < 100 && floating.webContents.isLoading(); i++) await pause(20);
       assert(floating.contentView.children.includes(originalView));

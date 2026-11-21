@@ -9,7 +9,7 @@ import type { Extension, WebFrameMain } from 'electron';
 import type { ElectronChromeExtensions } from 'electron-chrome-extensions';
 import fs from 'node:fs';
 import path from 'node:path';
-import { sidebarPanelsFor } from './sidebarPanels';
+import { sidebarPanelsFor, sidebarPanelHostFor } from './sidebarPanels';
 
 interface PanelOptions {
   enabled?: boolean;
@@ -96,6 +96,49 @@ export function attachExtensionSidePanels(
   if (!ctx?.router?.apiHandler || !ctx.store)
     throw new Error('Extension side panel adapter needs dependency review');
   const handle = ctx.router.apiHandler();
+  // Extension pages are not browser tabs, but still have a logical owning
+  // window. Preserve that context across pop-out and authentication windows.
+  const createTabHandler = ctx.router.handlers.get('tabs.create');
+  if (createTabHandler) {
+    const original = createTabHandler.callback;
+    createTabHandler.callback = (event, options = {}) => {
+      object(options);
+      const owner = ctx.store.tabToWindow.get(event.sender);
+      return original(
+        event,
+        owner &&
+          !owner.isDestroyed() &&
+          (options.windowId === undefined || options.windowId === -2)
+          ? { ...options, windowId: owner.id }
+          : options,
+      );
+    };
+  }
+  const currentWindowHandler = ctx.router.handlers.get('windows.getCurrent');
+  const queryTabsHandler = ctx.router.handlers.get('tabs.query');
+  if (queryTabsHandler) {
+    const original = queryTabsHandler.callback;
+    queryTabsHandler.callback = (event, options = {}) => {
+      object(options);
+      const owner = ctx.store.tabToWindow.get(event.sender);
+      return original(
+        event,
+        owner && !owner.isDestroyed() && options.currentWindow === true
+          ? { ...options, currentWindow: false, windowId: owner.id }
+          : options,
+      );
+    };
+  }
+  const getWindowHandler = ctx.router.handlers.get('windows.get');
+  if (currentWindowHandler && getWindowHandler) {
+    const original = currentWindowHandler.callback;
+    currentWindowHandler.callback = (event, options) => {
+      const owner = ctx.store.tabToWindow.get(event.sender);
+      return owner && !owner.isDestroyed()
+        ? getWindowHandler.callback(event, owner.id)
+        : original(event, options);
+    };
+  }
   const globalOptions = new Map<string, PanelOptions>();
   const tabOptions = new Map<string, Map<number, PanelOptions>>();
   const behaviors = new Map<string, boolean>();
@@ -187,6 +230,8 @@ export function attachExtensionSidePanels(
     for (const extension of loaded()) {
       for (const window of ctx.store.windows) {
         if (window.isDestroyed()) continue;
+        const host = sidebarPanelHostFor(window);
+        if (!host) continue;
         const scopes: Array<number | undefined> = [
           undefined,
           ...(tabOptions.get(extension.id)?.keys() || []),
@@ -212,14 +257,14 @@ export function attachExtensionSidePanels(
             ...(scope !== undefined && { tabId: scope }),
             path: options.path,
           });
-          sidebarPanelsFor(window).register({
+          host.register({
             info: { id: key, title: extension.name, kind: 'extension' },
             groupId: `extension:${profileId}:${extension.id}`,
             contentKey: url,
             available: () => {
               const current = currentOptions(extension, window);
               return Boolean(
-                sidebarPanelsFor(window).activeSession === ctx.session &&
+                host.activeSession === ctx.session &&
                 current.tab &&
                 current.scope === scope &&
                 current.options.enabled !== false,
@@ -235,6 +280,10 @@ export function attachExtensionSidePanels(
                   webSecurity: true,
                 },
               });
+              ctx.store.tabToWindow.set(view.webContents, window);
+              view.webContents.once('destroyed', () =>
+                ctx.store.tabToWindow.delete(view.webContents),
+              );
               recordInput(view.webContents, extension.id, window);
               const openLink = (destination: string) => {
                 try {

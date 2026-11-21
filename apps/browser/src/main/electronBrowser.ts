@@ -31,6 +31,7 @@ import { aiGroupId } from '../browser/aiGroups';
 import { projectFileNavigation } from './projectFileNavigation';
 import { onWindowClosed } from './windowLifecycle';
 import { suspendSidebarPanels, setSidebarPanelSession } from './sidebarPanels';
+import { navigateExtensionPage } from './extensionPageNavigation';
 import { presentSnapshots } from './snapshotPresentation';
 import {
   getGroupRemovalJournal,
@@ -817,18 +818,21 @@ export function registerElectronBrowser(
                     popups.set(item.id, owned);
                     popup.on('closed', () => owned.delete(popup));
                     try {
-                      await popup.loadURL(url);
-                      if (
-                        removals.blocks(item) ||
-                        isGroupLocked(configurations.get(item.id) || item) ||
-                        popup.isDestroyed()
-                      )
-                        throw new Error('Group access was revoked.');
-                      if (details.active === false) popup.showInactive();
-                      else {
-                        popup.show();
-                        popup.webContents.focus();
-                      }
+                      navigateExtensionPage(popup, url, {
+                        active: details.active,
+                        assertAccess: () => {
+                          if (removals.blocks(item) || isGroupLocked(configurations.get(item.id) || item))
+                            throw new Error('Group access was revoked.');
+                        },
+                        reportError: (error) => showBrowserDialog(popup, {
+                          title: 'Extension page',
+                          message: 'This page could not load',
+                          detail: 'Check your connection and try reloading the page.',
+                          technicalDetailLabel: 'Details',
+                          technicalDetail: String(error),
+                          buttons: ['Done'],
+                        }),
+                      });
                       return [popup.webContents, popup];
                     } catch (error) {
                       if (!popup.isDestroyed()) popup.destroy();

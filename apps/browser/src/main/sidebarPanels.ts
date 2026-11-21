@@ -367,6 +367,10 @@ export function sidebarPanelsFor(window: BrowserWindow) {
   if (!host) throw new Error('This window has no sidebar panel host');
   return host;
 }
+/** Authentication and extension popup windows need not own a sidebar. */
+export function sidebarPanelHostFor(window: BrowserWindow) {
+  return hosts.get(window);
+}
 export function suspendSidebarPanels(
   window: BrowserWindow,
   suspended: boolean,
