@@ -1,10 +1,12 @@
 import { BrowserWindow, ipcMain, WebContentsView } from 'electron';
 import type { Session } from 'electron';
+import { clipSidebarPanelBounds } from '../browser/sidebarPanels';
 import type {
   SidebarPanelInfo,
   SidebarPanelRequest,
   SidebarPanelState,
   SidebarPanelTarget,
+  SidebarPanelBounds,
 } from '../browser/sidebarPanels';
 
 export interface SidebarPanelProvider {
@@ -31,7 +33,7 @@ export class SidebarPanelRegistry {
   targetGroup?: string;
   private targets: SidebarPanelTarget[] = [];
   private onTarget?: (id?: string) => void;
-  private lastBounds?: { x: number; y: number; width: number; height: number };
+  private lastBounds?: SidebarPanelBounds;
   private request = 0;
   private error?: string;
   private floating?: {
@@ -167,10 +169,7 @@ export class SidebarPanelRegistry {
     this.onTarget?.(groupId);
     this.refresh();
   }
-  layout(
-    id: string,
-    bounds: { x: number; y: number; width: number; height: number } | null,
-  ) {
+  layout(id: string, bounds: SidebarPanelBounds | null) {
     const entry = this.entries.get(id);
     if (this.floating?.id === id) return;
     if (
@@ -185,20 +184,16 @@ export class SidebarPanelRegistry {
       return;
     }
     if (this.error) return;
-    const { width, height } = this.window.getContentBounds();
-    if (
-      ![bounds.x, bounds.y, bounds.width, bounds.height].every(
-        Number.isFinite,
-      ) ||
-      bounds.x < 0 ||
-      bounds.y < 0 ||
-      bounds.width < 1 ||
-      bounds.height < 1 ||
-      bounds.x + bounds.width > width + 1 ||
-      bounds.y + bounds.height > height + 1
-    )
+    const clipped = clipSidebarPanelBounds(
+      bounds,
+      this.window.getContentBounds(),
+    );
+    if (!clipped) {
+      entry.shown = false;
+      entry.view?.setVisible(false);
       return;
-    this.lastBounds = bounds;
+    }
+    this.lastBounds = clipped;
     if (!entry.view || entry.view.webContents.isDestroyed()) {
       try {
         entry.view = entry.provider.createView();
@@ -231,12 +226,7 @@ export class SidebarPanelRegistry {
         return;
       }
     }
-    entry.view.setBounds({
-      x: Math.round(bounds.x),
-      y: Math.round(bounds.y),
-      width: Math.floor(bounds.width),
-      height: Math.floor(bounds.height),
-    });
+    entry.view.setBounds(clipped);
     entry.shown = true;
     entry.view.setVisible(!this.suspended);
   }

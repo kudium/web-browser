@@ -42,7 +42,10 @@ function fixture() {
 test('group targeting resolves through the trusted host and restores Auto when a group disappears', () => {
   const { host } = fixture();
   const target = jest.fn();
-  host.setTargets([{ id: 'work', title: 'Work', profileId: 'work-profile' }], target);
+  host.setTargets(
+    [{ id: 'work', title: 'Work', profileId: 'work-profile' }],
+    target,
+  );
   host.setTarget('work');
   expect(target).toHaveBeenLastCalledWith('work');
   expect(host.state().targetGroup).toBe('work');
@@ -54,7 +57,11 @@ test('group targeting resolves through the trusted host and restores Auto when a
 
 test('reselecting a panel immediately reuses its last viewport without losing native content', () => {
   const { host, views, createView } = fixture();
-  host.register({ info: { id: 'extension', title: 'Extension', kind: 'extension' }, contentKey: 'v1', createView });
+  host.register({
+    info: { id: 'extension', title: 'Extension', kind: 'extension' },
+    contentKey: 'v1',
+    createView,
+  });
   host.activate('extension');
   host.layout('extension', { x: 600, y: 50, width: 400, height: 650 });
   host.layout('extension', null);
@@ -66,7 +73,11 @@ test('reselecting a panel immediately reuses its last viewport without losing na
 
 test('restoring selection does not take over another sidebar page', () => {
   const { host, createView } = fixture();
-  host.register({ info: { id: 'extension', title: 'Extension', kind: 'extension' }, contentKey: 'v1', createView });
+  host.register({
+    info: { id: 'extension', title: 'Extension', kind: 'extension' },
+    contentKey: 'v1',
+    createView,
+  });
   host.activate('extension', false);
   expect(host.state().activeId).toBe('extension');
   expect(host.state().openRequest).toBe(0);
@@ -117,13 +128,36 @@ test('invalid geometry and unavailable panels cannot create content', () => {
   available = true;
   host.activate('extension');
   for (const bounds of [
-    { x: -1, y: 0, width: 300, height: 500 },
-    { x: 700, y: 0, width: 500, height: 500 },
+    { x: -300, y: 0, width: 300, height: 500 },
+    { x: 1000, y: 0, width: 500, height: 500 },
     { x: 700, y: 0, width: NaN, height: 500 },
   ])
     host.layout('extension', bounds);
   host.layout('not-registered', { x: 700, y: 0, width: 300, height: 500 });
   expect(createView).not.toHaveBeenCalled();
+});
+
+test('a selected panel still renders when its CSS slot extends three pixels below the window', () => {
+  const { host, window, views, createView } = fixture();
+  window.getContentBounds = () => ({ width: 1514, height: 684 });
+  host.register({
+    info: { id: 'muse', title: 'Muse', kind: 'extension' },
+    contentKey: 'muse',
+    createView,
+  });
+  host.activate('muse');
+  host.layout('muse', { x: 855, y: 73, width: 650, height: 614 });
+  expect(createView).toHaveBeenCalledTimes(1);
+  expect(views[0].setBounds).toHaveBeenLastCalledWith({
+    x: 855,
+    y: 73,
+    width: 650,
+    height: 611,
+  });
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+  host.layout('muse', null);
+  host.activate('muse');
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
 });
 
 test('tab-scoped panels follow availability without requesting another sidebar takeover', () => {

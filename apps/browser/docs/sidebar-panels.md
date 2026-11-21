@@ -142,6 +142,13 @@ full-width native viewport, switches content through layout IPC, preserves a
 typed draft across hiding/reopening, and restores panel/target preferences after
 a renderer restart.
 
+Native viewport rectangles must use `clipSidebarPanelBounds` before placement.
+A CSS slot can extend a few pixels beyond the window after sizing or inset
+changes; rejecting the whole rectangle leaves an extension selected with no
+content. Clip partially visible slots to the window, and hide only fully
+offscreen or invalid slots. The registry regression preserves the reported
+1514 × 684 window and 3-pixel bottom overflow that blanked Muse.
+
 ## Reuse rules
 
 Use `GroupPicker` for tab-group selection and other searchable header choices;

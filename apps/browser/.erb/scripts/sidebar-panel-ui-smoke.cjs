@@ -196,6 +196,10 @@ app
       'Remember selection after a renderer restart',
     );
     assert.equal(host.state().targetGroup, 'work');
+    const viewport = window.getContentBounds();
+    host.layout('two', { x:100, y:73, width:360, height:viewport.height-73+3 });
+    assert.equal(views.get('two').getBounds().height, viewport.height-73, 'A three-pixel overflow must clip the native view, not blank it');
+    host.close();
     for (const width of [368,640]) {
     await window.loadFile(path.join(root,'index.html'),{query:{switches:'1',width:String(width)}});
     const bounds=[];
