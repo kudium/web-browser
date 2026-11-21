@@ -1,5 +1,35 @@
 export const whatsNew = [
   {
+    version: '1.0.20', date: '2026-11-21', title: 'Automatic update checks restored',
+    highlights: [
+      ['Update checks work again', 'This release restores automatic update checking on Apple Silicon and Intel Macs. It also includes the sign-in, autofill, and workspace improvements from 1.0.19.'],
+      ['One manual installation for affected users', 'Versions 1.0.18 and 1.0.19 cannot check for updates, and their update button is disabled. Download the latest stable version from the Download page, quit Kudium Browser, replace it in Applications, and reopen it. This one-time installation restores update checks.'],
+    ],
+  },
+  {
+    version: '1.0.19', date: '2026-11-21', title: 'Smoother sign-in, more precise autofill, and workspace refinements',
+    highlights: [
+      ['Improved website sign-in', 'Better saved-login detection and optional automatic sign-in, including multi-step login flows and authentication before using protected credentials.'],
+      ['Suggestions when you need them', 'Autofill suggestions can appear when a field receives focus, with a separate setting to keep the manual picker. Saved website accounts take priority over browser-wide profiles.'],
+      ['Fill a field or a form', 'Choosing a saved value fills the focused field. Form-fill controls remain available for filling matching fields together. Personal Data preferences and website and group storage have also been refined.'],
+      ['More reliable picture-in-picture', 'Automatic picture-in-picture handles switching tabs or windows more reliably, with improved playback-state detection.'],
+      ['Workspace polish', 'Refinements for tabs, groups, collections, colors, and assistant activity.'],
+      ['Update recovery', 'Automatic updates are unavailable in this version. Install 1.0.20 or later manually to restore update checks.'],
+    ],
+  },
+  {
+    version: '1.0.18', date: '2026-11-20', title: 'Google sign-in, privacy protection, and smarter navigation',
+    highlights: [
+      ['Google sign-in compatibility', 'Improved Google sign-in compatibility using the browser’s actual Chromium identity.'],
+      ['Ad and tracker protection', 'Built-in EasyList and EasyPrivacy protection includes offline rules, cached updates, status, and controls for individual websites.'],
+      ['Route external links', 'Choose ordered rules that open external links in your preferred spaces and groups, with a preview in Preferences.'],
+      ['Copy cleaner links', 'Copy clean page and link URLs from context menus or Command/Control+Shift+C while preserving signed links and other query values.'],
+      ['Automatic picture-in-picture', 'Optionally keep a playing video visible when leaving its tab, with cleanup on return and support for manually opened players.'],
+      ['Diagnostics by choice', 'Usage and diagnostics default to off and require explicit opt-in on upgrade.'],
+      ['Update recovery', 'Automatic updates are unavailable in this version. Install 1.0.20 or later manually to restore update checks.'],
+    ],
+  },
+  {
     version: '1.0.17', date: '2026-11-16', title: 'A cleaner workspace, dependable project tools, and resource controls',
     highlights: [
       ['Refined spaces and favorites', 'Compact favorites with subtle depth, website-colored active borders, clearer group containment, and a space search that preserves favorites and filters matching tabs.'],

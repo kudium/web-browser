@@ -1660,6 +1660,7 @@ export function whatsNewPage() {
         <div className="whats-new-heading">
           <h1>What’s New</h1>
           <p className="lead">The latest improvements to your Kudium workspace.</p>
+          <a className="button" href="/download">Download the latest stable version</a>
         </div>
         <div className="whats-new-layout">
           <nav className="whats-new-history" aria-label="Release versions">

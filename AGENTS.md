@@ -108,6 +108,10 @@ defines these commands, run from the repository root on a Mac:
 - Website deployment is separate from installer publication. Local website
   edits are not live until deployed to the backend. Do not claim deployment or
   working iCloud support based only on a successful signed installer build.
+- Keep `apps/web/src/whats-new.ts` current with published installer versions,
+  changes and any required recovery steps. Installer notes do not update this
+  page automatically. Verify `/whats-new` after website deployment; never list
+  unshipped app features under an already published installer version.
 
 ## Website showcase and demo photography
 
