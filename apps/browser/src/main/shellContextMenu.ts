@@ -1,4 +1,5 @@
-import { shell, clipboard } from 'electron';
+import { clipboard } from 'electron';
+import { openWindowLink } from './windowNavigation';
 import type {
   ContextMenuParams,
   MenuItemConstructorOptions,
@@ -44,7 +45,7 @@ export function shellContextMenu(
       {
         label: 'Open link',
         click: () => {
-          shell.openExternal(params.linkURL).catch(() => {});
+          openWindowLink(contents, params.linkURL);
         },
       },
       {

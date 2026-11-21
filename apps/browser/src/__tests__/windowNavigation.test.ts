@@ -54,13 +54,15 @@ it('keeps the exact trusted document, permits fragments, and denies remote navig
     });
   });
   expect(popup({ url: 'file:///private/test' })).toEqual({ action: 'deny' });
-  expect(launch).not.toHaveBeenCalled();
+  expect(launch).toHaveBeenCalledTimes(1);
+  expect(launch).toHaveBeenCalledWith('https://example.com/');
   expect(popup({ url: 'https://kudium.com' })).toEqual({ action: 'deny' });
   expect(launch).toHaveBeenCalledWith('https://kudium.com/');
   await Promise.resolve();
 });
 
 it('allows only named Assistant blank windows from the main host and protects their navigation', () => {
+  const openInGroup = jest.fn().mockResolvedValue(undefined);
   let popup: (details: { url: string; frameName: string }) => any = () => {};
   const contents = Object.assign(new EventEmitter(), {
     setWindowOpenHandler: (handler: typeof popup) => {
@@ -70,7 +72,7 @@ it('allows only named Assistant blank windows from the main host and protects th
   protectWindowNavigation(
     contents as any,
     'file:///app/index.html?view=main',
-    async () => {},
+    openInGroup,
     true
   );
   for (const panel of [
@@ -112,4 +114,11 @@ it('allows only named Assistant blank windows from the main host and protects th
   const event = { preventDefault: jest.fn() };
   childContents.emit('will-navigate', event, 'https://example.com');
   expect(event.preventDefault).toHaveBeenCalled();
+  expect(openInGroup).toHaveBeenLastCalledWith('https://example.com/');
+  const childPopup = childContents.setWindowOpenHandler.mock.calls[0][0];
+  expect(childPopup({ url: 'https://example.com/child', frameName: '' })).toEqual({ action: 'deny' });
+  expect(openInGroup).toHaveBeenLastCalledWith('https://example.com/child');
+  openInGroup.mockClear();
+  childContents.emit('will-redirect', { preventDefault: jest.fn() }, 'https://example.com/redirect');
+  expect(openInGroup).not.toHaveBeenCalled();
 });

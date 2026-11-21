@@ -1,6 +1,7 @@
 /** @jest-environment node */
 import { shell, clipboard } from 'electron';
 import { shellContextMenu } from '../main/shellContextMenu';
+import { protectWindowNavigation } from '../main/windowNavigation';
 
 jest.mock('electron', () => ({
   shell: { openExternal: jest.fn().mockResolvedValue(undefined) },
@@ -62,6 +63,10 @@ it('shows selected-text and image actions without unrelated page commands', () =
   expect(shellContextMenu(contents, params, false)).toEqual([]);
 });
 it('allows safe links and rejects script/local protocols; inspection remains development-only', () => {
+  const openInGroup = jest.fn().mockResolvedValue(undefined);
+  // Register the clicked contents with the same navigation owner.
+  Object.assign(contents, { on: jest.fn(), setWindowOpenHandler: jest.fn() });
+  protectWindowNavigation(contents, 'file:///app/index.html', openInGroup);
   const menu = shellContextMenu(
     contents,
     { ...params, linkURL: 'https://example.com/page' },
@@ -69,7 +74,8 @@ it('allows safe links and rejects script/local protocols; inspection remains dev
   );
   (menu.find((item) => item.label === 'Open link')!.click as any)();
   (menu.find((item) => item.label === 'Copy link')!.click as any)();
-  expect(shell.openExternal).toHaveBeenCalledWith('https://example.com/page');
+  expect(openInGroup).toHaveBeenCalledWith('https://example.com/page');
+  expect(shell.openExternal).not.toHaveBeenCalled();
   expect(clipboard.writeText).toHaveBeenCalledWith('https://example.com/page');
   (menu.at(-1)!.click as any)();
   expect(contents.inspectElement).toHaveBeenCalledWith(12, 34);

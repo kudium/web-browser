@@ -1836,12 +1836,12 @@ export function Main() {
           );
           return;
         }
-        if (request.action === 'open-external' && request.url) {
+        if ((request.action === 'open-external' || request.action === 'open-sidebar') && request.url) {
           try {
             const url = new URL(request.url);
             if (!['http:', 'https:'].includes(url.protocol)) return;
             const apps = AppManager.getAll();
-            const routing = await browser
+            const routing = request.action === 'open-sidebar' ? [] : await browser
               .preferences('get')
               .then((p) => p.linkRoutingRules || [])
               .catch(() => []);
@@ -1854,8 +1854,9 @@ export function Main() {
             const activeSpace = SpaceManager.getAll().find(
               (space) => space.id === SpaceManager.activeId()
             );
-            const activeId =
-              activeSpace?.selectedAppId || externalSource.current?.id;
+            const activeId = request.action === 'open-sidebar'
+              ? externalSource.current?.id || activeSpace?.selectedAppId
+              : activeSpace?.selectedAppId || externalSource.current?.id;
             const source = route
               ? route.source
               : apps.find(

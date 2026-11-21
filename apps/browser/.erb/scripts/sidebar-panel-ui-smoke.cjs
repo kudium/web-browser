@@ -20,6 +20,7 @@ const {
   registerSidebarPanelWindow,
   sidebarPanelsFor,
 } = require('../../src/main/sidebarPanels.ts');
+const {protectWindowNavigation} = require('../../src/main/windowNavigation.ts');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-panel-ui-'));
 app.setPath('userData', path.join(root, 'profile'));
 app.on('window-all-closed', () => {});
@@ -27,7 +28,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const timer = setTimeout(() => app.exit(1), 30000);
 fs.writeFileSync(
   path.join(root, 'preload.cjs'),
-  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
+  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,url:'https://example.com/activity',message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
 );
 fs.writeFileSync(
   path.join(root, 'fixture.tsx'),
@@ -80,6 +81,8 @@ app
         preload: path.join(root, 'preload.cjs'),
       },
     });
+    const routedLinks=[];
+    protectWindowNavigation(window.webContents, require('node:url').pathToFileURL(path.join(root,'index.html')).href, async url=>{routedLinks.push(url)},true);
     registerSidebarPanelWindow(window);
     window.webContents.on('console-message', (event) => {
       if (event.level === 'error') console.error(event.message);
@@ -251,6 +254,15 @@ app
       const clippedBy=await window.webContents.executeJavaScript(`(()=>{const h=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0),r=h.getBoundingClientRect();for(let p=h.parentElement;p;p=p.parentElement){const s=getComputedStyle(p),b=p.getBoundingClientRect();if(['hidden','auto','scroll','clip'].includes(s.overflowX)&&(r.left<b.left-1||r.right>b.right+1))return p.className}return null})()`);
       assert.equal(clippedBy,null,`${page}: shared header must not be clipped by its page container`);
       if(page==='activity') {
+        await window.webContents.executeJavaScript(`document.querySelector('.activity-summary').click()`);
+        await pause(80);
+        assert.equal(routedLinks.at(-1),'https://example.com/activity','Actual Activity clicks must use the owner window link handler');
+        for(const target of ['_blank','']) {
+          await window.webContents.executeJavaScript(`(()=>{const a=document.createElement('a');a.href='https://example.com/sidebar-guide';a.target=${JSON.stringify(target)};document.body.append(a);a.click();a.remove()})()`);
+          await pause(80);
+          assert.equal(routedLinks.at(-1),'https://example.com/sidebar-guide','Sidebar anchors must use shared navigation without leaving the trusted app document');
+        }
+
         await window.webContents.executeJavaScript(`document.querySelector('.activity-page-body').scrollTop=200`);
         assert((await window.webContents.executeJavaScript(`document.querySelector('.activity-page-body').scrollTop`))>0,'Activity must actually scroll');
         const top=await window.webContents.executeJavaScript(`document.querySelector('.activity-heading').getBoundingClientRect().top`);

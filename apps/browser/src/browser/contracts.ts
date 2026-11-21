@@ -40,6 +40,7 @@ export interface BrowserTabRequest {
     | 'store'
     | 'task-ended'
     | 'open-external'
+    | 'open-sidebar'
     | 'extension-group-update';
   groupChanges?: { id: string; changes: Partial<IApp> }[];
   mutationId?: string;

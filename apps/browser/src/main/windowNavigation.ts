@@ -1,6 +1,11 @@
 import type { WebContents } from 'electron';
 
 const panelOwners = new WeakMap<WebContents, WebContents>();
+const linkHandlers = new WeakMap<WebContents, (url: string) => Promise<void>>();
+export function openWindowLink(contents: WebContents, value: string) {
+  const destination = externalLinkURL(value);
+  if (destination) linkHandlers.get(contents)?.(destination).catch(() => {});
+}
 export function isAssistantPanelOf(child: WebContents, owner: WebContents) {
   return panelOwners.get(child) === owner;
 }
@@ -24,6 +29,7 @@ export function protectWindowNavigation(
   openExternal: (url: string) => Promise<void>,
   assistantPanels = false
 ) {
+  linkHandlers.set(contents, openExternal);
   const document = new URL(documentURL);
   document.hash = '';
   const allowed = (value: string) => {
@@ -38,7 +44,10 @@ export function protectWindowNavigation(
   const navigate = (event: { preventDefault: () => void }, url: string) => {
     if (!allowed(url)) event.preventDefault();
   };
-  contents.on('will-navigate', navigate);
+  contents.on('will-navigate', (event, url) => {
+    navigate(event, url);
+    if (!allowed(url)) openWindowLink(contents, url);
+  });
   contents.on('will-redirect', navigate);
   contents.on('did-create-window', (child) => {
     if (!assistantPanels) return;
@@ -78,11 +87,7 @@ export function protectWindowNavigation(
         },
       };
     }
-    const destination = externalLinkURL(url);
-    if (destination) {
-      // External launch failures must not become unhandled promise rejections.
-      openExternal(destination).catch(() => {});
-    }
+    openWindowLink(contents, url);
     return { action: 'deny' };
   });
 }

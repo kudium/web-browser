@@ -198,3 +198,13 @@ suspension for both website viewports and native sidebar content. Include every
 native surface in the shared overlap detection, including scoped portals that
 overlap a panel; do not add separate menu-specific suspension state. The native
 UI fixture opens Browser options and checks panel hiding and restoration.
+Sidebar website links use the owner window's shared `protectWindowNavigation`
+handler and `open-sidebar` tab request, including normal anchors, `window.open`
+and the shell's native Open link context-menu action. Detached sidebar windows
+inherit this handler from their owner. The renderer reuses `commandDestination`
+to open or focus the URL in the current group and profile, without applying
+external-link routing rules or launching the system browser. Do not add separate
+navigation callbacks to each sidebar page. Keep remote documents out of the
+trusted shell window and block redirects. Native regression coverage clicks
+actual Activity items and anchors; unit coverage checks detached ownership,
+context menus and existing current-group destination behavior.

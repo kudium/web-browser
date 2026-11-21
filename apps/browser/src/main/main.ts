@@ -410,7 +410,12 @@ export const createNewWindow = async ({
   protectWindowNavigation(
     newWindow.webContents,
     documentURL,
-    (url) => shell.openExternal(url),
+    async (url) => {
+      if (view === 'main' && /^https?:/i.test(url)) {
+        if (!newWindow.isDestroyed())
+          newWindow.webContents.send('browser-tab-request', { action: 'open-sidebar', url });
+      } else await shell.openExternal(url);
+    },
     view === 'main'
   );
   newWindow.once('ready-to-show', () => {
