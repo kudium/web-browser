@@ -41,6 +41,7 @@ import { FaviconResolver } from './faviconResolver';
 import { hookNotifications } from './hookNotifications';
 import {
   authenticatePersonalData,
+  autoLoginMenu,
   personalDataRevision,
   registerPasswordPage,
 } from './passwordManager';
@@ -95,7 +96,7 @@ import { inspectDiscardCandidate } from './tabDiscard';
 import { registerTaskSource } from './taskManager';
 import type { BrowserTask } from '../browser/taskManager';
 import { newPageTab } from '../utils/tabMetadata';
-import { showBrowserContextMenu } from './browserContextMenu';
+import { showBrowserContextMenu, fillFormMenu } from './browserContextMenu';
 import { showBrowserDialog, permissionSummary } from './dialogs';
 import {
   applyBrowserPreferences,
@@ -145,8 +146,11 @@ export function registerElectronBrowser(
     ? `${privateProfilePrefix}${storedProfileKey(item)}`
     : storedProfileKey(item);
   const hostFor = (id: string) => windows?.host(id) || window;
-  const removeView = (view: WebContentsView) =>
-    windows ? windows.remove(view) : window.contentView.removeChildView(view);
+  const activityLayoutChanges = new EventEmitter();
+  const removeView = (view: WebContentsView) => {
+    if (windows) windows.remove(view); else window.contentView.removeChildView(view);
+    activityLayoutChanges.emit('change');
+  };
   const sendState = (state: BrowserState) =>
     windows
       ? windows.updateState(state)
@@ -408,6 +412,7 @@ export function registerElectronBrowser(
     };
     lastStates.set(id, state);
     sendState(state);
+    activityLayoutChanges.emit('change');
     developerWindows.update();
   };
   const validURL = (url: string) => {
@@ -654,6 +659,7 @@ export function registerElectronBrowser(
               ).autoplayPolicy,
             },
           });
+        // Keep renderer viewport, split panes and captures at the same radius.
         view.setBorderRadius(12);
         views.set(item.id, view);
         if (!adopted) window.contentView.addChildView(view);
@@ -1112,7 +1118,11 @@ export function registerElectronBrowser(
               params
             ) || [],
             pip.contextAction(params),
-            privateMode ? [] : hookActionMenu(window, contents, params, profileId, () => {
+            privateMode ? [] : [fillFormMenu(autoLoginMenu(window, contents), () => {
+                const current = configurations.get(item.id);
+                if (window.isDestroyed() || contents.isDestroyed() || !current || isGroupLocked(current)) return;
+                window.webContents.send('browser-ai-fill-form', current.id);
+              }), ...hookActionMenu(window, contents, params, profileId, () => {
               const current = configurations.get(item.id);
               return current && !isGroupLocked(current)
                 ? {
@@ -1121,7 +1131,7 @@ export function registerElectronBrowser(
                     scope: personalDataScope(current),
                   }
                 : undefined;
-            })
+            })]
           );
         });
         const permissionProfile = profileId;
@@ -2393,6 +2403,10 @@ export function registerElectronBrowser(
           (item) => !isGroupLocked(item) && !removals.blocks(item)
         ),
       focused: () => focusedId,
+      onActivityLayoutChanged: (listener) => {
+        activityLayoutChanges.on('change', listener);
+        return () => { activityLayoutChanges.removeListener('change', listener); };
+      },
       activityBounds: (id) => {
         const view = views.get(id);
         return view?.getVisible() ? view.getBounds() : undefined;

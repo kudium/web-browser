@@ -1,4 +1,5 @@
 import {
+  activeCollectionId,
   prepareCollectionGroups,
   collectionProfile,
 } from '../utils/collectionGroups';
@@ -36,13 +37,13 @@ it('defaults new collection groups to folders sharing only their collection prof
       tab('b', { folderId: 'projects' }),
       tab('c', { folderId: 'projects', sessionMode: 'separate' }),
     ],
-    []
+    [],
   );
   expect(next[0].groupDisplay).toBe('folder');
   expect(loginProfileKey(next[0])).toBe(loginProfileKey(next[1]));
   expect(loginProfileKey(next[2])).toBe('c');
   expect(collectionProfile('other', 'projects')).not.toBe(
-    loginProfileKey(next[0])
+    loginProfileKey(next[0]),
   );
 });
 it('new tabs preserve existing group presentation and inheritance', () => {
@@ -53,7 +54,7 @@ it('new tabs preserve existing group presentation and inheritance', () => {
   });
   const next = prepareCollectionGroups(
     [tab('b', { sessionId: 'a', folderId: 'projects' })],
-    [source]
+    [source],
   );
   expect(next[0]).toMatchObject({
     groupDisplay: 'stack',
@@ -71,7 +72,7 @@ it('AI collection creation keeps a distinct group and rejects inaccessible colle
   });
   expect(fields.sessionId).not.toBe(source.sessionId);
   expect(() => aiNewGroupFields('Work', source, false, 'private')).toThrow(
-    'source tab'
+    'source tab',
   );
 });
 
@@ -83,7 +84,7 @@ it('AI can create an isolated group inside a collection', () => {
     false,
     'projects',
     'folder',
-    'separate'
+    'separate',
   );
   expect(fields.folderId).toBe('projects');
   expect(fields.sessionMode).toBe('separate');
@@ -98,7 +99,7 @@ it('does not borrow group policy from another space', () => {
   });
   const next = prepareCollectionGroups(
     [tab('new', { sessionId: 'shared' })],
-    [other]
+    [other],
   );
   expect(next[0].groupDisplay).toBe('folder');
 });
@@ -112,7 +113,7 @@ it('keeps every tab in a group on the same policy and browser profile', () => {
         sessionMode: 'separate',
       }),
     ],
-    []
+    [],
   );
   expect(next[1].groupDisplay).toBe('stack');
   expect(next[1].sessionMode).toBe('collection');
@@ -126,7 +127,7 @@ it('clears collection policy without discarding retained storage when membership
         sessionProfileId: 'retained',
       }),
     ],
-    []
+    [],
   );
   expect(next[0].sessionMode).toBe('separate');
   expect(loginProfileKey(next[0])).toBe('retained');
@@ -156,4 +157,39 @@ it('group settings remove inheritance when collection membership is removed', ()
   });
   expect(next[0].sessionMode).toBe('separate');
   expect(loginProfileKey(next[0])).toBe('retained');
+});
+
+it('resolves focused child collection membership through its group within the same space', () => {
+  const groups = [
+    tab('group', {
+      sessionId: 'shared',
+      folderId: 'collection',
+      spaceId: 'work',
+    }),
+  ];
+  expect(
+    activeCollectionId(
+      groups,
+      tab('child', { sessionId: 'shared', spaceId: 'work' }),
+    ),
+  ).toBe('collection');
+  expect(
+    activeCollectionId(
+      groups,
+      tab('other-space', { sessionId: 'shared', spaceId: 'other' }),
+    ),
+  ).toBeUndefined();
+  expect(
+    activeCollectionId(
+      groups,
+      tab('other-group', { sessionId: 'different', spaceId: 'work' }),
+    ),
+  ).toBeUndefined();
+  expect(
+    activeCollectionId(
+      groups,
+      tab('archived', { sessionId: 'shared', spaceId: 'work', archived: true }),
+    ),
+  ).toBeUndefined();
+  expect(activeCollectionId(groups)).toBeUndefined();
 });

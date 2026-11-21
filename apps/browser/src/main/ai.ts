@@ -953,6 +953,7 @@ return function registerScopedAI(
     prepareClose?: (contents: WebContents) => () => void;
     tabs: () => IApp[];
     focused: () => string | undefined;
+    onActivityLayoutChanged?: (listener: () => void) => () => void;
     activityBounds?: (
       id: string
     ) => { x: number; y: number; width: number; height: number } | undefined;
@@ -1594,8 +1595,10 @@ return function registerScopedAI(
       composerQueue?.pause();
     if (event.type === 'done') setImmediate(() => composerQueue?.pump());
     rememberEvent(event);
-    if (event.type === 'status') {
-      workingTabId = event.tabId || scopeTab();
+    // Planning and discovery must not reserve or block the human's focused page.
+    // Only a tool status with a resolved target starts tab activity.
+    if (event.type === 'status' && event.tabId) {
+      workingTabId = event.tabId;
       if (workingTabId) workingTabIds.add(workingTabId);
       activityLayer?.set(workingTabId);
       if (!host.isDestroyed())
@@ -1665,6 +1668,7 @@ return function registerScopedAI(
       access.activityBounds,
       takeControl
     );
+  const stopActivityLayout = access.onActivityLayoutChanged?.(() => activityLayer?.invalidate());
   const interrupts = new Map<WebContents, () => void>();
   const watchInput = (contents: WebContents) => {
     if (isPrivateSession(contents.session) !== privateMode ||
@@ -5980,7 +5984,7 @@ return function registerScopedAI(
       )
     );
     referencedGroupId = subjects.size === 1 ? [...subjects][0] : undefined;
-    workingTabId = scopeTab();
+    workingTabId = undefined;
     const typedReference = promptAIReferences(prompt)[0];
     if (!firstContext && typedReference) {
       const resolved = resolveAIReference(
@@ -6527,6 +6531,7 @@ return function registerScopedAI(
     }
     composerAttachments.clear();
     originalUploads.clear();
+    stopActivityLayout?.();
     activityLayer?.dispose();
     hookAuthoring.dispose();
     app.removeListener('web-contents-created', createdContents);

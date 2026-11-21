@@ -463,7 +463,7 @@ export function CommandPalette({
         id: `folder-${space.id}-${folder.id}`,
         title: folder.name,
         detail: `Collection · ${space.name}`,
-        icon: <CollectionIcon size={18} />,
+        icon: <CollectionIcon collection={folder} size={18} />,
         run: () => {
           SpaceManager.select(space.id);
           const tab = apps.find(

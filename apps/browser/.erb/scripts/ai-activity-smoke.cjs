@@ -212,6 +212,7 @@ const pause = () => new Promise((resolve) => setTimeout(resolve, 120));
       host.setSize(width, 420);
       bounds = { x: 0, y: 0, width, height: 390 };
       page.setBounds(bounds);
+      layer.invalidate();
       await page.webContents.executeJavaScript(
         `document.body.style.background=${JSON.stringify(
           theme === 'dark' ? '#1b1c20' : '#f8f8fa'
@@ -351,6 +352,7 @@ CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: poi
     console.log('PASS: macOS event-system mouse interception.');
   }
   bounds = { x: 20, y: 25, width: 450, height: 250 };
+  layer.invalidate();
   await pause();
   assert.deepEqual(shield.getBounds(), bounds);
   layer.set();

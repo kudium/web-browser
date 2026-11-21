@@ -24,3 +24,9 @@ it('keeps names and identities when reordering or inserting lines', () => {
   expect(result.added[0].name).toBe('');
   expect(result.removed).toEqual([]);
 });
+
+it('keeps an added tab icon and focus color when switching through the text list', () => {
+  const added = { id: 'new', name: 'New', url: 'https://new.com', customIconEmoji: '🌱', focusColor: '#123456' };
+  const result = editGroupTabList('new.com', [added], [], { edits: {}, added: [added], removed: [] });
+  expect(result.added[0]).toMatchObject({ id: 'new', customIconEmoji: '🌱', focusColor: '#123456' });
+});

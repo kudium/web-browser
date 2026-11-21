@@ -1,9 +1,10 @@
+import { preferredLoginURL } from './loginRoute';
 import type { VaultField } from '../../browser/passwordManager';
 import { isProtectedField } from '../../browser/passwordManager';
 import type { PasswordVault } from './vault';
 
 // Both explicit input saves and generated passwords belong to the same scoped website record.
-export function saveWebsiteFields(vault: PasswordVault, expected: string, scope: string | undefined, incoming: VaultField[], confirmUpdate = false) {
+export function saveWebsiteFields(vault: PasswordVault, expected: string, scope: string | undefined, incoming: VaultField[], confirmUpdate = false, loginURL?: string) {
   // Labels may be long, but credential values must never be truncated.
   if (incoming.some((field) => field.value.length > 4096))
     throw new Error('This input is too long to save. Use up to 4,096 characters.');
@@ -40,6 +41,6 @@ export function saveWebsiteFields(vault: PasswordVault, expected: string, scope:
     } else fields.push(field);
   }
   if (needsUpdate && !confirmUpdate) return { needsUpdate: true, saved: false };
-  vault.save({ ...(saved || { id: '', username: '', password: '', kind: 'knowledge' as const }), title: title.slice(0, 120), origin: url.origin, fields, ...(saved?.kind === 'login' ? { username: account || saved.username, password: fields.find((field) => /^password$/i.test(field.name))?.value || saved.password } : {}), allowAI: false }, scope);
+  vault.save({ ...(saved || { id: '', username: '', password: '', kind: 'knowledge' as const }), title: title.slice(0, 120), origin: url.origin, loginURL: loginURL ? preferredLoginURL(loginURL, url.origin) : saved?.loginURL, fields, ...(saved?.kind === 'login' ? { username: account || saved.username, password: fields.find((field) => /^password$/i.test(field.name))?.value || saved.password } : {}), allowAI: false }, scope);
   return { saved: true, updated: needsUpdate };
 }

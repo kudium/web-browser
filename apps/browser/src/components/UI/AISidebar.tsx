@@ -106,6 +106,7 @@ export function AISidebar({
   terminalOpenRequest?: number;
   menuPaneRequest?: {
     pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
+    notesScope?: string;
     token: number;
   };
   onFocusTab?: (id: string) => void;
@@ -154,6 +155,9 @@ export function AISidebar({
   const [pane, setPane] = useAIPagePreference('pane', 'assistant');
 
   const [showStats] = useAIPagePreference('showStats', true);
+  const [notesScopeRequest, setNotesScopeRequest] = useState<
+    { scope: string; token: number } | undefined
+  >();
   const handledMenuPaneRequest = useRef<number | undefined>(undefined);
   const handledDeveloperRequest = useRef(0);
   useEffect(() => {
@@ -162,6 +166,12 @@ export function AISidebar({
       menuPaneRequest.token !== handledMenuPaneRequest.current
     ) {
       handledMenuPaneRequest.current = menuPaneRequest.token;
+      if (menuPaneRequest.pane === 'notes' && menuPaneRequest.notesScope) {
+        setNotesScopeRequest({
+          scope: menuPaneRequest.notesScope,
+          token: menuPaneRequest.token,
+        });
+      }
       setPane(menuPaneRequest.pane);
       focusAssistantPanel(menuPaneRequest.pane);
     }
@@ -942,6 +952,14 @@ export function AISidebar({
     });
   };
   const handledRequest = useRef<number | undefined>(undefined);
+  const contextFocusFrame = useRef<number | undefined>(undefined);
+  useEffect(
+    () => () => {
+      if (contextFocusFrame.current !== undefined)
+        cancelAnimationFrame(contextFocusFrame.current);
+    },
+    []
+  );
   useEffect(() => {
     if (
       attaching ||
@@ -954,11 +972,20 @@ export function AISidebar({
       contextRequest.mode === 'scope' &&
       contextRequest.reference.kind === 'group'
     ) {
-      setShowTasks(false);
+      setPane('assistant');
       changeScope(contextRequest.reference.id);
-      taskInput.current?.focus();
-    } else addContext(JSON.stringify(contextRequest.reference));
-  }, [contextRequest, attaching, addContext, changeScope, setShowTasks]);
+      if (contextFocusFrame.current !== undefined)
+        cancelAnimationFrame(contextFocusFrame.current);
+      contextFocusFrame.current = requestAnimationFrame(() => {
+        contextFocusFrame.current = undefined;
+        focusAssistantPanel('assistant');
+        taskInput.current?.focus();
+      });
+      return undefined;
+    }
+    addContext(JSON.stringify(contextRequest.reference));
+    return undefined;
+  }, [contextRequest, attaching, addContext, changeScope, setPane]);
   const activeContextTabId = focusedTabId || activeTabId;
   const activeContextGroup = groups.find((group) =>
     group.tabs.some((tab) => tab.id === activeContextTabId)
@@ -1391,7 +1418,7 @@ export function AISidebar({
           aria-label="Notes workspace"
         >
           <RenderErrorBoundary label="Notes">
-            <NotesPage tabs={allContextTabs} />
+            <NotesPage tabs={allContextTabs} scopeRequest={notesScopeRequest} />
           </RenderErrorBoundary>
         </div>
       </AssistantPanelHost>

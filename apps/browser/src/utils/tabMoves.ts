@@ -86,3 +86,45 @@ export function moveTab(
       : item
   );
 }
+
+/** Duplicate open tabs without sharing the original group's login session. */
+export function duplicateGroup(apps: IApp[], sourceId: string): IApp[] {
+  const source = apps.find((tab) => tab.id === sourceId && !tab.archived);
+  if (!source) return apps;
+  const members = apps.filter(
+    (tab) =>
+      !tab.archived &&
+      groupKey(tab) === groupKey(source) &&
+      (tab.spaceId || 'default') === (source.spaceId || 'default'),
+  );
+  const sessionId = crypto.randomUUID();
+  const named = members.find((tab) => tab.sessionName) || source;
+  const sessionName = newGroupName(
+    apps,
+    named.sessionName || named.name,
+    named.sessionNameCustom,
+  );
+  const ids = new Map(members.map((tab) => [tab.id, crypto.randomUUID()]));
+  const copies = members.map((tab): IApp => ({
+    ...tab,
+    id: ids.get(tab.id)!,
+    sessionId,
+    sessionName,
+    sessionProfileId: undefined,
+    protectionGroupId: undefined,
+    extensionInstallTarget: undefined,
+    restorationId: undefined,
+    sessionSlug: undefined,
+    sessionMode: 'separate',
+    sessionNameCustom: false,
+    sessionNameGenerated: true,
+    openerTabId: tab.openerTabId ? ids.get(tab.openerTabId) : undefined,
+    archived: false,
+    archivedAt: undefined,
+    tags: tab.tags ? [...tab.tags] : undefined,
+  }));
+  const last = apps.indexOf(members[members.length - 1]);
+  return [...apps.slice(0, last + 1), ...copies, ...apps.slice(last + 1)].map(
+    (tab, index) => ({ ...tab, position: index + 1 }),
+  );
+}

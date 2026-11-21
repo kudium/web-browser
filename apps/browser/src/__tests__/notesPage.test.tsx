@@ -31,6 +31,7 @@ const note: VaultItem = {
 };
 let request: jest.Mock;
 let lock: () => void;
+let changed: () => void;
 beforeEach(() => {
   Object.assign(Range.prototype, {
     getClientRects: () => [],
@@ -52,6 +53,10 @@ beforeEach(() => {
   Object.assign(window, {
     electron: {
       passwordManager: request,
+      onPasswordManagerChanged: (callback: () => void) => {
+        changed = callback;
+        return () => {};
+      },
       onPasswordManagerLock: (callback: () => void) => {
         lock = callback;
         return () => {};
@@ -70,12 +75,16 @@ test('loads titles without opening contents, then formats and saves the selected
   render(
     <Theme>
       <NotesPage />
-    </Theme>
+    </Theme>,
   );
+  expect(screen.getByRole('button', { name: 'Filter notes by group' })).toHaveTextContent('All notes');
   fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
   const editor = (await screen.findByRole('textbox', {
     name: 'Note content',
   })) as HTMLTextAreaElement;
+  expect(
+    screen.queryByRole('button', { name: 'Filter notes by group' })
+  ).not.toBeInTheDocument();
   expect(request).toHaveBeenCalledWith({
     action: 'edit',
     id: 'n',
@@ -94,15 +103,15 @@ test('loads titles without opening contents, then formats and saves the selected
       expect.objectContaining({
         action: 'save',
         item: expect.objectContaining({ notes: '**Hello**' }),
-      })
-    )
+      }),
+    ),
   );
 });
 test('debounces typing instead of persisting each keystroke', async () => {
   render(
     <Theme>
       <NotesPage />
-    </Theme>
+    </Theme>,
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
   const editor = await screen.findByRole('textbox', { name: 'Note content' });
@@ -111,13 +120,13 @@ test('debounces typing instead of persisting each keystroke', async () => {
   fireEvent.keyDown(editor, { key: 'b', ctrlKey: true });
   fireEvent.keyDown(editor, { key: 'i', ctrlKey: true });
   expect(
-    request.mock.calls.filter(([input]) => input.action === 'save')
+    request.mock.calls.filter(([input]) => input.action === 'save'),
   ).toHaveLength(0);
   await act(async () => {
     jest.advanceTimersByTime(800);
   });
   expect(
-    request.mock.calls.filter(([input]) => input.action === 'save')
+    request.mock.calls.filter(([input]) => input.action === 'save'),
   ).toHaveLength(1);
   expect(request).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -125,7 +134,7 @@ test('debounces typing instead of persisting each keystroke', async () => {
       item: expect.objectContaining({
         notes: expect.stringContaining('Hello'),
       }),
-    })
+    }),
   );
   jest.useRealTimers();
 });
@@ -134,7 +143,7 @@ test('keeps ordinary notes open on Personal Data lock and puts locking behind op
   render(
     <Theme>
       <NotesPage />
-    </Theme>
+    </Theme>,
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
   const editor = await screen.findByRole('textbox', { name: 'Note content' });
@@ -144,7 +153,7 @@ test('keeps ordinary notes open on Personal Data lock and puts locking behind op
   expect(editor).toHaveTextContent('Hello');
   expect(screen.queryByText('Lock note')).not.toBeInTheDocument();
   expect(
-    request.mock.calls.some(([input]) => input.action === 'authenticate')
+    request.mock.calls.some(([input]) => input.action === 'authenticate'),
   ).toBe(false);
   fireEvent.click(screen.getByRole('button', { name: 'Note options' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Lock note' }));
@@ -153,17 +162,17 @@ test('keeps ordinary notes open on Personal Data lock and puts locking behind op
       expect.objectContaining({
         action: 'save',
         item: expect.objectContaining({ sensitive: true }),
-      })
-    )
+      }),
+    ),
   );
   await waitFor(() =>
-    expect(screen.queryByText('Lock note')).not.toBeInTheDocument()
+    expect(screen.queryByText('Lock note')).not.toBeInTheDocument(),
   );
   await act(async () => {
     lock();
   });
   expect(
-    screen.queryByRole('textbox', { name: 'Note content' })
+    screen.queryByRole('textbox', { name: 'Note content' }),
   ).not.toBeInTheDocument();
 });
 
@@ -178,17 +187,17 @@ test('renders Markdown visually and preserves undo after formatting', async () =
   render(
     <Theme>
       <NotesPage />
-    </Theme>
+    </Theme>,
   );
   await screen.findByRole('button', { name: 'Plan' });
   expect(
-    screen.queryByRole('button', { name: 'Note history' })
+    screen.queryByRole('button', { name: 'Note history' }),
   ).not.toBeInTheDocument();
   fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
   const editor = await screen.findByRole('textbox', { name: 'Note content' });
   expect(editor.querySelector('h1')).toHaveTextContent('Heading');
   expect(editor.querySelector('pre code')).toHaveTextContent(
-    'const ready = true;'
+    'const ready = true;',
   );
   expect(editor).not.toHaveTextContent('```');
   expect(editor.querySelector('pre .hljs-keyword')).toHaveTextContent('const');
@@ -198,7 +207,7 @@ test('renders Markdown visually and preserves undo after formatting', async () =
   fireEvent.keyDown(editor, { key: 'z', ctrlKey: true });
   expect(editor.querySelector('strong')).toBeNull();
   expect(editor.querySelector('pre code')).toHaveTextContent(
-    'const ready = true;'
+    'const ready = true;',
   );
 });
 
@@ -206,7 +215,7 @@ test('formats selected note text through the native context menu and preserves u
   render(
     <Theme>
       <NotesPage />
-    </Theme>
+    </Theme>,
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
   const body = await screen.findByRole('textbox', { name: 'Note content' });
@@ -214,7 +223,7 @@ test('formats selected note text through the native context menu and preserves u
   (browser.nativeMenu as jest.Mock).mockResolvedValueOnce('bold');
   fireEvent.contextMenu(body);
   await waitFor(() =>
-    expect(body.querySelector('strong')).toHaveTextContent('Hello')
+    expect(body.querySelector('strong')).toHaveTextContent('Hello'),
   );
   expect(browser.nativeMenu).toHaveBeenLastCalledWith(
     expect.arrayContaining([
@@ -231,7 +240,7 @@ test('formats selected note text through the native context menu and preserves u
           expect.objectContaining({ label: 'Remove Formatting' }),
         ]),
       }),
-    ])
+    ]),
   );
   (browser.nativeMenu as jest.Mock).mockResolvedValueOnce('undo');
   fireEvent.keyDown(body, { key: 'F10', shiftKey: true });
@@ -242,7 +251,7 @@ const renderNotes = () =>
   render(
     <Theme>
       <NotesPage />
-    </Theme>
+    </Theme>,
   );
 const openPlan = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
@@ -274,8 +283,8 @@ test('edits and autosaves Markdown source then returns to visual editing', async
       expect.objectContaining({
         action: 'save',
         item: expect.objectContaining({ notes: '# Heading\n\n**Bold**' }),
-      })
-    )
+      }),
+    ),
   );
   await changeView('Visual');
   const visual = await screen.findByRole('textbox', { name: 'Note content' });
@@ -287,36 +296,62 @@ test('opens the landing list without a duplicate history header or reading conte
   renderNotes();
   await screen.findByRole('button', { name: 'Plan' });
   expect(request.mock.calls.some(([input]) => input.action === 'edit')).toBe(
-    false
+    false,
   );
   expect(
-    screen.queryByRole('button', { name: 'Close note history' })
+    screen.queryByRole('button', { name: 'Close note history' }),
   ).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Plan' })).toBeInTheDocument();
   expect(
-    screen.queryByText('Your notes, all in one place')
+    screen.queryByText('Your notes, all in one place'),
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Plan' }));
   expect(
-    await screen.findByRole('textbox', { name: 'Note title' })
+    await screen.findByRole('textbox', { name: 'Note title' }),
   ).toHaveValue('Plan');
 });
 
-test('shows Create note when no notes exist in the current scope', async () => {
+test('shows the selected group on an empty page and lets users change the note filter', async () => {
   render(
     <Theme>
-      <NotesPage initialScope="other-group" />
-    </Theme>
+      <NotesPage
+        initialScope="group:other"
+        tabs={[
+          {
+            id: 'other-tab',
+            sessionId: 'other',
+            sessionName: 'Other group',
+            name: 'Other',
+            url: 'https://other.example',
+            icon: '',
+          },
+          {
+            id: 'work-tab',
+            sessionId: 'work',
+            sessionName: 'Work group',
+            name: 'Work',
+            url: 'https://work.example',
+            icon: '',
+          },
+        ]}
+      />
+    </Theme>,
   );
   await waitFor(() =>
-    expect(request).toHaveBeenCalledWith({ action: 'notes' })
+    expect(request).toHaveBeenCalledWith({ action: 'notes' }),
   );
   expect(
-    screen.queryByRole('button', { name: 'Plan' })
+    screen.queryByRole('button', { name: 'Plan' }),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: 'Create note' })
+    screen.getByRole('button', { name: 'Create note' }),
   ).toBeInTheDocument();
+  const filter = screen.getByRole('button', { name: 'Filter notes by group' });
+  expect(filter).toHaveTextContent('Other group');
+  fireEvent.click(filter);
+  expect(await screen.findByRole('option', { name: 'Work group' })).toBeVisible();
+  fireEvent.click(screen.getByRole('option', { name: 'All notes' }));
+  expect(await screen.findByRole('button', { name: 'Plan' })).toBeVisible();
 });
 
 test('keeps the explicitly pinned list visible when selecting and editing a note', async () => {
@@ -324,16 +359,16 @@ test('keeps the explicitly pinned list visible when selecting and editing a note
   await openPlan();
   fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   fireEvent.click(
-    await screen.findByRole('button', { name: 'Pin note history' })
+    await screen.findByRole('button', { name: 'Pin note history' }),
   );
   await openPlan();
   expect(
-    screen.getByRole('button', { name: 'Unpin note history' })
+    screen.getByRole('button', { name: 'Unpin note history' }),
   ).toHaveAttribute('aria-pressed', 'true');
   fireEvent.pointerDown(screen.getByRole('textbox', { name: 'Note title' }));
   expect(screen.getByRole('button', { name: 'Plan' })).toHaveAttribute(
     'aria-pressed',
-    'true'
+    'true',
   );
 });
 
@@ -351,8 +386,8 @@ test('renames from the list while preserving contents', async () => {
       expect.objectContaining({
         action: 'save',
         item: expect.objectContaining({ title: 'New plan', notes: 'Hello' }),
-      })
-    )
+      }),
+    ),
   );
 });
 
@@ -369,13 +404,13 @@ test('deletes another row without opening it or clearing the active draft', asyn
       action: 'delete',
       id: 'second',
       scope: undefined,
-    })
+    }),
   );
   expect(request).not.toHaveBeenCalledWith(
-    expect.objectContaining({ action: 'edit', id: 'second' })
+    expect.objectContaining({ action: 'edit', id: 'second' }),
   );
   expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue(
-    'Plan'
+    'Plan',
   );
 });
 
@@ -389,14 +424,14 @@ test('retains keyboard reorder after reopening', async () => {
   });
   expect(
     JSON.parse(
-      localStorage.getItem('kudiumbrowser-ai-page-noteOrder') || 'null'
-    )
+      localStorage.getItem('kudiumbrowser-ai-page-noteOrder') || 'null',
+    ),
   ).toEqual(['second', 'n']);
   view.unmount();
   renderNotes();
   await screen.findByRole('button', { name: 'Other' });
   expect(
-    document.querySelector('.notes-history-row > button')
+    document.querySelector('.notes-history-row > button'),
   ).toHaveTextContent('Other');
   localStorage.removeItem('kudiumbrowser-ai-page-noteOrder');
 });
@@ -411,7 +446,7 @@ test('offers native row context actions and starts renaming the correct note', a
       expect.objectContaining({ label: 'Rename note' }),
       expect.objectContaining({ label: 'Move up', enabled: false }),
       expect.objectContaining({ label: 'Delete note' }),
-    ])
+    ]),
   );
 });
 
@@ -420,7 +455,7 @@ test('reorders by drag and disables drag during search', async () => {
   twoNotes();
   renderNotes();
   const other = (await screen.findByRole('button', { name: 'Other' })).closest(
-    '.notes-history-row'
+    '.notes-history-row',
   )!;
   const plan = screen
     .getByRole('button', { name: 'Plan' })
@@ -435,15 +470,15 @@ test('reorders by drag and disables drag during search', async () => {
   fireEvent.drop(plan, { dataTransfer, clientY: 0 });
   expect(
     JSON.parse(
-      localStorage.getItem('kudiumbrowser-ai-page-noteOrder') || 'null'
-    )
+      localStorage.getItem('kudiumbrowser-ai-page-noteOrder') || 'null',
+    ),
   ).toEqual(['second', 'n']);
   fireEvent.change(
     screen.getByRole('textbox', { name: 'Search note titles' }),
-    { target: { value: 'Other' } }
+    { target: { value: 'Other' } },
   );
   expect(
-    screen.getByRole('button', { name: 'Other' }).closest('.notes-history-row')
+    screen.getByRole('button', { name: 'Other' }).closest('.notes-history-row'),
   ).toHaveAttribute('draggable', 'false');
   localStorage.removeItem('kudiumbrowser-ai-page-noteOrder');
 });
@@ -465,7 +500,7 @@ test('moves between title and visual body without edits or intercepting composit
   fireEvent.keyDown(title, { key: 'ArrowDown' });
   await waitFor(() => expect(body).toHaveFocus());
   expect(request.mock.calls.some(([input]) => input.action === 'save')).toBe(
-    false
+    false,
   );
 });
 
@@ -500,12 +535,12 @@ it('shows unread notes and marks the linked note read when opened', async () => 
   render(
     <Theme>
       <NotesPage />
-    </Theme>
+    </Theme>,
   );
   expect(await screen.findByLabelText('Unread note')).toBeInTheDocument();
   act(() => {
     window.dispatchEvent(
-      new CustomEvent('kudiumbrowser-open-note', { detail: note.id })
+      new CustomEvent('kudiumbrowser-open-note', { detail: note.id }),
     );
   });
   await waitFor(() =>
@@ -513,8 +548,8 @@ it('shows unread notes and marks the linked note read when opened', async () => 
       expect.objectContaining({
         action: 'save',
         item: expect.objectContaining({ id: note.id, asRead: true }),
-      })
-    )
+      }),
+    ),
   );
 });
 
@@ -523,18 +558,18 @@ test('history starts unpinned, closes on selection and dismisses on outside clic
   await openPlan();
   fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   expect(
-    await screen.findByRole('button', { name: 'Pin note history' })
+    await screen.findByRole('button', { name: 'Pin note history' }),
   ).toHaveAttribute('aria-pressed', 'false');
   await openPlan();
   await waitFor(() =>
     expect(
-      screen.queryByRole('button', { name: 'Close note history' })
-    ).not.toBeInTheDocument()
+      screen.queryByRole('button', { name: 'Close note history' }),
+    ).not.toBeInTheDocument(),
   );
   fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   fireEvent.pointerDown(screen.getByRole('textbox', { name: 'Note title' }));
   expect(
-    screen.queryByRole('button', { name: 'Close note history' })
+    screen.queryByRole('button', { name: 'Close note history' }),
   ).not.toBeInTheDocument();
 });
 
@@ -542,12 +577,12 @@ test('creates new notes in the currently selected group', async () => {
   const view = render(
     <Theme>
       <NotesPage initialScope="first-group" />
-    </Theme>
+    </Theme>,
   );
   view.rerender(
     <Theme>
       <NotesPage initialScope="selected-group" />
-    </Theme>
+    </Theme>,
   );
   fireEvent.click(screen.getByRole('button', { name: 'New note' }));
   await waitFor(() =>
@@ -559,8 +594,8 @@ test('creates new notes in the currently selected group', async () => {
           kind: 'note',
           scope: 'selected-group',
         }),
-      })
-    )
+      }),
+    ),
   );
 });
 
@@ -569,7 +604,7 @@ test('reveals the selected note on a narrow panel without clearing its pin prefe
   await openPlan();
   fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   fireEvent.click(
-    await screen.findByRole('button', { name: 'Pin note history' })
+    await screen.findByRole('button', { name: 'Pin note history' }),
   );
   const page = screen.getByRole('region', { name: 'Notes' });
   jest
@@ -578,12 +613,43 @@ test('reveals the selected note on a narrow panel without clearing its pin prefe
   await openPlan();
   await waitFor(() =>
     expect(
-      screen.queryByRole('button', { name: 'Unpin note history' })
-    ).toBeNull()
+      screen.queryByRole('button', { name: 'Unpin note history' }),
+    ).toBeNull(),
   );
   expect(screen.getByRole('textbox', { name: 'Note title' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   expect(
-    await screen.findByRole('button', { name: 'Unpin note history' })
+    await screen.findByRole('button', { name: 'Unpin note history' }),
   ).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('refreshes note titles on changes without recurring idle requests', async () => {
+  render(
+    <Theme>
+      <NotesPage />
+    </Theme>,
+  );
+  await screen.findByRole('button', { name: 'Plan' });
+  jest.useFakeTimers();
+  try {
+    request.mockClear();
+    await act(async () => {
+      jest.advanceTimersByTime(10000);
+    });
+    expect(request).not.toHaveBeenCalled();
+    request.mockImplementation(async (input) =>
+      input.action === 'notes'
+        ? [{ ...note, title: 'Updated plan', notes: undefined, fieldCount: 0 }]
+        : {},
+    );
+    await act(async () => {
+      changed();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Updated plan' }),
+    ).toBeInTheDocument();
+    expect(request).toHaveBeenCalledTimes(1);
+  } finally {
+    jest.useRealTimers();
+  }
 });

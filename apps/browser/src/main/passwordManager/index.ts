@@ -1,5 +1,11 @@
+import { runAutoLogin, buildAutoLoginMenu } from './autoLogin';
 import { getGroupLocks } from '../groupLocks';
-import { getBrowserPreferences, onBrowserPreferencesChanged, updateBrowserPreferences, showBrowserPreferences } from '../preferences';
+import {
+  getBrowserPreferences,
+  onBrowserPreferencesChanged,
+  updateBrowserPreferences,
+  showBrowserPreferences,
+} from '../preferences';
 import { createPersonalDataMatching } from '../../browser/personalDataMatching';
 import {
   app,
@@ -7,6 +13,8 @@ import {
   powerMonitor,
   BrowserWindow,
   WebContents,
+  dialog,
+  MenuItemConstructorOptions,
 } from 'electron';
 import path from 'path';
 import { EventEmitter } from 'events';
@@ -18,7 +26,11 @@ import { ordinaryNotesStorage } from './ordinaryNotes';
 import { importDocument } from './documents';
 import { parseBrowserPasswords } from './browserPasswords';
 import { showBrowserDialog } from '../dialogs';
-import type { VaultField, VaultItem, VaultRequest } from '../../browser/passwordManager';
+import type {
+  VaultField,
+  VaultItem,
+  VaultRequest,
+} from '../../browser/passwordManager';
 import { PasswordVault } from './vault';
 import { hasSavedWebsiteLogin } from './websiteLogin';
 import { saveWebsiteFields } from './websiteFields';
@@ -27,7 +39,6 @@ import { fillDocument } from './fill';
 import * as nativeAuthentication from './authentication';
 import { safeStorage } from '../localStorage';
 import { assertRemovalScopeWritable } from '../groupRemovalJournal';
-
 
 const pages = new Map<number, WebContents>();
 const pageScopes = new Map<number, () => string | undefined>();
@@ -68,14 +79,14 @@ export const passwordVault = () => {
         const file = path.join(
           app.getPath('userData'),
           'password-manager',
-          'vault.json'
+          'vault.json',
         );
         if (!safeStorage.isFileAvailable(file))
           throw new Error(storageRecoveryMessage('your saved Personal Data'));
       },
       ordinaryNotesStorage(
-        path.join(app.getPath('userData'), 'password-manager', 'notes.bin')
-      )
+        path.join(app.getPath('userData'), 'password-manager', 'notes.bin'),
+      ),
     );
   return store;
 };
@@ -102,7 +113,7 @@ export function withPersonalData<T>(work: (vault: PasswordVault) => T): T {
 export async function savePersonalDocument(
   item: VaultItem,
   scope?: string,
-  assertCurrent: () => void = () => {}
+  assertCurrent: () => void = () => {},
 ) {
   assertCurrent();
   const vault = passwordVault();
@@ -129,7 +140,7 @@ export async function savePersonalDocument(
   assertCurrent();
   if (vault.status().locked)
     throw new Error(
-      'Unlock Personal Data in Preferences first, then save this attachment again.'
+      'Unlock Personal Data in Preferences first, then save this attachment again.',
     );
   return vault.save(item, scope);
 }
@@ -137,14 +148,19 @@ export async function authenticatePersonalData(page?: WebContents) {
   if (!passwordVault().status().locked) return;
   if (!authenticationAdapter.usesOSAuthentication())
     throw new Error('Unlock Personal Data with your master password first.');
-  if (page && !page.isDestroyed()) page.send('personal-data-autofill-authenticating', true);
-  try { await authenticationAdapter.authenticateOS(); }
-  finally { if (page && !page.isDestroyed()) page.send('personal-data-autofill-authenticating', false); }
+  if (page && !page.isDestroyed())
+    page.send('personal-data-autofill-authenticating', true);
+  try {
+    await authenticationAdapter.authenticateOS();
+  } finally {
+    if (page && !page.isDestroyed())
+      page.send('personal-data-autofill-authenticating', false);
+  }
   // This only prepares a local operation; it never grants an AI secret-reading API.
 }
 export function registerPasswordPage(
   contents: WebContents,
-  scope: () => string | undefined = () => undefined
+  scope: () => string | undefined = () => undefined,
 ) {
   pageScopes.set(contents.id, scope);
   if (pages.has(contents.id)) return;
@@ -154,11 +170,82 @@ export function registerPasswordPage(
     pageScopes.delete(contents.id);
   });
 }
+/** Native chrome entry point; website scripts cannot invoke this login flow. */
+export function autoLoginMenu(
+  owner: BrowserWindow,
+  contents: WebContents,
+): MenuItemConstructorOptions[] {
+  const available = () => {
+    if (contents.isDestroyed() || pages.get(contents.id) !== contents)
+      return false;
+    const scope = pageScopes.get(contents.id)?.();
+    const preferences = getBrowserPreferences();
+    try {
+      const url = new URL(contents.getURL());
+      const status = passwordVault().autoLoginMenuState(url.origin, scope);
+      return (
+        url.protocol === 'https:' &&
+        status.initialized &&
+        status.enabled &&
+        status.autofill &&
+        preferences.personalDataAutofill !== false &&
+        !preferences.personalDataAutofillExcludedSites.includes(url.origin) &&
+        !getGroupLocks().locked((scope || '').replace(/^group:/, ''))
+      );
+    } catch {
+      return false;
+    }
+  };
+  if (!available()) return [];
+  const scope = pageScopes.get(contents.id)?.();
+  const run = (accountId?: string) => {
+    runAutoLogin({
+      owner,
+      contents,
+      scope,
+      accountId,
+      check: () => {
+        if (
+          !available() ||
+          owner.isDestroyed() ||
+          pageScopes.get(contents.id)?.() !== scope
+        )
+          throw new Error('Auto login is no longer available in this tab.');
+      },
+      authenticate: () => authenticatePersonalData(contents),
+      read: withPersonalData,
+      epoch: personalDataRevision,
+    }).catch((error) => {
+      if (!owner.isDestroyed())
+        void dialog.showMessageBox(owner, {
+          type: 'info',
+          message: 'Auto login',
+          detail:
+            error instanceof Error
+              ? error.message
+              : 'Auto login could not complete.',
+        });
+    });
+  };
+  try {
+    const state = passwordVault().autoLoginMenuState(
+      new URL(contents.getURL()).origin,
+      scope,
+    );
+    if (!state.complete && !state.accounts.length)
+      return [{ label: 'Auto login', click: () => run() }];
+    return buildAutoLoginMenu(state.accounts, run);
+  } catch {
+    // Locked fallback vaults still provide the existing unlock guidance on click.
+    return [{ label: 'Auto login', click: () => run() }];
+  }
+}
+
 export async function fillSavedItem(
   contents: WebContents,
   id: string,
   ai = false,
-  scope: string | undefined = undefined
+  scope: string | undefined = undefined,
 ) {
   const origin = contents.getURL();
   const item = passwordVault().forFill(id, origin, ai, scope);
@@ -169,17 +256,17 @@ export async function fillSavedItem(
         ...item,
         fields: item.fields,
       })},${ai},(${createPersonalDataMatching.toString()})().score)`,
-      true
+      true,
     );
   } catch {
     throw new Error(
-      'Autofill could not complete. Inspect the page before retrying.'
+      'Autofill could not complete. Inspect the page before retrying.',
     );
   }
 }
 export function registerPasswordManager(
   isTrusted: (contents: WebContents) => boolean,
-  authentication: Partial<typeof nativeAuthentication> = {}
+  authentication: Partial<typeof nativeAuthentication> = {},
 ) {
   authenticationAdapter = { ...nativeAuthentication, ...authentication };
   const autofillEnabled = (page?: WebContents) => {
@@ -188,32 +275,72 @@ export function registerPasswordManager(
     if (!page) return true;
     try {
       const url = new URL(page.getURL());
-      return url.protocol === 'https:' && !preferences.personalDataAutofillExcludedSites.includes(url.origin);
-    } catch { return false; }
+      return (
+        url.protocol === 'https:' &&
+        !preferences.personalDataAutofillExcludedSites.includes(url.origin)
+      );
+    } catch {
+      return false;
+    }
   };
   const refreshAutofill = () => {
     pages.forEach((page) => {
-      if (!page.isDestroyed()) page.send('personal-data-autofill-enabled',
-        autofillEnabled(page) && !getGroupLocks().locked(
-          (pageScopes.get(page.id)?.() || '').replace(/^group:/, '')));
+      if (!page.isDestroyed())
+        page.send(
+          'personal-data-autofill-enabled',
+          autofillEnabled(page) &&
+            !getGroupLocks().locked(
+              (pageScopes.get(page.id)?.() || '').replace(/^group:/, ''),
+            ),
+          getBrowserPreferences().personalDataAutofillOnFocus !== false,
+        );
     });
   };
   onBrowserPreferencesChanged(refreshAutofill);
   getGroupLocks().subscribe(refreshAutofill);
-  passwordVault().onChange(refreshAutofill);
+  void passwordVault().prepareAutoLoginMetadata();
+  passwordVault().onChange(() => {
+    refreshAutofill();
+    BrowserWindow.getAllWindows().forEach((window) => {
+      if (!window.isDestroyed() && isTrusted(window.webContents))
+        window.webContents.send('password-manager-changed');
+    });
+  });
   const autofillPage = (event: Electron.IpcMainInvokeEvent) => {
     const page = pages.get(event.sender.id);
-    if (!page || page.isDestroyed() || event.senderFrame !== page.mainFrame ||
-        !page.getURL().startsWith('https:') ||
-        getGroupLocks().locked((pageScopes.get(page.id)?.() || '').replace(/^group:/, ''))) throw new Error('Autofill is unavailable here.');
+    if (
+      !page ||
+      page.isDestroyed() ||
+      event.senderFrame !== page.mainFrame ||
+      !page.getURL().startsWith('https:') ||
+      getGroupLocks().locked(
+        (pageScopes.get(page.id)?.() || '').replace(/^group:/, ''),
+      )
+    )
+      throw new Error('Autofill is unavailable here.');
     return page;
   };
-  const loginIdentities = new Map<number, { origin: string; scope?: string; username: string; recordId?: string; expires: number }>();
+  const loginIdentities = new Map<
+    number,
+    {
+      origin: string;
+      scope?: string;
+      username: string;
+      recordId?: string;
+      expires: number;
+    }
+  >();
   const loginIdentity = (page: WebContents) => {
     const item = loginIdentities.get(page.id);
-    if (!item || item.expires < Date.now() || item.origin !== new URL(page.getURL()).origin ||
-        item.scope !== pageScopes.get(page.id)?.() || !autofillEnabled(page)) {
-      loginIdentities.delete(page.id); return undefined;
+    if (
+      !item ||
+      item.expires < Date.now() ||
+      item.origin !== new URL(page.getURL()).origin ||
+      item.scope !== pageScopes.get(page.id)?.() ||
+      !autofillEnabled(page)
+    ) {
+      loginIdentities.delete(page.id);
+      return undefined;
     }
     return item;
   };
@@ -228,53 +355,129 @@ export function registerPasswordManager(
       username = withPersonalData((vault) => {
         const record = vault.forFill(input.id, page.getURL(), false, scope);
         recordId = record.id;
-        return record.kind === 'login' ? record.username : record.fields.find((field) =>
-          !isProtectedField(field) && [field.name, ...(field.aliases || [])].some((name) => /^(username|email)$/i.test(name)))?.value;
+        return record.kind === 'login'
+          ? record.username
+          : record.fields.find(
+              (field) =>
+                !isProtectedField(field) &&
+                [field.name, ...(field.aliases || [])].some((name) =>
+                  /^(username|email)$/i.test(name),
+                ),
+            )?.value;
       });
     }
-    if (typeof username !== 'string' || !username || username.length > 1024) return false;
-    recordId ||= loginIdentity(page)?.username === username ? loginIdentity(page)?.recordId : undefined;
-    const item = { origin: new URL(page.getURL()).origin, scope, username, recordId, expires: Date.now() + 120000 };
+    if (typeof username !== 'string' || !username || username.length > 1024)
+      return false;
+    recordId ||=
+      loginIdentity(page)?.username === username
+        ? loginIdentity(page)?.recordId
+        : undefined;
+    const item = {
+      origin: new URL(page.getURL()).origin,
+      scope,
+      username,
+      recordId,
+      expires: Date.now() + 120000,
+    };
     loginIdentities.set(page.id, item);
-    const timer = setTimeout(() => { if (loginIdentities.get(page.id) === item) loginIdentities.delete(page.id); }, 120000);
+    const timer = setTimeout(() => {
+      if (loginIdentities.get(page.id) === item)
+        loginIdentities.delete(page.id);
+    }, 120000);
     timer.unref();
-    page.once('destroyed', () => { clearTimeout(timer); loginIdentities.delete(page.id); });
+    page.once('destroyed', () => {
+      clearTimeout(timer);
+      loginIdentities.delete(page.id);
+    });
     return true;
   });
-  const pendingLogins = new Map<number, { origin: string; scope?: string; username: string; password: string; submittedURL: string; expires: number }>();
+  const pendingLogins = new Map<
+    number,
+    {
+      origin: string;
+      scope?: string;
+      username: string;
+      password: string;
+      submittedURL: string;
+      expires: number;
+    }
+  >();
   revocations.on('revoke', () => pendingLogins.clear());
   const pendingLogin = (page: WebContents) => {
     const item = pendingLogins.get(page.id);
-    if (!item || item.expires < Date.now() || item.origin !== new URL(page.getURL()).origin ||
-        item.scope !== pageScopes.get(page.id)?.() || !autofillEnabled(page)) {
-      pendingLogins.delete(page.id); return undefined;
+    if (
+      !item ||
+      item.expires < Date.now() ||
+      item.origin !== new URL(page.getURL()).origin ||
+      item.scope !== pageScopes.get(page.id)?.() ||
+      !autofillEnabled(page)
+    ) {
+      pendingLogins.delete(page.id);
+      return undefined;
     }
     return item;
   };
   ipcMain.handle('personal-data-login-candidate', (event, input) => {
     const page = autofillPage(event);
     const username = input?.username || loginIdentity(page)?.username;
-    if (!autofillEnabled(page) || typeof username !== 'string' || !username || username.length > 1024 ||
-        typeof input.password !== 'string' || !input.password || input.password.length > 1024) return false;
-    const item = { origin: new URL(page.getURL()).origin, scope: pageScopes.get(page.id)?.(), username,
-      password: input.password, submittedURL: page.getURL(), expires: Date.now() + 120000 };
+    if (
+      !autofillEnabled(page) ||
+      typeof username !== 'string' ||
+      !username ||
+      username.length > 1024 ||
+      typeof input.password !== 'string' ||
+      !input.password ||
+      input.password.length > 1024
+    )
+      return false;
+    const item = {
+      origin: new URL(page.getURL()).origin,
+      scope: pageScopes.get(page.id)?.(),
+      username,
+      password: input.password,
+      submittedURL: page.getURL(),
+      expires: Date.now() + 120000,
+    };
     pendingLogins.set(page.id, item);
-    const timer = setTimeout(() => { if (pendingLogins.get(page.id) === item) pendingLogins.delete(page.id); }, 120000);
+    const timer = setTimeout(() => {
+      if (pendingLogins.get(page.id) === item) pendingLogins.delete(page.id);
+    }, 120000);
     timer.unref();
-    page.once('destroyed', () => { clearTimeout(timer); pendingLogins.delete(page.id); });
+    page.once('destroyed', () => {
+      clearTimeout(timer);
+      pendingLogins.delete(page.id);
+    });
     return true;
   });
   ipcMain.handle('personal-data-login-pending', (event) => {
     try {
-      const page = autofillPage(event); const item = pendingLogin(page);
+      const page = autofillPage(event);
+      const item = pendingLogin(page);
       if (!item) return false;
       // Compare inside the vault; only the decision crosses into the page preload.
-      const alreadySaved = withPersonalData((vault) => hasSavedWebsiteLogin(vault, page.getURL(), item.scope, item.username, item.password));
-      if (alreadySaved) { pendingLogins.delete(page.id); return false; }
+      const alreadySaved = withPersonalData((vault) =>
+        hasSavedWebsiteLogin(
+          vault,
+          page.getURL(),
+          item.scope,
+          item.username,
+          item.password,
+        ),
+      );
+      if (alreadySaved) {
+        pendingLogins.delete(page.id);
+        return false;
+      }
       return { pending: true, navigated: page.getURL() !== item.submittedURL };
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   });
-  ipcMain.handle('personal-data-login-dismiss', (event) => { const id = autofillPage(event).id; pendingLogins.delete(id); loginIdentities.delete(id); });
+  ipcMain.handle('personal-data-login-dismiss', (event) => {
+    const id = autofillPage(event).id;
+    pendingLogins.delete(id);
+    loginIdentities.delete(id);
+  });
   ipcMain.handle('personal-data-login-save', async (event, input) => {
     const page = autofillPage(event);
     const item = pendingLogin(page);
@@ -283,30 +486,79 @@ export function registerPasswordManager(
     const epoch = personalDataRevision();
     if (input?.confirmUpdate === true) await authenticatePersonalData(page);
     autofillPage(event);
-    if (page.getURL() !== expected || personalDataRevision() !== epoch || pendingLogin(page) !== item) throw new Error('The target page changed.');
+    if (
+      page.getURL() !== expected ||
+      personalDataRevision() !== epoch ||
+      pendingLogin(page) !== item
+    )
+      throw new Error('The target page changed.');
     const result = withPersonalData((vault) => {
-      if (!vault.status().enabled || !vault.status().autofill) throw new Error('Personal Data is disabled.');
-      return saveWebsiteFields(vault, expected, item.scope, [
-      { name: 'Username', value: item.username, secret: false, aliases: ['username', 'email'] },
-      { name: 'Password', value: item.password, secret: true, aliases: ['password', 'current-password', 'new-password'] },
-      ], input?.confirmUpdate === true);
+      if (!vault.status().enabled || !vault.status().autofill)
+        throw new Error('Personal Data is disabled.');
+      return saveWebsiteFields(
+        vault,
+        expected,
+        item.scope,
+        [
+          {
+            name: 'Username',
+            value: item.username,
+            secret: false,
+            aliases: ['username', 'email'],
+          },
+          {
+            name: 'Password',
+            value: item.password,
+            secret: true,
+            aliases: ['password', 'current-password', 'new-password'],
+          },
+        ],
+        input?.confirmUpdate === true,
+        item.submittedURL,
+      );
     });
-    if (result.saved) { pendingLogins.delete(page.id); loginIdentities.delete(page.id); }
+    if (result.saved) {
+      pendingLogins.delete(page.id);
+      loginIdentities.delete(page.id);
+    }
     return result;
   });
+  ipcMain.handle('personal-data-autofill-focus', (event) => {
+    autofillPage(event);
+    return getBrowserPreferences().personalDataAutofillOnFocus !== false;
+  });
   ipcMain.handle('personal-data-autofill-enabled', (event) => {
-    try { return autofillEnabled(autofillPage(event)); } catch { return false; }
+    try {
+      return autofillEnabled(autofillPage(event));
+    } catch {
+      return false;
+    }
   });
   ipcMain.handle('personal-data-autofill-position', (event, placement) => {
     const page = autofillPage(event);
     if (!autofillEnabled(page)) throw new Error('Autofill is disabled.');
     const origin = new URL(page.getURL()).origin;
-    const positions = getBrowserPreferences().personalDataAutofillPositions || {};
+    const positions =
+      getBrowserPreferences().personalDataAutofillPositions || {};
     if (placement === undefined) return positions[origin] || null;
-    if (!placement || !['left', 'right'].includes(placement.side) || !Number.isFinite(placement.x) || Math.abs(placement.x) > 128 ||
-        !Number.isFinite(placement.y) || Math.abs(placement.y) > 128) throw new Error('Invalid autofill position');
-    const entries = Object.entries(positions).filter(([site]) => site !== origin).slice(-199);
-    updateBrowserPreferences({ personalDataAutofillPositions: { ...Object.fromEntries(entries), [origin]: { side: placement.side, x: placement.x, y: placement.y } } });
+    if (
+      !placement ||
+      !['left', 'right'].includes(placement.side) ||
+      !Number.isFinite(placement.x) ||
+      Math.abs(placement.x) > 128 ||
+      !Number.isFinite(placement.y) ||
+      Math.abs(placement.y) > 128
+    )
+      throw new Error('Invalid autofill position');
+    const entries = Object.entries(positions)
+      .filter(([site]) => site !== origin)
+      .slice(-199);
+    updateBrowserPreferences({
+      personalDataAutofillPositions: {
+        ...Object.fromEntries(entries),
+        [origin]: { side: placement.side, x: placement.x, y: placement.y },
+      },
+    });
     return { saved: true };
   });
   ipcMain.handle('personal-data-autofill-availability', (event) => {
@@ -315,14 +567,36 @@ export function registerPasswordManager(
       if (!autofillEnabled(page)) return [];
       const expected = page.getURL();
       const scope = pageScopes.get(page.id)?.();
+      const cached = passwordVault().autofillAvailability(expected, scope);
+      if (cached) return cached;
+      // Legacy files acquire the nonsecret field index on their first normal unlock.
       // No authentication or values cross IPC for this passive UI check.
-      return withPersonalData((vault) => vault.matching(expected, false, scope)
-        .filter((record) => ['profile', 'knowledge', 'login'].includes(record.kind))
-        .slice(0, 50).map((record) => {
-          const item = vault.forFill(record.id, expected, false, scope);
-          return { kind: item.kind, canFillLogin: item.kind === 'login' && !!item.password, fields: item.fields.filter((field) => field.value).map((field) => ({ name: field.name, aliases: field.aliases, secret: isProtectedField(field) })) };
-        }));
-    } catch { return []; }
+      return withPersonalData((vault) =>
+        vault
+          .matchingItems(expected, false, scope)
+          .filter((record) =>
+            ['profile', 'knowledge', 'login'].includes(record.kind),
+          )
+          .sort((a, b) => Number(!!b.origin) - Number(!!a.origin))
+          .slice(0, 50)
+          .map((record) => {
+            const item = record;
+            return {
+              kind: item.kind,
+              canFillLogin: item.kind === 'login' && !!item.password,
+              fields: item.fields
+                .filter((field) => field.value)
+                .map((field) => ({
+                  name: field.name,
+                  aliases: field.aliases,
+                  secret: isProtectedField(field),
+                })),
+            };
+          }),
+      );
+    } catch {
+      return [];
+    }
   });
   ipcMain.handle('personal-data-autofill-records', async (event) => {
     const page = autofillPage(event);
@@ -330,21 +604,65 @@ export function registerPasswordManager(
     const expected = page.getURL();
     const scope = pageScopes.get(page.id)?.();
     const epoch = personalDataRevision();
-    await authenticatePersonalData(page);
+    // Browsing exposes only nonsecret values and redacted secret placeholders.
+    // Authentication is enforced by the secret/login fill actions instead.
     autofillPage(event);
-    if (page.isDestroyed() || page.getURL() !== expected ||
-        pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch ||
-        !autofillEnabled(page)) throw new Error('The target page changed.');
-    return withPersonalData((vault) => vault.matching(expected, false, scope)
-      .filter((record) => record.kind === 'profile' || record.kind === 'knowledge' || record.kind === 'login')
-      .sort((a, b) => Number(b.id === loginIdentity(page)?.recordId) - Number(a.id === loginIdentity(page)?.recordId) || Number(!!b.origin) - Number(!!a.origin))
-      .slice(0, 50)
-      .map((record) => {
-        const saved = vault.forFill(record.id, expected, false, scope);
-        return { id: saved.id, kind: saved.kind, canFillLogin: saved.kind === 'login' && !!saved.password, website: !!record.origin, selected: record.id === loginIdentity(page)?.recordId, username: saved.kind === 'login' ? saved.username : undefined, title: record.origin && saved.title === `${new URL(record.origin).hostname} · Saved inputs` ? new URL(record.origin).hostname : saved.title, fields: saved.fields.map((field, fieldIndex) => isProtectedField(field)
-          ? { name: field.name, aliases: field.aliases, secret: true, value: '', fieldIndex }
-          : { ...field, fieldIndex }).filter((field) => field.secret || field.value).slice(0, 100) };
-      }));
+    if (
+      page.isDestroyed() ||
+      page.getURL() !== expected ||
+      pageScopes.get(page.id)?.() !== scope ||
+      personalDataRevision() !== epoch ||
+      !autofillEnabled(page)
+    )
+      throw new Error('The target page changed.');
+    return withPersonalData((vault) =>
+      vault
+        .matchingItems(expected, false, scope)
+        .filter(
+          (record) =>
+            record.kind === 'profile' ||
+            record.kind === 'knowledge' ||
+            record.kind === 'login',
+        )
+        .sort(
+          (a, b) =>
+            Number(!!b.origin) - Number(!!a.origin) ||
+            Number(b.id === loginIdentity(page)?.recordId) -
+              Number(a.id === loginIdentity(page)?.recordId),
+        )
+        .slice(0, 50)
+        .map((record) => {
+          const saved = record;
+          return {
+            id: saved.id,
+            kind: saved.kind,
+            canFillLogin: saved.kind === 'login' && !!saved.password,
+            website: !!record.origin,
+            selected: record.id === loginIdentity(page)?.recordId,
+            username: saved.kind === 'login' ? saved.username : undefined,
+            title:
+              record.origin &&
+              saved.title ===
+                `${new URL(record.origin).hostname} · Saved inputs`
+                ? new URL(record.origin).hostname
+                : saved.title,
+            fields: saved.fields
+              .map((field, fieldIndex) =>
+                isProtectedField(field)
+                  ? {
+                      name: field.name,
+                      aliases: field.aliases,
+                      secret: true,
+                      value: '',
+                      fieldIndex,
+                    }
+                  : { ...field, fieldIndex },
+              )
+              .filter((field) => field.secret || field.value)
+              .slice(0, 100),
+          };
+        }),
+    );
   });
   ipcMain.handle('personal-data-autofill-browse', async (event) => {
     const page = autofillPage(event);
@@ -352,86 +670,209 @@ export function registerPasswordManager(
     const expected = page.getURL();
     const scope = pageScopes.get(page.id)?.();
     const epoch = personalDataRevision();
-    await authenticatePersonalData(page);
+    // Browsing exposes only nonsecret values and redacted secret placeholders.
+    // Authentication is enforced by the secret/login fill actions instead.
     autofillPage(event);
-    if (page.getURL() !== expected || pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch || !autofillEnabled(page)) throw new Error('The target page changed.');
+    if (
+      page.getURL() !== expected ||
+      pageScopes.get(page.id)?.() !== scope ||
+      personalDataRevision() !== epoch ||
+      !autofillEnabled(page)
+    )
+      throw new Error('The target page changed.');
     return withPersonalData((vault) => browseSavedData(vault, scope));
   });
   ipcMain.handle('personal-data-autofill-disable-site', (event) => {
     const page = autofillPage(event);
-    updateBrowserPreferences({ personalDataAutofillExcludedSites: [
-      ...getBrowserPreferences().personalDataAutofillExcludedSites,
-      new URL(page.getURL()).origin,
-    ] });
+    updateBrowserPreferences({
+      personalDataAutofillExcludedSites: [
+        ...getBrowserPreferences().personalDataAutofillExcludedSites,
+        new URL(page.getURL()).origin,
+      ],
+    });
   });
   ipcMain.handle('personal-data-autofill-login', async (event, id) => {
     const page = autofillPage(event);
-    if (!autofillEnabled(page) || typeof id !== 'string') throw new Error('Autofill is disabled.');
+    if (!autofillEnabled(page) || typeof id !== 'string')
+      throw new Error('Autofill is disabled.');
     const expected = page.getURL();
     const scope = pageScopes.get(page.id)?.();
     const epoch = personalDataRevision();
     await authenticatePersonalData(page);
     autofillPage(event);
-    if (page.getURL() !== expected || pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch || !autofillEnabled(page)) throw new Error('The target page changed.');
+    if (
+      page.getURL() !== expected ||
+      pageScopes.get(page.id)?.() !== scope ||
+      personalDataRevision() !== epoch ||
+      !autofillEnabled(page)
+    )
+      throw new Error('The target page changed.');
     return withPersonalData((vault) => {
-      if (vault.forFill(id, expected, false, scope).kind !== 'login') throw new Error('Choose a saved login.');
+      if (vault.forFill(id, expected, false, scope).kind !== 'login')
+        throw new Error('Choose a saved login.');
       return fillSavedItem(page, id, false, scope);
     });
   });
   ipcMain.handle('personal-data-autofill-manage', (event) => {
     const page = autofillPage(event);
-    const owner = BrowserWindow.fromWebContents(page) || BrowserWindow.getFocusedWindow();
+    const owner =
+      BrowserWindow.fromWebContents(page) || BrowserWindow.getFocusedWindow();
     if (!owner) throw new Error('The browser window is unavailable.');
-    showBrowserPreferences(owner, 'passwords', pageScopes.get(page.id)?.() || 'browser');
+    showBrowserPreferences(
+      owner,
+      'passwords',
+      pageScopes.get(page.id)?.() || 'browser',
+    );
   });
   ipcMain.handle('personal-data-autofill-save-field', async (event, input) => {
     const page = autofillPage(event);
-    if (input?.username !== undefined && (typeof input.username !== 'string' || input.username.length > 1000)) throw new Error('Invalid input field.');
-    if (!autofillEnabled(page) || !input || typeof input.name !== 'string' || !input.name.trim() || input.name.length > 200 || typeof input.value !== 'string' || !input.value || input.value.length > 10000 || typeof input.secret !== 'boolean' || !Array.isArray(input.aliases) || input.aliases.length > 10 || input.aliases.some((alias: unknown) => typeof alias !== 'string' || alias.length > 200)) throw new Error('Invalid input field.');
+    if (
+      input?.username !== undefined &&
+      (typeof input.username !== 'string' || input.username.length > 1000)
+    )
+      throw new Error('Invalid input field.');
+    if (
+      !autofillEnabled(page) ||
+      !input ||
+      typeof input.name !== 'string' ||
+      !input.name.trim() ||
+      input.name.length > 200 ||
+      typeof input.value !== 'string' ||
+      !input.value ||
+      input.value.length > 10000 ||
+      typeof input.secret !== 'boolean' ||
+      !Array.isArray(input.aliases) ||
+      input.aliases.length > 10 ||
+      input.aliases.some(
+        (alias: unknown) => typeof alias !== 'string' || alias.length > 200,
+      )
+    )
+      throw new Error('Invalid input field.');
     const expected = page.getURL();
     const scope = pageScopes.get(page.id)?.();
     const epoch = personalDataRevision();
     if (input?.confirmUpdate === true) await authenticatePersonalData(page);
     autofillPage(event);
-    if (page.getURL() !== expected || pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch || !autofillEnabled(page)) throw new Error('The target page changed.');
+    if (
+      page.getURL() !== expected ||
+      pageScopes.get(page.id)?.() !== scope ||
+      personalDataRevision() !== epoch ||
+      !autofillEnabled(page)
+    )
+      throw new Error('The target page changed.');
     return withPersonalData((vault) => {
-      const fields: VaultField[] = [{ name: input.name.trim(), value: input.value, secret: input.secret, aliases: input.aliases }];
-      const username = input.name === 'Password' && input.secret ? input.username || loginIdentity(page)?.username : undefined;
-      if (username) fields.push({ name: 'Username', value: username, secret: false, aliases: ['username', 'email'] });
-      return saveWebsiteFields(vault, expected, scope, fields, input.confirmUpdate === true);
+      const fields: VaultField[] = [
+        {
+          name: input.name.trim(),
+          value: input.value,
+          secret: input.secret,
+          aliases: input.aliases,
+        },
+      ];
+      const username =
+        input.name === 'Password' && input.secret
+          ? input.username || loginIdentity(page)?.username
+          : undefined;
+      if (username)
+        fields.push({
+          name: 'Username',
+          value: username,
+          secret: false,
+          aliases: ['username', 'email'],
+        });
+      return saveWebsiteFields(
+        vault,
+        expected,
+        scope,
+        fields,
+        input.confirmUpdate === true,
+      );
     });
   });
   ipcMain.handle('personal-data-autofill-secret', async (event, input) => {
     const page = autofillPage(event);
-    if (!autofillEnabled(page) || typeof input?.id !== 'string' || !Number.isInteger(input.fieldIndex) || input.fieldIndex < 0) throw new Error('Choose a saved secret field.');
+    if (
+      !autofillEnabled(page) ||
+      typeof input?.id !== 'string' ||
+      !Number.isInteger(input.fieldIndex) ||
+      input.fieldIndex < 0
+    )
+      throw new Error('Choose a saved secret field.');
     const expected = page.getURL();
     const scope = pageScopes.get(page.id)?.();
     const epoch = personalDataRevision();
     await authenticatePersonalData(page);
     autofillPage(event);
-    if (page.getURL() !== expected || pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch || !autofillEnabled(page)) throw new Error('The target page changed.');
+    if (
+      page.getURL() !== expected ||
+      pageScopes.get(page.id)?.() !== scope ||
+      personalDataRevision() !== epoch ||
+      !autofillEnabled(page)
+    )
+      throw new Error('The target page changed.');
     return withPersonalData((vault) => {
-      const field = vault.forFill(input.id, expected, false, scope).fields[input.fieldIndex];
-      if (!field || !isProtectedField(field)) throw new Error('Choose a saved secret field.');
+      const field = vault.forFill(input.id, expected, false, scope).fields[
+        input.fieldIndex
+      ];
+      if (!field || !isProtectedField(field))
+        throw new Error('Choose a saved secret field.');
       return field.value;
     });
   });
-  ipcMain.handle('personal-data-autofill-save-password', async (event, input) => {
-    const page = autofillPage(event);
-    if (!autofillEnabled(page) || !input || typeof input.password !== 'string' || input.password.length < 12 || input.password.length > 1024 || typeof input.username !== 'string' || input.username.length > 1024) throw new Error('Invalid generated password.');
-    const expected = page.getURL();
-    const scope = pageScopes.get(page.id)?.();
-    const epoch = personalDataRevision();
-    if (input?.confirmUpdate === true) await authenticatePersonalData(page);
-    autofillPage(event);
-    if (page.getURL() !== expected || pageScopes.get(page.id)?.() !== scope || personalDataRevision() !== epoch || !autofillEnabled(page)) throw new Error('The target page changed.');
-    return withPersonalData((vault) => {
-      if (!vault.status().enabled || !vault.status().autofill) throw new Error('Personal Data is disabled.');
-      const fields: VaultField[] = [{ name: 'Password', value: input.password, secret: true, aliases: ['password', 'new-password', 'current-password'] }];
-      if (input.username) fields.push({ name: 'Username', value: input.username, secret: false, aliases: ['username', 'email'] });
-      return saveWebsiteFields(vault, expected, scope, fields, input.confirmUpdate === true);
-    });
-  });
+  ipcMain.handle(
+    'personal-data-autofill-save-password',
+    async (event, input) => {
+      const page = autofillPage(event);
+      if (
+        !autofillEnabled(page) ||
+        !input ||
+        typeof input.password !== 'string' ||
+        input.password.length < 12 ||
+        input.password.length > 1024 ||
+        typeof input.username !== 'string' ||
+        input.username.length > 1024
+      )
+        throw new Error('Invalid generated password.');
+      const expected = page.getURL();
+      const scope = pageScopes.get(page.id)?.();
+      const epoch = personalDataRevision();
+      if (input?.confirmUpdate === true) await authenticatePersonalData(page);
+      autofillPage(event);
+      if (
+        page.getURL() !== expected ||
+        pageScopes.get(page.id)?.() !== scope ||
+        personalDataRevision() !== epoch ||
+        !autofillEnabled(page)
+      )
+        throw new Error('The target page changed.');
+      return withPersonalData((vault) => {
+        if (!vault.status().enabled || !vault.status().autofill)
+          throw new Error('Personal Data is disabled.');
+        const fields: VaultField[] = [
+          {
+            name: 'Password',
+            value: input.password,
+            secret: true,
+            aliases: ['password', 'new-password', 'current-password'],
+          },
+        ];
+        if (input.username)
+          fields.push({
+            name: 'Username',
+            value: input.username,
+            secret: false,
+            aliases: ['username', 'email'],
+          });
+        return saveWebsiteFields(
+          vault,
+          expected,
+          scope,
+          fields,
+          input.confirmUpdate === true,
+        );
+      });
+    },
+  );
   const {
     canUseOSAuthentication,
     authenticateOS,
@@ -534,7 +975,7 @@ export function registerPasswordManager(
           state.items = state.items.map((summary) => {
             const item = records.find((record) => record.id === summary.id)!;
             const visible = item.fields.filter(
-              (field) => !isProtectedField(field) && item.kind !== 'payment'
+              (field) => !isProtectedField(field) && item.kind !== 'payment',
             );
             return {
               ...summary,
@@ -566,7 +1007,7 @@ export function registerPasswordManager(
     };
     if (
       ['settings', 'delete', 'reveal', 'fill', 'hide', 'reset'].includes(
-        request.action
+        request.action,
       )
     )
       await authenticate();
@@ -643,9 +1084,25 @@ export function registerPasswordManager(
         vault.moveNote(request.id, request.destination);
         return vault.noteSummaries();
       case 'save': {
-        const placement = Object.prototype.hasOwnProperty.call(request, 'destination');
-        if (placement && (request.item.kind === 'note' || (request.destination !== null && (typeof request.destination !== 'string' || !request.destination || request.destination.length > 200)))) throw new Error('Invalid destination group.');
-        const saveItem = () => vault.save(request.item, placement ? request.destination || undefined : request.scope, placement ? {sourceScope: request.scope} : undefined);
+        const placement = Object.prototype.hasOwnProperty.call(
+          request,
+          'destination',
+        );
+        if (
+          placement &&
+          (request.item.kind === 'note' ||
+            (request.destination !== null &&
+              (typeof request.destination !== 'string' ||
+                !request.destination ||
+                request.destination.length > 200)))
+        )
+          throw new Error('Invalid destination group.');
+        const saveItem = () =>
+          vault.save(
+            request.item,
+            placement ? request.destination || undefined : request.scope,
+            placement ? { sourceScope: request.scope } : undefined,
+          );
         if (request.item.kind === 'note') {
           const ordinary =
             !request.item.sensitive &&
@@ -755,7 +1212,7 @@ export function registerPasswordManager(
         if (fs.statSync(file).size > 8 * 1024 * 1024)
           throw new Error('Choose a password export smaller than 8 MB.');
         const parsed = parseBrowserPasswords(
-          await fs.promises.readFile(file, 'utf8')
+          await fs.promises.readFile(file, 'utf8'),
         );
         if (owner.isDestroyed())
           throw new Error('Preferences closed during import.');
@@ -794,7 +1251,7 @@ export function registerPasswordManager(
         if (choice.canceled || !choice.filePaths[0]) return status();
         const item = await importDocument(
           choice.filePaths[0],
-          request.allowAI === true
+          request.allowAI === true,
         );
         if (
           !isTrusted(event.sender) ||
@@ -864,7 +1321,7 @@ export function registerPasswordManager(
             (page) =>
               !page.isDestroyed() &&
               page.getURL().startsWith('https:') &&
-              (!request.scope || pageScopes.get(page.id)?.() === request.scope)
+              (!request.scope || pageScopes.get(page.id)?.() === request.scope),
           )
           .map((page) => ({
             id: page.id,
@@ -916,7 +1373,7 @@ export function registerPasswordManager(
             fs.rmSync(path.join(app.getPath('temp'), name), {
               recursive: true,
               force: true,
-            })
+            }),
           );
       } catch {
         /* Temporary storage may be unavailable. */
@@ -927,7 +1384,9 @@ export function registerPasswordManager(
     })
     .catch(() => undefined);
   app.on('before-quit', revokeAuthorizations);
-  const timer = setInterval(() => store?.status(), 10000);
+  const timer = setInterval(() => {
+    if (store?.expireLock()) revokeAuthorizations();
+  }, 10000);
   timer.unref();
 }
 

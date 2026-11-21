@@ -24,7 +24,6 @@ import {
   Dialog,
 } from '@radix-ui/themes';
 import {
-  ListFilter,
   Trash2,
   Minus,
   Plus,
@@ -60,9 +59,11 @@ const MarkdownNoteEditor = lazy(() =>
 export function NotesPage({
   tabs = [],
   initialScope,
+  scopeRequest,
 }: {
   tabs?: IApp[];
   initialScope?: string;
+  scopeRequest?: { scope: string; token: number };
 }) {
   const panelDocument = useAssistantPanelDocument();
   const [notes, setNotes] = useState<VaultSummary[]>([]);
@@ -70,10 +71,10 @@ export function NotesPage({
   const currentDraft = useRef<VaultItem | undefined>(undefined);
   currentDraft.current = draft;
   const [query, setQuery] = useState('');
-  const [scope, setScope] = useState(initialScope || 'all');
+  const [scope, setScope] = useState(scopeRequest?.scope || initialScope || 'all');
   useEffect(() => {
-    setScope(initialScope || 'all');
-  }, [initialScope]);
+    setScope(scopeRequest?.scope || initialScope || 'all');
+  }, [initialScope, scopeRequest]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyPinned, setHistoryPinned] = useState(false);
   const [fontSize, setFontSize] = useAIPagePreference('noteFontSize', 16);
@@ -306,9 +307,7 @@ export function NotesPage({
       }
     });
   useEffect(() => {
-    const timer = setInterval(() => {
-      refresh().catch(() => {});
-    }, 3000);
+    const stopNotes = window.electron.onPasswordManagerChanged?.(() => { refresh().catch(() => {}); });
     const open = (event: Event) => {
       const id = (event as CustomEvent<string>).detail;
       window.electron
@@ -323,7 +322,7 @@ export function NotesPage({
     };
     window.addEventListener('kudiumbrowser-open-note', open);
     return () => {
-      clearInterval(timer);
+      stopNotes?.();
       window.removeEventListener('kudiumbrowser-open-note', open);
     };
   });
@@ -384,23 +383,18 @@ export function NotesPage({
       triggerClassName={`notes-filter-button ${
         scope !== 'all' ? 'notes-filter-active' : ''
       }`}
-      triggerContent={<ListFilter size={16} />}
       contentClassName="notes-group-filter-popover"
       disabled={busy}
       value={scope}
       onChange={setScope}
       options={[
         { id: 'all', name: 'All notes' },
-        ...(notes.some((note) => !note.scope)
-          ? [{ id: 'browser', name: 'Personal notes' }]
-          : []),
-        ...groups
-          .filter(([id]) => notes.some((note) => note.scope === id))
-          .map(([id, tab]) => ({
-            id,
-            name: tab.sessionName || tab.name,
-            group: tab,
-          })),
+        { id: 'browser', name: 'Personal notes' },
+        ...groups.map(([id, tab]) => ({
+          id,
+          name: tab.sessionName || tab.name,
+          group: tab,
+        })),
       ]}
     />
   );
@@ -439,13 +433,13 @@ export function NotesPage({
             onNew={create}
           >
             <div className="notes-search-controls">
+              {groupFilter}
               <HistorySearchInput
                 label="Search note titles"
                 placeholder="Search notes"
                 value={query}
                 onChange={setQuery}
               />
-              {groupFilter}
             </div>
             <NotesHistoryList
               notes={visible}
@@ -854,13 +848,13 @@ export function NotesPage({
           ) ? (
             <div className="notes-landing-list">
               <div className="notes-search-controls">
+                {groupFilter}
                 <HistorySearchInput
                   label="Search note titles"
                   placeholder="Search notes"
                   value={query}
                   onChange={setQuery}
                 />
-                {groupFilter}
               </div>
               <NotesHistoryList
                 notes={visible}
@@ -878,6 +872,7 @@ export function NotesPage({
             </div>
           ) : (
             <>
+              <div className="notes-group-controls">{groupFilter}</div>
               <div className="notes-empty">
                 <span className="notes-empty-title">
                   Your notes, all in one place

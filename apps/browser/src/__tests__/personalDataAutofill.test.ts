@@ -492,3 +492,47 @@ it.each(['profile email', 'duplicate email', 'conflicting emails', 'existing ema
     expect(submit).not.toHaveBeenCalled();
   } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
 });
+
+it('drags the dropdown by its header, clamps it to the viewport, and ignores header buttons', async () => {
+  let shadow!: ShadowRoot;
+  const originalAttach = HTMLElement.prototype.attachShadow;
+  const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
+    shadow = originalAttach.call(this, init); return shadow;
+  });
+  const listeners = new Map<EventTarget, Record<string, Function>>();
+  const originalOn = HTMLDivElement.prototype.addEventListener;
+  const on = jest.spyOn(HTMLDivElement.prototype, 'addEventListener').mockImplementation(function (this: HTMLDivElement, type: string, listener: any, options?: any) {
+    const entries = listeners.get(this) || {}; entries[type] = listener; listeners.set(this, entries);
+    originalOn.call(this, type, listener, options);
+  });
+  document.body.innerHTML = '<input type="email" autocomplete="email">';
+  const input = document.querySelector<HTMLInputElement>('input')!;
+  input.getClientRects = () => [{}] as any;
+  const bridge = { invoke: jest.fn(async (channel: string) => channel === 'personal-data-autofill-records' ? [] : true), on: jest.fn() };
+  const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+  try {
+    for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+    input.focus();
+    for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+    const panel = shadow.querySelector<HTMLDivElement>('.panel')!;
+    const header = panel.querySelector<HTMLDivElement>('.header')!;
+    panel.getBoundingClientRect = () => ({ left: 20, top: 30, width: 290, height: 200 }) as DOMRect;
+    header.setPointerCapture = jest.fn(); header.hasPointerCapture = () => true; header.releasePointerCapture = jest.fn();
+    const handlers = listeners.get(header)!;
+    const event = { isTrusted: true, button: 0, pointerId: 1, clientX: 30, clientY: 40, target: header, preventDefault: jest.fn() };
+    handlers.pointerdown({ ...event, target: header.querySelector('button') });
+    expect(header.setPointerCapture).not.toHaveBeenCalled();
+    handlers.pointerdown(event);
+    handlers.pointermove({ ...event, clientX: 90, clientY: 100 });
+    expect(panel.style.left).toBe('80px'); expect(panel.style.top).toBe('90px');
+    expect(document.activeElement).toBe(input);
+    handlers.pointermove({ ...event, clientX: -1000, clientY: -1000 });
+    expect(panel.style.left).toBe('8px'); expect(panel.style.top).toBe('8px');
+    handlers.pointercancel(event);
+    handlers.pointermove({ ...event, clientX: 90, clientY: 100 });
+    expect(panel.style.left).toBe('8px');
+    expect(header.releasePointerCapture).toHaveBeenCalledWith(1);
+  } finally {
+    dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = '';
+  }
+});

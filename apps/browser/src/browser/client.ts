@@ -20,6 +20,7 @@ export const browser: BrowserClient = {
   confirm: (prompt) => window.electron.browser.confirm(prompt),
   showEmojiPicker: () => window.electron.browser.showEmojiPicker(),
   chooseSpaceIcon: () => window.electron.browser.chooseSpaceIcon(),
+  onAIFillForm: (callback) => window.electron.browser.onAIFillForm(callback),
   onAISelection: (callback) => window.electron.browser.onAISelection(callback),
   onTabRequest: (callback) => window.electron.browser.onTabRequest(callback),
   sync: (layout) => window.electron.browser.sync(layout),

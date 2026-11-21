@@ -1,3 +1,12 @@
+import { autofillMetadata, AutofillMetadataCache } from './autofillMetadata';
+import { Worker } from 'worker_threads';
+import {
+  autoLoginMetadata,
+  legacyAutoLoginMetadata,
+  AutoLoginMetadataCache,
+  type AutoLoginMetadata,
+} from './autoLoginMetadata';
+import { preferredLoginURL } from './loginRoute';
 import { personalDataMatching } from '../../browser/personalDataMatching';
 import fs from 'fs';
 import path from 'path';
@@ -41,7 +50,10 @@ interface Data {
   items: VaultItem[];
   hookNotifications?: HookNotificationGrant[];
 }
-type Summary = Pick<VaultStatus, 'items' | 'enabled' | 'autofill' | 'ai'>;
+type Summary = Pick<VaultStatus, 'items' | 'enabled' | 'autofill' | 'ai'> & {
+  autoLogin?: AutoLoginMetadata;
+  fillMetadata?: ReturnType<typeof autofillMetadata>;
+};
 export interface SummaryProtection {
   seal(value: Summary): Summary | { osEncrypted: string };
   open(value: Summary | { osEncrypted: string }): Summary;
@@ -79,6 +91,121 @@ export class PasswordVault {
         /* Permission observers cannot interrupt a committed write. */
       }
     });
+  }
+
+  private fillIndex?: AutofillMetadataCache;
+  autofillAvailability(origin: string, scope?: string) {
+    if (
+      this.cachedSummary &&
+      (!this.cachedSummary.enabled || !this.cachedSummary.autofill)
+    )
+      return [];
+    return this.fillIndex?.availability(secureOrigin(origin), scope);
+  }
+
+  private cachedSummary?: Summary;
+  private summaryLoaded = false;
+  private storeInitialized = false;
+
+  expireLock() {
+    const expired = !!this.data && this.now() >= this.expires;
+    if (expired) this.lock();
+    return expired;
+  }
+
+  private menuGeneration = 0;
+  private menuIndex?: AutoLoginMetadataCache;
+  private menuSettings = {
+    initialized: false,
+    enabled: false,
+    autofill: false,
+    complete: false,
+  };
+  private preparingMenu?: Promise<void>;
+
+  private cacheMenu(summary: Summary, initialized = true) {
+    this.fillIndex = summary.fillMetadata
+      ? new AutofillMetadataCache(summary.fillMetadata)
+      : undefined;
+    this.cachedSummary = summary;
+    this.summaryLoaded = true;
+    this.storeInitialized = initialized;
+    this.menuIndex = new AutoLoginMetadataCache(
+      summary.autoLogin || legacyAutoLoginMetadata(summary.items),
+    );
+    this.menuSettings = {
+      initialized,
+      enabled: summary.enabled,
+      autofill: summary.autofill,
+      complete: !!summary.autoLogin,
+    };
+  }
+
+  /** Cold metadata loading happens off the main thread, never during a context menu. */
+  prepareAutoLoginMetadata(): Promise<void> {
+    if (this.menuIndex) return Promise.resolve();
+    if (this.preparingMenu) return this.preparingMenu;
+    const generation = this.menuGeneration;
+    this.preparingMenu = new Promise<void>((resolve) => {
+      const worker = new Worker(
+        `
+        const {parentPort,workerData}=require('worker_threads');
+        const fs=require('fs');
+        try {
+          if (!fs.existsSync(workerData)) parentPort.postMessage(null);
+          else if (fs.statSync(workerData).size <= 128*1024*1024)
+            parentPort.postMessage(JSON.parse(fs.readFileSync(workerData,'utf8')).summary || null);
+          else parentPort.postMessage(null);
+        } catch { parentPort.postMessage(null); }
+      `,
+        { eval: true, workerData: this.file },
+      );
+      const timer = setTimeout(() => {
+        void worker.terminate();
+        resolve();
+      }, 5000);
+      worker.once(
+        'message',
+        (value: Summary | { osEncrypted: string } | null) => {
+          clearTimeout(timer);
+          if (generation === this.menuGeneration && value) {
+            try {
+              this.cacheMenu(
+                this.summaryProtection
+                  ? this.summaryProtection.open(value)
+                  : (value as Summary),
+              );
+            } catch {
+              /* No metadata means no account hint. */
+            }
+          }
+          resolve();
+        },
+      );
+      worker.once('error', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      worker.once('exit', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    })
+      .catch(() => {
+        /* Startup metadata is optional; clicks still validate the vault. */
+      })
+      .finally(() => {
+        this.preparingMenu = undefined;
+      });
+    return this.preparingMenu;
+  }
+
+  /** In-memory metadata only. This method never unlocks or reads files. */
+  autoLoginMenuState(origin: string, scope?: string) {
+    return {
+      ...this.menuSettings,
+      accounts: this.menuIndex?.accounts(origin, scope) || [],
+    };
   }
 
   private key?: Buffer;
@@ -131,18 +258,23 @@ export class PasswordVault {
 
   status(scope?: string, allScopes = false): VaultStatus {
     if (this.now() >= this.expires) this.lock();
-    let summary: Summary | undefined;
-    if (!this.data && fs.existsSync(this.file)) {
-      try {
-        if (fs.statSync(this.file).size > 128 * 1024 * 1024) throw new Error();
-        const saved = JSON.parse(fs.readFileSync(this.file, 'utf8')).summary;
-        summary = this.summaryProtection
-          ? this.summaryProtection.open(saved)
-          : saved;
-      } catch {
-        summary = undefined;
+    if (!this.summaryLoaded) {
+      this.storeInitialized = fs.existsSync(this.file);
+      if (this.storeInitialized) {
+        try {
+          if (fs.statSync(this.file).size > 128 * 1024 * 1024)
+            throw new Error();
+          const saved = JSON.parse(fs.readFileSync(this.file, 'utf8')).summary;
+          this.cachedSummary = this.summaryProtection
+            ? this.summaryProtection.open(saved)
+            : saved;
+        } catch {
+          this.cachedSummary = undefined;
+        }
       }
+      this.summaryLoaded = true;
     }
+    const summary = this.cachedSummary;
     const items = this.data
       ? (allScopes
           ? this.data.items
@@ -170,8 +302,8 @@ export class PasswordVault {
             inherited: !!scope && !item.scope,
           }));
     return {
-      initialized: fs.existsSync(this.file),
-      metadataReady: !!this.data || !!summary || !fs.existsSync(this.file),
+      initialized: this.storeInitialized,
+      metadataReady: !!this.data || !!summary || !this.storeInitialized,
       locked: !this.data,
       enabled: this.data?.enabled ?? summary?.enabled === true,
       autofill: this.data?.autofill ?? summary?.autofill === true,
@@ -294,6 +426,21 @@ export class PasswordVault {
         }));
         this.persist();
       }
+      this.menuGeneration++;
+      this.cacheMenu({
+        items: this.data!.items.map(summaryOf),
+        enabled: this.data!.enabled,
+        autofill: this.data!.autofill,
+        ai: this.data!.ai,
+        fillMetadata: autofillMetadata(
+          this.data!.items,
+          this.data!.overrides || [],
+        ),
+        autoLogin: autoLoginMetadata(
+          this.data!.items,
+          this.data!.overrides || [],
+        ),
+      });
     } catch {
       this.lock();
       this.failures += 1;
@@ -329,11 +476,14 @@ export class PasswordVault {
       ciphertext: ciphertext.toString('base64'),
       summary: {
         items: data.items.map(summaryOf),
+        autoLogin: autoLoginMetadata(data.items, data.overrides || []),
+        fillMetadata: autofillMetadata(data.items, data.overrides || []),
         enabled: data.enabled,
         autofill: data.autofill,
         ai: data.ai,
       },
     };
+    const menuSummary = envelope.summary as Summary;
     if (envelope.summary && this.summaryProtection)
       envelope.summary = this.summaryProtection.seal(
         envelope.summary as Summary,
@@ -346,6 +496,8 @@ export class PasswordVault {
         flag: 'wx',
       });
       fs.renameSync(temporary, this.file);
+      this.menuGeneration++;
+      this.cacheMenu(menuSummary);
     } finally {
       if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
     }
@@ -421,6 +573,9 @@ export class PasswordVault {
       id: bounded(input.id, 100) || randomUUID(),
       title: bounded(input.title, 120),
       origin: input.origin ? secureOrigin(input.origin) : '',
+      loginURL: input.loginURL
+        ? preferredLoginURL(bounded(input.loginURL, 4096), input.origin)
+        : undefined,
       version: 2,
       sensitive: input.sensitive === true,
       asRead: input.asRead !== false,
@@ -471,9 +626,16 @@ export class PasswordVault {
     )
       throw new Error('Provide a title and unique field names.');
     const base = data.items.find((existing) => existing.id === item.id);
-    if (base?.scope && base.scope !== (placement ? placement.sourceScope : scope))
+    if (
+      base?.scope &&
+      base.scope !== (placement ? placement.sourceScope : scope)
+    )
       throw new Error('Record outside this group.');
-    const moving = !!base && !!placement && (base.scope !== undefined || placement.sourceScope === undefined) && base.scope !== scope;
+    const moving =
+      !!base &&
+      !!placement &&
+      (base.scope !== undefined || placement.sourceScope === undefined) &&
+      base.scope !== scope;
     if (base && scope && !base.scope && !moving) {
       this.mutate(() => {
         data.overrides = [
@@ -485,7 +647,10 @@ export class PasswordVault {
       });
     } else {
       this.mutate(() => {
-        if (moving) data.overrides = (data.overrides || []).filter(entry => entry.recordId !== item.id);
+        if (moving)
+          data.overrides = (data.overrides || []).filter(
+            (entry) => entry.recordId !== item.id,
+          );
         data.items = [
           ...data.items.filter((existing) => existing.id !== item.id),
           item,
@@ -917,9 +1082,12 @@ export class PasswordVault {
 
   noteSummaries() {
     const status = this.status(undefined, true);
+    const ordinaryIds = new Set(
+      this.publicNoteSummaries(undefined, true).map((note) => note.id),
+    );
     return status.items
       .filter((item) => item.kind === 'note')
-      .map((item) => ({ ...item, sensitive: !this.isOrdinaryNote(item.id) }));
+      .map((item) => ({ ...item, sensitive: !ordinaryIds.has(item.id) }));
   }
 
   moveNote(id: string, destination?: string) {
@@ -1087,15 +1255,21 @@ export class PasswordVault {
     });
   }
 
-  matching(origin: string, ai = false, scope: string | undefined = undefined) {
+  matchingItems(
+    origin: string,
+    ai = false,
+    scope: string | undefined = undefined,
+  ): VaultItem[] {
     this.checkAccess(ai);
     const target = secureOrigin(origin);
-    return this.records(scope)
-      .filter(
-        (item) =>
-          (item.origin === target || !item.origin) && (!ai || item.allowAI),
-      )
-      .map(summaryOf);
+    return this.records(scope).filter(
+      (item) =>
+        (item.origin === target || !item.origin) && (!ai || item.allowAI),
+    );
+  }
+
+  matching(origin: string, ai = false, scope: string | undefined = undefined) {
+    return this.matchingItems(origin, ai, scope).map(summaryOf);
   }
 
   forFill(
@@ -1104,10 +1278,13 @@ export class PasswordVault {
     ai = false,
     scope: string | undefined = undefined,
   ): VaultItem {
-    if (!this.matching(origin, ai, scope).some((item) => item.id === id))
+    const item = this.matchingItems(origin, ai, scope).find(
+      (item) => item.id === id,
+    );
+    if (!item)
       throw new Error('This account is not authorized for this website.');
     return {
-      ...this.records(scope).find((item) => item.id === id)!,
+      ...item,
       origin: secureOrigin(origin),
     };
   }

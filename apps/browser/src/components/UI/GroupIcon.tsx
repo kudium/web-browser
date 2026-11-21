@@ -1,3 +1,4 @@
+import { TabIcon } from './TabIcon';
 import { Folder, FolderOpen } from 'lucide-react';
 import { IApp } from '../../types';
 import { groupTabs } from '../../utils/groups';
@@ -31,7 +32,8 @@ export function GroupIcon({
   const seen = new Set<string>();
   const icons = groupTabs(tabs, item)
     .filter((tab) => {
-      const key = tab.icon || tab.url;
+      const key =
+        tab.customIconEmoji || tab.customIconImage || tab.icon || tab.url;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -47,24 +49,20 @@ export function GroupIcon({
       className={`group-icon-slot${mixed ? ' group-icons' : ''}`}
       aria-hidden="true"
     >
-      {mixed
-        ? icons.map((tab) => (
-            <AppIcon key={tab.id} icon={tab.icon} title={tab.name} />
-          ))
-        : null}
+      {mixed ? icons.map((tab) => <TabIcon key={tab.id} tab={tab} />) : null}
       {!mixed && item.sessionIconEmoji && (
         <span className="app-icon session-symbol">{item.sessionIconEmoji}</span>
       )}
-      {!mixed && !item.sessionIconEmoji && (
-        <AppIcon
-          icon={
-            item.sessionIconImage ||
-            tabs.find((tab) => tab.id === item.id)?.icon ||
-            item.icon
-          }
-          title={item.sessionName || item.name}
-        />
-      )}
+      {!mixed &&
+        !item.sessionIconEmoji &&
+        (item.sessionIconImage ? (
+          <AppIcon
+            icon={item.sessionIconImage}
+            title={item.sessionName || item.name}
+          />
+        ) : (
+          <TabIcon tab={tabs.find((tab) => tab.id === item.id) || item} />
+        ))}
     </span>
   );
 }

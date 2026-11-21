@@ -247,3 +247,14 @@ it('bounds website labels and account titles without truncating saved values', (
   expect(() => saveWebsiteFields(vault, url, undefined, [{ name: 'Password', value: 'x'.repeat(4097), secret: true }])).toThrow('too long');
   expect(vault.matching(url)).toHaveLength(2);
 });
+
+
+it('keeps preferred login routes separate for each account and group', () => {
+  const origin = 'https://fixture.example';
+  vault.save({ ...record, kind: 'login', origin, username: 'regular', password: 'fixture-secret', loginURL: `${origin}/login?next=/orders#step` });
+  expect(vault.edit(record.id).loginURL).toBe(`${origin}/login`);
+  vault.save({ ...vault.edit(record.id), loginURL: `${origin}/business/login` }, 'business-group');
+  expect(vault.edit(record.id, 'business-group').loginURL).toBe(`${origin}/business/login`);
+  expect(vault.edit(record.id).loginURL).toBe(`${origin}/login`);
+  expect(() => vault.save({ ...vault.edit(record.id), loginURL: 'https://other.example/login' })).toThrow('HTTPS website');
+});

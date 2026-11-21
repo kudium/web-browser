@@ -2,6 +2,7 @@ import { IApp } from '../types';
 import { groupKey, isGroupHomeTab } from './groups';
 import { commandDestination } from './commandNavigation';
 import { collectionProfile } from './collectionGroups';
+import { normalizeFocusColor } from './focusColor';
 
 export interface GroupSettings {
   loginProfileId?: string;
@@ -11,6 +12,7 @@ export interface GroupSettings {
   slug?: string;
   emoji: string;
   image: string;
+  focusColor?: string;
   homeURL: string;
   spaceId: string;
   folderId: string;
@@ -48,6 +50,10 @@ export function updateGroupSettings(
           sessionNameGenerated: false,
           sessionIconEmoji: settings.emoji || undefined,
           sessionIconImage: settings.image || undefined,
+          sessionFocusColor:
+            settings.focusColor === undefined
+              ? tab.sessionFocusColor
+              : normalizeFocusColor(settings.focusColor),
           sessionHomeURL: settings.homeURL || undefined,
           spaceId: settings.spaceId,
           folderId:

@@ -10,6 +10,8 @@ export interface VaultItem {
   id: string;
   title: string;
   origin: string;
+  /** Preferred sign-in route; filling is authorized by origin, never this path. */
+  loginURL?: string;
   kind: 'login' | 'profile' | 'payment' | 'knowledge' | 'note';
   version?: 2;
   sensitive?: boolean;
@@ -71,7 +73,7 @@ export interface DataOverride {
   patch: Partial<
     Pick<
       VaultItem,
-      'title' | 'origin' | 'username' | 'password' | 'notes' | 'allowAI'
+      'title' | 'origin' | 'loginURL' | 'username' | 'password' | 'notes' | 'allowAI'
     >
   >;
   fields?: VaultField[];

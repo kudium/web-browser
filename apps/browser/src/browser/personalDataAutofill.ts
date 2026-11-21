@@ -2,10 +2,11 @@ import type { VaultField } from './passwordManager';
 
 /** Runs only in the isolated page preload; no bridge is exposed to the website. */
 export function installPersonalDataAutofill(
-  bridge: { invoke: (channel: string, input?: any) => Promise<any>; on: (channel: string, callback: (_event: unknown, enabled: boolean) => void) => void },
+  bridge: { invoke: (channel: string, input?: any) => Promise<any>; on: (channel: string, callback: (_event: unknown, enabled: boolean, focus?: boolean) => void) => void },
   match: (name: string, aliases: string[], target: any) => number
 ) {
   let enabled = false;
+  let autoOpenOnFocus = true;
   let paused = false;
   let disposed = false;
   let target: HTMLInputElement | HTMLTextAreaElement | null = null;
@@ -52,6 +53,35 @@ export function installPersonalDataAutofill(
     host.style.left = `${Math.max(8, Math.min((placement.side === 'left' ? rect.left : rect.right) + placement.x, innerWidth - 68))}px`;
     host.style.top = `${Math.max(8, Math.min(rect.top + rect.height / 2 + placement.y, innerHeight - 34))}px`;
   };
+  const makePanelDraggable = (panel: HTMLDivElement, header: HTMLDivElement) => {
+    header.title = 'Drag to reposition';
+    let drag: { id: number; x: number; y: number; left: number; top: number } | null = null;
+    header.addEventListener('pointerdown', (event) => {
+      if (!event.isTrusted || event.button !== 0 ||
+        (event.target instanceof Element && event.target.closest('button, input, a'))) return;
+      event.preventDefault();
+      const rect = panel.getBoundingClientRect();
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+      header.setPointerCapture(event.pointerId);
+    });
+    header.addEventListener('pointermove', (event) => {
+      if (!event.isTrusted || !drag || event.pointerId !== drag.id) return;
+      const dx = event.clientX - drag.x; const dy = event.clientY - drag.y;
+      if (!dragging && Math.hypot(dx, dy) < 4) return;
+      dragging = true; header.style.cursor = 'grabbing';
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = `${Math.max(8, Math.min(Math.max(8, innerWidth - rect.width - 8), drag.left + dx))}px`;
+      panel.style.top = `${Math.max(8, Math.min(Math.max(8, innerHeight - rect.height - 8), drag.top + dy))}px`;
+    });
+    const finish = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      drag = null; dragging = false; header.style.cursor = '';
+      if (header.hasPointerCapture(event.pointerId)) header.releasePointerCapture(event.pointerId);
+    };
+    header.addEventListener('pointerup', finish);
+    header.addEventListener('pointercancel', finish);
+    header.addEventListener('lostpointercapture', finish);
+  };
   const write = (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
     if (!usable(input) || !input.isConnected) return;
     const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -94,7 +124,26 @@ export function installPersonalDataAutofill(
     const update = button('Update existing data', () => finish(true));
     prompt.append(update, button('Cancel', () => finish(false))); panel.append(prompt); update.focus();
   });
-  const panelStyles = `:host{color-scheme:light dark;font:12px -apple-system,BlinkMacSystemFont,sans-serif;color:light-dark(#202124,#eee)}button{font:inherit;color:inherit;cursor:pointer;border:0;border-radius:7px;background:transparent;padding:8px;text-align:left}button:hover,button:focus-visible{background:light-dark(#0000000c,#ffffff15)}.autofill-control{display:inline-flex;align-items:center;padding:1px;border-radius:8px;background:light-dark(#f0f1f3f2,#34363af2);backdrop-filter:blur(16px);box-shadow:0 1px 4px #0002;outline:1px solid light-dark(#00000012,#ffffff12)}.autofill-control button{display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:6px;flex-shrink:0}.autofill-control svg{display:block;width:15px;height:15px}.trigger{touch-action:none;user-select:none;cursor:grab}.panel{position:fixed;box-sizing:border-box;width:min(290px,calc(100vw - 16px));max-height:min(320px,calc(100dvh - 16px));overflow:auto;overflow-x:hidden;padding:6px;border:1px solid light-dark(#0002,#fff2);border-radius:12px;background:light-dark(#fffffff0,#25262af2);backdrop-filter:blur(20px);box-shadow:0 8px 30px #0003}.panel button{box-sizing:border-box;line-height:1.45;white-space:normal;display:block;width:100%;overflow-wrap:anywhere}.panel .header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 6px 8px;font-weight:600}.panel .header>span{min-width:0;overflow-wrap:anywhere;line-height:1.4}.panel .header-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}.panel .close{display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;flex-shrink:0}.panel .header-actions svg{display:block;width:16px;height:16px;flex:0 0 16px;stroke-width:1.8}.loading{display:flex;align-items:center;gap:8px;padding:12px 8px;min-height:24px;line-height:1.45;color:light-dark(#666,#bbb);overflow-wrap:anywhere}.loading span{min-width:0}.spinner{box-sizing:border-box;width:14px;height:14px;flex:0 0 14px;border:1.5px solid light-dark(#0002,#fff3);border-top-color:currentColor;border-radius:50%;animation:autofill-spin .8s linear infinite}@keyframes autofill-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spinner{animation:none}}.saved-confirmation{display:flex;align-items:flex-start;gap:8px;padding:10px 8px 8px;line-height:1.45;overflow-wrap:anywhere}.saved-confirmation svg{flex:0 0 16px;margin-top:1px;color:light-dark(#268344,#75cf94)}.saved-confirmation span{min-width:0}.confirmation-actions{display:flex;justify-content:flex-end;padding:0 4px 4px}.panel .confirmation-actions button{width:auto;padding:6px 10px}.message{box-sizing:border-box;padding:10px 8px;line-height:1.5;white-space:normal;overflow-wrap:anywhere;min-width:0;color:light-dark(#666,#bbb)}.message-success{color:light-dark(#268344,#75cf94)}.message-error{color:light-dark(#b42318,#ffb4ab)}.heading{padding:6px 8px;line-height:1.4;overflow-wrap:anywhere;color:light-dark(#666,#bbb)}.quick-fill{position:relative;margin-left:1px}.quick-fill::before{content:"";position:absolute;left:-1px;top:6px;bottom:6px;width:1px;background:light-dark(#00000018,#ffffff20)}.heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.heading>span{min-width:0;flex:1;overflow-wrap:anywhere}.panel .heading .fill-form{width:auto;flex-shrink:0;padding:4px 6px;font-size:11px;color:light-dark(#202124,#eee)}.saved-search{box-sizing:border-box;width:100%;margin:4px 0;padding:8px;border:1px solid light-dark(#0002,#fff2);border-radius:7px;background:transparent;color:inherit;font:inherit}.value{display:block;font-size:11px;opacity:.7;margin-top:2px}`;
+  const panelStyles = `:host{color-scheme:light dark;font:12px -apple-system,BlinkMacSystemFont,sans-serif;color:light-dark(#202124,#eee)}button{font:inherit;color:inherit;cursor:pointer;border:0;border-radius:7px;background:transparent;padding:8px;text-align:left}button:hover,button:focus-visible{background:light-dark(#0000000c,#ffffff15)}.autofill-control{display:inline-flex;align-items:center;padding:1px;border-radius:8px;background:light-dark(#f0f1f3f2,#34363af2);backdrop-filter:blur(16px);box-shadow:0 1px 4px #0002;outline:1px solid light-dark(#00000012,#ffffff12)}.autofill-control button{display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:6px;flex-shrink:0}.autofill-control svg{display:block;width:15px;height:15px}.trigger{touch-action:none;user-select:none;cursor:grab}.panel{position:fixed;box-sizing:border-box;width:min(290px,calc(100vw - 16px));max-height:min(320px,calc(100dvh - 16px));overflow:auto;overflow-x:hidden;padding:6px;border:1px solid light-dark(#ffffffb3,#ffffff2e);border-radius:12px;background:light-dark(#ffffffe0,#24262bcc);backdrop-filter:blur(24px) saturate(1.35);-webkit-backdrop-filter:blur(24px) saturate(1.35);box-shadow:0 12px 36px #0003,0 0 0 1px light-dark(#0000000d,#00000026),inset 0 1px 0 light-dark(#ffffffcc,#ffffff1a)}.panel .heading,.panel .message,.panel .loading{color:light-dark(#53565e,#d0d2d8)}.panel .message-success{color:light-dark(#216e3a,#8be0a5)}.panel .message-error{color:light-dark(#a51d16,#ffb4ab)}@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.panel{background:light-dark(#fff,#25262a);backdrop-filter:none;-webkit-backdrop-filter:none;border-color:light-dark(#0003,#fff4)}}.panel button{box-sizing:border-box;line-height:1.45;white-space:normal;display:block;width:100%;overflow-wrap:anywhere}.panel .header{cursor:grab;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 6px 8px;font-weight:600}.panel .header>span{min-width:0;overflow-wrap:anywhere;line-height:1.4}.panel .header-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}.panel .close{display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;flex-shrink:0}.panel .header-actions svg{display:block;width:16px;height:16px;flex:0 0 16px;stroke-width:1.8}.loading{display:flex;align-items:center;gap:8px;padding:12px 8px;min-height:24px;line-height:1.45;color:light-dark(#666,#bbb);overflow-wrap:anywhere}.loading span{min-width:0}.spinner{box-sizing:border-box;width:14px;height:14px;flex:0 0 14px;border:1.5px solid light-dark(#0002,#fff3);border-top-color:currentColor;border-radius:50%;animation:autofill-spin .8s linear infinite}@keyframes autofill-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spinner{animation:none}}.saved-confirmation{display:flex;align-items:flex-start;gap:8px;padding:10px 8px 8px;line-height:1.45;overflow-wrap:anywhere}.saved-confirmation svg{flex:0 0 16px;margin-top:1px;color:light-dark(#268344,#75cf94)}.saved-confirmation span{min-width:0}.confirmation-actions{display:flex;justify-content:flex-end;padding:0 4px 4px}.panel .confirmation-actions button{width:auto;padding:6px 10px}.message{box-sizing:border-box;padding:10px 8px;line-height:1.5;white-space:normal;overflow-wrap:anywhere;min-width:0;color:light-dark(#666,#bbb)}.message-success{color:light-dark(#268344,#75cf94)}.message-error{color:light-dark(#b42318,#ffb4ab)}.heading{padding:6px 8px;line-height:1.4;overflow-wrap:anywhere;color:light-dark(#666,#bbb)}.quick-fill{position:relative;margin-left:1px}.quick-fill::before{content:"";position:absolute;left:-1px;top:6px;bottom:6px;width:1px;background:light-dark(#00000018,#ffffff20)}.heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.heading>span{min-width:0;flex:1;overflow-wrap:anywhere}.panel .heading .fill-form{width:auto;flex-shrink:0;padding:4px 6px;font-size:11px;color:light-dark(#202124,#eee)}.saved-search{box-sizing:border-box;width:100%;margin:4px 0;padding:8px;border:1px solid light-dark(#0002,#fff2);border-radius:7px;background:transparent;color:inherit;font:inherit}.value{display:block;font-size:11px;opacity:.7;margin-top:2px}`;
+  const applyPanelStyles = (shadow: ShadowRoot) => {
+    // Inline <style> elements remain subject to the website's CSP inside
+    // a closed shadow root. Constructed sheets keep browser UI styled on
+    // sites that require a nonce or disallow inline styles entirely.
+    if (typeof CSSStyleSheet.prototype.replaceSync === 'function' && 'adoptedStyleSheets' in shadow) {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(panelStyles);
+      shadow.adoptedStyleSheets = [sheet];
+    } else {
+      const style = document.createElement('style');
+      style.textContent = panelStyles;
+      shadow.append(style);
+    }
+  };
+  let returningFocus: HTMLInputElement | HTMLTextAreaElement | undefined;
+  const finishInput = (input: HTMLInputElement | HTMLTextAreaElement) => {
+    returningFocus = document.activeElement !== input ? input : undefined;
+    close(); input.focus();
+  };
   const show = (input: HTMLInputElement | HTMLTextAreaElement) => {
     close(); suppressClick = false; target = input;
     host = document.createElement('div');
@@ -107,7 +156,7 @@ export function installPersonalDataAutofill(
 
     host.addEventListener('keydown', (event) => {
       if (!event.isTrusted || !root) return;
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); input.focus(); return; }
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); finishInput(input); return; }
       const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('.panel button')).filter((button) =>
         !button.disabled && !button.closest('[hidden]') && !button.classList.contains('close'));
       if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) && buttons.length) {
@@ -122,14 +171,17 @@ export function installPersonalDataAutofill(
       }
     });
     root = host.attachShadow({ mode: 'closed' });
-    const style = document.createElement('style');
-    style.textContent = panelStyles;
-    root.append(style);
-    const openPicker = async (quick = false) => {
+    applyPanelStyles(root);
+    const openPicker = async (quick = false, preserveFocus = false) => {
       if (!enabled || paused || disposed || !input.isConnected) return;
-      if (root?.querySelector('.panel')) { root.querySelector<HTMLButtonElement>('.panel button')?.focus(); return; }
+      const existing = root?.querySelector('.panel');
+      if (existing) {
+        if (!quick) { if (!preserveFocus) existing.querySelector<HTMLButtonElement>('button')?.focus(); return; }
+        existing.remove(); generation++;
+      }
       const current = generation;
       const panel = document.createElement('div'); panel.className = 'panel';
+      if (preserveFocus) panel.dataset.autofocus = 'true';
       const rect = input.getBoundingClientRect();
       panel.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - 298))}px`;
       panel.style.top = `${Math.max(8, Math.min(rect.bottom + 4, innerHeight - 328))}px`;
@@ -140,7 +192,7 @@ export function installPersonalDataAutofill(
       const spinner = document.createElement('div'); spinner.className = 'spinner'; spinner.setAttribute('aria-hidden', 'true');
       const loadingLabel = document.createElement('span'); loadingLabel.textContent = 'Loading Personal Data…';
       loading.append(spinner, loadingLabel); content.append(loading);
-      const header = document.createElement('div'); header.className = 'header';
+      const header = document.createElement('div'); header.className = 'header'; makePanelDraggable(panel, header);
       const title = document.createElement('span'); title.textContent = 'Personal Data';
       const dismiss = button('Close', () => {
         if (panel.querySelector('.dismissal')) { paused = true; close(); return; }
@@ -309,7 +361,7 @@ export function installPersonalDataAutofill(
               for (const value of choice.values) group.append(button(value, () => {
                 if (!currentTarget() || !usable(choice.control) || choice.control.form !== form) return;
                 write(choice.control, value); group.remove();
-                if (!content.querySelector('button')) { close(); input.focus(); }
+                if (!content.querySelector('button')) { finishInput(input); }
               }));
               content.append(group);
             }
@@ -317,7 +369,7 @@ export function installPersonalDataAutofill(
             return;
           }
           if (!filled) { content.append(notice('No matching fields available to fill.')); return; }
-          close(); input.focus();
+          finishInput(input);
         } catch { if (generation === current) content.append(notice('Unable to fill this form. Unlock Personal Data and try again.', 'error')); }
       };
       let watchdog: ReturnType<typeof setInterval> | undefined;
@@ -338,7 +390,9 @@ export function installPersonalDataAutofill(
             }
           }, 250);
         });
-        const records: FillRecord[] = await Promise.race([bridge.invoke('personal-data-autofill-records'), timeout]);
+        // Website data always outranks a previously selected browser-wide profile.
+        const records: FillRecord[] = (await Promise.race([bridge.invoke('personal-data-autofill-records'), timeout]) as FillRecord[])
+          .slice().sort((a, b) => Number(!!b.website) - Number(!!a.website) || Number(!!b.selected) - Number(!!a.selected));
         if (!enabled || generation !== current) return;
         if (!input.isConnected) { close(); return; }
         content.textContent = '';
@@ -365,7 +419,7 @@ export function installPersonalDataAutofill(
               for (const field of fields) {
                 const entry = button(field.name, () => {
                   if (!enabled || generation !== current || !input.isConnected) return;
-                  write(input, field.value); close(); input.focus();
+                  write(input, field.value); finishInput(input);
                 });
                 const value = document.createElement('span'); value.className = 'value'; value.textContent = field.value; entry.append(value);
                 entry.setAttribute('aria-label', `Fill ${field.name}: ${field.value}`); results.append(entry);
@@ -394,8 +448,9 @@ export function installPersonalDataAutofill(
           const matching = records.filter((record) => formMatches(record, controls));
           if (!matching.length) refreshQuickFill?.();
           const website = matching.filter((record) => record.website);
-          const selected = matching.filter((record) => record.selected);
-          const choices = selected.length ? selected : website.length ? website : matching;
+          const preferred = website.length ? website : matching;
+          const selected = preferred.filter((record) => record.selected);
+          const choices = selected.length ? selected : preferred;
           if (choices.length === 1) { await fillForm(choices[0], records); return; }
           title.textContent = 'Fill form';
           if (!choices.length) content.append(notice('No suggested matches for this field.'));
@@ -404,7 +459,6 @@ export function installPersonalDataAutofill(
           (content.querySelector('button') || dismiss).focus();
           return;
         }
-        addActions();
         for (const record of records) {
           if (input.type === 'password') {
             const secrets = record.fields.filter((field) => field.secret && field.fieldIndex !== undefined);
@@ -417,7 +471,7 @@ export function installPersonalDataAutofill(
                   try {
                     const value = await bridge.invoke('personal-data-autofill-secret', { id: record.id, fieldIndex: field.fieldIndex });
                     if (!enabled || generation !== current || !input.isConnected) return;
-                    write(input, value); close(); input.focus();
+                    write(input, value); finishInput(input);
                   } catch { if (generation === current) content.append(notice('Unable to fill this secret. Unlock Personal Data and try again.', 'error')); }
                 }));
               }
@@ -430,7 +484,7 @@ export function installPersonalDataAutofill(
                   await fillForm(record); return;
                 }
                 void bridge.invoke('personal-data-login-identity', { id: record.id }).catch(() => {});
-                write(input, record.username!); close(); input.focus();
+                write(input, record.username!); finishInput(input);
               }));
             }
             if (input.type === 'password' && input.autocomplete !== 'new-password') {
@@ -438,7 +492,7 @@ export function installPersonalDataAutofill(
                 try {
                   const result = await bridge.invoke('personal-data-autofill-login', record.id);
                   if (generation !== current) return;
-                  if (result.filled) { close(); input.focus(); }
+                  if (result.filled) { finishInput(input); }
                   else content.append(notice('No matching login fields.', 'error'));
                 } catch { if (generation === current) content.append(notice('Unlock Personal Data to fill this login.', 'error')); }
               }));
@@ -451,21 +505,21 @@ export function installPersonalDataAutofill(
           const heading = document.createElement('div'); heading.className = 'heading'; const name = document.createElement('span'); name.textContent = record.title; heading.append(name); content.append(heading);
           for (const { field } of matches) {
             const entry = button(field.value, () => {
-              if (input.form) { void fillForm(record); return; }
               if (match('username', [], descriptor(input)) > 0 || match('email', [], descriptor(input)) > 0)
                 void bridge.invoke('personal-data-login-identity', { id: record.id }).catch(() => {});
-              write(input, field.value); close(); input.focus();
+              write(input, field.value); finishInput(input);
             });
-            entry.setAttribute('aria-label', input.form ? `Fill form with ${record.title}: ${field.value}` : `Fill ${field.name}: ${field.value}`); content.append(entry);
+            entry.setAttribute('aria-label', `Fill ${field.name}: ${field.value}`); content.append(entry);
           }
           if (input.form) {
             const fill = button('Fill this form', () => { void fillForm(record); });
             fill.className = 'fill-form'; heading.append(fill);
           }
         }
+        addActions();
         if (!content.childNodes.length && input.type !== 'password') content.replaceChildren(notice('No suggested matches for this field.', 'neutral'));
         addBrowse();
-        if (!content.hidden) (content.querySelector('button') || dismiss).focus();
+        if (!preserveFocus && !content.hidden) (content.querySelector('button') || dismiss).focus();
       } catch (error) {
         if (generation !== current) return;
         const retry = button('Retry', () => {
@@ -475,7 +529,7 @@ export function installPersonalDataAutofill(
           ? 'Personal Data took too long to respond. Try again.'
           : 'Personal Data is unavailable. Enable or unlock it in Preferences.', 'error'), retry);
         addActions();
-        if (!content.hidden) retry.focus();
+        if (!preserveFocus && !content.hidden) retry.focus();
       } finally { if (watchdog !== undefined) clearInterval(watchdog); }
     };
     openCurrent = openPicker;
@@ -534,14 +588,24 @@ export function installPersonalDataAutofill(
       refreshQuickFill();
     }
     (input.closest('dialog,[role=dialog],[aria-modal=true]') || document.documentElement).append(host); position();
+    if (autoOpenOnFocus) void openPicker(false, true);
   };
   let checkingLogin = false;
   let loginSuggested = false;
   let submittedHere = false;
   let loginGoneSince = 0;
   let loginAttempt = 0;
+  let watchingLogin = false;
+  let loginTimer: ReturnType<typeof setTimeout> | undefined;
+  let loginExpiry: ReturnType<typeof setTimeout> | undefined;
+  let loginObserver: MutationObserver | undefined;
+  const scheduleLogin = (delay = 100) => {
+    if (!watchingLogin || disposed) return;
+    clearTimeout(loginTimer);
+    loginTimer = setTimeout(() => { void checkLogin(); }, delay);
+  };
   const checkLogin = async () => {
-    if (!enabled || paused || disposed || checkingLogin || loginSuggested) return;
+    if (!watchingLogin || !enabled || paused || disposed || checkingLogin || loginSuggested) return;
     const blocked = () => {
       const visible = (element: Element) => element.getClientRects().length > 0;
       return document.readyState === 'loading' ||
@@ -558,22 +622,25 @@ export function installPersonalDataAutofill(
     if (!loginGoneSince) loginGoneSince = Date.now();
     // Explicit signed-in UI can respond quickly; disappearance alone needs more settling.
     const settled = Date.now() - loginGoneSince >= (signedIn ? 250 : 1000);
+    if (!settled) { scheduleLogin(signedIn ? 250 : 1000); return; }
     const attempt = loginAttempt;
     checkingLogin = true;
     try {
       const pending = await bridge.invoke('personal-data-login-pending');
-      if (!(pending === true || pending?.pending) || !enabled || paused || disposed || attempt !== loginAttempt) return;
+      if (!(pending === true || pending?.pending)) { watchingLogin = false; loginObserver?.disconnect(); return; }
+      if (!enabled || paused || disposed || attempt !== loginAttempt) return;
       if (!settled || (!signedIn && !submittedHere && !pending?.navigated)) return;
       // Recheck after IPC: the page may have rendered a failed-login form.
       if (blocked()) { loginGoneSince = 0; return; }
-      loginSuggested = true; close(); loginPrompt = true; target = null;
+      loginSuggested = true; watchingLogin = false; loginObserver?.disconnect(); clearTimeout(loginExpiry);
+      close(); loginPrompt = true; target = null;
       host = document.createElement('div'); host.style.cssText = 'position:fixed;z-index:2147483647';
       root = host.attachShadow({ mode: 'closed' });
-      const style = document.createElement('style'); style.textContent = panelStyles; root.append(style);
+      applyPanelStyles(root);
       const panel = document.createElement('div'); panel.className = 'panel';
       panel.style.top = '12px'; panel.style.right = '12px';
       panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Save website login');
-      const header = document.createElement('div'); header.className = 'header';
+      const header = document.createElement('div'); header.className = 'header'; makePanelDraggable(panel, header);
       const title = document.createElement('span'); title.textContent = 'Save login?';
       const dismiss = async () => { close(); await bridge.invoke('personal-data-login-dismiss').catch(() => {}); };
       const x = button('Close', dismiss); x.className = 'close'; x.title = 'Close'; x.setAttribute('aria-label', 'Close save login');
@@ -610,7 +677,7 @@ export function installPersonalDataAutofill(
     }
     if (passwords.length !== 1 || passwords[0].autocomplete === 'new-password' || users.length > 1) return;
     loginAttempt++; close(); submittedHere = true; loginSuggested = false; loginGoneSince = 0;
-    void bridge.invoke('personal-data-login-candidate', { username: users[0]?.value || '', password: passwords[0].value }).then(checkLogin).catch(() => {});
+    void bridge.invoke('personal-data-login-candidate', { username: users[0]?.value || '', password: passwords[0].value }).then(startLoginWatch).catch(() => {});
 
   };
   const onSubmit = (event: SubmitEvent) => {
@@ -630,9 +697,31 @@ export function installPersonalDataAutofill(
   };
   document.addEventListener('click', onLoginClick, true);
   document.addEventListener('keydown', onLoginEnter, true);
-  const loginTimer = setInterval(() => { void checkLogin(); }, 250);
+  const startLoginWatch = async () => {
+    if (!enabled || disposed || watchingLogin) return;
+    const pending = await bridge.invoke('personal-data-login-pending').catch(() => false);
+    if (!enabled || disposed || !(pending === true || pending?.pending)) return;
+    watchingLogin = true;
+    loginObserver?.disconnect();
+    loginObserver = new MutationObserver(changes => {
+      const selector = 'input,a,button,[role=button],[role=alert],[aria-busy],[role=progressbar],[aria-live]';
+      const relevant = (node: Node) => {
+        const element = node instanceof Element ? node : node.parentElement;
+        return !!element && (!!element.closest(selector) || !!element.querySelector(selector));
+      };
+      if (changes.some(change => change.type === 'childList'
+        ? [...change.addedNodes, ...change.removedNodes].some(relevant) : relevant(change.target))) scheduleLogin();
+    });
+    loginObserver.observe(document.documentElement, {subtree:true,childList:true,characterData:true,attributes:true,
+      attributeFilter:['hidden','disabled','class','style','type','autocomplete','aria-label','aria-busy','aria-live','role']});
+    clearTimeout(loginExpiry);
+    loginExpiry = setTimeout(() => { watchingLogin = false; loginObserver?.disconnect(); clearTimeout(loginTimer); }, 120000);
+    scheduleLogin(0);
+  };
   document.addEventListener('submit', onSubmit, true);
   const onFocus = (event: FocusEvent) => {
+    if (event.target === returningFocus) { returningFocus = undefined; return; }
+    returningFocus = undefined;
     if (event.target === host || loginPrompt) return;
     if (enabled && !paused && usable(event.target as Element) && recognized(event.target as HTMLInputElement)) show(event.target as HTMLInputElement);
     else close();
@@ -649,10 +738,16 @@ export function installPersonalDataAutofill(
   document.addEventListener('keydown', onKey);
   const closeField = () => { if (!loginPrompt) close(); };
   addEventListener('scroll', closeField, true); addEventListener('resize', closeField); addEventListener('pagehide', close);
-  bridge.on('personal-data-autofill-enabled', (_event, next) => {
+  bridge.on('personal-data-autofill-enabled', (_event, next, focus) => {
+    if (focus !== undefined) autoOpenOnFocus = focus;
+    if (!autoOpenOnFocus) {
+      const automatic = root?.querySelector('.panel[data-autofocus]');
+      if (automatic) { automatic.remove(); generation++; }
+    }
     if (disposed) return;
     const wasEnabled = enabled;
     enabled = next === true;
+    if (enabled) void startLoginWatch();
     if (!enabled) close();
     else if (!wasEnabled && !paused && usable(document.activeElement) && recognized(document.activeElement)) show(document.activeElement);
     else refreshQuickFill?.();
@@ -673,14 +768,16 @@ export function installPersonalDataAutofill(
     if (disposed || movedPlacement || !saved || !['left', 'right'].includes(saved.side) || !Number.isFinite(saved.x) || !Number.isFinite(saved.y)) return;
     placement = saved; position();
   }).catch(() => {});
-  void bridge.invoke('personal-data-autofill-enabled').then((next) => {
+  void Promise.all([bridge.invoke('personal-data-autofill-enabled'), bridge.invoke('personal-data-autofill-focus')]).then(([next, focus]) => {
+    autoOpenOnFocus = focus !== false;
     if (disposed) return;
     enabled = next === true;
+    if (enabled) void startLoginWatch();
     if (enabled && !paused && usable(document.activeElement) && recognized(document.activeElement)) show(document.activeElement);
   }).catch(() => {});
   return () => {
     disposed = true; enabled = false; close();
-    clearInterval(loginTimer); document.removeEventListener('submit', onSubmit, true);
+    clearTimeout(loginTimer); clearTimeout(loginExpiry); loginObserver?.disconnect(); document.removeEventListener('submit', onSubmit, true);
     document.removeEventListener('click', onLoginClick, true); document.removeEventListener('keydown', onLoginEnter, true);
     document.removeEventListener('focusin', onFocus);
     document.removeEventListener('pointerdown', onPointer, true);

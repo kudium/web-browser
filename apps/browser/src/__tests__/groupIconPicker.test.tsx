@@ -106,6 +106,7 @@ it('edits tab addresses directly and preserves group identity', async () => {
       <GroupEditor item={AppManager.getAll()[0]} close={close} />
     </Theme>
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Tabs 1 tab' }));
   fireEvent.change(screen.getByLabelText('Tab address: Work'), {
     target: { value: 'https://example.com/home' },
   });
@@ -121,6 +122,7 @@ it('rejects non-web tab addresses without saving', async () => {
       <GroupEditor item={AppManager.getAll()[0]} close={close} />
     </Theme>
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Tabs 1 tab' }));
   fireEvent.change(screen.getByLabelText('Tab address: Work'), {
     // eslint-disable-next-line no-script-url
     target: { value: 'javascript:alert(1)' },
@@ -179,4 +181,27 @@ it('reuses the neutral symbol picker and saves the selected group icon', async (
   await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   expect(AppManager.getAll()[0].sessionIconImage).toBe('kudium-symbol:work');
   expect(AppManager.getAll()[0].sessionIconEmoji).toBeUndefined();
+});
+
+it('saves group and individual tab highlight colors independently and clears a tab override', async () => {
+  const close = jest.fn();
+  render(<Theme><GroupEditor item={AppManager.getAll()[0]} close={close} /></Theme>);
+  fireEvent.click(screen.getByRole('button', { name: 'Choose group icon' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Red background color for Choose group icon' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Tabs 1 tab' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose tab icon: Work' }));
+  fireEvent.change(screen.getByLabelText('Custom focus color for Choose tab icon: Work'), { target: { value: '#123456' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+  expect(AppManager.getAll()[0].sessionFocusColor).toBe('#df6363');
+  expect(AppManager.getAll()[0].focusColor).toBe('#123456');
+  fireEvent.click(screen.getByRole('button', { name: 'Choose tab icon: Work' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Transparent focus color for Choose tab icon: Work' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(close).toHaveBeenCalledTimes(2));
+  expect(AppManager.getAll()[0].focusColor).toBeUndefined();
+  expect(AppManager.getAll()[0].sessionFocusColor).toBe('#df6363');
 });

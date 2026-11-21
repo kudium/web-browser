@@ -53,6 +53,10 @@ it('edits a text list, preserving custom names, and reflects changes in individu
     );
   }
   render(<Editor />);
+  const section = screen.getByRole('button', { name: 'Tabs 1 tab' });
+  expect(section).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.getByLabelText('Tab address: My site')).not.toBeVisible();
+  fireEvent.click(section);
   fireEvent.click(screen.getByRole('button', { name: 'Text list' }));
   fireEvent.change(screen.getByLabelText('Tab URL list'), {
     target: { value: '  example.com  \n\nother.com\n' },
@@ -63,6 +67,12 @@ it('edits a text list, preserving custom names, and reflects changes in individu
     '  example.com  '
   );
   expect(screen.getAllByPlaceholderText('https://example.com')).toHaveLength(2);
+  fireEvent.click(section);
+  expect(screen.getByLabelText('Tab address: My site')).not.toBeVisible();
+  fireEvent.click(section);
+  expect(screen.getByLabelText('Tab address: My site')).toHaveValue(
+    '  example.com  '
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Text list' }));
   fireEvent.change(screen.getByLabelText('Tab URL list'), {
     target: { value: '' },

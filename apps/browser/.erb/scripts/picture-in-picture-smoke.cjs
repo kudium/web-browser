@@ -37,7 +37,7 @@ function mediaPage() {
       const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
       const context=canvas.getContext('2d');let n=0;
       const draw=()=>{context.fillStyle=['#007f79','#30333a','#999'][i];context.fillRect(0,0,640,360);context.fillStyle='#fff';context.font='32px system-ui';context.fillText(id+' · '+n++,30,80)};
-      draw();setInterval(draw,100);const video=document.getElementById(id);video.srcObject=canvas.captureStream(10);await video.play();
+      draw();setInterval(draw,100);const video=document.getElementById(id);video.addEventListener('play',()=>{if(document.hidden)video.pause()});video.srcObject=canvas.captureStream(10);await video.play();
     }));</script>`;
 }
 async function server(handler) {
@@ -97,6 +97,7 @@ async function open(url) {
     '({width:document.pictureInPictureElement.videoWidth,height:document.pictureInPictureElement.videoHeight})'
   );
   assert(dimensions.width > 0 && dimensions.height > 0);
+  assert.equal(view.webContents.getBackgroundThrottling(), false);
   view.setVisible(false);
   await wait(1100);
   assert(controller.state.active, 'PiP survives switching away from its tab');
@@ -105,7 +106,13 @@ async function open(url) {
   );
   await controller.refresh();
   assert(controller.state.active, 'Paused PiP remains available for closing');
+  await view.webContents.executeJavaScript('document.pictureInPictureElement.play()', true);
+  await wait(300);
+  assert.equal(await view.webContents.executeJavaScript('document.pictureInPictureElement.paused'), false,
+    'A visibility-sensitive player can resume PiP while its source tab is hidden');
+  assert.equal(await view.webContents.executeJavaScript('document.hidden'), false);
   await controller.toggle();
+  assert.equal(view.webContents.getBackgroundThrottling(), true, 'Closing PiP restores background throttling');
   assert(!controller.state.active);
   view.setVisible(true);
   window.focus();
@@ -180,8 +187,14 @@ async function open(url) {
   );
   await controller.refresh();
   assert(!controller.state.available, 'Website restrictions hide PiP action');
+  await child.executeJavaScript('window.dynamicHost=document.createElement("div");window.dynamicHost.attachShadow({mode:"open"});document.body.append(window.dynamicHost);undefined');
+  await wait(200);
+  await child.executeJavaScript('(async()=>{const video=document.createElement("video");video.id="dynamic";video.muted=true;video.style="width:640px;height:360px";video.srcObject=document.querySelector("video").srcObject;window.dynamicHost.shadowRoot.append(video);await video.play()})()');
+  await until(() => controller.state.available);
+  await child.executeJavaScript('window.dynamicHost.remove();undefined');
+  await until(() => !controller.state.available);
   console.log(
-    'PASS: native PiP entry/exit, automatic transitions, muted exclusion, manual preservation, rapid return, exact right-click target, hidden/paused source tab, cross-origin iframe, restricted video, stale menu; production-minified controller.'
+    'PASS: dynamic shadow video insertion/removal through observer events; native PiP entry/exit, automatic transitions, muted exclusion, manual preservation, rapid return, exact right-click target, hidden/paused source tab, cross-origin iframe, restricted video, stale menu; production-minified controller.'
   );
 })()
   .catch((error) => {

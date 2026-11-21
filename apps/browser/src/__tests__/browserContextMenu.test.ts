@@ -6,7 +6,7 @@ import {
   WebContents,
   BrowserWindow,
 } from 'electron';
-import { showBrowserContextMenu } from '../main/browserContextMenu';
+import { showBrowserContextMenu, fillFormMenu } from '../main/browserContextMenu';
 
 jest.mock('electron', () => ({
   clipboard: { writeText: jest.fn() },
@@ -226,4 +226,27 @@ test('puts built-in AI first and prefills the owning window without opening a se
     'selected text'
   );
   expect(openTab).not.toHaveBeenCalled();
+});
+
+
+test('page menu separates navigation and tools without boxing individual page actions', () => {
+  const items = menu();
+  const separators = items.flatMap((entry: any, index: number) => entry.type === 'separator' ? [index] : []);
+  expect(separators).toHaveLength(2);
+  expect(items[separators[0] - 1].label).toBe('Reload');
+  expect(items[separators[1] + 1].label).toBe('Inspect');
+});
+
+test('Fill form puts an editable AI request first and preserves multiple login accounts', () => {
+  const draft = jest.fn();
+  const accounts = [{ label: 'Personal', click: jest.fn() }, { label: 'Business', click: jest.fn() }];
+  const login = { label: 'Auto login', submenu: accounts };
+  const item = fillFormMenu([login], draft);
+  expect(item.label).toBe('Fill form');
+  const options = item.submenu as any[];
+  expect(options.map(option => option.label)).toEqual(['With AI', 'Auto login']);
+  expect(options[1]).toBe(login);
+  options[0].click();
+  expect(draft).toHaveBeenCalledTimes(1);
+  expect(accounts[0].click).not.toHaveBeenCalled();
 });

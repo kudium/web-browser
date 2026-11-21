@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import fs from 'fs';
 import { app, ipcMain, BrowserWindow, dialog } from 'electron';
-import { defaultPreferences } from '../browser/preferences';
+import { defaultPreferences, preferenceControls } from '../browser/preferences';
 import { showBrowserDialog } from '../main/dialogs';
 import { getExtensionProfile } from '../main/extensions';
 import {
@@ -584,4 +584,41 @@ it('turns off old automatic diagnostics defaults and persists new explicit conse
     expect(updateBrowserPreferences({shareUsageDiagnostics:true})).toMatchObject({shareUsageDiagnostics:true,usageDiagnosticsConsentVersion:1});
     expect(updateBrowserPreferences({shareUsageDiagnostics:false})).toMatchObject({shareUsageDiagnostics:false,usageDiagnosticsConsentVersion:0});
   } finally {read.mockRestore();location.mockRestore();}
+});
+
+it('defaults focus suggestions on and persists the independent autofill toggle', () => {
+  expect(defaultPreferences.personalDataAutofillOnFocus).toBe(true);
+  expect(() => validatePreferences({personalDataAutofillOnFocus:'yes'} as any)).toThrow('Invalid preference');
+  updateBrowserPreferences({personalDataAutofillOnFocus:false});
+  expect(getBrowserPreferences().personalDataAutofillOnFocus).toBe(false);
+  updateBrowserPreferences({personalDataAutofillOnFocus:true});
+  expect(getBrowserPreferences().personalDataAutofillOnFocus).toBe(true);
+});
+
+it('persists horizontal-only tabs separately from the existing strip with hover previews', () => {
+  const control = preferenceControls.find(
+    (item) => item.key === 'tabDisplayMode'
+  );
+  expect(control?.options).toEqual([
+    { label: 'Horizontal tab strip', value: 'horizontal-only' },
+    { label: 'Horizontal tab strip + popup on hover', value: 'horizontal' },
+    { label: 'Popup on hover', value: 'hover' },
+    { label: 'Popup on click', value: 'click' },
+  ]);
+  expect(defaultPreferences.tabDisplayMode).toBe('horizontal');
+  for (const mode of [
+    'horizontal-only',
+    'horizontal',
+    'hover',
+    'click',
+  ] as const) {
+    updateBrowserPreferences({ tabDisplayMode: mode });
+    expect(getBrowserPreferences().tabDisplayMode).toBe(mode);
+    expect(
+      JSON.parse(
+        fs.readFileSync('/preferences-test/browser-preferences.json', 'utf8') as string
+      ).tabDisplayMode
+    ).toBe(mode);
+  }
+  updateBrowserPreferences({ tabDisplayMode: 'horizontal' });
 });

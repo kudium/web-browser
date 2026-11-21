@@ -1,3 +1,8 @@
+import { focusColorStyle, itemFocusColor } from '../../../utils/focusColor';
+import { TabIcon } from '../../UI/TabIcon';
+import type { BrowserPreferences } from '../../../browser/preferences';
+import { activeCollectionId } from '../../../utils/collectionGroups';
+import { duplicateGroup } from '../../../utils/tabMoves';
 import { resolveAppTheme, appThemeStyle } from '../../../utils/appTheme';
 import { SpaceThemeContext } from '../../../utils/spaceTheme';
 import { websiteThemeStyle } from '../../../utils/websiteTheme';
@@ -104,7 +109,7 @@ import { hasFloatingAssistantPanels } from '../../../utils/assistantPanelPlaceme
 import { ChromeIconButton } from '../../UI/ChromeIconButton';
 import { PictureInPictureButton } from '../../UI/PictureInPictureButton';
 import { useCollapsedItems } from '../../../utils/useCollapsedItems';
-import { CollectionIcon } from '../../UI/CollectionIcon';
+import { CollectionIcon, CollectionIconPicker } from '../../UI/CollectionIcon';
 import { folderLinks, moveFolder } from '../../../utils/folderActions';
 import {
   hasStorageRecovery,
@@ -180,7 +185,6 @@ import {
   useSpaces,
   SpaceColor,
 } from '../../../utils/SpaceManager';
-import { AppIcon } from '../../UI/AppIcon/AppIcon';
 import { useAppList } from '../../../utils/hooks/useAppList';
 import { AppManager, ScreenManager } from '../../../utils/AppManager';
 import { WINDOW_DRAG_MIME } from '../../../browser/windows';
@@ -273,7 +277,7 @@ export function Main() {
         })
         .catch(() => {});
     refresh();
-    const timer = setInterval(refresh, 3000);
+    const stopNotes = window.electron.onPasswordManagerChanged?.(refresh);
     const open = () => {
       setAIMounted(true);
       setAIOpen(true);
@@ -285,7 +289,7 @@ export function Main() {
     window.addEventListener('kudiumbrowser-open-note', open);
     return () => {
       active = false;
-      clearInterval(timer);
+      stopNotes?.();
       window.removeEventListener('kudiumbrowser-open-note', open);
     };
   }, []);
@@ -293,6 +297,7 @@ export function Main() {
   const [terminalOpenRequest, setTerminalOpenRequest] = useState(0);
   const [menuPaneRequest, setMenuPaneRequest] = useState<{
     pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
+    notesScope?: string;
     token: number;
   }>();
   const toggleSidebarPane = useSidebarPaneToggle(
@@ -358,8 +363,10 @@ export function Main() {
     'scroll'
   );
   const [tabDisplayMode, setTabDisplayMode] = useState<
-    'horizontal' | 'hover' | 'click'
+    BrowserPreferences['tabDisplayMode']
   >('horizontal');
+  const showHorizontalTabs =
+    tabDisplayMode === 'horizontal' || tabDisplayMode === 'horizontal-only';
   const [folderHoverPreviews, setFolderHoverPreviews] = useState(true);
   const [showUnpinnedGroups, setShowUnpinnedGroups] = useState(false);
   const preview = useAnchoredPreview();
@@ -418,6 +425,7 @@ export function Main() {
     spaceId: string;
   }>();
   const [folderName, setFolderName] = useState('');
+  const [folderIcon, setFolderIcon] = useState<{ emoji: string; image: string; focusColor?: string }>({ emoji: '', image: '' });
   const [editingFolder, setEditingFolder] = useState<string>();
 
   const [folderFeedback, setFolderFeedback] = useState<{
@@ -491,34 +499,39 @@ export function Main() {
     setGroupDialog(item ? { item } : undefined);
   }, []);
   const [fileDragging, setFileDragging] = useState(false);
-  const openNewGroup = useCallback((
-    spaceId: string,
-    options: {
-      folderId?: string;
-      project?: Extract<SidebarDropResult, { kind: 'project' }>;
-    } = {}
-  ) => {
-    setGroupDialog({
-      creating: true,
-      project: options.project,
-      item: {
-        id: crypto.randomUUID(),
-        sessionId: crypto.randomUUID(),
-        name: options.project?.name || '',
-        sessionName: options.project?.name || '',
-        sessionSlug: options.project?.slug,
-        url: 'about:blank',
-        icon: '',
-        spaceId,
-        pinned: true,
-        ...(options.folderId ? {
-          folderId: options.folderId,
-          groupDisplay: 'folder' as const,
-          sessionMode: 'collection' as const,
-        } : {}),
-      },
-    });
-  }, []);
+  const openNewGroup = useCallback(
+    (
+      spaceId: string,
+      options: {
+        folderId?: string;
+        project?: Extract<SidebarDropResult, { kind: 'project' }>;
+      } = {}
+    ) => {
+      setGroupDialog({
+        creating: true,
+        project: options.project,
+        item: {
+          id: crypto.randomUUID(),
+          sessionId: crypto.randomUUID(),
+          name: options.project?.name || '',
+          sessionName: options.project?.name || '',
+          sessionSlug: options.project?.slug,
+          url: 'about:blank',
+          icon: '',
+          spaceId,
+          pinned: true,
+          ...(options.folderId
+            ? {
+                folderId: options.folderId,
+                groupDisplay: 'folder' as const,
+                sessionMode: 'collection' as const,
+              }
+            : {}),
+        },
+      });
+    },
+    []
+  );
   const sidebarDropBusy = useRef(false);
   const [groupPersonalData, setGroupPersonalData] = useState(false);
   useEffect(() => setGroupPersonalData(false), [editingGroup?.id]);
@@ -563,6 +576,25 @@ export function Main() {
     token: number;
     append?: boolean;
   }>();
+  useEffect(
+    () => browser.onAIFillForm?.((sourceId) => {
+      const source = AppManager.getAll().find(tab => tab.id === sourceId && !tab.archived);
+      if (!source || lockedGroup(source)) return;
+      setAIMounted(true);
+      setAIOpen(true);
+      setAIPane('assistant');
+      setAIContextRequest(previous => ({
+        reference: { kind: 'tab', id: source.id },
+        token: (previous?.token || 0) + 1,
+      }));
+      setAIPromptRequest(previous => ({
+        text: 'Fill the form on the attached tab using my saved Personal Data. Inspect the form and choose the saved details that best match this website and its fields. Use fill_personal_data to enter saved values without revealing passwords or secrets in chat. Ask me if the account or a required value is unclear. Fill the form without submitting it unless I request submission.\n\nAdditional instructions: ',
+        append: true,
+        token: (previous?.token || 0) + 1,
+      }));
+    }),
+    [setAIOpen, setAIPane]
+  );
   useEffect(
     () =>
       browser.onAISelection?.((text) => {
@@ -929,6 +961,9 @@ export function Main() {
                 } tabs`
               : item.url,
           group: preview.target?.kind === 'folder' ? item : undefined,
+          focusColor: itemFocusColor(item, preview.target?.kind === 'folder' ? 'group' : 'tab'),
+          customIconEmoji: item.customIconEmoji,
+          customIconImage: item.customIconImage,
           icon:
             preview.target?.kind === 'folder'
               ? item.sessionIconImage || item.icon
@@ -1124,6 +1159,7 @@ export function Main() {
     if (choice === 'folder') {
       setEditingFolder(undefined);
       setFolderName('');
+      setFolderIcon({ emoji: '', image: '' });
       setFolderDialog(true);
     }
     if (choice === 'create') openCreateSpace();
@@ -1361,6 +1397,7 @@ export function Main() {
   const focusedTab = split
     ? appList.find((tab) => tab.id === split[split.focused])
     : selected;
+  const focusedCollectionId = activeCollectionId(tabGroups, focusedTab);
   const spaceThemeColor = split
     ? states[split[split.focused]]?.themeColor
     : state?.themeColor;
@@ -1388,7 +1425,7 @@ export function Main() {
       translucentAI?: boolean;
       showExtensionIcons?: boolean;
       tabOverflowMode?: 'dropdown' | 'scroll';
-      tabDisplayMode?: 'horizontal' | 'hover' | 'click';
+      tabDisplayMode?: BrowserPreferences['tabDisplayMode'];
       folderHoverPreviews?: boolean;
       showUnpinnedGroups?: boolean;
       addressBarPlacement?: 'sidebar' | 'header';
@@ -1761,21 +1798,35 @@ export function Main() {
             const url = new URL(request.url);
             if (!['http:', 'https:'].includes(url.protocol)) return;
             const apps = AppManager.getAll();
-            const routing = await browser.preferences('get').then(p => p.linkRoutingRules || []).catch(() => []);
-            const route = resolveLinkRoute(url.href, routing, SpaceManager.getAll(), apps);
+            const routing = await browser
+              .preferences('get')
+              .then((p) => p.linkRoutingRules || [])
+              .catch(() => []);
+            const route = resolveLinkRoute(
+              url.href,
+              routing,
+              SpaceManager.getAll(),
+              apps
+            );
             const activeSpace = SpaceManager.getAll().find(
               (space) => space.id === SpaceManager.activeId()
             );
             const activeId =
               activeSpace?.selectedAppId || externalSource.current?.id;
-            const source = route ? route.source : apps.find(
-              (item) =>
-                item.id === activeId &&
-                !item.archived &&
-                !closedGroups.has(aiGroupId(item))
-            );
+            const source = route
+              ? route.source
+              : apps.find(
+                  (item) =>
+                    item.id === activeId &&
+                    !item.archived &&
+                    !closedGroups.has(aiGroupId(item))
+                );
             const destination = commandDestination(
-              route ? apps.filter(app => (app.spaceId || 'default') === route.spaceId) : apps,
+              route
+                ? apps.filter(
+                    (app) => (app.spaceId || 'default') === route.spaceId
+                  )
+                : apps,
               source,
               url.href,
               !source,
@@ -2409,10 +2460,57 @@ export function Main() {
             >
               New Tab…
             </ContextMenu.Item>
+            <ContextMenu.Item
+              onSelect={() => {
+                const apps = AppManager.getAll();
+                const next = duplicateGroup(apps, item.id);
+                const existingIds = new Set(apps.map((tab) => tab.id));
+                const copy = next.find((tab) => !existingIds.has(tab.id));
+                if (!copy) return;
+                AppManager.set(next);
+                select(copy);
+              }}
+            >
+              Duplicate group
+            </ContextMenu.Item>
             <ContextMenu.Item onSelect={() => closeGroup(item)}>
               {nativeMenuLabels.closeGroup}
             </ContextMenu.Item>
             <ContextMenu.Separator />
+            <ContextMenu.Sub>
+              <ContextMenu.SubTrigger>Move to space</ContextMenu.SubTrigger>
+              <ContextMenu.SubContent>
+                {spaces
+                  .filter((space) => space.id !== (item.spaceId || 'default'))
+                  .map((space) => (
+                    <ContextMenu.Item
+                      key={space.id}
+                      onSelect={() => {
+                        const apps = AppManager.getAll();
+                        const current = apps.find((tab) => tab.id === item.id);
+                        if (
+                          !current ||
+                          lockedGroup(current) ||
+                          !SpaceManager.getAll().some(
+                            (entry) => entry.id === space.id
+                          )
+                        )
+                          return;
+                        AppManager.set(
+                          moveGroupToFolder(apps, current, space.id)
+                        );
+                      }}
+                    >
+                      {space.name}
+                    </ContextMenu.Item>
+                  ))}
+                {spaces.every(
+                  (space) => space.id === (item.spaceId || 'default')
+                ) && (
+                  <ContextMenu.Item disabled>No other spaces</ContextMenu.Item>
+                )}
+              </ContextMenu.SubContent>
+            </ContextMenu.Sub>
             <ContextMenu.Sub>
               <ContextMenu.SubTrigger>Split View</ContextMenu.SubTrigger>
               <ContextMenu.SubContent>
@@ -2568,7 +2666,10 @@ export function Main() {
     const tooltip = `${item.sessionName || item.name}${
       slug ? `\n@${slug.length > 36 ? `${slug.slice(0, 35)}…` : slug}` : ''
     }${locked ? '\nLocked group' : ''}`;
-    const hasPreview = !locked && tabsForPreview(item).length > 0;
+    const hasPreview =
+      tabDisplayMode !== 'horizontal-only' &&
+      !locked &&
+      tabsForPreview(item).length > 0;
     let ariaExpanded: boolean | undefined;
     if (folderView) ariaExpanded = expanded && !locked;
     else if (hasPreview)
@@ -2588,38 +2689,38 @@ export function Main() {
               className={item.favorite ? undefined : 'sidebar-app-row'}
               data-tab-motion={`sidebar-${item.id}`}
               data-dragging={dragged?.id === item.id || undefined}
+              onMouseEnter={(event) => {
+                if (hasPreview && !renaming && !dragged && !menuOpen)
+                  preview.open({
+                    kind: 'session',
+                    id: item.id,
+                    anchor: event.currentTarget,
+                    interaction: 'hover',
+                  });
+              }}
+              onMouseLeave={preview.leave}
             >
               <Row
                 type="button"
                 className={`sidebar-app ${isActive ? 'active' : ''}`}
-                style={
-                  item.favorite && isActive && !locked
-                    ? websiteThemeStyle(spaceThemeColor)
-                    : undefined
-                }
+                style={{
+                  ...(item.favorite && isActive && !locked ? websiteThemeStyle(spaceThemeColor) : undefined),
+                  ...focusColorStyle(itemFocusColor(item)),
+                }}
+                data-background-color={!!itemFocusColor(item) || undefined}
                 title={
                   hasPreview && tabDisplayMode !== 'click' ? undefined : tooltip
                 }
                 aria-haspopup={hasPreview ? 'dialog' : undefined}
                 aria-expanded={ariaExpanded}
                 aria-controls={folderView ? `group-tabs-${item.id}` : undefined}
-                onMouseEnter={(event) => {
-                  if (hasPreview && !renaming && !dragged && !menuOpen)
-                    preview.open({
-                      kind: 'session',
-                      id: item.id,
-                      anchor: event.currentTarget,
-                      interaction: 'hover',
-                    });
-                }}
-                onMouseLeave={preview.leave}
                 onKeyDown={(event) => {
                   if (hasPreview && event.key === 'ArrowRight') {
                     event.preventDefault();
                     preview.open({
                       kind: 'session',
                       id: item.id,
-                      anchor: event.currentTarget,
+                      anchor: event.currentTarget.parentElement!,
                       interaction: 'keyboard',
                     });
                   }
@@ -2640,7 +2741,8 @@ export function Main() {
                   selectGroup(item);
                   if (hasPreview && tabDisplayMode === 'click') {
                     if (
-                      preview.target?.anchor === event.currentTarget &&
+                      preview.target?.anchor ===
+                        event.currentTarget.parentElement &&
                       preview.target.kind === 'session' &&
                       preview.target.id === item.id
                     )
@@ -2649,7 +2751,7 @@ export function Main() {
                       preview.open({
                         kind: 'session',
                         id: item.id,
-                        anchor: event.currentTarget,
+                        anchor: event.currentTarget.parentElement!,
                         interaction: 'click',
                       });
                   }
@@ -2719,7 +2821,6 @@ export function Main() {
                   className="sidebar-app-terminal"
                   aria-label={`Open terminal for ${item.sessionName || item.name}`}
                   title="Open group terminal"
-                  onMouseEnter={closePreview}
                   onFocus={closePreview}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -2786,6 +2887,8 @@ export function Main() {
                       className={`sidebar-group-tab ${
                         selected?.id === tab.id ? 'active' : ''
                       }`}
+                      style={focusColorStyle(itemFocusColor(tab, 'tab'))}
+                      data-focus-color={!!itemFocusColor(tab, 'tab') || undefined}
                       draggable={!renameTarget}
                       data-dragging={dragged?.id === tab.id || undefined}
                       data-drop-target={dropTarget === tab.id || undefined}
@@ -2854,10 +2957,7 @@ export function Main() {
                           }
                         }}
                       >
-                        <AppIcon
-                          icon={tab.icon}
-                          title={tab.customName || tab.name}
-                        />
+                        <TabIcon tab={tab} />
                         {renameTarget?.id === tab.id &&
                         renameTarget.axis === 'folder' ? (
                           <InlineTabName
@@ -2866,7 +2966,9 @@ export function Main() {
                             cancel={() => setRenameTarget(undefined)}
                           />
                         ) : (
-                          <span>{tab.customName || sidebarLabel(tab.name)}</span>
+                          <span>
+                            {tab.customName || sidebarLabel(tab.name)}
+                          </span>
                         )}
                       </div>
                       <button
@@ -3387,6 +3489,7 @@ export function Main() {
     setAIOpen(true);
     setMenuPaneRequest((previous) => ({
       pane,
+      ...(pane === 'notes' ? { notesScope: personalDataScope(item) } : {}),
       token: (previous?.token || 0) + 1,
     }));
     closePreview();
@@ -3507,6 +3610,8 @@ export function Main() {
             id: item.id,
             title: labels.get(item.id) || item.name,
             icon: item.icon,
+            customIconEmoji: item.customIconEmoji,
+            customIconImage: item.customIconImage,
           }))}
           onSelect={(id) => {
             const item = paneTabs.find((tab) => tab.id === id);
@@ -3560,7 +3665,11 @@ export function Main() {
                       paneSelected.id === item.id ? 'active' : ''
                     } ${item.tabPinned && !renaming ? 'icon-only' : ''}`}
                     key={item.id}
-                    style={websiteThemeStyle(tabState?.themeColor)}
+                    style={{
+                      ...websiteThemeStyle(tabState?.themeColor),
+                      ...focusColorStyle(itemFocusColor(item, 'tab')),
+                    }}
+                    data-focus-color={!!itemFocusColor(item, 'tab') || undefined}
                     data-website-color={
                       !!websiteThemeStyle(tabState?.themeColor) || undefined
                     }
@@ -3620,7 +3729,7 @@ export function Main() {
                         (states[item.id]?.loading ? (
                           <LoadingIcon />
                         ) : (
-                          <AppIcon icon={item.icon} title={item.name} />
+                          <TabIcon tab={item} />
                         ))}
                       {renaming ? (
                         <InlineTabName
@@ -4099,27 +4208,39 @@ export function Main() {
                         >
                           <ContextMenu.Root onOpenChange={setMenuOpen}>
                             <ContextMenu.Trigger>
-                              <div className="folder-header">
+                              <div
+                                className="folder-header"
+                                style={focusColorStyle(folder.focusColor)}
+                                data-background-color={!!focusColorStyle(folder.focusColor) || undefined}
+                                data-focused={!filteringGroups && focusedCollectionId === folder.id || undefined}
+                                onMouseEnter={(event) => {
+                                  if (
+                                    folderHoverPreviews &&
+                                    collapsedFolders.includes(folder.id) &&
+                                    (previewIndex.folders.get(folder.id)
+                                      ?.length || 0) > 0 &&
+                                    !dragged &&
+                                    !menuOpen
+                                  )
+                                    preview.open({
+                                      kind: 'folder',
+                                      id: folder.id,
+                                      anchor: event.currentTarget,
+                                      interaction: 'hover',
+                                    });
+                                }}
+                                onMouseLeave={preview.leave}
+                              >
                                 <button
                                   type="button"
                                   className="folder-heading"
-                                  onMouseEnter={(event) => {
-                                    if (
-                                      folderHoverPreviews &&
-                                      collapsedFolders.includes(folder.id) &&
-                                      (previewIndex.folders.get(folder.id)
-                                        ?.length || 0) > 0 &&
-                                      !dragged &&
-                                      !menuOpen
-                                    )
-                                      preview.open({
-                                        kind: 'folder',
-                                        id: folder.id,
-                                        anchor: event.currentTarget,
-                                        interaction: 'hover',
-                                      });
-                                  }}
-                                  onMouseLeave={preview.leave}
+                                  aria-current={
+                                    !filteringGroups &&
+                                    collapsedFolders.includes(folder.id) &&
+                                    focusedCollectionId === folder.id
+                                      ? 'page'
+                                      : undefined
+                                  }
                                   aria-expanded={
                                     filteringGroups ||
                                     !collapsedFolders.includes(folder.id)
@@ -4137,7 +4258,8 @@ export function Main() {
                                       preview.open({
                                         kind: 'folder',
                                         id: folder.id,
-                                        anchor: event.currentTarget,
+                                        anchor:
+                                          event.currentTarget.parentElement!,
                                         interaction: 'keyboard',
                                       });
                                     } else if (event.key === 'ArrowLeft') {
@@ -4183,6 +4305,7 @@ export function Main() {
                                     aria-hidden="true"
                                   >
                                     <CollectionIcon
+                                      collection={folder}
                                       size={16}
                                       strokeWidth={1.5}
                                     />
@@ -4195,7 +4318,9 @@ export function Main() {
                                   label={`New group in ${folder.name}`}
                                   onClick={() => {
                                     closePreview();
-                                    openNewGroup(active.id, { folderId: folder.id });
+                                    openNewGroup(active.id, {
+                                      folderId: folder.id,
+                                    });
                                   }}
                                 />
                                 <ContextMenu.OptionsTrigger>
@@ -4288,6 +4413,11 @@ export function Main() {
                                 onSelect={() => {
                                   setEditingFolder(folder.id);
                                   setFolderName(folder.name);
+                                  setFolderIcon({
+                                    emoji: folder.iconEmoji || '',
+                                    image: folder.iconImage || '',
+                                    focusColor: folder.focusColor,
+                                  });
                                   setFolderDialog(true);
                                 }}
                               >
@@ -4602,7 +4732,10 @@ export function Main() {
         className="browser-shell"
         data-address-placement={addressBarPlacement}
       >
-        <div className="browser-chrome">
+        <div
+          className="browser-chrome"
+          data-inline-address={addressBarPlacement === 'header' && !showHorizontalTabs || undefined}
+        >
           <div className="sidebar-header-control">
             {' '}
             <ContextMenu.Root>
@@ -4641,7 +4774,7 @@ export function Main() {
           {sidebarHidden && (
             <AppUpdateBanner compact onWhatsNew={openWhatsNew} />
           )}
-          {selected && tabDisplayMode === 'horizontal' && (
+          {selected && showHorizontalTabs && (
             <div
               className={`pane-tab-strips ${split ? 'split-tab-strips' : ''}`}
             >
@@ -4659,7 +4792,10 @@ export function Main() {
                 : selected && renderTabStrip(selected)}
             </div>
           )}
-          {!selected && <div className="browser-drag-region" />}
+          {!selected && !(addressBarPlacement === 'header' && !showHorizontalTabs) && <div className="browser-drag-region" />}
+          {addressBarPlacement === 'header' && !showHorizontalTabs && (
+            <div className="browser-address-header">{renderAddressBar()}</div>
+          )}
           {addressBarPlacement === 'sidebar' && (
             <div
               className="browser-actions"
@@ -4670,7 +4806,7 @@ export function Main() {
             </div>
           )}
         </div>
-        {addressBarPlacement === 'header' && (
+        {addressBarPlacement === 'header' && showHorizontalTabs && (
           <div className="browser-address-header">{renderAddressBar()}</div>
         )}
         {!windowWorkspace.state()?.private && <StorageRecoveryBanner />}
@@ -5217,12 +5353,17 @@ export function Main() {
               ? previewIndex.byId.get(preview.target.id)
               : undefined
           }
+          collection={
+            preview.target.kind === 'folder'
+              ? active.folders.find((folder) => folder.id === preview.target?.id)
+              : undefined
+          }
           onSelectGroup={
             preview.target.kind === 'session'
               ? () => {
                   if (!preview.target) return;
                   const item = previewIndex.byId.get(preview.target.id);
-                  if (!item) return;
+                  if (!item || lockedGroup(item)) return;
                   addToAI({ kind: 'group', id: aiGroupId(item) }, 'scope');
                   closePreview();
                 }
@@ -5256,6 +5397,18 @@ export function Main() {
           onDeveloper={
             preview.target.kind === 'session'
               ? () => openPreviewPane('developer')
+              : undefined
+          }
+          onManageGroup={
+            preview.target.kind === 'session'
+              ? () => {
+                  const item = AppManager.getAll().find(
+                    (tab) => tab.id === preview.target?.id && !tab.archived
+                  );
+                  if (!item || lockedGroup(item)) return;
+                  closePreview();
+                  setEditingGroup(item);
+                }
               : undefined
           }
           onEntryContextMenu={(id) => {
@@ -5314,7 +5467,7 @@ export function Main() {
             if (preview.target?.kind === 'folder') {
               selectGroup(item);
               if (
-                tabDisplayMode !== 'horizontal' &&
+                !showHorizontalTabs &&
                 tabsForPreview(item).length > 1
               ) {
                 preview.open({
@@ -5376,12 +5529,24 @@ export function Main() {
                   folders: editingFolder
                     ? active.folders.map((folder) =>
                         folder.id === editingFolder
-                          ? { ...folder, name: folderName.trim() }
+                          ? {
+                              ...folder,
+                              name: folderName.trim(),
+                              iconEmoji: folderIcon.emoji || undefined,
+                              iconImage: folderIcon.image || undefined,
+                              focusColor: folderIcon.focusColor,
+                            }
                           : folder
                       )
                     : [
                         ...active.folders,
-                        { id: crypto.randomUUID(), name: folderName.trim() },
+                        {
+                          id: crypto.randomUUID(),
+                          name: folderName.trim(),
+                          iconEmoji: folderIcon.emoji || undefined,
+                          iconImage: folderIcon.image || undefined,
+                          focusColor: folderIcon.focusColor,
+                        },
                       ],
                 });
                 setFolderName('');
@@ -5389,14 +5554,17 @@ export function Main() {
               }
             }}
           >
-            <TextField.Root
-              required
-              autoFocus
-              aria-label="Collection name"
-              placeholder="Project name…"
-              value={folderName}
-              onChange={(event) => setFolderName(event.target.value)}
-            />
+            <div className="collection-editor-identity">
+              <CollectionIconPicker value={folderIcon} onChange={setFolderIcon} />
+              <TextField.Root
+                required
+                autoFocus
+                aria-label="Collection name"
+                placeholder="Project name…"
+                value={folderName}
+                onChange={(event) => setFolderName(event.target.value)}
+              />
+            </div>
             <Button type="submit">
               {editingFolder ? 'Save collection' : 'Create collection'}
             </Button>

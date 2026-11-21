@@ -6,6 +6,7 @@ import { LocalStorage } from './LocalStorage';
 import { readSavedList, writeSavedList } from './storageRecovery';
 
 import { resolveAppTheme } from './appTheme';
+import { normalizeFocusColor } from './focusColor';
 export { spaceColorValues, primaryContrast } from './appTheme';
 
 export const DEFAULT_SPACE = 'default';
@@ -51,6 +52,13 @@ export type SpaceIconName =
   | 'sun'
   | 'moon'
   | 'palette';
+export interface Collection {
+  id: string;
+  name: string;
+  iconImage?: string;
+  iconEmoji?: string;
+  focusColor?: string;
+}
 export interface Space {
   icon?: SpaceIconName;
   iconImage?: string;
@@ -61,7 +69,7 @@ export interface Space {
   id: string;
   name: string;
   color: SpaceColor;
-  folders: { id: string; name: string }[];
+  folders: Collection[];
   selectedAppId?: string;
 }
 export function spacePrimaryColor(
@@ -99,12 +107,26 @@ export const SpaceManager = {
           color: spaceColors.includes(space.color) ? space.color : 'iris',
           icon: typeof space.icon === 'string' ? space.icon : defaultIcon,
           folders: Array.isArray(space.folders)
-            ? space.folders.filter(
-                (folder) =>
-                  folder &&
-                  typeof folder.id === 'string' &&
-                  typeof folder.name === 'string'
-              )
+            ? space.folders
+                .filter(
+                  (folder) =>
+                    folder &&
+                    typeof folder.id === 'string' &&
+                    typeof folder.name === 'string'
+                )
+                .map((folder) => {
+                  const collection = { ...folder };
+                  if (typeof collection.iconEmoji !== 'string')
+                    delete collection.iconEmoji;
+                  if (typeof collection.iconImage !== 'string')
+                    delete collection.iconImage;
+                  if (collection.focusColor !== undefined) {
+                    const color = normalizeFocusColor(collection.focusColor);
+                    if (color) collection.focusColor = color;
+                    else delete collection.focusColor;
+                  }
+                  return collection;
+                })
             : [],
         };
         (

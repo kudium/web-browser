@@ -1,3 +1,4 @@
+import { duplicateGroup } from '../utils/tabMoves';
 import { moveTab, reorderTabs, moveGroupToSection } from '../utils/tabMoves';
 import { IApp } from '../types';
 
@@ -91,4 +92,45 @@ test('moves a group between favorites, pinned and regular without changing its l
   expect(moved.find((item) => item.id === 'c')).toEqual(
     tabs.find((item) => item.id === 'c')
   );
+});
+
+it('copies open group tabs with fresh sessions and remapped opener identities', () => {
+  const source = [
+    {
+      ...tabs[0],
+      sessionProfileId: 'shared',
+      sessionSlug: 'personal',
+      protectionGroupId: 'protected',
+    },
+    { ...tabs[1], openerTabId: 'a', customName: 'Messages', tabPinned: true },
+    tabs[2],
+    { ...tabs[0], id: 'archived', archived: true },
+    { ...tabs[0], id: 'other-space', spaceId: 'other' },
+  ];
+  const result = duplicateGroup(source, 'b');
+  const copies = result.filter(
+    (tab) => !source.some((original) => original.id === tab.id),
+  );
+  expect(copies).toHaveLength(2);
+  expect(result.map((tab) => tab.id)).toEqual([
+    'a',
+    'b',
+    copies[0].id,
+    copies[1].id,
+    'c',
+    'archived',
+    'other-space',
+  ]);
+  expect(copies[0].sessionId).not.toBe('account-a');
+  expect(copies[1].sessionId).toBe(copies[0].sessionId);
+  expect(copies[0].sessionName).toBe('Personal · Group 2');
+  expect(copies[0].sessionProfileId).toBeUndefined();
+  expect(copies[0].protectionGroupId).toBeUndefined();
+  expect(copies[0].sessionSlug).toBeUndefined();
+  expect(copies[1].openerTabId).toBe(copies[0].id);
+  expect(copies[1].customName).toBe('Messages');
+  expect(copies[1].tabPinned).toBe(true);
+  expect(source[0].sessionProfileId).toBe('shared');
+  expect(duplicateGroup(source, 'archived')).toBe(source);
+  expect(duplicateGroup(source, 'missing')).toBe(source);
 });

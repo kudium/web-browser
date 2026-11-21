@@ -10,6 +10,13 @@ const windows = new Map<
     theme?: AppTheme;
   }
 >();
+const changes = new WeakMap<BrowserWindow, Set<() => void>>();
+export function onAppThemeChanged(window: BrowserWindow, listener: () => void) {
+  const listeners = changes.get(window) || new Set<() => void>();
+  listeners.add(listener);
+  changes.set(window, listeners);
+  return () => { listeners.delete(listener); };
+}
 let registered = false;
 /** Browser-owned surfaces use the same resolved theme as their host chrome. */
 export function getAppTheme(window: BrowserWindow): AppTheme | undefined {
@@ -28,8 +35,10 @@ function themeFor(
 }
 export function refreshAppThemes() {
   windows.forEach((_binding, window) => {
-    if (!window.isDestroyed())
+    if (!window.isDestroyed()) {
       window.webContents.send('app-theme-changed', themeFor(window));
+      changes.get(window)?.forEach(listener => listener());
+    }
   });
 }
 /** Only browser chrome produces a theme. Child windows inherit their owning browser's result. */

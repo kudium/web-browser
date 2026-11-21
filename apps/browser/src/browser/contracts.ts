@@ -199,6 +199,7 @@ export interface BrowserClient {
   confirm(prompt: NativePrompt): Promise<boolean>;
   showEmojiPicker(): Promise<void>;
   chooseSpaceIcon(): Promise<string | null>;
+  onAIFillForm?(callback: (sourceId: string) => void): () => void;
   onAISelection?(callback: (text: string) => void): () => void;
   onTabRequest(callback: (request: BrowserTabRequest) => void): () => void;
   history(action: HistoryAction, id?: string): Promise<HistoryRecord[]>;

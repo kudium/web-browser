@@ -234,6 +234,12 @@ const electronHandler = {
       ipcRenderer.removeListener('browser-open-activity', open);
     };
   },
+  onPasswordManagerChanged(callback: () => void) {
+    const listener = () => callback();
+    ipcRenderer.on('password-manager-changed', listener);
+    return () =>
+      ipcRenderer.removeListener('password-manager-changed', listener);
+  },
   onPasswordManagerLock(callback: () => void) {
     const listener = () => callback();
     ipcRenderer.on('password-manager-locked', listener);
@@ -784,6 +790,13 @@ const electronHandler = {
     },
     chooseSpaceIcon(): Promise<string | null> {
       return ipcRenderer.invoke('browser-space-icon');
+    },
+    onAIFillForm(callback: (sourceId: string) => void) {
+      const listener = (_event: IpcRendererEvent, sourceId: unknown) => {
+        if (typeof sourceId === 'string' && sourceId.length <= 200) callback(sourceId);
+      };
+      ipcRenderer.on('browser-ai-fill-form', listener);
+      return () => ipcRenderer.removeListener('browser-ai-fill-form', listener);
     },
     onAISelection(callback: (text: string) => void) {
       const listener = (_event: IpcRendererEvent, text: unknown) => {

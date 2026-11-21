@@ -17,6 +17,17 @@ import {
   validateSearchEngines,
 } from '../browser/searchEngines';
 
+/** Keep form workflows together while allowing more providers to be added. */
+export function fillFormMenu(
+  loginActions: MenuItemConstructorOptions[],
+  withAI: () => void
+): MenuItemConstructorOptions {
+  return {
+    label: 'Fill form',
+    submenu: [{ label: 'With AI', click: withAI }, ...loginActions],
+  };
+}
+
 /** Build native menus against the clicked web contents, including split panes. */
 export function showBrowserContextMenu(
   window: BrowserWindow,
@@ -245,8 +256,7 @@ export function showBrowserContextMenu(
     { label: 'Copy Clean Page Link', enabled: canOpen(contents.getURL()),
       click: () => clipboard.writeText(cleanLink(contents.getURL())) },
   ]);
-  group(hookActions);
-  group(extensions);
+  items.push(...hookActions, ...extensions);
   group([
     {
       label: nativeMenuLabels.inspect,
@@ -254,7 +264,7 @@ export function showBrowserContextMenu(
     },
   ]);
   if (process.platform === 'darwin') {
-    group([
+    items.push(
       ...(params.selectionText
         ? [
             {
@@ -276,7 +286,7 @@ export function showBrowserContextMenu(
         },
       },
       { role: 'services' },
-    ]);
+    );
   }
   contents.focus();
   Menu.buildFromTemplate(items).popup({ window });

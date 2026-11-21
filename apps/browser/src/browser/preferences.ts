@@ -16,13 +16,14 @@ export interface BrowserPreferences {
   shareUsageDiagnostics: boolean;
   usageDiagnosticsConsentVersion: number;
   writeBrowserInstructions: boolean;
-  tabDisplayMode: 'horizontal' | 'hover' | 'click';
+  tabDisplayMode: 'horizontal' | 'horizontal-only' | 'hover' | 'click';
   tabOverflowMode: 'dropdown' | 'scroll';
   folderHoverPreviews: boolean;
   automaticPictureInPicture: boolean;
   showUnpinnedGroups: boolean;
   addressBarPlacement: 'sidebar' | 'header';
   personalDataAutofill: boolean;
+  personalDataAutofillOnFocus: boolean;
   personalDataAutofillExcludedSites: string[];
   personalDataAutofillPositions: Record<string, { side: 'left' | 'right'; x: number; y: number }>;
   addressBarFullUrl: boolean;
@@ -70,6 +71,7 @@ export const defaultPreferences: BrowserPreferences = {
   showUnpinnedGroups: false,
   addressBarPlacement: 'sidebar',
   personalDataAutofill: true,
+  personalDataAutofillOnFocus: true,
   personalDataAutofillExcludedSites: [],
   personalDataAutofillPositions: {},
   addressBarFullUrl: false,
@@ -122,6 +124,12 @@ export const preferenceControls: PreferenceControl[] = [
     section: 'passwords',
     title: 'Show Personal Data autofill',
     description: 'Offer saved profile values in website fields. Filling is manual and never submits the form.',
+    kind: 'toggle',
+  },
+  {
+    key: 'personalDataAutofillOnFocus', section: 'passwords',
+    title: 'Open suggestions on focus',
+    description: 'Automatically show saved-data suggestions when you focus a recognized field. Autofill buttons remain available when this is off.',
     kind: 'toggle',
   },
   {
@@ -184,10 +192,11 @@ export const preferenceControls: PreferenceControl[] = [
     section: 'appearance',
     title: 'Group tab display',
     description:
-      'Show horizontal tabs with group previews on hover, or keep the browser compact with a popup on hover or click. Previews show the group name, AI reference and tabs. Use the right arrow key to open a popup from the keyboard.',
+      'Show a horizontal tab strip with or without a popup on hover, or show only a popup on hover or click. Popups show the group name, AI reference and tabs. In popup modes, use the right arrow key to open a popup from the keyboard.',
     kind: 'select',
     options: [
-      { label: 'Horizontal tab strip', value: 'horizontal' },
+      { label: 'Horizontal tab strip', value: 'horizontal-only' },
+      { label: 'Horizontal tab strip + popup on hover', value: 'horizontal' },
       { label: 'Popup on hover', value: 'hover' },
       { label: 'Popup on click', value: 'click' },
     ],

@@ -123,7 +123,7 @@ export function HookPresets({
             onClick={() => {
               onInsert(
                 selected === 'accent-colors'
-                  ? example.source.replace('#a855f7', accent)
+                  ? example.source.replaceAll('#a855f7', accent)
                   : example.source,
                 example.stage
               );
@@ -144,7 +144,7 @@ export function HookPresets({
                   ...example,
                   source:
                     selected === 'accent-colors'
-                      ? example.source.replace('#a855f7', accent)
+                      ? example.source.replaceAll('#a855f7', accent)
                       : example.source,
                 });
                 setOpen(false);

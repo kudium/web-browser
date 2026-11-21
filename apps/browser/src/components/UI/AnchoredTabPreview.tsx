@@ -1,3 +1,5 @@
+import { focusColorStyle } from '../../utils/focusColor';
+import { TabIcon } from './TabIcon';
 import { Button, Popover } from '@radix-ui/themes';
 import {
   ArrowLeft,
@@ -8,6 +10,7 @@ import {
   PinOff,
   Plus,
   Search,
+  Settings2,
   StickyNote,
   X,
 } from 'lucide-react';
@@ -21,6 +24,7 @@ import {
 } from 'react';
 import { CollectionIcon } from './CollectionIcon';
 import type { IApp } from '../../types';
+import type { Collection } from '../../utils/SpaceManager';
 import { GroupIcon as GroupIdentityIcon } from './GroupIcon';
 import { AppIcon } from './AppIcon/AppIcon';
 import { ChromeIconButton } from './ChromeIconButton';
@@ -32,9 +36,12 @@ export interface PreviewEntry {
   title: string;
   detail: string;
   icon: string;
+  focusColor?: string;
+  customIconEmoji?: string;
+  customIconImage?: string;
   group?: IApp;
 }
-const visibleRows = 7;
+const searchThreshold = 7;
 const overscan = 3;
 
 // Optional reference detail is shared by group hover previews.
@@ -46,6 +53,7 @@ export function AnchoredTabPreview({
   glass = false,
   icon = '',
   group,
+  collection,
   tabs = [],
   entries,
   selectedId,
@@ -53,6 +61,7 @@ export function AnchoredTabPreview({
   onSelectGroup,
   onNotes,
   onDeveloper,
+  onManageGroup,
   onToggleFavorite,
   onEntryContextMenu,
   onGroupContextMenu,
@@ -69,6 +78,7 @@ export function AnchoredTabPreview({
   glass?: boolean;
   icon?: string;
   group?: IApp;
+  collection?: Collection;
   tabs?: IApp[];
   entries: PreviewEntry[];
   selectedId: string;
@@ -76,6 +86,7 @@ export function AnchoredTabPreview({
   onSelectGroup?: () => void;
   onNotes?: () => void;
   onDeveloper?: () => void;
+  onManageGroup?: () => void;
   onToggleFavorite?: () => void;
   onEntryContextMenu?: (id: string) => void;
   onGroupContextMenu?: () => void;
@@ -87,9 +98,12 @@ export function AnchoredTabPreview({
   onLeave: () => void;
 }) {
   const rowHeight = target.kind === 'session' ? 32 : 40;
-  const GroupIcon = target.kind === 'folder' ? CollectionIcon : Layers;
   const [query, setQuery] = useState('');
   const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(
+    searchThreshold * rowHeight
+  );
+  const visibleRows = Math.max(1, Math.ceil(viewportHeight / rowHeight));
   const [highlighted, setHighlighted] = useState(() =>
     Math.max(
       0,
@@ -97,9 +111,22 @@ export function AnchoredTabPreview({
     )
   );
   const showSearch =
-    entries.length > visibleRows || target.interaction !== 'hover';
-  const viewport = useRef<HTMLDivElement>(null);
+    entries.length > searchThreshold || target.interaction !== 'hover';
+  const [viewportElement, setViewportElement] =
+    useState<HTMLDivElement | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const list = viewportElement;
+    if (!list) return undefined;
+    // Match the virtual window to the actual space after popup collision handling.
+    const measure = () => {
+      if (list.clientHeight > 0) setViewportHeight(list.clientHeight);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    measure();
+    return () => observer.disconnect();
+  }, [viewportElement]);
   const measureSide = useCallback(
     () =>
       target.anchor.getBoundingClientRect().right +
@@ -138,14 +165,14 @@ export function AnchoredTabPreview({
   const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
   const end = Math.min(matches.length, start + visibleRows + overscan * 2);
   useEffect(() => {
-    const list = viewport.current;
+    const list = viewportElement;
     if (!list) return;
     const top = activeIndex * rowHeight;
     if (top < list.scrollTop) list.scrollTop = top;
     else if (top + rowHeight > list.scrollTop + list.clientHeight)
       list.scrollTop = top + rowHeight - list.clientHeight;
     setScrollTop(list.scrollTop);
-  }, [activeIndex, rowHeight]);
+  }, [activeIndex, rowHeight, viewportHeight, viewportElement]);
   return (
     <Popover.Root
       open
@@ -182,7 +209,11 @@ export function AnchoredTabPreview({
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           if (target.interaction === 'keyboard' && target.anchor.isConnected)
-            target.anchor.focus();
+            (
+              target.anchor.querySelector<HTMLElement>(
+                '.sidebar-app, .folder-heading'
+              ) || target.anchor
+            ).focus();
         }}
       >
         <div
@@ -204,7 +235,11 @@ export function AnchoredTabPreview({
           <div className="tab-preview-group-icon" aria-hidden="true">
             {group && <GroupIdentityIcon item={group} tabs={tabs} />}
             {!group && icon && <AppIcon icon={icon} title={title} />}
-            {!group && !icon && <GroupIcon size={22} />}
+            {!group && !icon && (
+              target.kind === 'folder'
+                ? <CollectionIcon collection={collection} size={22} />
+                : <Layers size={22} />
+            )}
           </div>
           <div className="tab-preview-title">
             <strong>{title}</strong>
@@ -244,7 +279,7 @@ export function AnchoredTabPreview({
                 setQuery(event.target.value);
                 setHighlighted(0);
                 setScrollTop(0);
-                if (viewport.current) viewport.current.scrollTop = 0;
+                if (viewportElement) viewportElement.scrollTop = 0;
               }}
               onKeyDown={(event) => {
                 if (
@@ -268,8 +303,8 @@ export function AnchoredTabPreview({
         )}
         <div
           className="tab-preview-list"
-          ref={viewport}
-          style={{ height: Math.min(visibleRows, matches.length) * rowHeight }}
+          ref={setViewportElement}
+          style={{ height: matches.length * rowHeight }}
           onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
         >
           <div
@@ -279,6 +314,8 @@ export function AnchoredTabPreview({
               <div
                 className="tab-preview-row"
                 key={entry.id}
+                data-background-color={!!entry.group && !!focusColorStyle(entry.focusColor) || undefined}
+                data-focus-color={!entry.group && !!focusColorStyle(entry.focusColor) || undefined}
                 data-highlighted={
                   target.interaction !== 'hover' &&
                   start + index === activeIndex
@@ -294,6 +331,7 @@ export function AnchoredTabPreview({
                   position: 'absolute',
                   top: (start + index) * rowHeight,
                   height: rowHeight,
+                  ...focusColorStyle(entry.focusColor),
                 }}
               >
                 <button
@@ -306,7 +344,7 @@ export function AnchoredTabPreview({
                   {entry.group ? (
                     <GroupIdentityIcon item={entry.group} tabs={tabs} />
                   ) : (
-                    <AppIcon icon={entry.icon} title={entry.title} />
+                    <TabIcon tab={{ ...entry, name: entry.title }} />
                   )}
                   <span>
                     <strong>{entry.title}</strong>
@@ -371,6 +409,16 @@ export function AnchoredTabPreview({
               disabled={!onDeveloper}
             >
               <Code2 size={15} />
+            </Button>
+            <Button
+              size="1"
+              variant="ghost"
+              aria-label="Manage group"
+              title="Manage group"
+              onClick={onManageGroup}
+              disabled={!onManageGroup}
+            >
+              <Settings2 size={15} />
             </Button>
           </div>
         )}

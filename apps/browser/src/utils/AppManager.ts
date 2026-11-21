@@ -12,6 +12,7 @@ import { assignGroupSlugs } from '../browser/aiGroups';
 import { readSavedList, writeSavedList } from './storageRecovery';
 import { windowWorkspace } from './windowWorkspace';
 import { prepareCollectionGroups } from './collectionGroups';
+import { normalizeFocusColor } from './focusColor';
 
 // Storage remains authoritative across windows and direct layout restores.
 // Cache only successful normalization; return independent mutable records.
@@ -120,11 +121,18 @@ export const AppManager = {
           'spaceId',
           'folderId',
           'customName',
+          'customIconEmoji',
+          'customIconImage',
           'restorationId',
         ] as const
       ).forEach((key) => {
         if (typeof next[key] !== 'string') delete next[key];
       });
+      for (const key of ['focusColor', 'sessionFocusColor'] as const) {
+        const color = normalizeFocusColor(next[key]);
+        if (color) next[key] = color;
+        else delete next[key];
+      }
       if (next.groupDisplay !== 'stack' && next.groupDisplay !== 'folder')
         delete next.groupDisplay;
       if (next.sessionMode !== 'separate' && next.sessionMode !== 'collection')

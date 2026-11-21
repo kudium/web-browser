@@ -1,3 +1,4 @@
+import { onDeveloperStateChanged } from './siteDeveloper';
 import { registerAppThemeWindow } from './appTheme';
 import path from 'path';
 import fs from 'fs';
@@ -15,7 +16,7 @@ import type { SiteDeveloperWindowState } from '../browser/siteDeveloper';
 import { isBrowserCommand } from './browserRequests';
 import { resolveHtmlPath } from './util';
 import { protectWindowNavigation } from './windowNavigation';
-import { getBrowserPreferences } from './preferences';
+import { getBrowserPreferences, onBrowserPreferencesChanged } from './preferences';
 
 const editorContents = new WeakSet<WebContents>();
 const editorBindings = new WeakMap<
@@ -149,6 +150,8 @@ export function registerSiteDeveloperWindows(
     string,
     { window: BrowserWindow; update: () => void }
   >();
+  const stopRuntime = onDeveloperStateChanged(() => editors.forEach(editor => editor.update()));
+  const stopPreferences = onBrowserPreferencesChanged(() => editors.forEach(editor => editor.update()));
   const open = (
     event: IpcMainEvent,
     id: string,
@@ -263,7 +266,6 @@ export function registerSiteDeveloperWindows(
       update(true);
     };
     ipcMain.on('site-developer-command', receive);
-    const timer = setInterval(update, 500);
     editors.set(key, { window: editor, update });
     const documentURL = resolveHtmlPath('index.html', 'site-developer');
     protectWindowNavigation(editor.webContents, documentURL, (url) =>
@@ -274,7 +276,6 @@ export function registerSiteDeveloperWindows(
       update(true);
     });
     editor.once('closed', () => {
-      clearInterval(timer);
       ipcMain.removeListener('site-developer-command', receive);
       editors.delete(key);
     });
@@ -284,6 +285,8 @@ export function registerSiteDeveloperWindows(
     open,
     update: () => editors.forEach((editor) => editor.update()),
     dispose: () => {
+      stopRuntime();
+      stopPreferences();
       editors.forEach((editor) => editor.window.destroy());
       editors.clear();
     },

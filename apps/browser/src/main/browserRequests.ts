@@ -51,9 +51,13 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
           'sessionHomeURL',
           'tabDefaultURL',
           'sessionIconEmoji',
+          'customIconEmoji',
         ].every((key) => item[key] === undefined || text(item[key], 65536)) ||
-        !['icon', 'sessionIconImage'].every(
+        !['icon', 'sessionIconImage', 'customIconImage'].every(
           (key) => item[key] === undefined || text(item[key], 1048576)
+        ) ||
+        !['focusColor', 'sessionFocusColor'].every(
+          (key) => item[key] === undefined || (typeof item[key] === 'string' && /^#[0-9a-f]{6}$/i.test(item[key] as string))
         ) ||
         ![
           'pinned',

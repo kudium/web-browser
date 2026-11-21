@@ -3,10 +3,10 @@ export const AI_ACTIVITY_HTML = `<!doctype html><html><head><meta charset="utf-8
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;--primary:#5aaca8;--glow:color-mix(in srgb,var(--primary) 58%,white);--surface:color-mix(in srgb,var(--primary) 7%,#191b1e)}
 @property --orbit{syntax:"<angle>";initial-value:0deg;inherits:false}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;cursor:default}
-.frame{position:absolute;inset:0;border-radius:10px;pointer-events:none;animation:arrive 240ms ease-out;box-shadow:inset 0 0 36px color-mix(in srgb,var(--primary) 24%,transparent)}
-.frame:before,.frame:after{content:"";position:absolute;inset:0;border-radius:inherit;background:conic-gradient(from var(--orbit),transparent 0% 8%,var(--primary) 18%,var(--glow) 26%,var(--primary) 34%,transparent 44% 58%,var(--primary) 68%,var(--glow) 76%,var(--primary) 84%,transparent 94%);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;animation:orbit 6s linear infinite}
-.frame:before{filter:blur(12px);opacity:.8;mask:linear-gradient(to bottom,#000,transparent 56px,transparent calc(100% - 56px),#000),linear-gradient(to right,#000,transparent 56px,transparent calc(100% - 56px),#000);mask-composite:add}
-.frame:after{padding:3px;opacity:.95}
+.frame{position:absolute;inset:0;border-radius:10px;pointer-events:none;animation:arrive 240ms ease-out;box-shadow:inset 0 0 64px color-mix(in srgb,var(--primary) 38%,transparent)}
+.frame:before,.frame:after{content:"";position:absolute;inset:0;border-radius:inherit;background:conic-gradient(from var(--orbit),transparent 0% 8%,var(--primary) 18%,var(--glow) 26%,var(--primary) 34%,transparent 44% 58%,var(--primary) 68%,var(--glow) 76%,var(--primary) 84%,transparent 94%);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;animation:orbit 2.8s linear infinite}
+.frame:before{filter:blur(16px);opacity:1;mask:linear-gradient(to bottom,#000,transparent 80px,transparent calc(100% - 80px),#000),linear-gradient(to right,#000,transparent 80px,transparent calc(100% - 80px),#000);mask-composite:add}
+.frame:after{padding:5px;opacity:1;animation:orbit 2.8s linear infinite,frame-pulse 1.8s ease-in-out infinite}
 .dock{position:absolute;z-index:3;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;width:max-content;max-width:calc(100% - 24px);padding:10px 12px;border:1px solid #ffffff24;border-radius:16px;background:linear-gradient(135deg,color-mix(in srgb,var(--surface) 94%,transparent),#17191cf2);box-shadow:0 8px 32px #0005,0 0 28px color-mix(in srgb,var(--primary) 26%,transparent),inset 0 1px 0 #ffffff12;backdrop-filter:blur(24px) saturate(130%);animation:arrive 240ms ease-out}
 .drag-handle{cursor:grab;touch-action:none;user-select:none;border:0;margin:0;padding:6px 2px;background:transparent;color:#aeb2b8;border-radius:6px}.drag-handle svg{width:10px;height:20px}.drag-handle:active,.dock.dragging .drag-handle{cursor:grabbing}.dock.dragging{user-select:none}.mark{position:relative;overflow:hidden;display:grid;place-items:center;flex:0 0 32px;height:32px;border-radius:10px;background:color-mix(in srgb,var(--primary) 34%,transparent);color:var(--glow);box-shadow:0 0 16px color-mix(in srgb,var(--primary) 28%,transparent)}
 .mark:before{content:"";position:absolute;inset:-50%;background:linear-gradient(110deg,transparent 35%,color-mix(in srgb,var(--glow) 48%,transparent) 50%,transparent 65%);animation:shimmer 2.6s ease-in-out infinite}
@@ -20,6 +20,7 @@ button svg{width:14px;height:14px}button:hover{background:#ffffff14;border-color
 .agent-pointer.edge-x .label{left:auto;right:4px}.agent-pointer.edge-y .label{top:auto;bottom:20px}
 .pointer-ring{position:absolute;left:-12px;top:-12px;width:28px;height:28px;border:2px solid var(--glow);border-radius:50%;opacity:0}.agent-pointer.pressed .pointer-ring{opacity:.7;transform:scale(.8)}.agent-pointer.click .pointer-ring{animation:pointer-click 460ms ease-out}
 @keyframes pointer-click{from{opacity:.9;transform:scale(.5)}to{opacity:0;transform:scale(1.8)}}
+@keyframes frame-pulse{50%{opacity:.65;filter:drop-shadow(0 0 8px var(--glow))}}
 @keyframes orbit{to{--orbit:360deg}}
 @keyframes sparkle{50%{transform:scale(1.12);filter:drop-shadow(0 0 7px var(--glow))}}
 @keyframes signal{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--primary) 60%,transparent)}80%,100%{box-shadow:0 0 0 6px transparent}}

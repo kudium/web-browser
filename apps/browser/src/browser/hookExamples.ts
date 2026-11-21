@@ -9,33 +9,19 @@ export const hookExamples: HookExample[] = [
   {
     id: 'dark-mode',
     name: 'Dark mode',
-    stage: 'after',
-    source: `(() => {
-  // A broad fallback for sites without their own dark theme.
-  const id = 'kudium-dark-mode';
-  document.getElementById(id)?.remove();
-  const style = document.createElement('style');
-  style.id = id;
-  style.textContent = \`html { background:#fff !important; filter:invert(1) hue-rotate(180deg) !important; }
-img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) hue-rotate(180deg) !important; }\`;
-  context.onCleanup(() => style.remove());
-  (document.head || document.documentElement).append(style);
-})();`,
+    stage: 'css',
+    source: `/* A broad fallback for sites without their own dark theme. */
+html { background:#fff !important; filter:invert(1) hue-rotate(180deg) !important; }
+img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) hue-rotate(180deg) !important; }`,
   },
   {
     id: 'accent-colors',
     name: 'Custom accent colors',
-    stage: 'after',
-    source: `(() => {
-  const accent = '#a855f7'; // Change this color.
-  const id = 'kudium-accent-colors';
-  document.getElementById(id)?.remove();
-  const style = document.createElement('style');
-  style.id = id;
-  style.textContent = 'a[href] { color:' + accent + ' !important; } input, progress { accent-color:' + accent + ' !important; } ::selection { background:' + accent + '; color:white; }';
-  context.onCleanup(() => style.remove());
-  (document.head || document.documentElement).append(style);
-})();`,
+    stage: 'css',
+    source: `/* Change the accent color to customize links and controls. */
+a[href] { color:#a855f7 !important; }
+input, progress { accent-color:#a855f7 !important; }
+::selection { background:#a855f7; color:white; }`,
   },
   {
     id: 'auto-scroll',
@@ -113,16 +99,8 @@ img, video, canvas, svg, iframe, [style*="background-image"] { filter:invert(1) 
   {
     id: 'layout-outlines',
     name: 'Outline page layout',
-    stage: 'after',
-    source: `(() => {
-  const id = 'kudium-layout-outlines';
-  document.getElementById(id)?.remove();
-  const style = document.createElement('style');
-  style.id = id;
-  style.textContent = '* { outline:1px solid rgba(59,130,246,.3) !important; }';
-  context.onCleanup(() => style.remove());
-  (document.head || document.documentElement).append(style);
-})();`,
+    stage: 'css',
+    source: `* { outline:1px solid rgba(59,130,246,.3) !important; }`,
   },
   {
     id: 'reading',

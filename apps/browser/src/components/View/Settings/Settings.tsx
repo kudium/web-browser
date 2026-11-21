@@ -500,6 +500,29 @@ export function Settings() {
             {item.id === 'passwords' && (
               <PasswordManager tabs={AppManager.getAll()} initialScope={personalDataScope} />
             )}
+            {item.id === 'passwords' && preferenceControls.some(control =>
+              control.section === 'passwords' && (!filter || matches(`${item.title} ${control.title} ${control.description}`))
+            ) && (
+              <section className="personal-data-autofill-settings" aria-label="Autofill settings">
+                <h2>Autofill</h2>
+                <div className="preference-card">
+                  {preferenceControls.filter(control =>
+                    ['personalDataAutofill', 'personalDataAutofillOnFocus'].includes(control.key) &&
+                    (!filter || matches(`${item.title} ${control.title} ${control.description}`))
+                  ).map(control => (
+                    <div className="preference-row" key={control.key}>
+                      <div className="preference-label">
+                        <strong>{control.key === 'personalDataAutofill' ? 'Show autofill buttons' : control.title}</strong>
+                        <PreferenceHint label={control.title}>{control.description}</PreferenceHint>
+                      </div>
+                      <Switch checked={Boolean(preferences[control.key])} aria-label={control.title}
+                        disabled={!ready || busy || (control.key === 'personalDataAutofillOnFocus' && !preferences.personalDataAutofill)}
+                        onCheckedChange={value => save({[control.key]:value})} />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
             <div
               className={
                 [
@@ -519,6 +542,7 @@ export function Settings() {
                 .filter(
                   (control) =>
                     control.section === item.id &&
+                    !['personalDataAutofill', 'personalDataAutofillOnFocus'].includes(control.key) &&
                     item.id !== 'ai' &&
                     (!filter ||
                       matches(

@@ -978,3 +978,79 @@ it('avoids duplicate queued sends and preserves a newer draft during submission'
   await act(async () => accept(false));
   expect(input).toHaveValue('Next draft');
 });
+
+
+it('filters popup Notes requests by group and reapplies the filter on repeated requests', async () => {
+  localStorage.removeItem('kudiumbrowser-ai-page-pane');
+  mockAI();
+  Object.assign(window.electron, {
+    passwordManager: jest.fn().mockResolvedValue([
+      { id: 'work-note', title: 'Work plan', kind: 'note', scope: 'group:work' },
+      { id: 'other-note', title: 'Other plan', kind: 'note', scope: 'group:other' },
+    ]),
+    onPasswordManagerLock: () => () => {},
+  });
+  const page = (pane: 'notes' | 'assistant', token: number, notesScope?: string) => (
+    <Theme>
+      <AISidebar menuPaneRequest={{ pane, token, notesScope }} />
+    </Theme>
+  );
+  const view = render(page('notes', 1, 'group:work'));
+  expect(await screen.findByRole('button', { name: 'Work plan' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Other plan' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Filter notes by group' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'All notes' }));
+  expect(await screen.findByRole('button', { name: 'Other plan' })).toBeVisible();
+  view.rerender(page('notes', 2, 'group:work'));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Other plan' })).toBeNull());
+  view.rerender(page('assistant', 3));
+  view.rerender(page('notes', 4));
+  expect(screen.getByRole('button', { name: 'Work plan' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Other plan' })).toBeNull();
+  view.rerender(page('notes', 5, 'group:other'));
+  expect(await screen.findByRole('button', { name: 'Other plan' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Work plan' })).toBeNull();
+  view.unmount();
+  localStorage.removeItem('kudiumbrowser-ai-page-pane');
+});
+
+
+it('opens the chat from a popup group request and focuses its scoped composer', async () => {
+  localStorage.setItem('kudiumbrowser-ai-page-pane', JSON.stringify('notes'));
+  const { ai } = mockAI();
+  let groupId: string | null = null;
+  ai.groups.mockImplementation((next?: string | null) => {
+    if (next !== undefined) groupId = next;
+    return Promise.resolve({
+      groupId,
+      groups: [
+        { id: 'work', name: 'Work', slug: 'work', tabs: [] },
+        { id: 'home', name: 'Home', slug: 'home', tabs: [] },
+      ],
+    });
+  });
+  Object.assign(window.electron, {
+    passwordManager: jest.fn().mockResolvedValue([]),
+    onPasswordManagerLock: () => () => {},
+  });
+  const view = render(<Theme><AISidebar /></Theme>);
+  expect(await screen.findByRole('region', { name: 'Notes workspace' })).toBeVisible();
+  const page = (id: string, token: number) => (
+    <Theme>
+      <AISidebar contextRequest={{ reference: { kind: 'group', id }, mode: 'scope', token }} />
+    </Theme>
+  );
+  view.rerender(page('work', 1));
+  await waitFor(() => expect(ai.groups).toHaveBeenCalledWith('work'));
+  expect(await screen.findByRole('region', { name: 'Assistant' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'AI scope' })).toHaveTextContent('Work');
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'Task for AI' })).toHaveFocus());
+  view.rerender(page('home', 2));
+  await waitFor(() => expect(ai.groups).toHaveBeenCalledWith('home'));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'AI scope' })).toHaveTextContent('Home')
+  );
+  expect(ai.run).not.toHaveBeenCalled();
+  view.unmount();
+  localStorage.removeItem('kudiumbrowser-ai-page-pane');
+});

@@ -128,9 +128,6 @@ it('applies visual helpers without duplicating styles, image labels or scroll co
     onCleanup: (cleanup: () => void) => cleanups.push(cleanup),
   };
   for (const id of [
-    'dark-mode',
-    'accent-colors',
-    'layout-outlines',
     'image-urls',
     'auto-scroll',
   ]) {
@@ -145,9 +142,6 @@ it('applies visual helpers without duplicating styles, image labels or scroll co
     await run(context, 'https://example.com', document, jest.fn());
     await run(context, 'https://example.com', document, jest.fn());
   }
-  expect(document.querySelectorAll('#kudium-dark-mode')).toHaveLength(1);
-  expect(document.querySelectorAll('#kudium-accent-colors')).toHaveLength(1);
-  expect(document.querySelectorAll('#kudium-layout-outlines')).toHaveLength(1);
   expect(document.querySelectorAll('[data-kudium-image-url]')).toHaveLength(1);
   expect(document.querySelector('[data-kudium-image-url]')).toHaveAttribute(
     'href',

@@ -11,7 +11,7 @@ export const collectionProfile = (spaceId: string, collectionId: string) =>
  */
 export function prepareCollectionGroups(
   tabs: IApp[],
-  previous: IApp[]
+  previous: IApp[],
 ): IApp[] {
   const key = (tab: IApp) =>
     JSON.stringify([tab.spaceId || 'default', groupKey(tab)]);
@@ -38,9 +38,20 @@ export function prepareCollectionGroups(
     if (next.sessionMode === 'collection' && next.folderId)
       next.sessionProfileId = collectionProfile(
         next.spaceId || 'default',
-        next.folderId
+        next.folderId,
       );
     representatives.set(key(tab), next);
     return next;
   });
+}
+
+/** Resolve membership through the group so every child tab activates its collection. */
+export function activeCollectionId(groups: IApp[], focused?: IApp) {
+  if (!focused || focused.archived) return undefined;
+  return groups.find(
+    (group) =>
+      !group.archived &&
+      groupKey(group) === groupKey(focused) &&
+      (group.spaceId || 'default') === (focused.spaceId || 'default'),
+  )?.folderId;
 }

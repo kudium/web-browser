@@ -1,3 +1,4 @@
+import { browser } from '../../../browser/client';
 import { personalDataMatching } from '../../../browser/personalDataMatching';
 /* Radix TextField and Switch render native labeled controls. */
 /* eslint-disable jsx-a11y/label-has-associated-control, react/require-default-props */
@@ -74,6 +75,16 @@ function PersonalDataRecords({
       window.electron.passwordManager(scope ? { ...request, scope } : request),
     [scope]
   );
+  const [focusSuggestions, setFocusSuggestions] = useState(true);
+  useEffect(() => {
+    let active = true;
+    const update = (preferences: import('../../../browser/preferences').BrowserPreferences) => {
+      if (active) setFocusSuggestions(preferences.personalDataAutofillOnFocus !== false);
+    };
+    browser.preferences('get').then(update).catch(() => {});
+    const stop = browser.onPreferences(update);
+    return () => { active = false; stop(); };
+  }, []);
   const [status, setStatus] = useState<VaultStatus>();
   const [master, setMaster] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -105,9 +116,7 @@ function PersonalDataRecords({
   }, [requestData]);
   useEffect(() => {
     refresh().catch(() => setError('Personal Data is unavailable.'));
-    const timer = setInterval(() => {
-      refresh().catch(() => undefined);
-    }, 10000);
+    const stopChanges = window.electron.onPasswordManagerChanged?.(() => { refresh().catch(() => undefined); });
     const stopLockListener = window.electron.onPasswordManagerLock?.(() => {
       editorRevision.current += 1;
       setVisibleFields([]);
@@ -121,7 +130,7 @@ function PersonalDataRecords({
     });
     return () => {
       editorRevision.current += 1;
-      clearInterval(timer);
+      stopChanges?.();
       stopLockListener?.();
     };
   }, [refresh, requestData, scope]);
@@ -422,6 +431,15 @@ function PersonalDataRecords({
                     onCheckedChange={(value) => toggle('autofill', value)}
                     disabled={busy || !status.enabled}
                   />
+                </label>
+                <label>
+                  <span>Open suggestions on focus</span>
+                  <Switch checked={focusSuggestions} disabled={busy || !status.enabled || !status.autofill}
+                    onCheckedChange={(value) => {
+                      browser.preferences('update', {personalDataAutofillOnFocus:value})
+                        .then(preferences => { setFocusSuggestions(preferences.personalDataAutofillOnFocus !== false); return preferences; })
+                        .catch(() => setError('Unable to update autofill preference.'));
+                    }} />
                 </label>
                 <label>
                   <span>AI access</span>

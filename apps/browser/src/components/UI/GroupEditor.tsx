@@ -90,6 +90,7 @@ function GroupEditorContent({
       )?.slug || item.sessionSlug,
     emoji: item.sessionIconEmoji || '',
     image: item.sessionIconImage || '',
+    focusColor: item.sessionFocusColor || '',
     homeURL: '',
     spaceId: item.spaceId || 'default',
     folderId: item.folderId || '',
@@ -202,6 +203,9 @@ function GroupEditorContent({
               : item;
           const additions = addedTabs.map((tab) => ({
             ...source,
+            customIconEmoji: undefined,
+            customIconImage: undefined,
+            focusColor: undefined,
             ...tab,
             name: tab.name.trim() || new URL(websiteAddress(tab.url)).hostname,
             customName: tab.name.trim() || undefined,
@@ -315,6 +319,9 @@ function GroupEditorContent({
             label="Choose group icon"
             emoji={draft.emoji || ''}
             image={draft.image || ''}
+            focusColor={draft.focusColor}
+            colorMode="background"
+            onFocusColorChange={(color) => change({ focusColor: color || '' })}
             preview={
               <GroupIcon
                 item={{
@@ -428,125 +435,130 @@ function GroupEditorContent({
           onChange={setTabChanges}
         />
         <details
-          className="group-editor-organization"
+          className="group-editor-organization settings-disclosure"
           aria-label="Organization"
         >
-          <summary>Organization</summary>
-          <div className="group-editor-grouping">
-            <Text as="label" size="2">
-              Space
-              <Select.Root
-                value={draft.spaceId}
-                onValueChange={(spaceId) =>
-                  change({ spaceId, folderId: '', sessionMode: 'separate' })
-                }
-              >
-                <Select.Trigger aria-label="Group space" />
-                <Select.Content>
-                  {spaces.map((entry) => (
-                    <Select.Item key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
-            </Text>
-            <Text as="label" size="2">
-              Placement
-              <Select.Root
-                value={draft.placement}
-                onValueChange={(placement) =>
-                  change({ placement: placement as GroupSettings['placement'] })
-                }
-              >
-                <Select.Trigger aria-label="Group placement" />
-                <Select.Content>
-                  <Select.Item value="regular">Regular</Select.Item>
-                  <Select.Item value="pinned">Pinned</Select.Item>
-                  <Select.Item value="favorite">Favorite</Select.Item>
-                </Select.Content>
-              </Select.Root>
-            </Text>
-            <Text as="label" size="2">
-              Collection
-              <Select.Root
-                value={draft.folderId || 'none'}
-                disabled={draft.placement === 'favorite'}
-                onValueChange={(folderId) =>
-                  change({
-                    folderId: folderId === 'none' ? '' : folderId,
-                    ...(!creating && folderId === 'none'
-                      ? { sessionMode: 'separate' as const }
-                      : {}),
-                    ...(creating
-                      ? {
-                          sessionMode:
-                            folderId === 'none' ? 'separate' : 'collection',
-                        }
-                      : {}),
-                  })
-                }
-              >
-                <Select.Trigger aria-label="Group collection" />
-                <Select.Content>
-                  <Select.Item value="none">No collection</Select.Item>
-                  {space?.folders.map((folder) => (
-                    <Select.Item key={folder.id} value={folder.id}>
-                      {folder.name}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
-            </Text>
-          </div>
-          <section className="group-presentation-settings">
-            <Text as="p" size="2">
-              Display group as
-            </Text>
-            <div
-              className="group-display-options"
-              role="radiogroup"
-              aria-label="Group display"
-            >
-              {(['folder', 'stack'] as const).map((display) => (
-                <label
-                  key={display}
-                  className="group-display-option"
-                  htmlFor={`${nameId}-${display}`}
+          <summary className="settings-disclosure-header">
+            <ChevronRight size={15} aria-hidden="true" />
+            <span>Organization</span>
+          </summary>
+          <div className="settings-disclosure-content">
+            <div className="group-editor-grouping">
+              <Text as="label" size="2">
+                Space
+                <Select.Root
+                  value={draft.spaceId}
+                  onValueChange={(spaceId) =>
+                    change({ spaceId, folderId: '', sessionMode: 'separate' })
+                  }
                 >
-                  <input
-                    type="radio"
-                    id={`${nameId}-${display}`}
-                    name={`group-display-${nameId}`}
-                    value={display}
-                    checked={draft.groupDisplay === display}
-                    onChange={() => change({ groupDisplay: display })}
-                  />
-                  <span className="group-display-card">
-                    <span className="group-display-preview" aria-hidden="true">
-                      {display === 'folder' ? (
-                        <Folder size={20} />
-                      ) : (
-                        <span className="group-display-sites">
-                          <Globe size={18} />
-                          <Globe size={18} />
-                          <Globe size={18} />
-                        </span>
-                      )}
-                      <span className="group-display-preview-name">
-                        {draft.name.trim() || 'My group'}
-                      </span>
-                      <ChevronRight size={13} />
-                    </span>
-                    <span className="group-display-caption">
-                      {display === 'folder' ? 'Folder' : 'Stack'}
-                      <Check size={14} aria-hidden="true" />
-                    </span>
-                  </span>
-                </label>
-              ))}
+                  <Select.Trigger aria-label="Group space" />
+                  <Select.Content>
+                    {spaces.map((entry) => (
+                      <Select.Item key={entry.id} value={entry.id}>
+                        {entry.name}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+              </Text>
+              <Text as="label" size="2">
+                Placement
+                <Select.Root
+                  value={draft.placement}
+                  onValueChange={(placement) =>
+                    change({ placement: placement as GroupSettings['placement'] })
+                  }
+                >
+                  <Select.Trigger aria-label="Group placement" />
+                  <Select.Content>
+                    <Select.Item value="regular">Regular</Select.Item>
+                    <Select.Item value="pinned">Pinned</Select.Item>
+                    <Select.Item value="favorite">Favorite</Select.Item>
+                  </Select.Content>
+                </Select.Root>
+              </Text>
+              <Text as="label" size="2">
+                Collection
+                <Select.Root
+                  value={draft.folderId || 'none'}
+                  disabled={draft.placement === 'favorite'}
+                  onValueChange={(folderId) =>
+                    change({
+                      folderId: folderId === 'none' ? '' : folderId,
+                      ...(!creating && folderId === 'none'
+                        ? { sessionMode: 'separate' as const }
+                        : {}),
+                      ...(creating
+                        ? {
+                            sessionMode:
+                              folderId === 'none' ? 'separate' : 'collection',
+                          }
+                        : {}),
+                    })
+                  }
+                >
+                  <Select.Trigger aria-label="Group collection" />
+                  <Select.Content>
+                    <Select.Item value="none">No collection</Select.Item>
+                    {space?.folders.map((folder) => (
+                      <Select.Item key={folder.id} value={folder.id}>
+                        {folder.name}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+              </Text>
             </div>
-          </section>
+            <section className="group-presentation-settings">
+              <Text as="p" size="2">
+                Display group as
+              </Text>
+              <div
+                className="group-display-options"
+                role="radiogroup"
+                aria-label="Group display"
+              >
+                {(['folder', 'stack'] as const).map((display) => (
+                  <label
+                    key={display}
+                    className="group-display-option"
+                    htmlFor={`${nameId}-${display}`}
+                  >
+                    <input
+                      type="radio"
+                      id={`${nameId}-${display}`}
+                      name={`group-display-${nameId}`}
+                      value={display}
+                      checked={draft.groupDisplay === display}
+                      onChange={() => change({ groupDisplay: display })}
+                    />
+                    <span className="group-display-card">
+                      <span className="group-display-preview" aria-hidden="true">
+                        {display === 'folder' ? (
+                          <Folder size={20} />
+                        ) : (
+                          <span className="group-display-sites">
+                            <Globe size={18} />
+                            <Globe size={18} />
+                            <Globe size={18} />
+                          </span>
+                        )}
+                        <span className="group-display-preview-name">
+                          {draft.name.trim() || 'My group'}
+                        </span>
+                        <ChevronRight size={13} />
+                      </span>
+                      <span className="group-display-caption">
+                        {display === 'folder' ? 'Folder' : 'Stack'}
+                        <Check size={14} aria-hidden="true" />
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          </div>
         </details>
         {creating && (
           <section className="group-project-folder">
@@ -630,9 +642,12 @@ function GroupEditorContent({
             </Button>
           </>
         )}
-        <details className="group-editor-advanced">
-          <summary>Browser session</summary>
-          <div className="group-editor-advanced-content">
+        <details className="group-editor-advanced settings-disclosure">
+          <summary className="settings-disclosure-header">
+            <ChevronRight size={15} aria-hidden="true" />
+            <span>Browser session</span>
+          </summary>
+          <div className="group-editor-advanced-content settings-disclosure-content">
             <Text as="p" size="2">
               Browser session
             </Text>

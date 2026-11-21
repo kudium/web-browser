@@ -3,7 +3,7 @@ import { HTMLAttributes, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { DropdownMenu } from '@radix-ui/themes';
 import { PanelDropdownContent } from './PanelDialog';
-import { AppIcon } from './AppIcon/AppIcon';
+import { TabIcon, type TabAppearance } from './TabIcon';
 import { ChromeIconButton } from './ChromeIconButton';
 
 export function HorizontalTabList({
@@ -14,7 +14,7 @@ export function HorizontalTabList({
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   mode: 'dropdown' | 'scroll';
-  tabs: Array<{ id: string; title: string; icon?: string }>;
+  tabs: Array<{ id: string; title: string; icon?: string } & TabAppearance>;
   onSelect: (id: string) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -76,7 +76,7 @@ export function HorizontalTabList({
                   onSelect={() => onSelect(tab.id)}
                   textValue={tab.title}
                 >
-                  <AppIcon icon={tab.icon || ''} title="" />
+                  <TabIcon tab={{ ...tab, icon: tab.icon || '', name: tab.title }} />
                   <span className="tab-overflow-title" title={tab.title}>
                     {tab.title}
                   </span>

@@ -19,19 +19,20 @@ const flush = async () => {
   for (let index = 0; index < 40; index += 1) await Promise.resolve();
 };
 
-function launch(after: string, before = '', hooks: any[] = []) {
+function launch(after: string, before = '', hooks: any[] = [], css = '') {
   let config: any = {
     token: 'run-1',
     enabled: true,
     before,
     after,
-    css: '',
+    css,
     hooks,
   };
   const listeners = new Map<string, () => void>();
   const send = jest.fn();
   const invoke = jest.fn(() => Promise.resolve({ id: 'activity' }));
   const removeInsertedCSS = jest.fn();
+  const insertCSS = jest.fn(() => Promise.resolve('css-key'));
   new Function('require', source)(() => ({
     ipcRenderer: {
       on: (name: string, listener: () => void) => listeners.set(name, listener),
@@ -40,7 +41,7 @@ function launch(after: string, before = '', hooks: any[] = []) {
       invoke,
     },
     webFrame: {
-      insertCSS: () => Promise.resolve('css-key'),
+      insertCSS,
       removeInsertedCSS,
     },
   }));
@@ -48,6 +49,7 @@ function launch(after: string, before = '', hooks: any[] = []) {
     send,
     invoke,
     removeInsertedCSS,
+    insertCSS,
     stop: () => listeners.get('site-developer-stop')!(),
     route: () => listeners.get('site-developer-route')!(),
     configure: (next: any) => {
@@ -65,17 +67,20 @@ beforeEach(() => {
   });
 });
 
-it('runs visual presets once and cleans up their effects on stop', async () => {
-  const runtime = launch(
-    hookExamples.find((item) => item.id === 'dark-mode')!.source
-  );
+it.each(['dark-mode', 'accent-colors', 'layout-outlines'])('injects %s through browser CSS and removes it on route changes and stop', async (id) => {
+  const example = hookExamples.find((item) => item.id === id)!;
+  expect(example.stage).toBe('css');
+  const runtime = launch('', '', [], example.source);
   await flush();
-  expect(document.querySelectorAll('#kudium-dark-mode')).toHaveLength(1);
+  expect(runtime.insertCSS).toHaveBeenCalledWith(example.source);
+  expect(runtime.insertCSS).toHaveBeenCalledTimes(1);
+  expect(document.querySelector('style')).toBeNull();
   runtime.route();
   await flush();
-  expect(document.querySelectorAll('#kudium-dark-mode')).toHaveLength(1);
+  expect(runtime.removeInsertedCSS).toHaveBeenCalledTimes(1);
+  expect(runtime.insertCSS).toHaveBeenCalledTimes(2);
   runtime.stop();
-  expect(document.querySelector('#kudium-dark-mode')).toBeNull();
+  expect(runtime.removeInsertedCSS).toHaveBeenCalledTimes(2);
 });
 
 it('cancels timers and listeners and suppresses stale completion after replacement', async () => {

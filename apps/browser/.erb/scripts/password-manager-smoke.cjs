@@ -9,7 +9,7 @@ const assert = require('assert');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudiumbrowser-password-smoke-'));
 app.setPath('userData', root);
 require('esbuild').buildSync({
-  stdin: { contents: "export * from './src/main/passwordManager/index'; export { initializeLocalStorage } from './src/main/localStorage'; export { installPersonalDataAutofill } from './src/browser/personalDataAutofill'; export { createPersonalDataMatching } from './src/browser/personalDataMatching';", resolveDir: process.cwd(), loader: 'ts' },
+  stdin: { contents: "export * from './src/main/passwordManager/index'; export { initializeLocalStorage } from './src/main/localStorage'; export {updateBrowserPreferences} from './src/main/preferences'; export { installPersonalDataAutofill } from './src/browser/personalDataAutofill'; export { createPersonalDataMatching } from './src/browser/personalDataMatching';", resolveDir: process.cwd(), loader: 'ts' },
   bundle: true,
   minify: true,
   platform: 'node',
@@ -31,9 +31,13 @@ contextBridge.exposeInMainWorld('autofillFixture', {
   quick:()=>{const button=picker?.querySelector('.quick-fill');if(!button)return null;const rect=button.getBoundingClientRect();return {x:rect.x+rect.width/2,y:rect.y+rect.height/2};},
   trigger:()=>!!picker?.querySelector('.trigger'),
   pickerButton:(suggestion=false)=>{const button=suggestion?[...picker?.querySelectorAll('.panel button')||[]].find(button=>button.textContent==='Test · person'):picker?.querySelector('.trigger');if(!button)return null;const rect=button.getBoundingClientRect();return {x:rect.x+rect.width/2,y:rect.y+rect.height/2};},
-  pickerState:()=>({connected:!!picker?.host.isConnected,buttons:[...picker?.querySelectorAll('.panel button')||[]].map(button=>button.textContent)}),
+  pickerState:()=>({open:!!picker?.querySelector('.panel'),connected:!!picker?.host.isConnected,buttons:[...picker?.querySelectorAll('.panel button')||[]].map(button=>button.textContent)}),
   availability:()=>ipcRenderer.invoke('personal-data-autofill-availability'),
+  records:()=>ipcRenderer.invoke('personal-data-autofill-records'),
+  selectRecord:id=>ipcRenderer.invoke('personal-data-login-identity',{id}),
   browse:()=>ipcRenderer.invoke('personal-data-autofill-browse'),
+  secret:input=>ipcRenderer.invoke('personal-data-autofill-secret',input),
+  login:id=>ipcRenderer.invoke('personal-data-autofill-login',id),
 });
 contextBridge.exposeInMainWorld('vault',request=>ipcRenderer.invoke('password-manager',request));
 (${manager.installPersonalDataAutofill.toString()})(ipcRenderer,(${manager.createPersonalDataMatching.toString()})().score);
@@ -68,8 +72,13 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   page.webContents.on('preload-error', (_event, _file, error) => console.error('Fixture preload:', error.message));
   page.webContents.on('console-message', (event) => { if (event.level >= 3) console.error('Fixture renderer:', event.message); });
   await manager.initializeLocalStorage();
+  let osConfigured = false, authenticationCalls = 0, allowAuthentication = false;
   manager.registerPasswordManager((contents) => contents === ui.webContents, {
     canUseOSAuthentication: async () => false,
+    usesOSAuthentication: () => osConfigured,
+    readOSCredential: () => 'long smoke master password',
+    authenticateOS: async () => { authenticationCalls++; if (!allowAuthentication) throw new Error('Authentication cancelled'); },
+    revokeOSAuthentication: () => {},
   });
   let activeScope;
   manager.registerPasswordPage(page.webContents, () => activeScope);
@@ -154,6 +163,13 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await invoke({action:'delete',id:'email-profile'});
   await invoke({action:'save',item:{id:'login',title:'Test',origin:'https://vault.test',kind:'login',username:'person',password:'secret-test-value',fields:[],allowAI:true}});
   assert(!JSON.stringify(status).includes('secret-test-value'));
+  await invoke({action:'save',item:{id:'priority-global',title:'Global profile',origin:'',kind:'profile',username:'',password:'',fields:[{name:'Email',value:'global@example.test',secret:false}],allowAI:false}});
+  await page.webContents.executeJavaScript("window.autofillFixture.selectRecord('priority-global')");
+  const prioritized = await page.webContents.executeJavaScript('window.autofillFixture.records()');
+  assert(prioritized.findIndex(record=>record.id==='login') < prioritized.findIndex(record=>record.id==='priority-global'), 'Website account precedes a remembered browser-wide choice in authenticated suggestions');
+  assert.equal(prioritized.find(record=>record.id==='priority-global').selected,true);
+  assert.equal(prioritized.find(record=>record.id==='priority-global').website,false);
+  await invoke({action:'delete',id:'priority-global'});
   for (const [id, scope] of [['browser-data', undefined], ['group-data', 'group:current'], ['other-group-data', 'group:other']]) {
     manager.withPersonalData(vault => vault.save({ id, title: id, origin: 'https://other-website.test', kind: 'knowledge', username: '', password: '', allowAI: false, fields: [
       { name: 'Email', value: id + '@example.test', secret: false },
@@ -189,6 +205,36 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     'secret-test-value'
   );
   assert(!JSON.stringify(result).includes('secret-test-value'));
+  await invoke({action:'save',item:{id:'secret-boundary',title:'Boundary fixture',origin:'https://vault.test',kind:'knowledge',username:'',password:'',allowAI:false,fields:[{name:'Email',value:'public@example.test',secret:false},{name:'Password',value:'protected-fixture',secret:true}]}});
+  manager.updateBrowserPreferences({personalDataAutofillOnFocus:false});
+  await page.webContents.executeJavaScript("document.activeElement.blur();document.querySelector('#email').focus();undefined");
+  await wait(200);
+  assert.equal((await page.webContents.executeJavaScript('window.autofillFixture.pickerState()')).open,false,'Preference disables automatic opening');
+  assert.equal(await page.webContents.executeJavaScript('window.autofillFixture.trigger()'),true,'Manual autofill remains available');
+  manager.updateBrowserPreferences({personalDataAutofillOnFocus:true});
+  await page.webContents.executeJavaScript("document.activeElement.blur();document.querySelector('#email').focus();undefined");
+  await wait(200);
+  assert.equal((await page.webContents.executeJavaScript('window.autofillFixture.pickerState()')).open,true,'Preference restores automatic opening');
+  assert.equal(await page.webContents.executeJavaScript('document.activeElement.id'),'email','Suggestions preserve input focus');
+  osConfigured = true;
+  await invoke({action:'lock'});
+  const publicRecords = await page.webContents.executeJavaScript('window.autofillFixture.records()');
+  const publicBrowse = await page.webContents.executeJavaScript('window.autofillFixture.browse()');
+  assert.equal(authenticationCalls,0,'Opening suggestions and browsing never requests biometric authentication');
+  assert(publicRecords.some(record=>record.fields.some(field=>field.value==='public@example.test')));
+  assert(!JSON.stringify(publicRecords).includes('protected-fixture'));
+  assert(!JSON.stringify(publicBrowse).includes('protected-fixture'));
+  assert(!JSON.stringify(publicRecords).includes('secret-test-value'));
+  assert.equal(manager.passwordVault().status().locked,true,'Browsing never grants lasting secret access');
+  await assert.rejects(page.webContents.executeJavaScript('window.autofillFixture.secret({id:"secret-boundary",fieldIndex:1})'),/Authentication cancelled/);
+  assert.equal(authenticationCalls,1,'Selecting a secret requests authentication');
+  await assert.rejects(page.webContents.executeJavaScript('window.autofillFixture.login("login")'),/Authentication cancelled/);
+  assert.equal(authenticationCalls,2,'Filling a saved login requests authentication');
+  allowAuthentication = true;
+  assert.equal(await page.webContents.executeJavaScript('window.autofillFixture.secret({id:"secret-boundary",fieldIndex:1})'),'protected-fixture');
+  assert.equal(authenticationCalls,3);
+  assert.equal(manager.passwordVault().status().locked,true);
+  osConfigured = false;
   await page.loadURL('https://different.test');
   page.webContents.send('personal-data-autofill-enabled', true);
   await page.webContents.executeJavaScript("document.activeElement.blur(); document.querySelector('#email').focus()");

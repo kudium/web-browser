@@ -1,6 +1,10 @@
 /** @jest-environment node */
 import { ipcMain } from 'electron';
-import { registerAppThemeWindow, refreshAppThemes } from '../main/appTheme';
+import {
+  registerAppThemeWindow,
+  refreshAppThemes,
+  onAppThemeChanged,
+} from '../main/appTheme';
 import { resolveAppTheme } from '../utils/appTheme';
 jest.mock('electron', () => ({ ipcMain: { handle: jest.fn() } }));
 const space = {
@@ -22,11 +26,11 @@ it('resolves the website choice, fallback and independently configured frame thr
     contrast: '#102b29',
   });
   expect(
-    resolveAppTheme({ ...space, frameColor: '#abcdef' }, '#ffffff').frame
+    resolveAppTheme({ ...space, frameColor: '#abcdef' }, '#ffffff').frame,
   ).toBe('#abcdef');
   expect(resolveAppTheme(space, 'invalid').primary).toBe('#123456');
   expect(
-    resolveAppTheme({ ...space, useWebsiteColors: false }, '#ffffff').primary
+    resolveAppTheme({ ...space, useWebsiteColors: false }, '#ffffff').primary,
   ).toBe('#123456');
 });
 it('shares each browser theme with its child windows and follows Preferences reparenting', () => {
@@ -54,25 +58,37 @@ it('shares each browser theme with its child windows and follows Preferences rep
   refreshAppThemes();
   expect(settings.webContents.send).toHaveBeenLastCalledWith(
     'app-theme-changed',
-    two
+    two,
   );
   expect(handler(event(editor), { action: 'get' })).toEqual(two);
   const fallback = resolveAppTheme({ ...space, id: 'other' });
   handler(event(second), { action: 'publish', theme: fallback });
   expect(settings.webContents.send).toHaveBeenLastCalledWith(
     'app-theme-changed',
-    fallback
+    fallback,
   );
   expect(() =>
-    handler(event(settings), { action: 'publish', theme: one })
+    handler(event(settings), { action: 'publish', theme: one }),
   ).toThrow('Invalid');
   expect(() =>
-    handler({ ...event(first), senderFrame: {} }, { action: 'get' })
+    handler({ ...event(first), senderFrame: {} }, { action: 'get' }),
   ).toThrow('Untrusted');
   expect(() =>
     handler(event(first), {
       action: 'publish',
       theme: { ...one, primary: 'invalid' },
-    })
+    }),
   ).toThrow('Invalid');
+});
+
+it('notifies native surfaces for their host theme and removes the subscription', () => {
+  const host = createWindow();
+  registerAppThemeWindow(host as any, { producer: true });
+  const changed = jest.fn();
+  const stop = onAppThemeChanged(host as any, changed);
+  refreshAppThemes();
+  expect(changed).toHaveBeenCalledTimes(1);
+  stop();
+  refreshAppThemes();
+  expect(changed).toHaveBeenCalledTimes(1);
 });

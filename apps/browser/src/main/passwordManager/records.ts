@@ -58,7 +58,7 @@ export function difference(
 ): DataOverride {
   const patch: DataOverride['patch'] = {};
   (
-    ['title', 'origin', 'username', 'password', 'notes', 'allowAI'] as const
+    ['title', 'origin', 'loginURL', 'username', 'password', 'notes', 'allowAI'] as const
   ).forEach((key) => {
     if ((next[key] ?? '') !== (base[key] ?? ''))
       Object.assign(patch, { [key]: next[key] });

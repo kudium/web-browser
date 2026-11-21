@@ -39,6 +39,10 @@ export interface IApp {
   archived?: boolean;
   archivedAt?: number;
   customName?: string;
+  customIconEmoji?: string;
+  customIconImage?: string;
+  focusColor?: string;
+  sessionFocusColor?: string;
   tags?: string[];
   name: string;
   url: string;

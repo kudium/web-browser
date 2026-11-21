@@ -1,7 +1,8 @@
 import type { GroupTabChanges } from '../components/UI/GroupTabsSettings';
 import { websiteAddress } from './websiteAddress';
+import type { TabAppearance } from '../components/UI/TabIcon';
 
-export interface GroupTabRow {
+export interface GroupTabRow extends TabAppearance {
   id: string;
   name: string;
   url: string;
@@ -36,12 +37,19 @@ export function editGroupTabList(
   });
   const edits = { ...changes.edits };
   const added: GroupTabChanges['added'] = [];
+  const additionsById = new Map(changes.added.map((tab) => [tab.id, tab]));
   const order = lines.map((url, index) => {
     const row = matched[index] || rows.find((entry) => !used.has(entry.id));
     const id = row?.id || crypto.randomUUID();
     used.add(id);
     if (originalIds.includes(id)) edits[id] = { ...edits[id], url };
-    else added.push({ id, name: row?.name || '', url });
+    else
+      added.push({
+        ...additionsById.get(id),
+        id,
+        name: row?.name || '',
+        url,
+      });
     return id;
   });
   return {
