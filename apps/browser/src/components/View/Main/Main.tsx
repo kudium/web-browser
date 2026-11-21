@@ -32,7 +32,7 @@ import {
 import {
   LockKeyhole,
   Library,
-  PanelRight,
+  SquareStack,
   FolderPlus,
   ArrowLeft,
   ArrowRight,
@@ -3075,7 +3075,7 @@ export function Main() {
         }}
       />
       {sidebarPanels.panels.length > 0 && <ChromeIconButton
-        icon={PanelRight}
+        icon={SquareStack}
         className="ai-toolbar-toggle"
         label="Toggle sidebar panels"
         aria-expanded={aiOpen && aiPane === 'panels'}
