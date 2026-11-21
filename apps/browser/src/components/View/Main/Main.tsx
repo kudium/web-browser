@@ -3084,6 +3084,13 @@ export function Main() {
           toggleSidebarPane('developer');
         }}
       />
+      {sidebarPanels.panels.length > 0 && <ChromeIconButton
+        icon={Library}
+        className="ai-toolbar-toggle"
+        label="Toggle sidebar panels"
+        aria-expanded={aiOpen && aiPane === 'panels'}
+        onClick={() => toggleSidebarPane('panels')}
+      />}
       <ChromeIconButton
         icon={Bell}
         className="ai-toolbar-toggle"
@@ -3121,13 +3128,6 @@ export function Main() {
         aria-expanded={aiOpen && aiPane === 'assistant'}
         onClick={() => toggleSidebarPane('assistant')}
       />
-      {sidebarPanels.panels.length > 0 && <ChromeIconButton
-        icon={Library}
-        className="ai-toolbar-toggle"
-        label="Toggle sidebar panels"
-        aria-expanded={aiOpen && aiPane === 'panels'}
-        onClick={() => toggleSidebarPane('panels')}
-      />}
     </>
   );
   const renderAddressBar = () => (
