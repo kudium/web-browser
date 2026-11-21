@@ -51,6 +51,13 @@ The isolated build explicitly runs Electron's runtime installer after `npm ci`,
 before tests. Electron 45 no longer performs that step automatically; its installer
 verifies the upstream distribution checksum and can reuse the local download cache.
 
+Signed release apps include `Contents/Resources/app-update.yml` before signing,
+including when the initial build uses `--dir`. ZIP verification rejects missing
+metadata or the wrong channel/architecture feed. Versions 1.0.18 and 1.0.19
+omitted this file and cannot check for updates; affected users need to install
+the corrected stable DMG manually once. Never modify an installed signed bundle
+or overwrite an already published version to repair this.
+
 Custom Electron runtime preparation is separate from installer releases. The
 `runtime:prepare`, `runtime:sync`, `runtime:build` and `runtime:verify` commands
 prepare pinned source and local Mac distributions without pushing, signing or

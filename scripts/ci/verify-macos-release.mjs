@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import metadata from '../../apps/browser/.erb/scripts/release-update-metadata.cjs';
 const build = path.resolve(process.argv[2] || "apps/browser/release/build");
 const archives = (await fs.readdir(build)).filter((name) =>
   name.endsWith(".zip")
@@ -22,6 +23,10 @@ try {
   );
   if (apps.length !== 1) throw new Error("Expected one app in update ZIP");
   const app = path.join(directory, apps[0]);
+  const arch = archives[0].match(/-(arm64|x64)\.zip$/)?.[1];
+  if (!arch) throw new Error('Update ZIP must identify its target architecture');
+  const version = execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleShortVersionString', path.join(app, 'Contents/Info.plist')], { encoding: 'utf8' }).trim();
+  metadata.verifyUpdateMetadata(path.join(app, 'Contents/Resources'), 'darwin', arch, version.includes('-beta.') ? 'beta' : 'stable');
   execFileSync(
     "/usr/bin/codesign",
     ["--verify", "--deep", "--strict", "--verbose=2", app],
@@ -50,7 +55,7 @@ try {
     ["--assess", "--type", "execute", "--verbose=2", app],
     { stdio: "inherit" }
   );
-  console.log("Update ZIP contains a valid signed, notarized and stapled app.");
+  console.log("Update ZIP contains correct update metadata and a valid signed, notarized and stapled app.");
 } finally {
   await fs.rm(directory, { recursive: true, force: true });
 }

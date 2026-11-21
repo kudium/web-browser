@@ -14,6 +14,7 @@ const publishFor = (platform) => ({
 module.exports = {
   ...build,
   publish: null,
+  afterPack: '.erb/scripts/release-update-metadata.cjs',
   artifactName: 'Kudium-Browser-${version}-${arch}.${ext}',
   forceCodeSigning: signed,
   afterSign: signed ? build.afterSign : null,
