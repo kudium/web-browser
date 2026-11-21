@@ -6,6 +6,23 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { options, buildSteps, verifyArtifacts } from './local-release.mjs';
+import { verifyMacRelease } from './ci/verify-macos-release.mjs';
+
+test('installer verification rejects missing DMGs and inconsistent release targets', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'installer-pair-test-'));
+  try {
+    const zip = path.join(directory, 'Kudium-Browser-1.2.3-arm64.zip');
+    fs.writeFileSync(zip, '');
+    await assert.rejects(verifyMacRelease(directory), /one macOS update ZIP and one DMG/);
+    const dmg = path.join(directory, 'Kudium-Browser-1.2.3-x64.dmg');
+    fs.writeFileSync(dmg, '');
+    await assert.rejects(verifyMacRelease(directory), /targets differ/);
+    fs.renameSync(zip, path.join(directory, 'unversioned.zip'));
+    await assert.rejects(verifyMacRelease(directory), /release version and target architecture/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('commands validate channels, version options and matching retry tags', () => {
   assert.deepEqual(options(['beta']), { mode: 'beta', bump: 'auto', dryRun: false, retry: undefined });
@@ -16,7 +33,9 @@ test('commands validate channels, version options and matching retry tags', () =
 
 test('builds both architectures with separate output, verification and collection', () => {
   const steps = buildSteps('/checkout with spaces', '/output with spaces', 'v1.2.3-beta.1');
-  assert.deepEqual(steps.slice(0, 6).map(([command, args]) => [command, args[0]]), [['npm', 'ci'], ['node', 'node_modules/electron/install.js'], ['npx', 'tsc'], ['npm', 'test'], ['npm', 'run'], ['node', 'scripts/ci/prepare-browser-release.mjs']]);
+  assert.deepEqual(steps.slice(0, 7).map(([command, args]) => [command, args[0]]), [['npm', 'ci'], ['node', 'node_modules/electron/install.js'], ['node', '--test'], ['npx', 'tsc'], ['npm', 'test'], ['npm', 'run'], ['node', 'scripts/ci/prepare-browser-release.mjs']]);
+  assert.deepEqual(steps[2][1], ['--test', 'scripts/release-update-metadata.test.cjs']);
+  assert.equal(steps[2][2], '/checkout with spaces');
   for (const arch of ['arm64', 'x64']) {
     const queued = steps.findIndex(([, args]) => args.includes(`--${arch}`) && args.includes('--dir'));
     assert.equal(steps[queued][3].RELEASE_DEFER_NOTARIZATION, 'true');

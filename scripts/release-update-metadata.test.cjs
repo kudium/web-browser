@@ -4,6 +4,34 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const metadata = require('../apps/browser/.erb/scripts/release-update-metadata.cjs');
+const yaml = require('../apps/browser/node_modules/js-yaml');
+
+test('release build configuration uses the updater metadata hook', () => {
+  const config = require('../apps/browser/.erb/configs/electron-builder.web.cjs');
+  assert.equal(config.afterPack, '.erb/scripts/release-update-metadata.cjs');
+});
+
+test('packaged metadata gate rejects corrupted and misconfigured updater settings', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-update-negative-'));
+  try {
+    const target = path.join(directory, 'app-update.yml');
+    const expected = metadata.updateMetadata('darwin', 'arm64', 'stable');
+    for (const [key, value] of [
+      ['provider', 'github'], ['url', 'https://browser.kudium.com/updates/stable/darwin/${arch}'],
+      ['url', 'https://example.com/updates/stable/darwin/arm64'],
+      ['channel', 'beta'], ['useMultipleRangeRequest', true],
+    ]) {
+      fs.writeFileSync(target, yaml.dump({ ...expected, [key]: value }));
+      assert.throws(() => metadata.verifyUpdateMetadata(directory, 'darwin', 'arm64', 'stable'), /Invalid packaged update metadata/);
+    }
+    fs.writeFileSync(target, 'url: [');
+    assert.throws(() => metadata.verifyUpdateMetadata(directory, 'darwin', 'arm64', 'stable'));
+    fs.writeFileSync(target, '');
+    assert.throws(() => metadata.verifyUpdateMetadata(directory, 'darwin', 'arm64', 'stable'), /Invalid packaged update metadata/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('signed directory builds include usable metadata for both architectures and channels', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-update-metadata-'));

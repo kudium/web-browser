@@ -52,7 +52,7 @@ before tests. Electron 45 no longer performs that step automatically; its instal
 verifies the upstream distribution checksum and can reuse the local download cache.
 
 Signed release apps include `Contents/Resources/app-update.yml` before signing,
-including when the initial build uses `--dir`. ZIP verification rejects missing
+including when the initial build uses `--dir`. ZIP and DMG verification rejects missing
 metadata or the wrong channel/architecture feed. Versions 1.0.18 and 1.0.19
 omitted this file and cannot check for updates; affected users need to install
 the corrected stable DMG manually once. Never modify an installed signed bundle
@@ -66,6 +66,14 @@ check its actual version, metadata and a successful update check in logs or UI.
 Report release verification separately from installed-app verification. The
 manual recovery release for 1.0.18/1.0.19 is 1.0.20 or later; those broken
 versions cannot discover the correction automatically.
+
+The local beta/stable release pipeline runs the updater packaging regression
+tests automatically after dependency installation. Before collecting or
+publishing installers, `verify-macos-release.mjs` extracts the ZIP and mounts the
+DMG read-only, validates both apps' release version and updater settings, and
+checks their signatures, notarization tickets and Gatekeeper acceptance. Both
+formats must contain identical updater metadata. Publication retry runs this
+same verification again; missing or incorrect metadata is a hard failure.
 
 Custom Electron runtime preparation is separate from installer releases. The
 `runtime:prepare`, `runtime:sync`, `runtime:build` and `runtime:verify` commands

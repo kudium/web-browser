@@ -64,6 +64,9 @@ defines these commands, run from the repository root on a Mac:
   include `Contents/Resources/app-update.yml` before signing, with the correct
   provider, channel and architecture feed. Verify it inside both architectures'
   final ZIPs and DMGs along with signatures; never bypass the ZIP metadata gate.
+  The beta/stable pipeline must run updater packaging regression tests and
+  `verify-macos-release.mjs` for both targets before collecting/publishing;
+  the verifier checks both installer formats, and retry uses the same gate.
 - Publication verification does not prove that the user's installed app can
   update. Before saying the installed updater is working, check the installed
   version, its update metadata and a successful update check in its logs or UI.

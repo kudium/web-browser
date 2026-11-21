@@ -38,6 +38,7 @@ export function buildSteps(checkout, artifacts, tag) {
     // Electron 45 no longer installs its runtime during npm ci.
     // The installer checks the downloaded/cached distribution's upstream checksum.
     ['node', ['node_modules/electron/install.js'], browser],
+    ['node', ['--test', 'scripts/release-update-metadata.test.cjs'], checkout],
     ['npx', ['tsc', '--noEmit'], browser],
     ['npm', ['test', '--', '--runInBand', '--roots', 'src', '--config', '.erb/configs/jest.ci.cjs'], browser],
     ['npm', ['run', 'test:migrations'], browser],
