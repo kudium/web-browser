@@ -3617,7 +3617,8 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 
 /* All Assistant pages use the existing toolbar for placement controls. */
 .assistant-page-header { display:flex; align-items:center; flex:0 0 var(--assistant-page-header-height); gap:8px; min-height:var(--assistant-page-header-height); height:var(--assistant-page-header-height); padding:4px 0; box-sizing:border-box; }
-.assistant-page-header.assistant-page-header-edge { padding-inline:var(--ai-content-inset, 18px); }
+.ai-sidebar .assistant-page-header { margin-inline:calc(-1 * var(--ai-content-inset, 18px)); padding-inline:8px; }
+.ai-sidebar .assistant-page-header.assistant-page-header-edge { margin-inline:0; }
 .assistant-page-body-wide { margin-inline:calc(-1 * var(--ai-content-inset, 18px)); padding-inline:8px; }
 .assistant-page-header[hidden] { display:none; }
 .assistant-page-header-actions { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }

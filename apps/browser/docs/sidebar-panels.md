@@ -172,6 +172,9 @@ Use `assistant-page-body-wide` for content that needs the full sidebar width
 with one compact gutter. Do not stack sidebar padding, body padding and list
 padding; Developer uses this shared body layout for its project controls and
 page/file content. Card padding belongs inside the card, not around the list.
+Shared sidebar headers use this same compact 8px inset. Normal headers reclaim
+the outer content padding; edge-to-edge headers already occupy the full width.
+Keep this alignment in the shared header rules, never in page-specific offsets.
 Full-width panel content may reclaim horizontal padding only. Let the shared
 frame's flex layout own its height; never use negative bottom margins to extend
 content past the border. Native panel views use the frame's inner corner radius

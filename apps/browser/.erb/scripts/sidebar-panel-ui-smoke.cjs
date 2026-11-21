@@ -222,9 +222,12 @@ app
       body.innerHTML='<div class="developer-project">Project controls</div><div class="developer-pages-view"><div class="developer-sidebar-page">Page</div></div>';
       sidebar.appendChild(body);
       const width=body.querySelector('.developer-sidebar-page').getBoundingClientRect().width,available=sidebar.clientWidth;
-      body.remove();return {width,available};
+      const contentLeft=body.querySelector('.developer-project').getBoundingClientRect().left;
+      const headerLeft=sidebar.querySelector('.assistant-page-header-actions').getBoundingClientRect().left;
+      body.remove();return {width,available,contentLeft,headerLeft};
     })()`);
     assert(developerWidth.width >= developerWidth.available-18,'Developer content must use one compact gutter, not stacked padding');
+    assert.equal(developerWidth.headerLeft,developerWidth.contentLeft,'Shared header actions must align with the compact Developer content inset');
     for (const width of [368,640]) {
     await window.loadFile(path.join(root,'index.html'),{query:{switches:'1',width:String(width)}});
     const bounds=[];
