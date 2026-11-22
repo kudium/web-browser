@@ -29,7 +29,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const timer = setTimeout(() => app.exit(1), 30000);
 fs.writeFileSync(
   path.join(root, 'preload.cjs'),
-  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureHookAction:callback=>{ipcRenderer.on('site-developer-panel-action',(_event,request)=>callback(request))},fixtureHookResponse:request=>ipcRenderer.send('fixture-hook-response',request),fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,url:'https://example.com/activity',message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
+  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureHookAction:callback=>{ipcRenderer.on('site-developer-panel-action',(_event,request)=>callback(request))},fixtureHookResponse:request=>ipcRenderer.send('fixture-hook-response',request),fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),fixtureTheme:theme=>ipcRenderer.invoke('app-theme',{action:'publish',theme}),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,url:'https://example.com/activity',message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
 );
 fs.writeFileSync(
   path.join(root, 'fixture.tsx'),
@@ -308,7 +308,10 @@ app
     const pageURL='http://127.0.0.1:'+server.address().port+'/';
     const {registerDeveloperPage,siteDeveloperPreload,resetDeveloperState}=require('../../src/main/siteDeveloper.ts');
     const {emptyDeveloperConfig}=require('../../src/browser/siteDeveloper.ts');
-    const liveScript="context.panel.onAction('refresh',async payload=>{await context.panel.update({id:'live',title:'Live hook',content:{type:'text',text:'Updated '+document.title},actions:[{id:'refresh',label:'Refresh'}]});return {title:document.title,payload}});await context.panel.show({id:'live',title:'Live hook',content:{type:'text',text:'Published from page hook'},actions:[{id:'refresh',label:'Refresh'}],reveal:true});";
+    require('../../src/main/appTheme.ts').registerAppThemeWindow(window,{producer:true});
+    const setFixtureTheme=async primary=>{const contrast=require('../../src/utils/appTheme.ts').primaryContrast(primary);await window.webContents.executeJavaScript(`electron.fixtureTheme(${JSON.stringify({spaceId:'fixture',primary,frame:primary,contrast})})`);};
+    await setFixtureTheme('#df6363');
+    const liveScript="context.panel.onAction('refresh',async payload=>{await context.panel.update({id:'live',title:'Live hook',content:{type:'text',text:'Updated '+document.title},actions:[{id:'refresh',label:'Refresh'}]});return {title:document.title,payload,primary:context.theme.primary}});await context.panel.show({id:'live',title:'Live hook',content:{type:'text',text:'Published from page hook'},actions:[{id:'refresh',label:'Refresh'}],reveal:true});";
     const approved={...emptyDeveloperConfig,enabled:true,before:"log('before')",after:liveScript};
     const sourceWindow=new BrowserWindow({show:false,webPreferences:{partition:'hook-panel-source-fixture',sandbox:true,contextIsolation:true,nodeIntegration:false,preload:siteDeveloperPreload()}});
     const beforeLive=new Set(window.contentView.children);
@@ -320,9 +323,11 @@ app
     await pause(150);
     assert.equal((await liveView.webContents.executeJavaScript(`document.getElementById('panel-output').textContent`)),'Published from page hook');
     const liveAnswer=await liveView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh',{from:'panel'})`);
-    assert.deepEqual(liveAnswer,{title:'Hook fixture page',payload:{from:'panel'}},'The native panel must round-trip through the actual page hook dispatcher');
+    assert.deepEqual(liveAnswer,{title:'Hook fixture page',payload:{from:'panel'},primary:'#df6363'},'The native panel must round-trip through the actual page hook dispatcher');
     await pause(60);
     assert.equal(await liveView.webContents.executeJavaScript(`document.getElementById('panel-output').textContent`),'Updated Hook fixture page');
+    await setFixtureTheme('#568fe0'); await pause(60);
+    assert.equal((await liveView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh',{})`)).primary,'#568fe0','Running hook context follows the shared theme without rerunning source');
     resetDeveloperState(sourceWindow.webContents,new URL(pageURL).origin);
     assert(!host.state().panels.some(p=>p.title==='Live hook'),'Revoking the real hook must remove its output');
     const panelExamples=require(path.resolve('../../packages/hooks/panel-examples.ts')).hookPanelExamples;
@@ -363,6 +368,16 @@ app
         assert.equal(await exampleView.webContents.executeJavaScript(`new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(false);image.onerror=()=>resolve(true);image.src=${JSON.stringify(imageOrigin+'/unlisted.jpg')}})`),true,'Unlisted image URL must be blocked');
         assert.equal(await exampleView.webContents.executeJavaScript(`fetch(${JSON.stringify(imageOrigin+'/image-0.jpg')}).then(()=>false,()=>true)`),true,'Even a listed image cannot grant fetch access');
         assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelectorAll('#gallery a').length`),12);
+        const neutralColor=await exampleView.webContents.executeJavaScript(`getComputedStyle(document.querySelector('#gallery a')).color`);
+        assert.equal(await exampleView.webContents.executeJavaScript(`getComputedStyle(document.documentElement).getPropertyValue('--kudium-primary').trim()`),'#568fe0','Primary remains available for opt-in custom designs');
+        assert.equal(neutralColor,await exampleView.webContents.executeJavaScript(`getComputedStyle(document.body).color`),'Gallery inherits neutral text instead of tinting every card');
+        await setFixtureTheme('#4ca87a'); await pause(60);
+        assert.equal(await exampleView.webContents.executeJavaScript(`getComputedStyle(document.documentElement).getPropertyValue('--kudium-primary').trim()`),'#4ca87a','Live theme variables update without recreating the panel');
+        assert.equal(await exampleView.webContents.executeJavaScript(`getComputedStyle(document.querySelector('#gallery a')).color`),neutralColor,'Primary changes keep default content neutral');
+        const lightInk=await exampleView.webContents.executeJavaScript(`document.documentElement.style.colorScheme='light';getComputedStyle(document.body).color`);
+        const darkInk=await exampleView.webContents.executeJavaScript(`document.documentElement.style.colorScheme='dark';getComputedStyle(document.body).color`);
+        assert.notEqual(darkInk,lightInk,'Neutral content follows light/dark appearance');
+        await exampleView.webContents.executeJavaScript(`document.documentElement.style.colorScheme=''`);
         assert(await exampleView.webContents.executeJavaScript(`document.querySelector('#gallery img').src.startsWith('data:image/jpeg')`),'Loaded page image gets an actual native canvas thumbnail');
         assert((await exampleView.webContents.executeJavaScript(`document.getElementById('summary').textContent`)).includes('30 media links'));
         assert((await exampleView.webContents.executeJavaScript(`document.querySelector('#gallery').textContent`)).includes('audio'));

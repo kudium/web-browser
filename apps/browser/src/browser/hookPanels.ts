@@ -1,3 +1,9 @@
+/** Read-only resolved colors from the browser owning this hook. */
+export interface HookTheme {
+  readonly primary: string;
+  readonly frame: string;
+  readonly contrast: string;
+}
 /** Portable panel payloads; runtime functions stay in the originating hook. */
 export type HookPanelContent =
   | { type: 'text' | 'markdown'; text: string }

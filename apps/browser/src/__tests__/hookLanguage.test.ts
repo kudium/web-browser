@@ -165,3 +165,8 @@ test.each(hookPanelExamples)('the editor accepts the complete $name snippet', as
   const result=await query('diagnostics',sample.source);
   expect(result.diagnostics).toEqual([]);
 },15000);
+
+test('context.theme exposes read-only resolved color types in the hook editor', async () => {
+  expect((await query('diagnostics','const primary = context.theme.primary; await context.panel.show({id:"colors",title:"Theme",content:{type:"text",text:primary}});')).diagnostics).toEqual([]);
+  expect((await query('diagnostics','context.theme.primary = "#ffffff";')).diagnostics?.some(item => item.message.includes('read-only'))).toBe(true);
+});

@@ -16,6 +16,8 @@ import {
   panelJSON,
   type HookPanelOutput,
 } from '../browser/hookPanels';
+import { getHookTheme } from './hookTheme';
+import { onAppThemeChanged } from './appTheme';
 import { sidebarPanelsFor } from './sidebarPanels';
 import { attachPanelContextMenu } from './shellContextMenu';
 import { openWindowLink } from './windowNavigation';
@@ -72,7 +74,7 @@ function initialize() {
   preload = path.join(app.getPath('userData'), 'hook-panel-preload.cjs');
   fs.writeFileSync(
     preload,
-    `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('kudiumHookPanel',{invoke:(action,payload=null)=>ipcRenderer.invoke('hook-panel-event',{kind:'action',action,payload}),openLink:url=>ipcRenderer.invoke('hook-panel-event',{kind:'link',url}),onUpdate:callback=>{const listener=(_event,value)=>callback(value);ipcRenderer.on('hook-panel-update',listener);return()=>ipcRenderer.removeListener('hook-panel-update',listener)}});`,
+    `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('kudiumHookPanel',{invoke:(action,payload=null)=>ipcRenderer.invoke('hook-panel-event',{kind:'action',action,payload}),openLink:url=>ipcRenderer.invoke('hook-panel-event',{kind:'link',url}),onThemeChanged:callback=>{const listener=(_event,value)=>callback(value);ipcRenderer.on('hook-panel-theme',listener);return()=>ipcRenderer.removeListener('hook-panel-theme',listener)},onUpdate:callback=>{const listener=(_event,value)=>callback(value);ipcRenderer.on('hook-panel-update',listener);return()=>ipcRenderer.removeListener('hook-panel-update',listener)}});`,
   );
   ipcMain.handle('hook-panel-event', async (event, request) => {
     const e = views.get(event.sender);
@@ -276,6 +278,12 @@ export function showHookPanel(binding: Binding, input: unknown) {
         link(destination);
       });
       view.webContents.on('will-redirect', (event) => event.preventDefault());
+      const publishTheme = () => {
+        if (!view.webContents.isDestroyed()) view.webContents.send('hook-panel-theme', getHookTheme(binding.owner));
+      };
+      const stopTheme = onAppThemeChanged(binding.owner, publishTheme);
+      view.webContents.once('destroyed', stopTheme);
+      view.webContents.on('did-finish-load', publishTheme);
       view.webContents.on('did-finish-load', () =>
         view.webContents.send(
           'hook-panel-update',

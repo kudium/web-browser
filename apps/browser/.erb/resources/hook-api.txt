@@ -38,6 +38,8 @@ interface KudiumPanelOutput {
   reveal?: boolean;
 }
 interface KudiumHookContext {
+  /** Current browser theme; read again after theme changes. Also available as panel CSS variables. */
+  readonly theme: Readonly<{primary: string; frame: string; contrast: string}>;
   readonly panel: {
     show(output: KudiumPanelOutput): Promise<{ id: string }>;
     update(output: KudiumPanelOutput): Promise<{ id: string }>;

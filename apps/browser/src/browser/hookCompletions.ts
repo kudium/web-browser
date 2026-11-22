@@ -14,6 +14,7 @@ const note =
   'create({\n  title: "${Page note}",\n  body: "${Markdown content}"\n})';
 const members: Record<string, Completion[]> = {
   context: [
+    {label:'theme',type:'namespace',info:'Read-only resolved browser colors: primary, frame and contrast.'},
     {label:'panel',type:'namespace',info:'Render structured output or sandboxed HTML in the shared sidebar Panels page.'},
     {
       label: 'signal',
@@ -103,6 +104,11 @@ const members: Record<string, Completion[]> = {
       detail: '({ title, message?, url? }) → Promise',
       info: 'Creates an unread Activity alert. Use await to wait for saving. URL must be HTTP or HTTPS.',
     }),
+  ],
+  theme: [
+    {label:'primary',type:'property',info:'The current browser primary color (hex).'},
+    {label:'frame',type:'property',info:'The current browser frame color (hex).'},
+    {label:'contrast',type:'property',info:'Readable text color for the primary background (hex).'},
   ],
   panel: [
     snippetCompletion('show({id:"${output}",title:"${Hook output}",content:{type:"markdown",text:"${# Results}"},reveal:true})',{label:'show',type:'function',info:'Create or replace an output panel. reveal is optional.'}),

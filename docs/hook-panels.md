@@ -99,3 +99,14 @@ Hook editor instances are scoped to selection and stage to prevent editor transa
 Hook list selection applies to the entire card, including status and padding, while Run, switches and menus retain independent targets. Verify the production list with native pointer events; a simplified editor-only fixture does not cover card hit testing.
 
 The shared **Panel: page media gallery** example scans images (including srcset/picture sources), video/audio source elements and direct media-file links. It deduplicates HTTP(S) URLs, excludes credentials and transient blob/data URLs, and pages through the complete discovered list in batches of 12. Refresh rescans the page. Cards open source links in the originating group. Thumbnails use bounded JPEG snapshots when available. Other picture cards load their actual source URLs through `content.images`; inaccessible/protected images show an error fallback. Audio uses a music card, and unavailable video frames use a play card. Only the explicit image URLs can load, without cookies, authorization or referrer; fetch, script, iframe and other network requests remain blocked. This does not discover hidden media, CSS backgrounds or URLs inside protected streaming players.
+
+Panels inherit the existing resolved browser theme and update their colors without reloading content. Page hooks read the current read-only `context.theme.primary`, `context.theme.frame` and `context.theme.contrast` hex colors. The theme belongs to the owning browser; no workspace identifiers are exposed. Read `context.theme` again in later callbacks to obtain updated values. For example:
+
+```js
+await context.panel.show({
+  id: 'theme', title: 'Browser theme', reveal: true,
+  content: { type: 'json', value: context.theme }
+});
+```
+
+Custom panel CSS can use `var(--kudium-primary)`, `var(--kudium-frame)` and `var(--kudium-primary-contrast)`; these update automatically. Links and gallery icons inherit neutral content text by default, following the light/dark appearance. Use `a { color: var(--kudium-primary); }` only when a custom design explicitly needs the primary color. Custom JavaScript can subscribe with `kudiumHookPanel.onThemeChanged(colors => { /* redraw with colors.primary */ })`, which returns an unsubscribe function. Reuse the browser theme resolver and its change subscription; do not introduce a separate panel palette or theme store.

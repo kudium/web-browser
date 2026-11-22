@@ -1,3 +1,5 @@
+import { getHookTheme } from './hookTheme';
+import { onAppThemeChanged } from './appTheme';
 // eslint-disable-next-line import/no-relative-packages
 import { pageHookBody } from '../../../../packages/hooks/runtime';
 import { installPersonalDataAutofill } from '../browser/personalDataAutofill';
@@ -53,6 +55,10 @@ if (window === window.top) {
     const config = ipcRenderer.sendSync('site-developer-config');
     if (!config) return;
     const token = config.token;
+    let liveTheme = Object.freeze(config.theme || {});
+    const themeListener = (_event, value) => { if (value.token === token) liveTheme = Object.freeze(value.theme); };
+    ipcRenderer.on('site-developer-theme', themeListener);
+    owned.add(() => ipcRenderer.removeListener?.('site-developer-theme', themeListener));
     const active = () => current === generation;
     const panelActions = new Map();
     const panelListener = (_event, request) => {
@@ -126,6 +132,7 @@ if (window === window.top) {
         }
       });
       const context = Object.freeze({url: location.href, document, notify, activity, notes, panel,
+        get theme() { return liveTheme; },
         runId: token + ':' + (hook.id || 'default') + ':' + phase,
         signal: controller.signal, onCleanup,
         setInterval: (callback, delay, ...args) => { const id = setInterval(() => { guarded(callback, ...args); }, delay); onCleanup(() => clearInterval(id)); return id; },
@@ -207,6 +214,7 @@ export function siteDeveloperPreload() {
 }
 interface ManagedPage {
   owner?: BrowserWindow;
+  stopTheme?: () => void;
   previewConfig?: (url: string) => SiteDeveloperConfig;
   profile: string;
   publish: () => void;
@@ -329,6 +337,15 @@ export function developerSaveError(
   page.states.set(origin, state);
   page.publish();
 }
+function bindPageTheme(contents: WebContents, page: ManagedPage) {
+  page.stopTheme?.();
+  const publish = () => {
+    if (!contents.isDestroyed() && page.token)
+      contents.send('site-developer-theme', { token: page.token, theme: getHookTheme(page.owner) });
+  };
+  page.stopTheme = page.owner ? onAppThemeChanged(page.owner, publish) : undefined;
+  publish();
+}
 export function registerDeveloperPage(
   contents: WebContents,
   profile: string,
@@ -352,6 +369,7 @@ export function registerDeveloperPage(
     existing.scope = scope;
     existing.previewConfig = previewConfig;
     existing.owner = owner || existing.owner;
+    bindPageTheme(contents, existing);
     return;
   }
   pages.set(contents, {
@@ -364,7 +382,9 @@ export function registerDeveloperPage(
     scope,
     previewConfig,
   });
+  bindPageTheme(contents, pages.get(contents)!);
   contents.once('destroyed', () => {
+    pages.get(contents)?.stopTheme?.();
     removeHookPanels(contents);
     pages.delete(contents);
   });
@@ -656,6 +676,7 @@ export function registerDeveloperPage(
         (hook) => hook.enabled && hookMatchesPath(hook.path, frame.url)
       ),
       token: page.token,
+      theme: getHookTheme(page.owner),
     };
     page.publish();
   });

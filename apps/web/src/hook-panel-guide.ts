@@ -60,6 +60,31 @@ export const hookPanelGuide: Tutorial = {
         .map((e) => ({ title: e.name, code: e.source })),
     },
     {
+      id: "theme",
+      title: "Theme API and neutral defaults",
+      paragraphs: [
+        "Panel links, text and gallery icons use neutral colors by default, following the light/dark appearance. The primary accent is available for custom designs that need it; it does not automatically tint the whole panel.",
+        "Page hooks can read context.theme, a read-only object containing the owning browser’s current resolved primary, frame and contrast hex colors. This reuses the same theme as browser chrome, including website-derived primary colors. Read context.theme again inside later callbacks to obtain current values; a previously saved object is a snapshot. This API exposes colors, not workspace identifiers, and is available to page lifecycle hooks rather than action workers.",
+        "Custom panel CSS receives live --kudium-primary, --kudium-frame and --kudium-primary-contrast variables. For an explicitly accented link, use a { color: var(--kudium-primary); }. Changes update the variables without recreating the panel or resetting inputs.",
+        "Custom panel JavaScript can call kudiumHookPanel.onThemeChanged(colors => { /* redraw with colors.primary */ }). The callback receives the same primary, frame and contrast fields on initial load and later changes; the call returns an unsubscribe function. These values are read-only and do not grant access to browser settings.",
+      ],
+      reference: [
+        ["context.theme.primary", "Resolved primary accent, such as #5aaca8."],
+        ["context.theme.frame", "Resolved browser frame color."],
+        ["context.theme.contrast", "Readable foreground color for a primary-colored background."],
+        ["--kudium-primary", "Live primary accent in custom panel CSS; opt-in."],
+        ["--kudium-frame", "Live frame color in custom panel CSS."],
+        ["--kudium-primary-contrast", "Live foreground for primary-colored backgrounds."],
+      ],
+      examples: [{
+        title: "Read the current theme from a page hook",
+        code: `await context.panel.show({
+  id: 'browser-theme', title: 'Browser theme', reveal: true,
+  content: { type: 'json', value: context.theme }
+});`,
+      }],
+    },
+    {
       id: "state-and-groups",
       title: "State, groups and links",
       paragraphs: [
