@@ -14,6 +14,8 @@ export type HookPanelContent =
       css?: string;
       script?: string;
       data?: unknown;
+      /** Explicit HTTP(S) image URLs; loaded without cookies or referrer. */
+      images?: string[];
     };
 export interface HookPanelOutput {
   id: string;
@@ -57,7 +59,7 @@ export function validateHookPanel(value: unknown): HookPanelOutput {
     json: ['type', 'value'],
     table: ['type', 'columns', 'rows'],
     status: ['type', 'state', 'text'],
-    html: ['type', 'html', 'css', 'script', 'data'],
+    html: ['type', 'html', 'css', 'script', 'data', 'images'],
   };
   if (
     !fields[c.type] ||
@@ -98,6 +100,19 @@ export function validateHookPanel(value: unknown): HookPanelOutput {
       (c.script !== undefined && !string(c.script)))
   )
     throw new Error('HTML, CSS and script must be strings.');
+  let normalizedImages: string[] | undefined;
+  if (c.type === 'html' && c.images !== undefined) {
+    if (!Array.isArray(c.images) || c.images.length > 24)
+      throw new Error('Provide up to 24 explicit panel image URLs.');
+    normalizedImages = c.images.map((image) => {
+      if (typeof image !== 'string' || image.length > 2000)
+        throw new Error('Invalid panel image URL.');
+      const destination = new URL(image);
+      if (!['http:', 'https:'].includes(destination.protocol) || destination.username || destination.password)
+        throw new Error('Panel images require HTTP(S) URLs without credentials.');
+      return destination.href;
+    });
+  }
   if (
     p.actions &&
     (!Array.isArray(p.actions) ||
@@ -114,5 +129,12 @@ export function validateHookPanel(value: unknown): HookPanelOutput {
       ))
   )
     throw new Error('Provide up to ten unique declared actions.');
-  return JSON.parse(JSON.stringify(p));
+  const result = JSON.parse(JSON.stringify(p)) as HookPanelOutput;
+  if (result.content.type === 'html' && normalizedImages) result.content.images = normalizedImages;
+  return result;
+}
+
+/** Only declared images gain network access; fetch, frames and scripts do not. */
+export function hookPanelImageAllowed(content: HookPanelContent, url: string) {
+  return content.type === 'html' && !!content.images?.includes(url);
 }

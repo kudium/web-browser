@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   validateHookPanel,
+  hookPanelImageAllowed,
   panelJSON,
   type HookPanelOutput,
 } from '../browser/hookPanels';
@@ -215,9 +216,22 @@ export function showHookPanel(binding: Binding, input: unknown) {
         'data:text/html;charset=utf-8,' + encodeURIComponent(document);
       isolated.webRequest.onBeforeRequest((request, answer) =>
         answer({
-          cancel: request.url !== url && !request.url.startsWith('data:image/'),
+          cancel: !available(e) || (request.url !== url && !(request.resourceType === 'image' && (request.url.startsWith('data:image/') || hookPanelImageAllowed(e.output.content, request.url)))),
         }),
       );
+      // Explicit image access never borrows page/profile credentials.
+      isolated.webRequest.onBeforeSendHeaders((request, answer) => {
+        const headers = { ...request.requestHeaders };
+        for (const name of Object.keys(headers))
+          if (/^(cookie|authorization|proxy-authorization|referer|origin)$/i.test(name)) delete headers[name];
+        answer({ requestHeaders: headers });
+      });
+      isolated.webRequest.onHeadersReceived((response, answer) => {
+        const headers = { ...response.responseHeaders };
+        for (const name of Object.keys(headers))
+          if (/^set-cookie$/i.test(name)) delete headers[name];
+        answer({ responseHeaders: headers });
+      });
       isolated.on('will-download', (event) => event.preventDefault());
       const view = new WebContentsView({
         webPreferences: {

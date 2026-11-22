@@ -27,6 +27,8 @@ type KudiumPanelContent =
       css?: string;
       script?: string;
       data?: unknown;
+      /** Explicit HTTP(S) image URLs; loaded without cookies or referrer. */
+      images?: string[];
     };
 interface KudiumPanelOutput {
   id: string;

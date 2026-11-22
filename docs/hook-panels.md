@@ -32,9 +32,9 @@ and never fetches images. Tables have matching column/cell counts; statuses are
 
 Custom content has `{type:'html', html, css?, script?, data?}`. The native panel
 uses a disposable isolated session, sandbox, context isolation, a dedicated
-minimal preload and restrictive CSP. It denies network requests, downloads,
+minimal preload and restrictive CSP. It denies unrestricted network requests, downloads,
 frames, navigation into the trusted shell, device permissions and WebRTC network
-access. It supports inline styles/scripts and data images, with no Node or app
+access. It supports inline styles/scripts, data images and up to 24 explicitly declared HTTP(S) image URLs in `content.images`, with no Node or app
 preload bridge. It receives only bounded JSON from its originating hook.
 
 Custom scripts use:
@@ -98,4 +98,4 @@ Hook editor instances are scoped to selection and stage to prevent editor transa
 
 Hook list selection applies to the entire card, including status and padding, while Run, switches and menus retain independent targets. Verify the production list with native pointer events; a simplified editor-only fixture does not cover card hit testing.
 
-The shared **Panel: page media gallery** example scans images (including srcset/picture sources), video/audio source elements and direct media-file links. It deduplicates HTTP(S) URLs, excludes credentials and transient blob/data URLs, and pages through the complete discovered list in batches of 12. Refresh rescans the page. Cards open source links in the originating group. Thumbnails are bounded JPEG snapshots of already-loaded page images/video frames; cross-origin, unloaded or protected media show a labelled fallback (audio has a music card). The panel itself performs no network fetches. This does not discover hidden media, CSS backgrounds or URLs inside protected streaming players.
+The shared **Panel: page media gallery** example scans images (including srcset/picture sources), video/audio source elements and direct media-file links. It deduplicates HTTP(S) URLs, excludes credentials and transient blob/data URLs, and pages through the complete discovered list in batches of 12. Refresh rescans the page. Cards open source links in the originating group. Thumbnails use bounded JPEG snapshots when available. Other picture cards load their actual source URLs through `content.images`; inaccessible/protected images show an error fallback. Audio uses a music card, and unavailable video frames use a play card. Only the explicit image URLs can load, without cookies, authorization or referrer; fetch, script, iframe and other network requests remain blocked. This does not discover hidden media, CSS backgrounds or URLs inside protected streaming players.

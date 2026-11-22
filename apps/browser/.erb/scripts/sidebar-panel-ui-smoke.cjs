@@ -290,10 +290,19 @@ app
     removeHookPanels(window.webContents);
     for(const channel of ['personal-data-autofill-position','personal-data-autofill-enabled','personal-data-autofill-focus'])ipcMain.handle(channel,()=>false);
     const http=require('node:http');
+    const imageRequests = [];
+    const imageServer = http.createServer((request,response)=>{
+      imageRequests.push({ url: request.url, cookie: request.headers.cookie, referer: request.headers.referer, authorization: request.headers.authorization });
+      response.setHeader('Content-Type','image/svg+xml');
+      response.setHeader('Set-Cookie','panel-secret=never-send; Path=/');
+      response.end('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64"><rect width="96" height="64" fill="#5aaca8"/></svg>');
+    });
+    await new Promise(resolve=>imageServer.listen(0,'127.0.0.1',resolve));
+    const imageOrigin='http://127.0.0.1:'+imageServer.address().port;
     let mediaFixture = false;
     const server=http.createServer((request,response)=>{
       if (request.url === '/preview.svg') { response.setHeader('Content-Type','image/svg+xml');response.end('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64"><rect width="96" height="64" fill="#5aaca8"/></svg>');return; }
-      response.end(mediaFixture ? '<!doctype html><title>Media fixture</title><img src="/preview.svg" alt="Fixture image"><video preload="none"><source src="/clip.mp4"></video><audio preload="none" src="/song.mp3"></audio>'+Array.from({length:27},(_,i)=>'<a href="/image-'+i+'.jpg">Image '+i+'</a>').join('') : '<!doctype html><title>Hook fixture page</title><h1>Hook fixture</h1><a href="https://example.com/one">One</a><a href="https://example.com/two">Two</a>');
+      response.end(mediaFixture ? '<!doctype html><title>Media fixture</title><img src="/preview.svg" alt="Fixture image"><video preload="none"><source src="/clip.mp4"></video><audio preload="none" src="/song.mp3"></audio>'+Array.from({length:27},(_,i)=>'<a href="'+imageOrigin+'/image-'+i+'.jpg">Image '+i+'</a>').join('') : '<!doctype html><title>Hook fixture page</title><h1>Hook fixture</h1><a href="https://example.com/one">One</a><a href="https://example.com/two">Two</a>');
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const pageURL='http://127.0.0.1:'+server.address().port+'/';
@@ -346,6 +355,13 @@ app
         window.showInactive(); await pause(200);
         fs.writeFileSync(path.join(os.tmpdir(),'kudium-media-gallery-qa.png'),(await exampleView.webContents.capturePage()).toPNG());
         window.hide();
+        for(let i=0;i<30;i++) {
+          if(await exampleView.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#gallery img')).some(img=>img.src.startsWith('http:')&&img.naturalWidth>0)`))break;
+          await pause(50);
+        }
+        assert(await exampleView.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#gallery img')).some(img=>img.src.startsWith('http:')&&img.naturalWidth>0)`),'Cross-origin source pictures render despite unavailable canvas previews');
+        assert.equal(await exampleView.webContents.executeJavaScript(`new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(false);image.onerror=()=>resolve(true);image.src=${JSON.stringify(imageOrigin+'/unlisted.jpg')}})`),true,'Unlisted image URL must be blocked');
+        assert.equal(await exampleView.webContents.executeJavaScript(`fetch(${JSON.stringify(imageOrigin+'/image-0.jpg')}).then(()=>false,()=>true)`),true,'Even a listed image cannot grant fetch access');
         assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelectorAll('#gallery a').length`),12);
         assert(await exampleView.webContents.executeJavaScript(`document.querySelector('#gallery img').src.startsWith('data:image/jpeg')`),'Loaded page image gets an actual native canvas thumbnail');
         assert((await exampleView.webContents.executeJavaScript(`document.getElementById('summary').textContent`)).includes('30 media links'));
@@ -359,6 +375,10 @@ app
       }
       resetDeveloperState(sourceWindow.webContents,new URL(pageURL).origin);
     }
+    assert(imageRequests.length>0,'The panel must load explicit source images');
+    assert(imageRequests.every(request=>!request.cookie&&!request.referer&&!request.authorization),'Source images load without cookies, referrer or authorization');
+    assert(!imageRequests.some(request=>request.url==='/unlisted.jpg'),'An undeclared URL never reaches the image server');
+    await new Promise(resolve=>imageServer.close(resolve));
     sourceWindow.destroy();
     await new Promise(resolve=>server.close(resolve));
     for (const width of [368,640]) {

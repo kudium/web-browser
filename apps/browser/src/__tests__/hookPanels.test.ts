@@ -1,7 +1,7 @@
 import { pageHookBody } from '../../../../packages/hooks/runtime';
 import { hookSourceValidator } from '../browser/hookValidation';
 import { hookExamples } from '../browser/hookExamples';
-import { panelJSON, validateHookPanel } from '../browser/hookPanels';
+import { panelJSON, validateHookPanel, hookPanelImageAllowed } from '../browser/hookPanels';
 import {
   hookPanelDocument,
   hookPanelPresentation,
@@ -217,6 +217,7 @@ it('extracts distinct media links and pages through the whole list without fetch
     const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
     await new AsyncFunction('context',pageHookBody(sample.source))(context);
     expect(outputs[0].content.data).toMatchObject({total:30,pages:3,page:0});
+    expect(outputs[0].content.images).toContain('https://example.com/cover.jpg');
     expect(outputs[0].content.data.items.map((item: any) => item.kind)).toEqual(expect.arrayContaining(['image','video','audio']));
     const all = [...outputs[0].content.data.items];
     await actions.get('media-next')!(); all.push(...outputs.at(-1).content.data.items);
@@ -230,4 +231,16 @@ it('extracts distinct media links and pages through the whole list without fetch
     await actions.get('media-refresh')!();
     expect(outputs.at(-1).content.data).toMatchObject({total:0,page:0,pages:1,items:[]});
   } finally { document.body.innerHTML = previous; }
+});
+
+it('allows only a bounded explicit image list and preserves the submitted payload', () => {
+  const input = {id:'gallery',title:'Gallery',content:{type:'html' as const,html:'<img>',images:['https://EXAMPLE.com/photo.jpg']}};
+  const validated = validateHookPanel(input);
+  expect(input.content.images).toEqual(['https://EXAMPLE.com/photo.jpg']);
+  expect(hookPanelImageAllowed(validated.content, 'https://example.com/photo.jpg')).toBe(true);
+  expect(hookPanelImageAllowed(validated.content, 'https://example.com/private.jpg')).toBe(false);
+  expect(hookPanelImageAllowed({type:'text',text:'Output'}, 'https://example.com/photo.jpg')).toBe(false);
+  for (const images of [['file:///private/photo.jpg'], ['javascript:evil()'], ['data:image/png;base64,anything'], ['https://user:secret@example.com/photo.jpg'], ['not a URL'], Array(25).fill('https://example.com/photo.jpg')]) {
+    expect(() => validateHookPanel({...input,content:{...input.content,images}})).toThrow();
+  }
 });
