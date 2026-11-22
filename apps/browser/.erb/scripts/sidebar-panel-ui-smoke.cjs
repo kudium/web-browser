@@ -290,7 +290,11 @@ app
     removeHookPanels(window.webContents);
     for(const channel of ['personal-data-autofill-position','personal-data-autofill-enabled','personal-data-autofill-focus'])ipcMain.handle(channel,()=>false);
     const http=require('node:http');
-    const server=http.createServer((_request,response)=>response.end('<!doctype html><title>Hook fixture page</title><h1>Hook fixture</h1><a href="https://example.com/one">One</a><a href="https://example.com/two">Two</a>'));
+    let mediaFixture = false;
+    const server=http.createServer((request,response)=>{
+      if (request.url === '/preview.svg') { response.setHeader('Content-Type','image/svg+xml');response.end('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64"><rect width="96" height="64" fill="#5aaca8"/></svg>');return; }
+      response.end(mediaFixture ? '<!doctype html><title>Media fixture</title><img src="/preview.svg" alt="Fixture image"><video preload="none"><source src="/clip.mp4"></video><audio preload="none" src="/song.mp3"></audio>'+Array.from({length:27},(_,i)=>'<a href="/image-'+i+'.jpg">Image '+i+'</a>').join('') : '<!doctype html><title>Hook fixture page</title><h1>Hook fixture</h1><a href="https://example.com/one">One</a><a href="https://example.com/two">Two</a>');
+    });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const pageURL='http://127.0.0.1:'+server.address().port+'/';
     const {registerDeveloperPage,siteDeveloperPreload,resetDeveloperState}=require('../../src/main/siteDeveloper.ts');
@@ -314,6 +318,7 @@ app
     assert(!host.state().panels.some(p=>p.title==='Live hook'),'Revoking the real hook must remove its output');
     const panelExamples=require(path.resolve('../../packages/hooks/panel-examples.ts')).hookPanelExamples;
     for(const sample of panelExamples) {
+      mediaFixture = sample.id === 'panel-media';
       approved.after=sample.source;
       const previousViews=new Set(window.contentView.children);
       await sourceWindow.loadURL(pageURL);
@@ -336,6 +341,21 @@ app
         await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh')`);
         assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('input').value`),'Retained scratch note');
         assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('#count').textContent`),'2 links on this page');
+      }
+      if(sample.id==='panel-media') {
+        window.showInactive(); await pause(200);
+        fs.writeFileSync(path.join(os.tmpdir(),'kudium-media-gallery-qa.png'),(await exampleView.webContents.capturePage()).toPNG());
+        window.hide();
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelectorAll('#gallery a').length`),12);
+        assert(await exampleView.webContents.executeJavaScript(`document.querySelector('#gallery img').src.startsWith('data:image/jpeg')`),'Loaded page image gets an actual native canvas thumbnail');
+        assert((await exampleView.webContents.executeJavaScript(`document.getElementById('summary').textContent`)).includes('30 media links'));
+        assert((await exampleView.webContents.executeJavaScript(`document.querySelector('#gallery').textContent`)).includes('audio'));
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('media-next')`);
+        assert((await exampleView.webContents.executeJavaScript(`document.getElementById('summary').textContent`)).includes('page 2 of 3'));
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('media-next')`);
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelectorAll('#gallery a').length`),6);
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('media-previous')`);
+        assert((await exampleView.webContents.executeJavaScript(`document.getElementById('summary').textContent`)).includes('page 2 of 3'));
       }
       resetDeveloperState(sourceWindow.webContents,new URL(pageURL).origin);
     }

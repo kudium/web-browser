@@ -190,7 +190,8 @@ it.each(hookPanelExamples)(
         const update = outputs.at(-1);
         expect(update.reveal).toBe(false);
         if (update.content.type === 'html') {
-          expect(update.content.data.links).toBe(3);
+          if (sample.id === 'panel-html') expect(update.content.data.links).toBe(3);
+          if (sample.id === 'panel-media') expect(update.content.data.total).toBe(0);
           expect(update.content.html).toBe(first.content.html);
           expect(update.content.script).toBe(first.content.script);
         } else expect(update.content.text).toContain('3 links');
@@ -201,3 +202,32 @@ it.each(hookPanelExamples)(
     }
   },
 );
+
+it('extracts distinct media links and pages through the whole list without fetching files', async () => {
+  const previous = document.body.innerHTML;
+  document.body.innerHTML = '<img src="https://example.com/cover.jpg" alt="Cover"><video><source src="https://example.com/clip.mp4"></video><audio src="https://example.com/song.mp3"></audio>' +
+    Array.from({length:27}, (_,i) => `<a href="https://example.com/image-${i}.webp">Image ${i}</a>`).join('') +
+    '<a href="https://example.com/cover.jpg">Duplicate</a><img src="blob:transient"><a href="https://user:secret@example.com/private.mp3">Private URL</a>';
+  const outputs: any[] = [];
+  const actions = new Map<string, () => Promise<unknown>>();
+  const publish = async (input: unknown) => { const output = validateHookPanel(input); outputs.push(output); return {id:output.id}; };
+  const context = {document, url:'https://example.com', panel:{update:publish,onAction:(id: string, action: () => Promise<unknown>) => actions.set(id,action)}};
+  try {
+    const sample = hookPanelExamples.find(item => item.id === 'panel-media')!;
+    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+    await new AsyncFunction('context',pageHookBody(sample.source))(context);
+    expect(outputs[0].content.data).toMatchObject({total:30,pages:3,page:0});
+    expect(outputs[0].content.data.items.map((item: any) => item.kind)).toEqual(expect.arrayContaining(['image','video','audio']));
+    const all = [...outputs[0].content.data.items];
+    await actions.get('media-next')!(); all.push(...outputs.at(-1).content.data.items);
+    await actions.get('media-next')!(); all.push(...outputs.at(-1).content.data.items);
+    expect(all).toHaveLength(30);
+    expect(new Set(all.map(item => item.url)).size).toBe(30);
+    expect(outputs.at(-1).content.data.items).toHaveLength(6);
+    await actions.get('media-next')!(); expect(outputs.at(-1).content.data.page).toBe(2);
+    await actions.get('media-previous')!(); expect(outputs.at(-1).content.data.page).toBe(1);
+    document.body.innerHTML = '';
+    await actions.get('media-refresh')!();
+    expect(outputs.at(-1).content.data).toMatchObject({total:0,page:0,pages:1,items:[]});
+  } finally { document.body.innerHTML = previous; }
+});

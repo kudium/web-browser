@@ -14,6 +14,7 @@ const descriptions: Record<string, string> = {
   'panel-table': 'Inspect page links in a full-width output table.',
   'panel-json': 'Inspect structured page data without injecting a page overlay.',
   'panel-status': 'Publish status updates and a reusable Refresh action.',
+  'panel-media': 'Browse page images, videos and audio with local thumbnails, source links and paging.',
   'panel-html': 'Build a sandboxed dashboard with retained inputs and hook actions.',
   'auto-scroll': 'A floating scroll control, with pause and Escape support.',
   'image-urls':

@@ -43,7 +43,7 @@ export const hookPanelGuide: Tutorial = {
         ],
       ],
       examples: hookPanelExamples
-        .filter((e) => e.id !== "panel-html")
+        .filter((e) => !["panel-html", "panel-media"].includes(e.id))
         .map((e) => ({ title: e.name, code: e.source })),
     },
     {
@@ -52,10 +52,11 @@ export const hookPanelGuide: Tutorial = {
       paragraphs: [
         'Custom content accepts {type:"html",html,css,script,data}. The panel runs in an isolated browser view. It has no Node, application preload, website DOM, network, iframe or device-permission access. Inline CSS and JavaScript can draw the interface; data images are supported.',
         'Register context.panel.onAction("refresh", handler) in the page hook and declare actions:[{id:"refresh",label:"Refresh"}] in its output. In custom JavaScript, await kudiumHookPanel.invoke("refresh", payload) to call that handler. Only declared actions may run. Custom designs draw their own action buttons.',
+        "The media gallery example extracts images, video/audio sources and direct media links, with deduplication, Refresh and paging. Previews are created from already-loaded page media; cross-origin, unloaded and protected content show labelled fallback cards. The panel makes no network requests. Transient blob/data URLs and hidden player streams are not downloadable links.",
         "Use kudiumHookPanel.onUpdate(output => ...) to render output.content.data. The hook handler retains the original hook’s page access and approval. The panel receives only the JSON you send it; the bridge does not grant more permissions.",
       ],
       examples: hookPanelExamples
-        .filter((e) => e.id === "panel-html")
+        .filter((e) => ["panel-html", "panel-media"].includes(e.id))
         .map((e) => ({ title: e.name, code: e.source })),
     },
     {
