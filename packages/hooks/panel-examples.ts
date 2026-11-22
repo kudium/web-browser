@@ -20,7 +20,7 @@ export const hookPanelExamples: HookExample[] = [
     id: "panel-table",
     name: "Panel: link table",
     stage: "after",
-    source: `const links = Array.from(document.querySelectorAll('a[href]')).slice(0, 30);
+    source: `const links = Array.from(document.links).slice(0, 30);
 await context.panel.show({
   id: 'links', title: 'Page links', reveal: true,
   content: { type: 'table', columns: ['Label', 'URL'], rows: links.map(a => [a.textContent.trim(), a.href]) }
@@ -53,15 +53,14 @@ await publish();`,
     name: "Panel: custom HTML dashboard",
     stage: "after",
     source: `// The page hook owns DOM access; the custom panel receives JSON only.
-const content = {
-  type: 'html',
+const panelDesign = {
   html: '<main><h1>Page dashboard</h1><p id="count"></p><input placeholder="Your scratch note"><button id="refresh">Refresh</button><p id="error" role="alert"></p></main>',
   css: 'main{padding:16px}h1{font-size:18px}input{display:block;width:100%;padding:8px;margin:12px 0}button{width:100%}',
   script: "kudiumHookPanel.onUpdate(output => { document.getElementById('count').textContent = output.content.data.links + ' links on this page'; }); document.getElementById('refresh').onclick = async () => { const button = document.getElementById('refresh'); button.disabled = true; try { await kudiumHookPanel.invoke('refresh'); } catch (error) { document.getElementById('error').textContent = error.message; } finally { button.disabled = false; } };"
 };
 const publish = async (reveal = false) => context.panel.update({
   id: 'dashboard', title: 'Page dashboard', reveal,
-  content: { ...content, data: { links: document.querySelectorAll('a[href]').length } },
+  content: { type: 'html', ...panelDesign, data: { links: document.querySelectorAll('a[href]').length } },
   actions: [{ id: 'refresh', label: 'Refresh page counts' }]
 });
 context.panel.onAction('refresh', () => publish());

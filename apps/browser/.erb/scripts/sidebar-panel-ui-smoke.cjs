@@ -277,7 +277,7 @@ app
     assert(!host.state().panels.some(p=>p.kind==='hook'),'Stopping a hook must remove its providers');
     hookAllowed=true;
     const sample=require(path.resolve('../../packages/hooks/panel-examples.ts')).hookPanelExamples.find(e=>e.id==='panel-html');
-    const sampleOutput=await window.webContents.executeJavaScript(`(async()=>{let output;const context={panel:{onAction:()=>{},update:async input=>{output=input;return {id:input.id}}}};const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;await new AsyncFunction('context','document','url',${JSON.stringify(sample.source)})(context,document,location.href);return output})()`);
+    const sampleOutput=await window.webContents.executeJavaScript(`(async()=>{let output;const context={document,url:location.href,panel:{onAction:()=>{},update:async input=>{output=input;return {id:input.id}}}};const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;await new AsyncFunction('context',${JSON.stringify(require(path.resolve('../../packages/hooks/runtime.ts')).pageHookBody(sample.source))})(context);return output})()`);
     const beforeSample=new Set(window.contentView.children);
     showHookPanel(hookBinding,sampleOutput);
     await pause(150);
@@ -290,7 +290,7 @@ app
     removeHookPanels(window.webContents);
     for(const channel of ['personal-data-autofill-position','personal-data-autofill-enabled','personal-data-autofill-focus'])ipcMain.handle(channel,()=>false);
     const http=require('node:http');
-    const server=http.createServer((_request,response)=>response.end('<!doctype html><title>Hook fixture page</title><h1>Hook fixture</h1>'));
+    const server=http.createServer((_request,response)=>response.end('<!doctype html><title>Hook fixture page</title><h1>Hook fixture</h1><a href="https://example.com/one">One</a><a href="https://example.com/two">Two</a>'));
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const pageURL='http://127.0.0.1:'+server.address().port+'/';
     const {registerDeveloperPage,siteDeveloperPreload,resetDeveloperState}=require('../../src/main/siteDeveloper.ts');
@@ -312,6 +312,33 @@ app
     assert.equal(await liveView.webContents.executeJavaScript(`document.getElementById('panel-output').textContent`),'Updated Hook fixture page');
     resetDeveloperState(sourceWindow.webContents,new URL(pageURL).origin);
     assert(!host.state().panels.some(p=>p.title==='Live hook'),'Revoking the real hook must remove its output');
+    const panelExamples=require(path.resolve('../../packages/hooks/panel-examples.ts')).hookPanelExamples;
+    for(const sample of panelExamples) {
+      approved.after=sample.source;
+      const previousViews=new Set(window.contentView.children);
+      await sourceWindow.loadURL(pageURL);
+      for(let i=0;i<50&&!host.state().panels.some(p=>p.kind==='hook');i++)await pause(50);
+      const exampleView=window.contentView.children.find(v=>!previousViews.has(v)&&v.webContents);
+      assert(exampleView,sample.id+': actual page hook must publish its panel');
+      await pause(120);
+      if(sample.id==='panel-markdown') {
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('#panel-output h1').textContent`),'Hook fixture page');
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('#panel-output a').href`),pageURL);
+      }
+      if(sample.id==='panel-table')assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelectorAll('tbody tr').length`),2);
+      if(sample.id==='panel-json')assert.equal(await exampleView.webContents.executeJavaScript(`JSON.parse(document.querySelector('pre').textContent).headings`),1);
+      if(sample.id==='panel-status') {
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh')`);
+        assert((await exampleView.webContents.executeJavaScript(`document.querySelector('[role="status"]').textContent`)).includes('2 links'));
+      }
+      if(sample.id==='panel-html') {
+        await exampleView.webContents.executeJavaScript(`document.querySelector('input').value='Retained scratch note'`);
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh')`);
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('input').value`),'Retained scratch note');
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('#count').textContent`),'2 links on this page');
+      }
+      resetDeveloperState(sourceWindow.webContents,new URL(pageURL).origin);
+    }
     sourceWindow.destroy();
     await new Promise(resolve=>server.close(resolve));
     for (const width of [368,640]) {

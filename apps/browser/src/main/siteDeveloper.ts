@@ -1,3 +1,5 @@
+// eslint-disable-next-line import/no-relative-packages
+import { pageHookBody } from '../../../../packages/hooks/runtime';
 import { installPersonalDataAutofill } from '../browser/personalDataAutofill';
 import { createPersonalDataMatching } from '../browser/personalDataMatching';
 import { app, ipcMain, WebContents, BrowserWindow } from 'electron';
@@ -134,7 +136,7 @@ if (window === window.top) {
       let timer;
       try {
         const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-        const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify, activity, notes, panel, setInterval, setTimeout, onCleanup, signal, listen, runId} = context;\n' + hook[phase] + '\n//# sourceURL=kudium-hook-' + encodeURIComponent(hook.id || 'default') + '-' + phase + '.js');
+        const callback = new AsyncFunction('context', (${pageHookBody.toString()})(hook[phase]) + '\n//# sourceURL=kudium-hook-' + encodeURIComponent(hook.id || 'default') + '-' + phase + '.js');
         await Promise.race([callback(context), new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('Hook stopped')), {once:true})), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Callback timed out after 10 seconds')), 10000); })]);
         if (alive()) log('completed');
       } catch (error) {

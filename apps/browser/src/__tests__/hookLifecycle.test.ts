@@ -1,3 +1,4 @@
+import { pageHookBody } from '../../../../packages/hooks/runtime';
 /* Executes the generated preload against a controlled DOM and mocked IPC. */
 /* Sequential microtask draining exercises asynchronous preload stages. */
 /* eslint-disable no-new-func, no-await-in-loop */
@@ -14,7 +15,7 @@ const template = file.slice(
   file.indexOf('`;\nlet preloadPath')
 );
 // Autofill has its own DOM tests; this harness isolates website hook lifecycle.
-const source = new Function('installPersonalDataAutofill', 'createPersonalDataMatching', `return String.raw\`${template}\``)(() => {}, () => ({ score: () => 0 }));
+const source = new Function('installPersonalDataAutofill', 'createPersonalDataMatching', 'pageHookBody', `return String.raw\`${template}\``)(() => {}, () => ({ score: () => 0 }), pageHookBody);
 const flush = async () => {
   for (let index = 0; index < 40; index += 1) await Promise.resolve();
 };

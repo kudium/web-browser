@@ -1,3 +1,4 @@
+import { hookPanelExamples } from '../browser/hookPanelExamples';
 /** @jest-environment node */
 import path from 'path';
 import { execFileSync } from 'child_process';
@@ -158,4 +159,9 @@ test('types panel output and declared handlers in the actual editor worker', asy
   expect(valid.diagnostics).toEqual([]);
   const wrong=await query('diagnostics',"await context.panel.show({id:'output',title:'Output',content:{type:'html',html:42}});");
   expect(wrong.diagnostics?.length).toBeGreaterThan(0);
+},15000);
+
+test.each(hookPanelExamples)('the editor accepts the complete $name snippet', async sample => {
+  const result=await query('diagnostics',sample.source);
+  expect(result.diagnostics).toEqual([]);
 },15000);

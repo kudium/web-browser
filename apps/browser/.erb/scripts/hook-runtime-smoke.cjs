@@ -21,7 +21,10 @@ const template = file.slice(
   file.indexOf('String.raw`') + 11,
   file.indexOf('`;\nlet preloadPath')
 );
-const source = new Function(`return String.raw\`${template}\``)();
+const ts = require('typescript');
+const runtime = {};
+new Function('exports', ts.transpileModule(fs.readFileSync(path.resolve(__dirname, '../../../../packages/hooks/runtime.ts'), 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(runtime);
+const source = new Function('installPersonalDataAutofill','createPersonalDataMatching','pageHookBody',`return String.raw\`${template}\``)(()=>{},()=>({score:()=>0}),runtime.pageHookBody);
 fs.writeFileSync(path.join(dir, 'preload.cjs'), source);
 const events = [];
 let sequence = 0;

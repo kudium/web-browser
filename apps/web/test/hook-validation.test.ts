@@ -1,3 +1,4 @@
+import { hookPanelExamples } from '../../../packages/hooks/panel-examples';
 import { expect, test } from 'bun:test';
 import { hookSourceValidator } from '../src/hook-validation';
 import { marketplaceStore } from '../src/hook-marketplace';
@@ -75,4 +76,10 @@ test('publishing markup escapes script and textarea breakout payloads as text', 
     expect(page).toContain('&lt;');
     expect(page).not.toContain('<script>globalThis.marketplaceInjected');
   }
+});
+
+test('all panel examples pass the exact publishing wrapper and reject reserved aliases',()=>{
+  for(const sample of hookPanelExamples)expect(hookSourceValidator.errors({...empty,after:sample.source})).toEqual([]);
+  expect(hookSourceValidator.errors({...empty,after:'const content = {};'})).toHaveLength(1);
+  expect(hookSourceValidator.errors({...empty,after:'const panel = {};'})).toHaveLength(1);
 });

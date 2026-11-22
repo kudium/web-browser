@@ -81,3 +81,11 @@ Verification includes schema/escaping tests, actual generated hook preload
 execution and cancellation, native structured/custom rendering, retained input,
 declared action round-trips, unauthorized action rejection, CSP/network and
 preload isolation, access revocation and the existing shared sidebar regressions.
+
+Every built-in panel snippet is checked against the shared `pageHookBody`
+wrapper used by runtime execution and save/publish validation, and against the
+actual editor language worker. Do not syntax-check examples with a bare async
+function that omits the injected hook variables. Names such as `content` and
+`panel` are reserved runtime aliases; use descriptive names such as `panelDesign`
+for local UI definitions. Native checks execute all five shared snippets on a
+fixture page and exercise their declared actions and retained HTML input state.

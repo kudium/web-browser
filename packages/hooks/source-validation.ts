@@ -1,3 +1,4 @@
+import { pageHookBody } from './runtime';
 /** Parser-only validation: source is never evaluated or executed. */
 export interface HookSources {
   name?: string;
@@ -31,7 +32,7 @@ export function createHookSourceValidator(parsers: { javascript: (source: string
       if (!source.trim()) return;
       const prelude = stage === 'action'
         ? 'async function __hook(context, api) {\n"use strict";\n'
-        : 'async function __hook(context) {\n"use strict"; const {url, document, content, page, log, notify, activity, notes, setInterval, setTimeout, onCleanup, signal, listen, runId} = context;\n';
+        : 'async function __hook(context) {\n' + pageHookBody('');
       try {
         if (stage === 'css') parsers.css(source);
         else {
