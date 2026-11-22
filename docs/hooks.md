@@ -71,3 +71,12 @@ npx electron .erb/scripts/hook-runtime-smoke.cjs
 
 It uses a temporary profile and verifies route matching, back navigation,
 owned timers, CSS removal and cleanup without touching the user’s browser data.
+
+## Sidebar output and custom designs
+
+Page hooks can publish structured output or sandboxed HTML through
+`context.panel.show`, `update`, `close` and `onAction`. Reuse the existing Panels
+sidebar and group picker. See [hook-panels.md](hook-panels.md) for the API,
+permissions, lifecycle and limits. The hook developer Examples list includes
+Markdown, link tables, JSON, status/actions and a custom HTML dashboard. These
+APIs are implemented in the development build and require a future stable release.

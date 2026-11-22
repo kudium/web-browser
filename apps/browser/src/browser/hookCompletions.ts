@@ -14,6 +14,7 @@ const note =
   'create({\n  title: "${Page note}",\n  body: "${Markdown content}"\n})';
 const members: Record<string, Completion[]> = {
   context: [
+    {label:'panel',type:'namespace',info:'Render structured output or sandboxed HTML in the shared sidebar Panels page.'},
     {
       label: 'signal',
       type: 'property',
@@ -102,6 +103,12 @@ const members: Record<string, Completion[]> = {
       detail: '({ title, message?, url? }) → Promise',
       info: 'Creates an unread Activity alert. Use await to wait for saving. URL must be HTTP or HTTPS.',
     }),
+  ],
+  panel: [
+    snippetCompletion('show({id:"${output}",title:"${Hook output}",content:{type:"markdown",text:"${# Results}"},reveal:true})',{label:'show',type:'function',info:'Create or replace an output panel. reveal is optional.'}),
+    snippetCompletion('update({id:"${output}",title:"${Hook output}",content:{type:"json",value:${data}}})',{label:'update',type:'function',info:'Update a panel by id without rerunning the hook.'}),
+    snippetCompletion('onAction("${refresh}",async payload=>{\n  ${handler}\n})',{label:'onAction',type:'function',info:'Register a handler for a declared panel action in this hook run.'}),
+    snippetCompletion('close("${output}")',{label:'close',type:'function',info:'Remove this hook’s panel by id.'}),
   ],
   notes: [
     snippetCompletion(note, {

@@ -12,28 +12,71 @@ interface KudiumNoteInput {
   /** Markdown content. */
   body: string;
 }
+type KudiumPanelContent =
+  | { type: 'text' | 'markdown'; text: string }
+  | { type: 'json'; value: unknown }
+  | {
+      type: 'table';
+      columns: string[];
+      rows: Array<Array<string | number | boolean | null>>;
+    }
+  | { type: 'status'; state: 'loading' | 'success' | 'error'; text: string }
+  | {
+      type: 'html';
+      html: string;
+      css?: string;
+      script?: string;
+      data?: unknown;
+    };
+interface KudiumPanelOutput {
+  id: string;
+  title: string;
+  content: KudiumPanelContent;
+  actions?: Array<{ id: string; label: string }>;
+  reveal?: boolean;
+}
 interface KudiumHookContext {
+  readonly panel: {
+    show(output: KudiumPanelOutput): Promise<{ id: string }>;
+    update(output: KudiumPanelOutput): Promise<{ id: string }>;
+    close(id: string): Promise<void>;
+    onAction(
+      id: string,
+      handler: (payload: unknown) => unknown | Promise<unknown>,
+    ): () => void;
+  };
   /** Unique identity for this hook stage execution. */
   readonly runId: string;
   /** Aborted when disabled, replaced, navigated away, or timed out. */
   readonly signal: AbortSignal;
   /** Register cleanup for DOM changes, observers and other resources. */
   onCleanup(cleanup: () => void): void;
-  setInterval(callback: (...args: any[]) => void, delay: number, ...args: any[]): number;
-  setTimeout(callback: (...args: any[]) => void, delay: number, ...args: any[]): number;
-  listen(target: EventTarget, type: string, callback: (event: Event) => void, options?: boolean | AddEventListenerOptions): void;
+  setInterval(
+    callback: (...args: any[]) => void,
+    delay: number,
+    ...args: any[]
+  ): number;
+  setTimeout(
+    callback: (...args: any[]) => void,
+    delay: number,
+    ...args: any[]
+  ): number;
+  listen(
+    target: EventTarget,
+    type: string,
+    callback: (event: Event) => void,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
   readonly url: string;
   readonly document: Document;
   readonly content: string;
   readonly activity: {
     create(
-      input: KudiumActivityInput
+      input: KudiumActivityInput,
     ): Promise<{ id: string; deepLink: string }>;
   };
   readonly notes: {
-    create(
-      input: KudiumNoteInput
-    ): Promise<{
+    create(input: KudiumNoteInput): Promise<{
       recordId: string;
       title: string;
       deepLink: string;
@@ -57,6 +100,7 @@ declare const url: KudiumHookContext['url'];
 declare const content: KudiumHookContext['content'];
 declare const activity: KudiumHookContext['activity'];
 declare const notes: KudiumHookContext['notes'];
+declare const panel: KudiumHookContext['panel'];
 declare const page: KudiumHookContext['page'];
 declare const log: KudiumHookContext['log'];
 declare const notify: KudiumHookContext['notify'];
@@ -99,12 +143,21 @@ interface KudiumActionContext {
 interface KudiumInputField {
   key: string;
   label?: string;
-  type?: "text" | "email" | "tel" | "url" | "number" | "date" | "textarea" | "password" | "select";
+  type?:
+    | 'text'
+    | 'email'
+    | 'tel'
+    | 'url'
+    | 'number'
+    | 'date'
+    | 'textarea'
+    | 'password'
+    | 'select';
   group?: string;
   required?: boolean;
   placeholder?: string;
   personalData?: string;
-  options?: Array<{value: string; label: string}>;
+  options?: Array<{ value: string; label: string }>;
 }
 interface KudiumInputRequest {
   title?: string;
@@ -121,14 +174,18 @@ interface KudiumActionApi {
     /** Review and save the clicked form. Passwords remain private to the browser. */
     saveForm(): void;
     fill(): void;
-    request(options: KudiumInputRequest): Promise<Readonly<Record<string, string>> | null>;
+    request(
+      options: KudiumInputRequest,
+    ): Promise<Readonly<Record<string, string>> | null>;
   };
   /** Grouped, typed fields with optional saved-data filling. Cancel returns null. */
   readonly input: {
-    request(options: KudiumInputRequest): Promise<Readonly<Record<string, string>> | null>;
+    request(
+      options: KudiumInputRequest,
+    ): Promise<Readonly<Record<string, string>> | null>;
   };
   /** Keys come from context.form. Password fields are excluded. */
-  readonly form: { fill(values: Array<{key: string; value: string}>): void };
+  readonly form: { fill(values: Array<{ key: string; value: string }>): void };
   /** Generates and fills directly; never returns the password to the handler. */
   readonly passwords: {
     generateAndFill(): void;
@@ -138,5 +195,7 @@ interface KudiumActionApi {
   /** Opens the built-in AI composer. The user submits the request. */
   readonly ai: { compose(prompt: string): void };
   readonly notes: { create(input: KudiumNoteInput): void };
-  readonly activity: { create(input: {title: string; message?: string}): void };
+  readonly activity: {
+    create(input: { title: string; message?: string }): void;
+  };
 }

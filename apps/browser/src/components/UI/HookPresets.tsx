@@ -10,6 +10,11 @@ import { hookExamples, HookExample } from '../../browser/hookExamples';
 const descriptions: Record<string, string> = {
   'dark-mode': 'A dark theme for pages without one. Results vary by site.',
   'accent-colors': 'Change link and control colors.',
+  'panel-markdown': 'Render formatted output in the shared sidebar.',
+  'panel-table': 'Inspect page links in a full-width output table.',
+  'panel-json': 'Inspect structured page data without injecting a page overlay.',
+  'panel-status': 'Publish status updates and a reusable Refresh action.',
+  'panel-html': 'Build a sandboxed dashboard with retained inputs and hook actions.',
   'auto-scroll': 'A floating scroll control, with pause and Escape support.',
   'image-urls':
     'Show source links beneath images, including newly loaded images.',

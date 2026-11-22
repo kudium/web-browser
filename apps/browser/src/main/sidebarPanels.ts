@@ -28,6 +28,7 @@ export class SidebarPanelRegistry {
   >();
   private suspended = false;
   activeSession?: Session;
+  activeGroup?: string;
   private activeId?: string;
   private preferredGroup?: string;
   targetGroup?: string;
@@ -145,9 +146,10 @@ export class SidebarPanelRegistry {
           (Boolean(entry.shown) || this.floating?.id === id),
       );
   }
-  setSession(session?: Session) {
-    if (session === this.activeSession) return;
+  setSession(session?: Session, groupId?: string) {
+    if (session === this.activeSession && groupId === this.activeGroup) return;
     this.activeSession = session;
+    this.activeGroup = groupId;
     this.refresh();
   }
   setTargets(targets: SidebarPanelTarget[], onTarget: (id?: string) => void) {
@@ -405,6 +407,7 @@ export function suspendSidebarPanels(
 export function setSidebarPanelSession(
   window: BrowserWindow,
   session?: Session,
+  groupId?: string,
 ) {
-  hosts.get(window)?.setSession(session);
+  hosts.get(window)?.setSession(session, groupId);
 }

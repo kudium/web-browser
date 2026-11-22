@@ -1,3 +1,4 @@
+import { hookPanelGuide } from './hook-panel-guide';
 export type Tutorial = {
   slug: string;
   title: string;
@@ -18,6 +19,7 @@ export type Tutorial = {
   }>;
 };
 export const tutorials: Tutorial[] = [
+  hookPanelGuide,
   {
     slug: "first-workspace",
     title: "Your first workspace",

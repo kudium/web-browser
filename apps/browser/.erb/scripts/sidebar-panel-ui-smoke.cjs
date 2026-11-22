@@ -20,6 +20,7 @@ const {
   registerSidebarPanelWindow,
   sidebarPanelsFor,
 } = require('../../src/main/sidebarPanels.ts');
+const {showHookPanel,removeHookPanels,respondHookPanel}=require('../../src/main/hookPanels.ts');
 const {protectWindowNavigation} = require('../../src/main/windowNavigation.ts');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-panel-ui-'));
 app.setPath('userData', path.join(root, 'profile'));
@@ -28,7 +29,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const timer = setTimeout(() => app.exit(1), 30000);
 fs.writeFileSync(
   path.join(root, 'preload.cjs'),
-  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,url:'https://example.com/activity',message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
+  `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureHookAction:callback=>{ipcRenderer.on('site-developer-panel-action',(_event,request)=>callback(request))},fixtureHookResponse:request=>ipcRenderer.send('fixture-hook-response',request),fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,url:'https://example.com/activity',message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
 );
 fs.writeFileSync(
   path.join(root, 'fixture.tsx'),
@@ -82,7 +83,8 @@ app
       },
     });
     const routedLinks=[];
-    protectWindowNavigation(window.webContents, require('node:url').pathToFileURL(path.join(root,'index.html')).href, async url=>{routedLinks.push(url)},true);
+    let routedGroup;
+    protectWindowNavigation(window.webContents, require('node:url').pathToFileURL(path.join(root,'index.html')).href, async (url,groupId)=>{routedLinks.push(url);routedGroup=groupId},true);
     registerSidebarPanelWindow(window);
     window.webContents.on('console-message', (event) => {
       if (event.level === 'error') console.error(event.message);
@@ -237,6 +239,81 @@ app
     })()`);
     assert(developerWidth.width >= developerWidth.available-18,'Developer content must use one compact gutter, not stacked padding');
     assert.equal(developerWidth.headerLeft,developerWidth.contentLeft,'Shared header actions must align with the compact Developer content inset');
+    let hookAllowed=true;
+    const hookBinding={source:window.webContents,owner:window,groupId:'work',token:'native-test',hookId:'sample',hookName:'Sample hook',authorized:()=>hookAllowed};
+    const output={id:'output',title:'Hook output',content:{type:'markdown',text:'# Output\n**Ready**'},reveal:true};
+    showHookPanel(hookBinding,output);
+    await pause(200);
+    const hookView=window.contentView.children.find(v=>v.webContents && v.webContents!==window.webContents && ![...views.values()].includes(v));
+    assert(hookView,'Hook output must use the existing native panel host');
+    assert((await hookView.webContents.executeJavaScript(`document.querySelector('#panel-output').textContent`)).includes('Ready'),'Structured output must render Markdown');
+    const custom={...output,content:{type:'html',html:'<input id="retained"><button id="invoke">Refresh</button><span id="value"></span>',script:"kudiumHookPanel.onUpdate(output=>document.getElementById('value').textContent=output.content.data.count);document.getElementById('invoke').onclick=()=>kudiumHookPanel.invoke('refresh',{count:3})",data:{count:1}},actions:[{id:'refresh',label:'Refresh'}]};
+    const previous=new Set(window.contentView.children);
+    showHookPanel(hookBinding,custom);
+    await pause(200);
+    const customView=window.contentView.children.find(v=>!previous.has(v)&&v.webContents);
+    assert(customView,'Custom HTML must create an isolated native view');
+    await customView.webContents.executeJavaScript(`document.getElementById('retained').value='keep me'`);
+    showHookPanel(hookBinding,{...custom,content:{...custom.content,data:{count:2}}});
+    await pause(80);
+    assert.equal(await customView.webContents.executeJavaScript(`document.getElementById('retained').value`),'keep me','Data updates must retain custom UI state');
+    assert.equal(await customView.webContents.executeJavaScript(`document.getElementById('value').textContent`),'2');
+    window.webContents.on('ipc-message',(_event,channel,request)=>{
+      if(channel==='fixture-hook-response')respondHookPanel(window.webContents,'native-test','sample',request);
+    });
+    await window.webContents.executeJavaScript(`window.electron.fixtureHookAction(request=>window.electron.fixtureHookResponse({requestId:request.requestId,value:request.payload}))`);
+    assert.deepEqual(await customView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh',{count:3})`),{count:3},'Declared custom UI actions must reach their originating hook');
+    assert.equal(await customView.webContents.executeJavaScript(`kudiumHookPanel.invoke('undeclared').then(()=>false,()=>true)`),true,'Undeclared actions must be denied');
+    assert.equal(await customView.webContents.executeJavaScript(`fetch('https://example.com/private').then(()=>false,()=>true)`),true,'Custom panels must not gain network access');
+    assert.equal(await customView.webContents.executeJavaScript(`typeof require + ':' + typeof window.electron`),'undefined:undefined','Custom panels must not gain Node or app preload APIs');
+    await customView.webContents.executeJavaScript(`kudiumHookPanel.openLink('https://example.com/hook-panel')`);
+    assert.equal(routedGroup,'work','Hook links must keep the explicitly authorized group');
+    host.setTarget(undefined);host.setSession(undefined,'other');
+    assert.equal(await customView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh').then(()=>false,()=>true)`),true,'Auto must distinguish groups sharing one session');
+    host.setSession(undefined,'work');host.setTarget('work');
+    hookAllowed=false;
+    assert.equal(await customView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh').then(()=>false,()=>true)`),true,'Revoked hook access must reject panel actions');
+    removeHookPanels(window.webContents);
+    assert(!host.state().panels.some(p=>p.kind==='hook'),'Stopping a hook must remove its providers');
+    hookAllowed=true;
+    const sample=require(path.resolve('../../packages/hooks/panel-examples.ts')).hookPanelExamples.find(e=>e.id==='panel-html');
+    const sampleOutput=await window.webContents.executeJavaScript(`(async()=>{let output;const context={panel:{onAction:()=>{},update:async input=>{output=input;return {id:input.id}}}};const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;await new AsyncFunction('context','document','url',${JSON.stringify(sample.source)})(context,document,location.href);return output})()`);
+    const beforeSample=new Set(window.contentView.children);
+    showHookPanel(hookBinding,sampleOutput);
+    await pause(150);
+    const sampleView=window.contentView.children.find(v=>!beforeSample.has(v)&&v.webContents);
+    assert(sampleView,'The shared custom HTML example must render');
+    window.showInactive();
+    await pause(200);
+    fs.writeFileSync(path.join(os.tmpdir(),'kudium-hook-panel-qa.png'),(await sampleView.webContents.capturePage()).toPNG());
+    window.hide();
+    removeHookPanels(window.webContents);
+    for(const channel of ['personal-data-autofill-position','personal-data-autofill-enabled','personal-data-autofill-focus'])ipcMain.handle(channel,()=>false);
+    const http=require('node:http');
+    const server=http.createServer((_request,response)=>response.end('<!doctype html><title>Hook fixture page</title><h1>Hook fixture</h1>'));
+    await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+    const pageURL='http://127.0.0.1:'+server.address().port+'/';
+    const {registerDeveloperPage,siteDeveloperPreload,resetDeveloperState}=require('../../src/main/siteDeveloper.ts');
+    const {emptyDeveloperConfig}=require('../../src/browser/siteDeveloper.ts');
+    const liveScript="context.panel.onAction('refresh',async payload=>{await context.panel.update({id:'live',title:'Live hook',content:{type:'text',text:'Updated '+document.title},actions:[{id:'refresh',label:'Refresh'}]});return {title:document.title,payload}});await context.panel.show({id:'live',title:'Live hook',content:{type:'text',text:'Published from page hook'},actions:[{id:'refresh',label:'Refresh'}],reveal:true});";
+    const approved={...emptyDeveloperConfig,enabled:true,before:"log('before')",after:liveScript};
+    const sourceWindow=new BrowserWindow({show:false,webPreferences:{partition:'hook-panel-source-fixture',sandbox:true,contextIsolation:true,nodeIntegration:false,preload:siteDeveloperPreload()}});
+    const beforeLive=new Set(window.contentView.children);
+    registerDeveloperPage(sourceWindow.webContents,'fixture-profile',()=>{},()=>({groupId:'work',sourceId:'fixture-page'}),()=>approved,window);
+    await sourceWindow.loadURL(pageURL);
+    for(let i=0;i<50&&!host.state().panels.some(p=>p.title==='Live hook');i++)await pause(50);
+    const liveView=window.contentView.children.find(v=>!beforeLive.has(v)&&v.webContents);
+    assert(liveView,'The real authenticated page-hook output bridge must create the shared panel');
+    await pause(150);
+    assert.equal((await liveView.webContents.executeJavaScript(`document.getElementById('panel-output').textContent`)),'Published from page hook');
+    const liveAnswer=await liveView.webContents.executeJavaScript(`kudiumHookPanel.invoke('refresh',{from:'panel'})`);
+    assert.deepEqual(liveAnswer,{title:'Hook fixture page',payload:{from:'panel'}},'The native panel must round-trip through the actual page hook dispatcher');
+    await pause(60);
+    assert.equal(await liveView.webContents.executeJavaScript(`document.getElementById('panel-output').textContent`),'Updated Hook fixture page');
+    resetDeveloperState(sourceWindow.webContents,new URL(pageURL).origin);
+    assert(!host.state().panels.some(p=>p.title==='Live hook'),'Revoking the real hook must remove its output');
+    sourceWindow.destroy();
+    await new Promise(resolve=>server.close(resolve));
     for (const width of [368,640]) {
     await window.loadFile(path.join(root,'index.html'),{query:{switches:'1',width:String(width)}});
     const bounds=[];

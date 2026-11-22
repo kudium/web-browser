@@ -110,7 +110,8 @@ export function createHookTestWindow(
       } catch {
         return emptyDeveloperConfig;
       }
-    }
+    },
+    owner
   );
   contents.on(
     'did-fail-load',

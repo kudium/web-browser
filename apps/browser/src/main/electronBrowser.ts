@@ -702,7 +702,8 @@ export function registerElectronBrowser(
                     scope: personalDataScope(current),
                   }
                 : undefined;
-            }
+            },
+            undefined, window
           );
         if ((adopted || item.restorationId) && !contents.isLoadingMainFrame())
           loaded.add(item.id);
@@ -937,7 +938,8 @@ export function registerElectronBrowser(
                           scope: personalDataScope(current),
                         }
                       : undefined;
-                  }
+                  },
+                  undefined, window
                 );
               bindDownloadSource(
                 childContents,
@@ -2567,7 +2569,7 @@ export function registerElectronBrowser(
     panelHost?.setTargets([...groupTargets].map(([id, app]) => ({ id, title: app.sessionName || app.name, profileId: loginProfileKey(app) })), (id) => {
       const item = id ? groupTargets.get(id) : configurations.get(layout.focusedId || '');
       const contents = item && views.get(item.id)?.webContents;
-      setSidebarPanelSession(source, contents?.session);
+      setSidebarPanelSession(source, contents?.session, item && groupKey(item));
       if (id && item && !contents) source.webContents.send('browser-tab-request', { action: 'select-group', groupId: id });
       if (contents && item) {
         try { synchronizingExtensions = true; getExtensionProfile(loginProfileKey(item))?.api.selectTab(contents); }

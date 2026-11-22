@@ -150,3 +150,12 @@ test('all shared action examples compile against the editor API reference', asyn
     expect({ name: action.name, diagnostics: result.diagnostics }).toEqual({ name: action.name, diagnostics: [] });
   }
 }, 30000);
+
+test('types panel output and declared handlers in the actual editor worker', async () => {
+  const completions=await query('completions','context.panel.');
+  expect(completions.completions?.map(item=>item.label)).toEqual(expect.arrayContaining(['show','update','close','onAction']));
+  const valid=await query('diagnostics',"context.panel.onAction('refresh',async payload=>({ok:true}));await context.panel.show({id:'output',title:'Output',content:{type:'table',columns:['Value'],rows:[[3]]},actions:[{id:'refresh',label:'Refresh'}]});");
+  expect(valid.diagnostics).toEqual([]);
+  const wrong=await query('diagnostics',"await context.panel.show({id:'output',title:'Output',content:{type:'html',html:42}});");
+  expect(wrong.diagnostics?.length).toBeGreaterThan(0);
+},15000);

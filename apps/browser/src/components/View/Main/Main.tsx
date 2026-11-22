@@ -1855,7 +1855,7 @@ export function Main() {
               (space) => space.id === SpaceManager.activeId()
             );
             const activeId = request.action === 'open-sidebar'
-              ? externalSource.current?.id || activeSpace?.selectedAppId
+              ? (request.groupId ? apps.find(app=>groupKey(app) === request.groupId && !app.archived)?.id : externalSource.current?.id || activeSpace?.selectedAppId)
               : activeSpace?.selectedAppId || externalSource.current?.id;
             const source = route
               ? route.source
@@ -1865,6 +1865,7 @@ export function Main() {
                     !item.archived &&
                     !closedGroups.has(aiGroupId(item))
                 );
+            if (request.groupId && !source) return;
             const destination = commandDestination(
               route
                 ? apps.filter(

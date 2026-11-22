@@ -50,6 +50,7 @@ function launch(after: string, before = '', hooks: any[] = [], css = '') {
     invoke,
     removeInsertedCSS,
     insertCSS,
+    panelAction: (request: unknown) => (listeners.get('site-developer-panel-action') as any)?.(null,request),
     stop: () => listeners.get('site-developer-stop')!(),
     route: () => listeners.get('site-developer-route')!(),
     configure: (next: any) => {
@@ -206,4 +207,18 @@ it('runs global hooks before default and named site hooks, and cleans every CSS 
   );
   runtime.stop();
   expect(runtime.removeInsertedCSS).toHaveBeenCalledTimes(2);
+});
+
+it('routes a panel action to its hook handler across before and after stages and drops stale invocations', async () => {
+  const run=launch("context.panel.onAction('refresh', payload => { log('refresh', payload); return {ok:true}; }); await context.panel.show({id:'output',title:'Output',content:{type:'text',text:'Ready'},actions:[{id:'refresh',label:'Refresh'}]});", "log('before')");
+  await flush();
+  expect(run.invoke).toHaveBeenCalledWith('site-developer-output',expect.objectContaining({kind:'panel',token:'run-1'}));
+  run.panelAction({token:'run-1',hookId:'',action:'refresh',payload:'value',requestId:'request-1'});
+  await flush();
+  expect(run.invoke).toHaveBeenCalledWith('site-developer-output',expect.objectContaining({kind:'panel-response',input:{requestId:'request-1',value:{ok:true}}}));
+  run.stop();
+  run.invoke.mockClear();
+  run.panelAction({token:'run-1',hookId:'',action:'refresh',payload:'stale',requestId:'request-2'});
+  await flush();
+  expect(run.invoke).not.toHaveBeenCalled();
 });

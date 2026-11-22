@@ -410,10 +410,10 @@ export const createNewWindow = async ({
   protectWindowNavigation(
     newWindow.webContents,
     documentURL,
-    async (url) => {
+    async (url, groupId) => {
       if (view === 'main' && /^https?:/i.test(url)) {
         if (!newWindow.isDestroyed())
-          newWindow.webContents.send('browser-tab-request', { action: 'open-sidebar', url });
+          newWindow.webContents.send('browser-tab-request', { action: 'open-sidebar', url, ...(groupId && { groupId }) });
       } else await shell.openExternal(url);
     },
     view === 'main'

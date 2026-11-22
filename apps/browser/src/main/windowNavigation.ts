@@ -1,10 +1,13 @@
 import type { WebContents } from 'electron';
 
 const panelOwners = new WeakMap<WebContents, WebContents>();
-const linkHandlers = new WeakMap<WebContents, (url: string) => Promise<void>>();
-export function openWindowLink(contents: WebContents, value: string) {
+const linkHandlers = new WeakMap<WebContents, (url: string, groupId?: string) => Promise<void>>();
+export function openWindowLink(contents: WebContents, value: string, groupId?: string) {
   const destination = externalLinkURL(value);
-  if (destination) linkHandlers.get(contents)?.(destination).catch(() => {});
+  if (destination) {
+    const destinationArgs: [string, string?] = groupId ? [destination, groupId] : [destination];
+    linkHandlers.get(contents)?.(...destinationArgs).catch(() => {});
+  }
 }
 export function isAssistantPanelOf(child: WebContents, owner: WebContents) {
   return panelOwners.get(child) === owner;
@@ -26,7 +29,7 @@ export function externalLinkURL(value: string): string | undefined {
 export function protectWindowNavigation(
   contents: WebContents,
   documentURL: string,
-  openExternal: (url: string) => Promise<void>,
+  openExternal: (url: string, groupId?: string) => Promise<void>,
   assistantPanels = false
 ) {
   linkHandlers.set(contents, openExternal);

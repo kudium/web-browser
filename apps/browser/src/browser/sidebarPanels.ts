@@ -1,6 +1,7 @@
 export interface SidebarPanelInfo {
   id: string;
   title: string;
+  detail?: string;
   kind: 'extension' | 'hook' | 'feature';
   key?: string;
 }

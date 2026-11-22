@@ -13,6 +13,7 @@ import { AssistantPageHeader } from './AssistantPageHeader';
 import { ChromeIconButton } from './ChromeIconButton';
 import { GroupPicker } from './GroupPicker';
 import { EmptyState } from './EmptyState';
+import { HookIcon } from './HookIcon';
 
 /** Shared slot for isolated native feature content; geometry belongs to this shell. */
 export function SidebarPanels({
@@ -103,11 +104,12 @@ export function SidebarPanels({
           options={state.panels.map((panel) => ({
             id: panel.id,
             name: panel.title,
+            detail: panel.detail,
+            leadingIcon: panel.kind === 'hook' ? <HookIcon size={14} /> : <SquareStack size={14} />,
           }))}
           value={state.activeId || ''}
           disabled={!state.panels.length}
           triggerClassName="sidebar-feature-panel-picker"
-          optionIcon={() => <SquareStack size={14} />}
           onOpenChange={setPickerOpen}
           onChange={(id) => {
             void browser

@@ -1,10 +1,6 @@
-export type HookStage = 'before' | 'after' | 'css';
-export interface HookExample {
-  id: string;
-  name: string;
-  stage: HookStage;
-  source: string;
-}
+import { hookPanelExamples } from './hookPanelExamples';
+import type { HookExample } from '../../../../packages/hooks/panel-examples';
+export type { HookExample, HookStage } from '../../../../packages/hooks/panel-examples';
 export const hookExamples: HookExample[] = [
   {
     id: 'dark-mode',
@@ -150,6 +146,7 @@ if (text) {
     stage: 'before',
     source: "log('Starting page', url);",
   },
+  ...hookPanelExamples,
 ];
 const key = 'kudium-hook-examples-v1';
 export function readHookExamples(): HookExample[] {

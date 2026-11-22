@@ -208,3 +208,11 @@ navigation callbacks to each sidebar page. Keep remote documents out of the
 trusted shell window and block redirects. Native regression coverage clicks
 actual Activity items and anchors; unit coverage checks detached ownership,
 context menus and existing current-group destination behavior.
+
+Hook output providers reuse this registry and its native-view lifecycle. See
+[hook panel API](../../../docs/hook-panels.md). The shared host tracks the focused
+group alongside its session reference so Auto distinguishes groups sharing a
+profile. Keep group storage and navigation in their existing adapters. Custom
+hook documents have a separate minimal sandbox preload, not the trusted app
+preload; bridge calls require the original enabled hook/frame/token and matching
+group. Do not expose privileged shell or extension APIs to custom HTML.

@@ -1,6 +1,6 @@
 import { installPersonalDataAutofill } from '../browser/personalDataAutofill';
 import { createPersonalDataMatching } from '../browser/personalDataMatching';
-import { app, ipcMain, WebContents } from 'electron';
+import { app, ipcMain, WebContents, BrowserWindow } from 'electron';
 import fs from 'fs';
 import { EventEmitter } from 'events';
 import path from 'path';
@@ -15,6 +15,8 @@ import {
 } from '../browser/siteDeveloper';
 import { hookNotifications, hookScriptHash } from './hookNotifications';
 import { browserActivity } from './activity';
+import { sidebarPanelsFor } from './sidebarPanels';
+import { showHookPanel, closeHookPanel, removeHookPanels, respondHookPanel } from './hookPanels';
 import { saveNoteWithActivity } from './noteActivity';
 import { getGroupLocks } from './groupLocks';
 import { validateActivity } from '../browser/activity';
@@ -50,6 +52,16 @@ if (window === window.top) {
     if (!config) return;
     const token = config.token;
     const active = () => current === generation;
+    const panelActions = new Map();
+    const panelListener = (_event, request) => {
+      if (!active() || request?.token !== token) return;
+      const entry = panelActions.get(JSON.stringify([request.hookId,request.action]));
+      const answer = input => ipcRenderer.invoke('site-developer-output',{token,kind:'panel-response',hookId:request.hookId || undefined,input:{requestId:request.requestId,...input}}).catch(() => {});
+      if (!entry || !entry.alive()) { answer({error:'Panel action handler is not registered.'}); return; }
+      Promise.resolve().then(()=>entry.handler(request.payload)).then(value=>{if(entry.alive())answer({value:value ?? null})},error=>{if(entry.alive())answer({error:String(error?.message || error).slice(0,2000)})});
+    };
+    ipcRenderer.on('site-developer-panel-action',panelListener);
+    owned.add(()=>{panelActions.clear();ipcRenderer.removeListener?.('site-developer-panel-action',panelListener)});
     const send = (kind, value, detail = {}) => { if (active()) ipcRenderer.send('site-developer-event', { token, kind, value, ...detail }); };
     const format = value => { try { return typeof value === 'string' ? value : JSON.stringify(value); } catch (_) { return String(value); } };
     const allHooks = [...(config.hooks || []).filter(hook => hook.id?.startsWith('global:')), {...config, id: undefined, name: config.name || 'Default hook'}, ...(config.hooks || []).filter(hook => !hook.id?.startsWith('global:'))];
@@ -67,8 +79,11 @@ if (window === window.top) {
       const detail = {hookId: hook.id || '', phase, runId: token + ':' + (hook.id || 'default') + ':' + phase};
       const controller = new AbortController();
       const cleanups = new Set();
+      let hasPanel = false;
       const dispose = () => {
+        if (controller.signal.aborted) return;
         controller.abort();
+        if(hasPanel)ipcRenderer.invoke('site-developer-output',{token,kind:'panel-dispose',hookId:hook.id}).catch(()=>{});
         for (const cleanup of [...cleanups].reverse()) { try { cleanup(); } catch (_) {} }
         cleanups.clear(); owned.delete(dispose);
       };
@@ -96,7 +111,19 @@ if (window === window.top) {
       const notify = (key, text) => alive() ? ipcRenderer.invoke('site-developer-notify', {token, key, text}) : Promise.reject(new Error('This hook run has stopped'));
       const activity = Object.freeze({create: input => output('activity', input)});
       const notes = Object.freeze({create: input => output('note', input)});
-      const context = Object.freeze({url: location.href, document, notify, activity, notes,
+      const panel = Object.freeze({
+        show: input => {hasPanel=true;return output('panel', input)}, update: input => {hasPanel=true;return output('panel', input)},
+        close: id => output('panel-close', id),
+        onAction: (id, handler) => {
+          if (typeof id !== 'string' || typeof handler !== 'function') throw new Error('Provide an action id and handler');
+          const key = JSON.stringify([hook.id || '',id]);
+          const entry = {handler,alive};
+          panelActions.set(key,entry);
+          const remove = () => {if(panelActions.get(key) === entry)panelActions.delete(key)};
+          onCleanup(remove);return remove;
+        }
+      });
+      const context = Object.freeze({url: location.href, document, notify, activity, notes, panel,
         runId: token + ':' + (hook.id || 'default') + ':' + phase,
         signal: controller.signal, onCleanup,
         setInterval: (callback, delay, ...args) => { const id = setInterval(() => { guarded(callback, ...args); }, delay); onCleanup(() => clearInterval(id)); return id; },
@@ -107,7 +134,7 @@ if (window === window.top) {
       let timer;
       try {
         const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-        const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify, activity, notes, setInterval, setTimeout, onCleanup, signal, listen, runId} = context;\n' + hook[phase] + '\n//# sourceURL=kudium-hook-' + encodeURIComponent(hook.id || 'default') + '-' + phase + '.js');
+        const callback = new AsyncFunction('context', '"use strict"; const {url, document, content, page, log, notify, activity, notes, panel, setInterval, setTimeout, onCleanup, signal, listen, runId} = context;\n' + hook[phase] + '\n//# sourceURL=kudium-hook-' + encodeURIComponent(hook.id || 'default') + '-' + phase + '.js');
         await Promise.race([callback(context), new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('Hook stopped')), {once:true})), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Callback timed out after 10 seconds')), 10000); })]);
         if (alive()) log('completed');
       } catch (error) {
@@ -177,6 +204,7 @@ export function siteDeveloperPreload() {
   return preloadPath;
 }
 interface ManagedPage {
+  owner?: BrowserWindow;
   previewConfig?: (url: string) => SiteDeveloperConfig;
   profile: string;
   publish: () => void;
@@ -184,6 +212,7 @@ interface ManagedPage {
   token?: string;
   scriptHash?: string;
   outputs?: number[];
+  panelOutputs?: number[];
   origin?: string;
   controls: number[];
   events: number[];
@@ -270,6 +299,7 @@ export function rerunDeveloperHook(contents: WebContents, origin: string, hookId
 export function resetDeveloperState(contents: WebContents, origin: string) {
   const page = pages.get(contents);
   if (!page) return;
+  removeHookPanels(contents);
   contents.send('site-developer-stop');
   page.token = undefined;
   page.states.delete(origin);
@@ -306,7 +336,8 @@ export function registerDeveloperPage(
     | undefined = () => ({
     groupId: profile,
   }),
-  previewConfig?: (url: string) => SiteDeveloperConfig
+  previewConfig?: (url: string) => SiteDeveloperConfig,
+  owner?: BrowserWindow
 ) {
   const publishState = () => {
     publish();
@@ -314,12 +345,15 @@ export function registerDeveloperPage(
   };
   const existing = pages.get(contents);
   if (existing) {
+    if (owner && existing.owner !== owner) removeHookPanels(contents);
     existing.publish = publishState;
     existing.scope = scope;
     existing.previewConfig = previewConfig;
+    existing.owner = owner || existing.owner;
     return;
   }
   pages.set(contents, {
+    owner,
     profile,
     publish: publishState,
     states: new Map(),
@@ -328,7 +362,13 @@ export function registerDeveloperPage(
     scope,
     previewConfig,
   });
-  contents.once('destroyed', () => pages.delete(contents));
+  contents.once('destroyed', () => {
+    removeHookPanels(contents);
+    pages.delete(contents);
+  });
+  contents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => {
+    if (mainFrame) removeHookPanels(contents);
+  });
   contents.on('did-navigate-in-page', (_event, _url, isMainFrame) => {
     if (isMainFrame) contents.send('site-developer-route');
   });
@@ -379,7 +419,13 @@ export function registerDeveloperPage(
       input?: unknown;
       hookId?: unknown;
     };
-    const identity = page?.scope();
+    const previewGroup = page?.previewConfig && page.owner
+      ? sidebarPanelsFor(page.owner).targetGroup || sidebarPanelsFor(page.owner).activeGroup || `hook-test-${event.sender.id}`
+      : undefined;
+    const identity = page?.scope() ||
+      (previewGroup && ['panel', 'panel-close', 'panel-response', 'panel-dispose'].includes(String(data?.kind))
+        ? { groupId: previewGroup, sourceId: `hook-test-${event.sender.id}` }
+        : undefined);
     const origin = siteOrigin(event.senderFrame?.url || '');
     const config =
       page && origin
@@ -399,12 +445,6 @@ export function registerDeveloperPage(
       getGroupLocks().locked(identity.groupId)
     )
       throw new Error('Unauthorized hook output. Reload the approved hook.');
-    const now = Date.now();
-    page.outputs = (page.outputs || []).filter((time) => now - time < 60000);
-    if (page.outputs.length >= 10)
-      throw new Error(
-        'Hook output limit reached: ten items per minute per page.'
-      );
     const hook =
       data.hookId === undefined
         ? undefined
@@ -413,6 +453,16 @@ export function registerDeveloperPage(
           );
     if (data.hookId !== undefined && !hook)
       throw new Error('Hook is no longer enabled.');
+    if (data.kind === 'panel-dispose')
+      return removeHookPanels(event.sender, hook?.id || '');
+    if (data.kind === 'panel-response')
+      return respondHookPanel(event.sender, data.token, data.hookId, data.input);
+    const now = Date.now();
+    const panelOutput = data.kind === 'panel' || data.kind === 'panel-close';
+    const counter = panelOutput ? 'panelOutputs' : 'outputs';
+    page[counter] = (page[counter] || []).filter((time) => now - time < 60000);
+    if (page[counter]!.length >= (panelOutput ? 60 : 10))
+      throw new Error(panelOutput ? 'Hook panel limit reached: sixty updates per minute per page.' : 'Hook output limit reached: ten items per minute per page.');
     const context = {
       source: 'hook' as const,
       ...identity,
@@ -425,12 +475,31 @@ export function registerDeveloperPage(
         hookName: hook?.name || 'Default hook',
       },
     };
+    if (data.kind === 'panel' || data.kind === 'panel-close') {
+      const owner = page.owner || BrowserWindow.fromWebContents(event.sender);
+      if (!owner) throw new Error('This hook has no browser panel host.');
+      const token = page.token!;
+      const binding = {
+        source: event.sender, owner, groupId: identity.groupId,
+        sourceId: identity.sourceId, token, hookId: hook?.id || '',
+        hookName: hook?.name || config.name || 'Default hook',
+        authorized: () => {
+          const current = page.scope() || (page.previewConfig ? identity : undefined);
+          const latest = pageConfig(page, event.sender.getURL());
+          return page.token === token && current?.groupId === identity.groupId &&
+            !getGroupLocks().locked(identity.groupId) && !!latest.enabled &&
+            hookScriptHash(latest) === page.scriptHash;
+        },
+      };
+      page.panelOutputs!.push(now);
+      return data.kind === 'panel' ? showHookPanel(binding,data.input) : closeHookPanel(binding,data.input);
+    }
     if (data.kind === 'activity') {
       const input = validateActivity(data.input);
       // Hooks cannot link to arbitrary saved notes or read private data.
       if (input.noteId)
         throw new Error('Use notes.create to create a linked note.');
-      page.outputs.push(now);
+      page.outputs!.push(now);
       return browserActivity().create(
         { ...input, url: input.url || event.senderFrame.url },
         context
@@ -448,7 +517,7 @@ export function registerDeveloperPage(
         input.body.length > 100000
       )
         throw new Error('Provide a note title and Markdown body.');
-      page.outputs.push(now);
+      page.outputs!.push(now);
       return saveNoteWithActivity(
         {
           id: '',
@@ -563,6 +632,7 @@ export function registerDeveloperPage(
       event.returnValue = null;
       return;
     }
+    removeHookPanels(event.sender);
     page.token = randomUUID();
     page.scriptHash = hookScriptHash(config);
     page.origin = origin;
