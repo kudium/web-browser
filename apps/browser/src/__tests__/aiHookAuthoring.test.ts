@@ -139,6 +139,8 @@ it('uses the editor declarations and exact shared action templates on demand', (
       'utf8'
     )
   );
+  expect(guide.panelExamples).toEqual(jest.requireActual('../browser/hookPanelExamples').hookPanelExamples);
+  expect(guide.runtimeGuide).toContain('context.panel.show');
   expect(guide.declarations).toContain('interface KudiumActionApi');
   expect(guide.declarations).toContain('required?: boolean');
   expect(guide.examples.map(({ id, ...action }) => action)).toEqual(

@@ -181,7 +181,9 @@ ${source}
       <Tabs.Content value={editor} className="site-hook-editor-body" hidden={showActions}>
         {children}
         <CodeEditor
-          key={editor}
+          // External value updates can be deferred by CodeMirror's typing latch.
+          // A new hook must get its own document immediately, not queue behind it.
+          key={`${selectionKey || "default"}:${editor}`}
           label={`${stageLabels[editor]} code`}
           jumpLine={jumpLine}
           language={editor === 'css' ? 'css' : 'javascript'}

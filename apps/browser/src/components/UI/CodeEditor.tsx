@@ -3,7 +3,7 @@ import { linter } from "@codemirror/lint";
 import { hookSourceValidator } from "../../browser/hookValidation";
 /* Optional props use parameter defaults. */
 /* eslint-disable react/require-default-props */
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useLayoutEffect, useRef, useCallback, useState } from 'react';
 import CodeMirror, { EditorView, EditorState } from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { autocompletion } from '@codemirror/autocomplete';
@@ -35,6 +35,12 @@ export function CodeEditor({
   maxLength?: number;
   mode?: 'lifecycle' | 'action';
 }) {
+  const change = useRef(onChange);
+  useLayoutEffect(() => { change.current = onChange; }, [onChange]);
+  // Keep CodeMirror configuration stable as parent drafts/logs update.
+  const edit = useCallback((next: string) => {
+    if (next.length <= maxLength) change.current(next);
+  }, [maxLength]);
   const [view, setView] = useState<EditorView>();
   useEffect(() => {
     if (!view || !jumpLine) return;
@@ -82,9 +88,7 @@ export function CodeEditor({
       className="site-hook-code"
       onCreateEditor={setView}
       value={value}
-      onChange={(next) => {
-        if (next.length <= maxLength) onChange(next);
-      }}
+      onChange={edit}
       extensions={extensions}
       theme={appearance}
       editable={!disabled}

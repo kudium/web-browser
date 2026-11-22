@@ -4,7 +4,7 @@ import { Theme } from '@radix-ui/themes';
 import { HookEditor } from '../components/UI/HookEditor';
 
 jest.mock('../components/UI/CodeEditor', () => ({
-  CodeEditor: ({ label, value }: any) => <textarea aria-label={label} value={value} readOnly />,
+  CodeEditor: ({ label, value }: any) => <textarea aria-label={label} value={value} readOnly data-mount={require("react").useRef(Math.random()).current} />,
 }));
 jest.mock('../components/UI/HookPresets', () => ({ HookPresets: () => null }));
 jest.mock('../components/UI/HookActionsEditor', () => ({ HookActionsEditor: () => <div>Action editor</div> }));
@@ -31,4 +31,15 @@ it('preserves a manual tab choice while editing and selects content when switchi
   expect(screen.getByRole('tab', { name: /Before load/ })).toHaveAttribute('aria-selected', 'true');
   rendered.rerender(view('two', 'body {}'));
   expect(screen.getByRole('tab', { name: /CSS/ })).toHaveAttribute('aria-selected', 'true');
+});
+
+it('isolates editor state on rapid hook selection within the same stage', () => {
+  const view = (selectionKey: string, after: string) => <Theme><HookEditor selectionKey={selectionKey} code={{before:'',after,css:''}} disabled={false} onChange={jest.fn()} /></Theme>;
+  const rendered = render(view('one', 'log("one")'));
+  const first = screen.getByRole('textbox', {name:'After load code'}).getAttribute('data-mount');
+  rendered.rerender(view('two', 'log("two")'));
+  expect(screen.getByRole('textbox', {name:'After load code'})).toHaveValue('log("two")');
+  expect(screen.getByRole('textbox', {name:'After load code'}).getAttribute('data-mount')).not.toBe(first);
+  rendered.rerender(view('one', 'log("one")'));
+  expect(screen.getByRole('textbox', {name:'After load code'})).toHaveValue('log("one")');
 });

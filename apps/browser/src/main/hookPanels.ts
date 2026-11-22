@@ -1,5 +1,6 @@
 import {
   app,
+  clipboard,
   BrowserWindow,
   ipcMain,
   session,
@@ -15,6 +16,7 @@ import {
   type HookPanelOutput,
 } from '../browser/hookPanels';
 import { sidebarPanelsFor } from './sidebarPanels';
+import { attachPanelContextMenu } from './shellContextMenu';
 import { openWindowLink } from './windowNavigation';
 import { hookPanelDocument, hookPanelPresentation } from './hookPanelDocument';
 
@@ -241,6 +243,16 @@ export function showHookPanel(binding: Binding, input: unknown) {
             binding.groupId,
           );
       };
+      attachPanelContextMenu(view.webContents, link, () => available(e), () => {
+        const content = e.output.content;
+        const text = content.type === 'json' ? JSON.stringify(content.value, null, 2)
+          : content.type === 'table' ? [content.columns, ...content.rows].map(row => row.join('\t')).join('\n')
+          : 'text' in content ? content.text : undefined;
+        return text === undefined ? [] : [{
+          label: content.type === 'json' ? 'Copy JSON' : content.type === 'table' ? 'Copy table' : 'Copy panel content',
+          click: () => { if (available(e)) clipboard.writeText(text); },
+        }];
+      });
       view.webContents.setWindowOpenHandler(({ url: destination }) => {
         link(destination);
         return { action: 'deny' };

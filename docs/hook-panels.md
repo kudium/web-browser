@@ -89,3 +89,9 @@ function that omits the injected hook variables. Names such as `content` and
 `panel` are reserved runtime aliases; use descriptive names such as `panelDesign`
 for local UI definitions. Native checks execute all five shared snippets on a
 fixture page and exercise their declared actions and retained HTML input state.
+
+AI authoring uses `read_hook_api`, returning the exact shared panel examples and editor declarations. Page hooks can render extracted JSON with `context.panel.show({id:"results",title:"Page data",content:{type:"json",value:data},reveal:true})`. The reference distinguishes lifecycle panel APIs from action workers. AI must inspect the page, preserve existing hooks, validate/test and verify saved/runtime results.
+
+Native hook and extension views reuse the system context-menu builder. Inputs receive editing/spelling actions; selections, links and images receive matching actions. Structured hook outputs offer Copy JSON, Copy table or Copy panel content. Links retain group routing and check current access. Do not duplicate menus or expose shell APIs to panel scripts.
+
+Hook editor instances are scoped to selection and stage to prevent editor transactions crossing hook selections. Keep rapid switching covered by regression tests.

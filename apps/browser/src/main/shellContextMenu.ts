@@ -1,4 +1,4 @@
-import { clipboard } from 'electron';
+import { app, clipboard, Menu } from 'electron';
 import { openWindowLink } from './windowNavigation';
 import type {
   ContextMenuParams,
@@ -14,7 +14,8 @@ import { nativeMenuLabels } from '../browser/menuLabels';
 export function shellContextMenu(
   contents: WebContents,
   params: ContextMenuParams,
-  inspect: boolean
+  inspect: boolean,
+  openLink = (url: string) => openWindowLink(contents, url)
 ): MenuItemConstructorOptions[] {
   const items: MenuItemConstructorOptions[] = [];
   const group = (entries: MenuItemConstructorOptions[]) => {
@@ -45,7 +46,7 @@ export function shellContextMenu(
       {
         label: 'Open link',
         click: () => {
-          openWindowLink(contents, params.linkURL);
+          openLink(params.linkURL);
         },
       },
       {
@@ -70,4 +71,26 @@ export function shellContextMenu(
       },
     ]);
   return items;
+}
+
+/** Reuse system editing menus for native sidebar content, targeting its view. */
+export function attachPanelContextMenu(
+  contents: WebContents,
+  openLink: (url: string) => void,
+  available: () => boolean,
+  outputItems: () => MenuItemConstructorOptions[] = () => [],
+) {
+  contents.on('context-menu', (_event, params) => {
+    if (!available()) return;
+    const items = shellContextMenu(contents, params, !app.isPackaged,
+      url => { if (available()) openLink(url); });
+    if (!params.isEditable) {
+      const output = outputItems();
+      if (items.length && output.length) items.push({ type: 'separator' });
+      items.push(...output);
+    }
+    if (items.length) Menu.buildFromTemplate(items).popup({
+      frame: contents.mainFrame,
+    });
+  });
 }

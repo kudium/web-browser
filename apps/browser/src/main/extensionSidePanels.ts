@@ -9,6 +9,7 @@ import type { Extension, WebFrameMain } from 'electron';
 import type { ElectronChromeExtensions } from 'electron-chrome-extensions';
 import fs from 'node:fs';
 import path from 'node:path';
+import { attachPanelContextMenu } from './shellContextMenu';
 import { sidebarPanelsFor, sidebarPanelHostFor } from './sidebarPanels';
 
 interface PanelOptions {
@@ -310,6 +311,11 @@ export function attachExtensionSidePanels(
                   /* Reject invalid or privileged destinations. */
                 }
               };
+              attachPanelContextMenu(view.webContents, openLink, () => {
+                const current = currentOptions(extension, window);
+                return !window.isDestroyed() && host.activeSession === ctx.session &&
+                  !!current.tab && current.scope === scope && current.options.enabled !== false;
+              });
               view.webContents.setWindowOpenHandler(({ url: destination }) => {
                 openLink(destination);
                 return { action: 'deny' };

@@ -1,9 +1,11 @@
 /** @jest-environment node */
-import { shell, clipboard } from 'electron';
-import { shellContextMenu } from '../main/shellContextMenu';
+import { shell, clipboard, Menu } from 'electron';
+import { shellContextMenu, attachPanelContextMenu } from '../main/shellContextMenu';
 import { protectWindowNavigation } from '../main/windowNavigation';
 
 jest.mock('electron', () => ({
+  app: { isPackaged: true },
+  Menu: { buildFromTemplate: jest.fn(() => ({ popup: jest.fn() })) },
   shell: { openExternal: jest.fn().mockResolvedValue(undefined) },
   clipboard: { writeText: jest.fn() },
 }));
@@ -86,4 +88,27 @@ it('allows safe links and rejects script/local protocols; inspection remains dev
       []
     )
   );
+});
+
+it('uses the panel content and rechecks access for link actions', () => {
+  let listener: any;
+  const panel: any = { ...contents, mainFrame: {}, on: (_event: string, callback: any) => { listener = callback; } };
+  let allowed = true;
+  const open = jest.fn();
+  const output = jest.fn(() => [{label:'Copy JSON'}]);
+  attachPanelContextMenu(panel, open, () => allowed, output);
+  listener({}, {...params, linkURL:'https://example.com'});
+  const menu = (Menu.buildFromTemplate as jest.Mock).mock.calls.at(-1)[0];
+  expect(menu.some((item: any) => item.label === 'Copy JSON')).toBe(true);
+  allowed = false;
+  menu.find((item: any) => item.label === 'Open link').click();
+  expect(open).not.toHaveBeenCalled();
+  const calls = (Menu.buildFromTemplate as jest.Mock).mock.calls.length;
+  listener({}, params);
+  expect(Menu.buildFromTemplate).toHaveBeenCalledTimes(calls);
+  allowed = true;
+  output.mockClear();
+  listener({}, {...params, isEditable:true});
+  expect(output).not.toHaveBeenCalled();
+  expect((Menu.buildFromTemplate as jest.Mock).mock.calls.at(-1)[0].some((item: any) => item.role === 'paste')).toBe(true);
 });
