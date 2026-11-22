@@ -6,7 +6,6 @@ import {
   updateBrowserPreferences,
   showBrowserPreferences,
 } from '../preferences';
-import { createPersonalDataMatching } from '../../browser/personalDataMatching';
 import {
   app,
   ipcMain,
@@ -35,7 +34,7 @@ import { PasswordVault } from './vault';
 import { hasSavedWebsiteLogin } from './websiteLogin';
 import { saveWebsiteFields } from './websiteFields';
 import { browseSavedData } from './browse';
-import { fillDocument } from './fill';
+import { fillDocumentScript } from './fill';
 import * as nativeAuthentication from './authentication';
 import { safeStorage } from '../localStorage';
 import { assertRemovalScopeWritable } from '../groupRemovalJournal';
@@ -252,10 +251,7 @@ export async function fillSavedItem(
   try {
     // Main-frame-only filling rejects cross-origin redirects in the document itself.
     return await contents.mainFrame.executeJavaScript(
-      `(${fillDocument.toString()})(${JSON.stringify({
-        ...item,
-        fields: item.fields,
-      })},${ai},(${createPersonalDataMatching.toString()})().score)`,
+      fillDocumentScript(item, ai),
       true,
     );
   } catch {

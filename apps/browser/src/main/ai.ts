@@ -72,6 +72,7 @@ import {
   onPersonalDataRevoked,
   passwordVault,
 } from './passwordManager';
+import { autofillReferences, savedLoginReferences } from './passwordManager/loginCredentials';
 import { personalDataScope, groupKey, loginProfileKey } from '../utils/groups';
 import {
   getSiteSettings,
@@ -88,12 +89,13 @@ import { aiProjectGroups, aiProjectReference } from './aiGroupProjects';
 import { isGroupLocked } from './groupLocks';
 import { hookNotifications, hookScriptHash } from './hookNotifications';
 import { browserActivity } from './activity';
+import { AIInputAttention } from './aiInputAttention';
 import { saveNoteWithActivity } from './noteActivity';
 import { validDeveloperConfig } from '../browser/siteDeveloper';
 import type { HookNotificationBinding } from '../browser/siteDeveloper';
 import type { VaultItem } from '../browser/passwordManager';
 import { captureForm } from './passwordManager/capture';
-import { fillDocument } from './passwordManager/fill';
+import { fillDocumentScript } from './passwordManager/fill';
 import { validateAITask, AITaskManager, AITaskStore } from './aiTasks';
 import { taskInputFromTool } from '../browser/aiTasks';
 import type { AITaskInput, AITaskOutcome } from '../browser/aiTasks';
@@ -1265,6 +1267,7 @@ return function registerScopedAI(
     if (answer.response !== 1) throw new Error('User declined hook setup or test.');
   });
   let activityLayer: AIActivityLayer | undefined;
+  let resumeFromBanner: () => void = () => {};
   let externalRun: AbortController | undefined;
   const aiRecipient = () =>
     JSON.stringify([
@@ -1429,6 +1432,17 @@ return function registerScopedAI(
     };
     return review;
   };
+  // Enabling AI access authorizes ordinary record content. Vault readers still
+  // enforce record opt-outs, website/group scope and protected-value filtering.
+  const readEnabledData = <T>(source: IApp | undefined, signal: AbortSignal, read: () => T) =>
+    bindAction(source, signal, async (check) => {
+      const epoch = personalDataRevision();
+      check();
+      const result = read();
+      check();
+      if (personalDataRevision() !== epoch) throw new Error('Personal Data access changed while reading.');
+      return result;
+    });
   const discloseData = <T>(
     source: IApp | undefined,
     name: string,
@@ -1589,6 +1603,7 @@ return function registerScopedAI(
       }
     });
   };
+  const inputAttention = new AIInputAttention(browserActivity);
   const emit = (event: AIEvent) => {
     if (configurationDisposed) return;
     if (event.type === 'error' || event.type === 'handoff')
@@ -1601,6 +1616,7 @@ return function registerScopedAI(
       workingTabId = event.tabId;
       if (workingTabId) workingTabIds.add(workingTabId);
       activityLayer?.set(workingTabId);
+      activityLayer?.status(event.text);
       if (!host.isDestroyed())
         sendUI('ai-event', {
           type: 'activity',
@@ -1610,9 +1626,14 @@ return function registerScopedAI(
           workingTabIds: [...workingTabIds],
         });
     }
-    if (event.type === 'done' || event.type === 'handoff') {
-      workingTabIds.clear();
+    if (event.type === 'feedback' && event.feedbackId) {
       activityLayer?.set();
+      if (!host.isDestroyed()) sendUI('ai-event', { type: 'activity', text: '', active: false, workingTabIds: [...workingTabIds] });
+    }
+    if (event.type === 'done' || event.type === 'handoff') {
+      const keepingControl = humanControl && pauseRequested;
+      if (keepingControl && !run && !externalRun) activityLayer?.pause().catch(() => {});
+      else if (!keepingControl) { workingTabIds.clear(); activityLayer?.set(); }
       if (!host.isDestroyed())
         sendUI('ai-event', {
           type: 'activity',
@@ -1659,14 +1680,14 @@ return function registerScopedAI(
     externalRecovery = new AIRecoveryObservation();
     notifyMCP(mcp.status());
     stopOwnedWork()
-      .finally(() => activityLayer?.set())
       .catch((error) => emit({ type: 'error', text: error.message }));
   };
   if (access.activityBounds)
     activityLayer = new AIActivityLayer(
       host,
       access.activityBounds,
-      takeControl
+      takeControl,
+      () => resumeFromBanner()
     );
   const stopActivityLayout = access.onActivityLayoutChanged?.(() => activityLayer?.invalidate());
   const interrupts = new Map<WebContents, () => void>();
@@ -1914,6 +1935,7 @@ return function registerScopedAI(
         const cleanup = () => {
           signal.removeEventListener('abort', abort);
           pendingFeedback = undefined;
+          inputAttention.finish(id);
           emit({ type: 'feedback', text: '' });
         };
         const abort = () => {
@@ -1935,6 +1957,10 @@ return function registerScopedAI(
           suggestions: args.suggestions as string[] | undefined,
         });
         emit({ type: 'feedback', text: '', feedbackId: id });
+        if (!privateMode) {
+          const target = access.tabs().find((item) => item.id === workingTabId) || access.tabs().find((item) => item.id === access.focused());
+          inputAttention.begin(id, { scope: target ? personalDataScope(target) : undefined, groupId: target ? groupKey(target) : groupId || undefined });
+        }
       });
       return { answered: true, answer };
     }
@@ -2861,7 +2887,7 @@ return function registerScopedAI(
       });
     }
     if (name === 'search_personal_data')
-      return discloseData(tab, name, signal, () => {
+      return readEnabledData(tab, signal, () => {
         const vault = passwordVault();
         const notes = vault.search(
           String(args.query || ''),
@@ -2878,7 +2904,7 @@ return function registerScopedAI(
       const recordId = String(args.recordId || '');
       const note = vault.noteSummaries().find((item) => item.id === recordId);
       if (note?.sensitive) await authenticatePersonalData();
-      return discloseData(tab, name, signal, () => {
+      return readEnabledData(tab, signal, () => {
         if (vault.isOrdinaryNote(recordId))
           return vault.readSafe(
             recordId,
@@ -3068,9 +3094,7 @@ return function registerScopedAI(
               check();
               try {
                 return await contents.mainFrame.executeJavaScript(
-                  `(${fillDocument.toString()})(${JSON.stringify(
-                    temporary.item
-                  )},true)`,
+                  fillDocumentScript(temporary.item, true),
                   true
                 );
               } catch {
@@ -3094,20 +3118,17 @@ return function registerScopedAI(
                   item.fields.some((field) => field.secret),
               };
             });
-            const answer = await dialog.showMessageBox(host, {
-              type: 'question',
-              signal,
-              message: `Fill “${preview.title}”?`,
-              detail: `${
-                new URL(expectedURL).origin
-              }\nSaved values are entered into this website. Its scripts may send them immediately.`,
-              buttons: ['Cancel', 'Fill'],
-              defaultId: 0,
-              cancelId: 0,
-            });
-            check();
-            if (answer.response !== 1)
-              throw new Error('User declined filling.');
+            // Standard/Full use the same local authentication as user autofill.
+            // Ask first retains its explicit action review.
+            if ((taskAccessMode ?? accessMode) === 'ask') {
+              const answer = await approve('fill_personal_data', {
+                type: 'question', signal, message: `Fill “${preview.title}”?`,
+                detail: new URL(expectedURL).origin,
+                buttons: ['Cancel', 'Fill'], defaultId: 0, cancelId: 0,
+              });
+              check();
+              if (answer.response !== 1) throw new Error('User declined filling.');
+            }
             if (preview.sensitive) await authenticatePersonalData();
             signal.throwIfAborted();
             if (
@@ -3125,7 +3146,7 @@ return function registerScopedAI(
             check();
             try {
               return await contents.mainFrame.executeJavaScript(
-                `(${fillDocument.toString()})(${JSON.stringify(item)},true)`,
+                fillDocumentScript(item, true),
                 true
               );
             } catch {
@@ -3244,20 +3265,16 @@ return function registerScopedAI(
         });
       });
     }
-    if (name === 'list_saved_logins')
-      return discloseData(tab, name, signal, () =>
-        withPersonalData((vault) =>
-          vault
-            .matching(contents.getURL(), true, dataScope)
-            .filter((item) => item.kind === 'login')
-            .map((item) => ({
-              accountId: item.id,
-              title: item.title,
-              username: item.username,
-              origin: item.origin,
-            }))
-        )
-      );
+    if (name === 'list_autofill_data' || name === 'list_saved_logins')
+      return bindAction(tab, signal, async (check) => {
+        check();
+        const result = withPersonalData((vault) => {
+          const items = vault.matchingItems(contents.getURL(), true, dataScope);
+          return name === 'list_saved_logins' ? savedLoginReferences(items) : autofillReferences(items);
+        });
+        check();
+        return result;
+      });
     if (name === 'fill_saved_login')
       return tool(
         'fill_personal_data',
@@ -5697,7 +5714,7 @@ return function registerScopedAI(
       saveCheckpoint();
     }
     return {
-      activeTabId: run || externalRun ? workingTabId : undefined,
+      activeTabId: !pendingFeedback && (run || externalRun) ? workingTabId : undefined,
       workingTabIds: run || externalRun ? [...workingTabIds] : [],
       feedbackId: pendingFeedback?.id,
       busy: !!run || !!externalRun,
@@ -6159,8 +6176,7 @@ return function registerScopedAI(
     });
     return false; // Accepted for later; a queue event announces when it starts.
   });
-  ipcMain.handle('ai-resume', (event) => {
-    trusted(event);
+  const resumeSavedTask = () => {
     if (run || externalRun)
       throw new Error('An AI controller is already running.');
     if (!key && !isLocalAIEndpoint(settings.endpoint))
@@ -6205,7 +6221,30 @@ return function registerScopedAI(
     run = controller;
     execute('', controller, saved);
     return true;
+  };
+  resumeFromBanner = () => {
+    try {
+      setHumanControl(false);
+      notifyMCP(mcp.status());
+      if (activeCheckpoint) {
+        activityLayer?.set(workingTabId);
+        activityLayer?.status('Resuming your task…');
+        Promise.resolve(resumeSavedTask()).catch((error) => {
+          activityLayer?.set();
+          emit({ type: 'error', text: error.message });
+        });
+      } else activityLayer?.set(); // External controllers can now continue.
+    } catch (error) {
+      activityLayer?.set();
+      emit({ type: 'error', text: (error as Error).message });
+    }
+  };
+  ipcMain.handle('ai-resume', (event) => {
+    trusted(event);
+    setHumanControl(false);
+    return resumeSavedTask();
   });
+
   ipcMain.handle('ai-stop', async (event) => {
     trusted(event);
     composerQueue?.pause();
@@ -6320,6 +6359,7 @@ return function registerScopedAI(
   ipcMain.handle('ai-resume-external', (event) => {
     trusted(event, true);
     setHumanControl(false);
+    activityLayer?.set();
     notifyMCP(mcp.status());
   });
   ipcMain.removeHandler('ai-mcp');

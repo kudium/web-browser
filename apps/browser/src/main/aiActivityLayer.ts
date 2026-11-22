@@ -23,6 +23,10 @@ export class AIActivityLayer {
     height: number;
   };
   private appliedVisibility = false;
+  private paused = false;
+  private generation = 0;
+  private pausedDock?: { x: number; y: number; width: number; height: number };
+  private taskHint = 'Working on your request…';
 
   constructor(
     private host: BrowserWindow,
@@ -30,6 +34,7 @@ export class AIActivityLayer {
       id: string,
     ) => { x: number; y: number; width: number; height: number } | undefined,
     private takeover: () => void,
+    private resume: () => void = () => {},
   ) {
     this.disposed = false;
     this.stopTheme = onAppThemeChanged(host, this.invalidate);
@@ -55,18 +60,37 @@ export class AIActivityLayer {
     // Only a trusted click on the isolated view's explicit control can pause.
     // Other input is absorbed by the view without reaching the working page.
     view.webContents.on('console-message', (event) => {
+      if (this.disposed || this.view !== view || !this.tabId) return;
       if (
-        !this.disposed &&
-        this.view === view &&
-        this.tabId &&
-        event.message === 'kudiumbrowser-ai-explicit-takeover'
+        event.message === 'kudiumbrowser-ai-explicit-takeover' &&
+        !this.paused
       )
         this.takeover();
+      if (event.message === 'kudiumbrowser-ai-explicit-resume' && this.paused)
+        this.resume();
+      if (
+        this.paused &&
+        event.message.startsWith('kudiumbrowser-ai-drag:') &&
+        this.pausedDock
+      ) {
+        try {
+          const { dx, dy } = JSON.parse(
+            event.message.slice('kudiumbrowser-ai-drag:'.length),
+          );
+          if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+          this.pausedDock.x += dx;
+          this.pausedDock.y += dy;
+          this.refresh();
+        } catch {
+          /* Ignore malformed messages. */
+        }
+      }
     });
     view.webContents.on('did-finish-load', () => {
       if (this.view !== view) return;
       this.primary = undefined;
       this.refresh();
+      this.status(this.taskHint);
     });
     view.webContents
       .loadURL(
@@ -85,6 +109,10 @@ export class AIActivityLayer {
       this.view.webContents
         .executeJavaScript('window.resetAIActivity()')
         .catch(() => {});
+    this.generation += 1;
+    const wasPaused = this.paused;
+    const point = this.pausedDock;
+    this.paused = false;
     this.tabId = tabId;
     if (tabId) {
       this.ensureView();
@@ -92,6 +120,59 @@ export class AIActivityLayer {
     clearTimeout(this.scheduled);
     this.scheduled = undefined;
     this.refresh();
+    if (wasPaused && this.view && !this.view.webContents.isDestroyed()) {
+      this.view.webContents
+        .executeJavaScript(
+          `window.setAIActivityState(false,${JSON.stringify(this.taskHint)},${JSON.stringify(point ? { x: point.x, y: point.y } : null)})`,
+        )
+        .catch(() => {});
+    }
+  }
+
+  status(text: string) {
+    this.taskHint = text.slice(0, 120);
+    if (this.view && !this.view.webContents.isDestroyed() && !this.paused)
+      this.view.webContents
+        .executeJavaScript(
+          `window.setAITaskHint(${JSON.stringify(this.taskHint)})`,
+        )
+        .catch(() => {});
+  }
+
+  async pause() {
+    if (
+      this.paused ||
+      !this.tabId ||
+      !this.view ||
+      this.view.webContents.isDestroyed()
+    )
+      return;
+    const view = this.view,
+      tabId = this.tabId,
+      generation = this.generation;
+    const rect = await view.webContents.executeJavaScript(
+      `(()=>{const r=document.querySelector('.dock').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})()`,
+    );
+    if (
+      this.disposed ||
+      this.view !== view ||
+      this.tabId !== tabId ||
+      this.generation !== generation ||
+      this.paused ||
+      !rect
+    )
+      return;
+    this.pausedDock = {
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height),
+    };
+    this.paused = true;
+    await view.webContents.executeJavaScript(
+      `window.setAIActivityState(true,'Resume AI when you are ready')`,
+    );
+    if (this.generation === generation) this.refresh();
   }
 
   /** Browser layout and theme events share one deferred update per frame. */
@@ -126,7 +207,26 @@ export class AIActivityLayer {
       this.view.webContents.isDestroyed()
     )
       return;
-    const bounds = this.tabId && this.bounds(this.tabId);
+    const pageBounds = this.tabId && this.bounds(this.tabId);
+    let bounds = pageBounds;
+    if (pageBounds && this.paused && this.pausedDock) {
+      const width = Math.min(this.pausedDock.width, pageBounds.width - 24);
+      const height = this.pausedDock.height;
+      this.pausedDock.x = Math.max(
+        12,
+        Math.min(this.pausedDock.x, pageBounds.width - width - 12),
+      );
+      this.pausedDock.y = Math.max(
+        12,
+        Math.min(this.pausedDock.y, pageBounds.height - height - 12),
+      );
+      bounds = {
+        x: pageBounds.x + this.pausedDock.x,
+        y: pageBounds.y + this.pausedDock.y,
+        width,
+        height,
+      };
+    }
     if (!!bounds !== this.appliedVisibility) {
       this.appliedVisibility = !!bounds;
       this.view.setVisible(!!bounds);

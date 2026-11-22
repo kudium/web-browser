@@ -41,14 +41,16 @@ function fixture() {
     id === 'missing' ? undefined : { x: 2, y: 3, width: 500, height: 400 },
   );
   const takeover = jest.fn();
+  const resume = jest.fn();
   const layer = new AIActivityLayer(
     host as unknown as BrowserWindow,
     bounds,
     takeover,
+    resume,
   );
   const view = () =>
     (WebContentsView as unknown as jest.Mock).mock.results.at(-1)!.value;
-  return { host, layer, view, bounds, takeover };
+  return { host, layer, view, bounds, takeover, resume };
 }
 
 beforeEach(() => {
@@ -77,7 +79,10 @@ it('inherits the host primary color, updates it live and avoids repeated rendere
   );
   native.webContents.executeJavaScript.mockClear();
   native.webContents.emit('did-finish-load');
-  expect(native.webContents.executeJavaScript).toHaveBeenCalledTimes(1);
+  expect(native.webContents.executeJavaScript).toHaveBeenCalledTimes(2);
+  expect(native.webContents.executeJavaScript).toHaveBeenLastCalledWith(
+    'window.setAITaskHint("Working on your request…")',
+  );
   layer.dispose();
 });
 
@@ -203,4 +208,70 @@ it('coalesces layout changes and removes subscriptions and pending work on dispo
   expect(
     (onAppThemeChanged as jest.Mock).mock.results.at(-1)!.value,
   ).toHaveBeenCalled();
+});
+
+it('keeps only the draggable banner active during takeover and restores the full view on resume', async () => {
+  const { layer, view, resume, takeover } = fixture();
+  layer.set('first');
+  const native = view();
+  native.webContents.executeJavaScript.mockResolvedValueOnce({
+    x: 60,
+    y: 210,
+    width: 320,
+    height: 60,
+  });
+  await layer.pause();
+  expect(native.setBounds).toHaveBeenLastCalledWith({
+    x: 62,
+    y: 213,
+    width: 320,
+    height: 60,
+  });
+  native.webContents.emit('console-message', {
+    message: 'kudiumbrowser-ai-drag:{"dx":10,"dy":-20}',
+  });
+  expect(native.setBounds).toHaveBeenLastCalledWith({
+    x: 72,
+    y: 193,
+    width: 320,
+    height: 60,
+  });
+  native.webContents.emit('console-message', {
+    message: 'kudiumbrowser-ai-explicit-takeover',
+  });
+  expect(takeover).not.toHaveBeenCalled();
+  native.webContents.emit('console-message', {
+    message: 'kudiumbrowser-ai-explicit-resume',
+  });
+  expect(resume).toHaveBeenCalledTimes(1);
+  layer.set('first');
+  expect(native.setBounds).toHaveBeenLastCalledWith({
+    x: 2,
+    y: 3,
+    width: 500,
+    height: 400,
+  });
+  layer.dispose();
+});
+
+it('ignores a late pause measurement after the activity has changed', async () => {
+  const { layer, view } = fixture();
+  layer.set('first');
+  let complete: (value: any) => void = () => {};
+  view().webContents.executeJavaScript.mockReturnValueOnce(
+    new Promise((resolve) => {
+      complete = resolve;
+    }),
+  );
+  const pausing = layer.pause();
+  layer.set('second');
+  complete({ x: 60, y: 210, width: 320, height: 60 });
+  await pausing;
+  expect(view().setBounds).toHaveBeenLastCalledWith({
+    x: 2,
+    y: 3,
+    width: 500,
+    height: 400,
+  });
+  layer.dispose();
 });

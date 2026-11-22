@@ -129,7 +129,7 @@ it('creates site-bound credentials and retains other form fields', () => {
     origin: 'https://example.com',
     username: 'alex',
     password: 'private-password',
-    allowAI: false,
+    allowAI: true,
   });
   expect(item.fields).toEqual([
     {

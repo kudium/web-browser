@@ -36,12 +36,13 @@ const pause = () => new Promise((resolve) => setTimeout(resolve, 120));
   await page.webContents.loadURL(
     'data:text/html,<body><button style="width:100px;height:80px" onclick="window.clicks++">Test</button><script>window.clicks=0</script></body>'
   );
-  let takeovers = 0;
+  let takeovers = 0, resumes = 0;
   const { AIActivityLayer } = require(path.join(root, 'layer.cjs'));
   const layer = new AIActivityLayer(
     host,
     (id) => (id === 'page' ? bounds : undefined),
-    () => takeovers++
+    () => takeovers++,
+    () => { resumes++; layer.set('page'); }
   );
   await pause();
   layer.set('page');
@@ -49,6 +50,31 @@ const pause = () => new Promise((resolve) => setTimeout(resolve, 120));
   const shield = host.contentView.children.at(-1);
   assert.notEqual(shield, page);
   assert(shield.getVisible());
+  // Verify painted motion in the real renderer, rather than only CSS declarations.
+  shield.webContents.debugger.attach('1.3');
+  await shield.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+  });
+  await shield.webContents.executeJavaScript("document.querySelector('.dock').style.visibility='hidden'");
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  const firstGlow = (await shield.webContents.capturePage()).toBitmap();
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  const secondGlow = await shield.webContents.capturePage();
+  const pixels = secondGlow.toBitmap(), pixelSize = secondGlow.getSize();
+  const pixelScale = pixelSize.width / await shield.webContents.executeJavaScript('innerWidth');
+  let movingRim = 0, movingCenter = 0;
+  for (let y = 0; y < pixelSize.height; y++) {
+    for (let x = 0; x < pixelSize.width; x++) {
+      const offset = (y * pixelSize.width + x) * 4;
+      if (![0, 1, 2, 3].some((channel) => Math.abs(firstGlow[offset + channel] - pixels[offset + channel]) > 8)) continue;
+      if (x < 40 * pixelScale || y < 40 * pixelScale || x >= pixelSize.width - 40 * pixelScale || y >= pixelSize.height - 40 * pixelScale) movingRim++;
+      else movingCenter++;
+    }
+  }
+  assert(movingRim > 100, 'AI glow visibly revolves around the page');
+  assert.equal(movingCenter, 0, 'AI glow stays near the rim without covering the page center');
+  await shield.webContents.executeJavaScript("document.querySelector('.dock').style.visibility=''");
+  shield.webContents.debugger.detach();
   page.webContents.debugger.attach('1.3');
   for (const type of ['mousePressed', 'mouseReleased'])
     await page.webContents.debugger.sendCommand('Input.dispatchMouseEvent', {
@@ -278,7 +304,7 @@ const pause = () => new Promise((resolve) => setTimeout(resolve, 120));
   layer.pointer('page', { x: 90, y: 90, type: 'mouseReleased' });
   await pause();
   await shot('click');
-  await new Promise((resolve) => setTimeout(resolve, 2500));
+  await new Promise((resolve) => setTimeout(resolve, 3500));
   assert.equal((await cursorState()).visible, false, 'Idle cursor fades');
   layer.set();
   layer.set('page');
@@ -301,6 +327,25 @@ const pause = () => new Promise((resolve) => setTimeout(resolve, 120));
     });
   await pause();
   assert.equal(takeovers, 1, 'Only Take control must request takeover');
+  await layer.pause();
+  await pause();
+  assert(shield.getBounds().height < 100, 'Paused view only covers the banner, leaving the page usable');
+  assert.equal(await shield.webContents.executeJavaScript("document.getElementById('take-control').getAttribute('aria-label')"), 'Resume AI');
+  assert.equal(await shield.webContents.executeJavaScript("document.querySelector('.mark') === null"), true, 'Banner uses task status instead of sparkles');
+  const pausedBounds = shield.getBounds();
+  // Drag the title/body, rather than relying on the grip alone.
+  const bodyPoint = await shield.webContents.executeJavaScript("(()=>{const r=document.querySelector('.copy').getBoundingClientRect();return {x:Math.round(r.x+12),y:Math.round(r.y+8)}})()");
+  shield.webContents.sendInputEvent({ type: 'mouseDown', ...bodyPoint, button: 'left', clickCount: 1 });
+  shield.webContents.sendInputEvent({ type: 'mouseMove', x: bodyPoint.x + 8, y: bodyPoint.y - 12, movementX: 8, movementY: -12 });
+  shield.webContents.sendInputEvent({ type: 'mouseUp', x: bodyPoint.x + 8, y: bodyPoint.y - 12, button: 'left', clickCount: 1 });
+  await pause();
+  assert.notEqual(shield.getBounds().y, pausedBounds.y, 'Whole paused banner can be dragged');
+  assert.equal(takeovers, 1, 'Dragging does not trigger another takeover');
+  const resumePoint = await shield.webContents.executeJavaScript("(()=>{const r=document.getElementById('take-control').getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()");
+  for (const type of ['mouseDown','mouseUp']) shield.webContents.sendInputEvent({ type, ...resumePoint, button: 'left', clickCount: 1 });
+  await pause();
+  assert.equal(resumes, 1, 'Resume explicitly gives control back');
+  assert.equal(shield.getBounds().height, bounds.height, 'Resume restores the full activity view');
   assert.equal(await page.webContents.executeJavaScript('window.clicks'), 1);
   layer.set();
   layer.set('page');

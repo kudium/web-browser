@@ -200,6 +200,7 @@ import { useAIPagePreference } from '../../../utils/useAIPagePreference';
 export function Main() {
   const groupAccess = useGroupAccess();
   useArchiveRetention();
+  const [aiNeedsReply, setAINeedsReply] = useState(false);
   const [aiActivityTab, setAIActivityTab] = useState<string>();
   const [aiWorkingTabIds, setAIWorkingTabIds] = useState<string[]>([]);
   useEffect(() => {
@@ -209,12 +210,17 @@ export function Main() {
       .then((status) => {
         if (!activityReceived) {
           setAIActivityTab(status.activeTabId);
+          setAINeedsReply(!!status.feedbackId);
           setAIWorkingTabIds(status.workingTabIds || []);
         }
         return undefined;
       })
       .catch(() => {});
     return window.electron.ai.onEvent((event) => {
+      if (event.type === 'feedback') {
+        activityReceived = true;
+        setAINeedsReply(!!event.feedbackId);
+      }
       if (event.type === 'activity') {
         activityReceived = true;
         setAIActivityTab(event.active ? event.tabId : undefined);
@@ -620,7 +626,7 @@ export function Main() {
         token: (previous?.token || 0) + 1,
       }));
       setAIPromptRequest(previous => ({
-        text: 'Fill the form on the attached tab using my saved Personal Data. Inspect the form and choose the saved details that best match this website and its fields. Use fill_personal_data to enter saved values without revealing passwords or secrets in chat. Ask me if the account or a required value is unclear. Fill the form without submitting it unless I request submission.\n\nAdditional instructions: ',
+        text: 'Fill the form on the attached tab using my saved Personal Data. Inspect the form and choose the saved details that best match this website and its fields. For login forms, check list_saved_logins for this tab first and use fill_saved_login with a matching accountId. For other forms, use list_autofill_data to find saved field keys matching the observed fields and use fill_personal_data with its recordId. Never reveal passwords or secrets in chat. Ask me if the account or a required value is unclear. Fill the form without submitting it unless I request submission.\n\nAdditional instructions: ',
         append: true,
         token: (previous?.token || 0) + 1,
       }));
@@ -3139,14 +3145,14 @@ export function Main() {
       />
       <ChromeIconButton
         icon={MessageCircle}
-        text="Chat"
+        text={aiNeedsReply ? 'Reply needed' : 'Chat'}
         className="ai-toolbar-toggle chat-toolbar-button"
         label={
-          aiWorkingTabs.length
+          aiNeedsReply ? 'Open Chat — AI needs your reply' : aiWorkingTabs.length
             ? `Toggle Chat sidebar — ${aiWorkingTabs.length} active AI tabs`
             : 'Toggle Chat sidebar'
         }
-        badgeCount={aiWorkingTabs.length}
+        badgeCount={aiNeedsReply ? Math.max(1, aiWorkingTabs.length) : aiWorkingTabs.length}
         aria-expanded={aiOpen && aiPane === 'assistant'}
         onClick={() => toggleSidebarPane('assistant')}
       />

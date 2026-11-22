@@ -258,3 +258,14 @@ it('keeps preferred login routes separate for each account and group', () => {
   expect(vault.edit(record.id).loginURL).toBe(`${origin}/login`);
   expect(() => vault.save({ ...vault.edit(record.id), loginURL: 'https://other.example/login' })).toThrow('HTTPS website');
 });
+
+it('enables AI on new website form saves while preserving an existing opt-out', () => {
+  const url = 'https://fixture.example/login';
+  const fields = [{ name: 'email', value: 'fixture@example.test', secret: false }];
+  saveWebsiteFields(vault, url, undefined, fields);
+  const saved = vault.matching(url)[0];
+  expect(saved.allowAI).toBe(true);
+  vault.save({ ...vault.edit(saved.id), allowAI: false });
+  saveWebsiteFields(vault, url, undefined, fields);
+  expect(vault.edit(saved.id).allowAI).toBe(false);
+});

@@ -1,4 +1,4 @@
-import { personalDataMatching } from '../../browser/personalDataMatching';
+import { createPersonalDataMatching, personalDataMatching } from '../../browser/personalDataMatching';
 import type { VaultItem } from '../../browser/passwordManager';
 /** Serialized into the owning main frame. No values or page errors return. */
 export function fillDocument(
@@ -60,7 +60,11 @@ export function fillDocument(
           (input) =>
             input.form === password.form &&
             input.type === 'text' &&
-            /user|login|email/i.test(input.name + input.id)
+            /user|login|email/i.test([
+              input.name, input.id, input.placeholder,
+              input.getAttribute('aria-label') || '',
+              Array.from(input.labels || []).map((label) => label.textContent || '').join(' '),
+            ].join(' '))
         );
         if (candidates.length === 1 && item.username)
           assignments.push([candidates[0], item.username, false]);
@@ -148,4 +152,9 @@ export function fillDocument(
     filled += 1;
   });
   return { filled };
+}
+
+/** Shared page injection: module dependencies must be supplied in the page realm. */
+export function fillDocumentScript(item: VaultItem, ai: boolean) {
+  return `(${fillDocument.toString()})(${JSON.stringify(item)},${ai},(${createPersonalDataMatching.toString()})().score)`;
 }

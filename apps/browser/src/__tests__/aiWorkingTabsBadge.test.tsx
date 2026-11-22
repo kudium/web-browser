@@ -1,43 +1,33 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Theme } from '@radix-ui/themes';
+import { render, screen } from '@testing-library/react';
 import { AIWorkingTabsBadge } from '../components/UI/AIWorkingTabsBadge';
 
-const tabs = [
-  { id: 'first', name: 'Research' },
-  { id: 'second', name: 'Results' },
-];
-it('shows visual tab rows with status and closes after choosing a tab', async () => {
-  const onSelect = jest.fn();
-  render(
-    <Theme>
-      <form>
-        <AIWorkingTabsBadge
-          tabs={tabs}
-          activeTabId="second"
-          onSelect={onSelect}
-        />
-      </form>
-    </Theme>
+it('replaces working animations with a reply-needed indicator while waiting', () => {
+  const { container, rerender } = render(
+    <AIWorkingTabsBadge
+      tabs={[{ id: 'one', name: 'Atlas' }]}
+      activeTabId="one"
+      onSelect={() => {}}
+    />,
   );
-  const button = screen.getByRole('button', {
-    name: 'View active AI tabs (2)',
-  });
-  expect(button.getAttribute('type')).toBe('button');
-  fireEvent.click(button);
-  const row = await screen.findByRole('button', { name: 'Open Results' });
-  expect(screen.getByText('Active now')).toBeTruthy();
-  expect(screen.getByText('Used in this run')).toBeTruthy();
-  expect(row.querySelector('.app-icon svg')).toBeTruthy();
-  fireEvent.click(row);
-  expect(onSelect).toHaveBeenCalledWith('second');
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(container.querySelector('.loading-spinner')).not.toBeNull();
+  rerender(
+    <AIWorkingTabsBadge
+      tabs={[{ id: 'one', name: 'Atlas' }]}
+      activeTabId="one"
+      waitingForReply
+      onSelect={() => {}}
+    />,
+  );
+  expect(
+    screen.getByRole('button', { name: 'AI needs your reply' }),
+  ).toBeTruthy();
+  expect(container.querySelector('.loading-spinner')).toBeNull();
+  expect(container.querySelector('[data-working=true]')).toBeNull();
 });
-it('disappears when the run has no working tabs', () => {
-  const onSelect = jest.fn();
-  const { rerender } = render(
-    <AIWorkingTabsBadge tabs={tabs} onSelect={onSelect} />
-  );
-  expect(screen.getByRole('button')).toBeTruthy();
-  rerender(<AIWorkingTabsBadge tabs={[]} onSelect={onSelect} />);
-  expect(screen.queryByRole('button')).toBeNull();
+
+it('still shows the question attention indicator before any tab was used', () => {
+  render(<AIWorkingTabsBadge tabs={[]} waitingForReply onSelect={() => {}} />);
+  expect(
+    screen.getByRole('button', { name: 'AI needs your reply' }),
+  ).toBeTruthy();
 });

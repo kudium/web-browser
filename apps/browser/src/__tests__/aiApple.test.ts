@@ -161,3 +161,59 @@ it('does not compact or retry Apple inference when context management is off', a
   await expect(pending).rejects.toThrow('Enable Context window management');
   expect(spawn).toHaveBeenCalledTimes(1);
 });
+
+
+it('adapts repeatedly to native token overflow and keeps preference off the wire', async () => {
+  const packets: any[] = [];
+  (spawn as jest.Mock).mockImplementation(() => {
+    const processChild = Object.assign(new EventEmitter(), {
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      kill: jest.fn(),
+    });
+    let input = '';
+    processChild.stdin.on('data', (chunk: Buffer) => {
+      input += chunk.toString();
+    });
+    processChild.stdin.on('finish', () => {
+      packets.push(JSON.parse(input));
+      const overflow = packets.length < 4;
+      processChild.stdout.write(
+        JSON.stringify(
+          overflow
+            ? {
+                error: 'Provided 4,290 tokens, but the maximum allowed is 4,096.',
+                code: 'inference_failed',
+              }
+            : { choices: [{ message: { content: 'Done', tool_calls: [] } }] },
+        ),
+      );
+      processChild.emit('close', overflow ? 1 : 0);
+    });
+    return processChild;
+  });
+  const result = await fetchAppleAI(`${APPLE_AI_ENDPOINT}/chat/completions`, {
+    body: JSON.stringify({
+      model: 'apple-on-device',
+      kudium_context_management: true,
+      messages: [
+        { role: 'user', content: 'Explain this page' },
+        {
+          role: 'tool',
+          tool_call_id: 'page',
+          content: 'Evidence '.repeat(300),
+        },
+      ],
+      tools: [],
+    }),
+  });
+  expect((await result!.json()).choices[0].message.content).toBe('Done');
+  expect(packets).toHaveLength(4);
+  packets.forEach((packet) =>
+    expect(packet).not.toHaveProperty('kudium_context_management'),
+  );
+  expect(JSON.stringify(packets[3]).length).toBeLessThan(
+    JSON.stringify(packets[0]).length,
+  );
+});

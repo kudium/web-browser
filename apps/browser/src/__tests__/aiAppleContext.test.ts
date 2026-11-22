@@ -56,7 +56,7 @@ it('budgets a large catalog and observations while preserving the latest questio
             title: `Website ${index}`,
             focused: index === 59,
             url: 'https://example.com/' + 'a'.repeat(60),
-          }))
+          })),
         ),
       },
     ],
@@ -66,8 +66,8 @@ it('budgets a large catalog and observations while preserving the latest questio
           index === 0
             ? 'list_tabs'
             : index === 1
-            ? 'discover_tools'
-            : `tool_${index}`,
+              ? 'discover_tools'
+              : `tool_${index}`,
         description: 'A browser tool',
         parameters: { type: 'object', properties: {} },
       },
@@ -76,15 +76,15 @@ it('budgets a large catalog and observations while preserving the latest questio
   const context = appleAIContext(request);
   expect(JSON.stringify(context).length).toBeLessThan(8000);
   expect(
-    context.tools.some((tool: any) => tool.name === 'discover_tools')
+    context.tools.some((tool: any) => tool.name === 'discover_tools'),
   ).toBe(true);
   expect(context.tools.some((tool: any) => tool.name === 'list_tabs')).toBe(
-    true
+    true,
   );
   expect(
     context.messages.some(
-      (message: any) => message.content === 'What tab am I on?'
-    )
+      (message: any) => message.content === 'What tab am I on?',
+    ),
   ).toBe(true);
   expect(context.messages.at(-1).content).toContain('tab-59');
   expect(request.tools).toHaveLength(80);
@@ -133,7 +133,7 @@ it('refuses to forget an oversized action ledger', () => {
         { role: 'user', content: 'Continue' },
       ],
       tools: [],
-    })
+    }),
   ).toThrow('action history');
 });
 
@@ -154,7 +154,7 @@ it('prioritizes live focused-tab metadata ahead of long capability guidance', ()
     context.messages
       .filter((message: any) => message.role === 'system')
       .map((message: any) => message.content)
-      .join('\n')
+      .join('\n'),
   ).toContain('Atlas Studio');
 });
 
@@ -250,11 +250,159 @@ it('prioritizes freshly discovered tools and constrains saved-login IDs to obser
       role: 'tool',
       tool_call_id: 'accounts',
       content: '[{"accountId":"authorized-one"}]',
-    }
+    },
   );
   expect(
     appleAIContext(base).tools.find(
-      (tool: any) => tool.name === 'fill_saved_login'
-    ).parameters.properties.accountId.enum
+      (tool: any) => tool.name === 'fill_saved_login',
+    ).parameters.properties.accountId.enum,
   ).toEqual(['authorized-one']);
+});
+
+it('offers direct local filling for IDs from this turn’s Personal Data search, without a read', () => {
+  const request: any = {
+    messages: [
+      { role: 'user', content: 'Fill the form with saved personal data' },
+      {
+        role: 'assistant',
+        tool_calls: [
+          {
+            id: 'search',
+            function: { name: 'search_personal_data', arguments: '{}' },
+          },
+        ],
+      },
+      {
+        role: 'tool',
+        tool_call_id: 'search',
+        content: '[{"id":"profile-one","kind":"profile"}]',
+      },
+      {
+        role: 'tool',
+        tool_call_id: 'unrelated',
+        content: '[{"id":"untrusted-id"}]',
+      },
+    ],
+    tools: [
+      {
+        function: {
+          name: 'fill_personal_data',
+          parameters: {
+            type: 'object',
+            properties: { recordId: { type: 'string' } },
+            required: ['recordId'],
+          },
+        },
+      },
+    ],
+  };
+  expect(
+    appleAIContext(request).tools[0].parameters.properties.recordId.enum,
+  ).toEqual(['profile-one']);
+  request.messages.push({ role: 'user', content: 'Fill another form' });
+  expect(appleAIContext(request).tools).toEqual([]);
+});
+
+it('uses autofill key listings as opaque record references for local filling', () => {
+  const request: any = {
+    messages: [
+      { role: 'user', content: 'Fill the form' },
+      {
+        role: 'assistant',
+        tool_calls: [
+          {
+            id: 'keys',
+            function: { name: 'list_autofill_data', arguments: '{}' },
+          },
+        ],
+      },
+      {
+        role: 'tool',
+        tool_call_id: 'keys',
+        content: '[{"recordId":"profile-one","fields":[{"name":"email"}]}]',
+      },
+    ],
+    tools: [
+      {
+        function: {
+          name: 'fill_personal_data',
+          parameters: {
+            type: 'object',
+            properties: { recordId: { type: 'string' } },
+            required: ['recordId'],
+          },
+        },
+      },
+    ],
+  };
+  expect(
+    appleAIContext(request).tools[0].parameters.properties.recordId.enum,
+  ).toEqual(['profile-one']);
+});
+
+it('read-only receipts cannot exhaust the completed-action ledger', () => {
+  const messages: any[] = [{ role: 'user', content: 'Inspect these tabs' }];
+  for (let index = 0; index < 40; index += 1) {
+    messages.push(
+      {
+        role: 'assistant',
+        tool_calls: [
+          {
+            id: `read-${index}`,
+            function: {
+              name: 'search_personal_data',
+              arguments: '{"query":"profile"}',
+            },
+          },
+        ],
+      },
+      {
+        role: 'tool',
+        tool_call_id: `read-${index}`,
+        content: 'result '.repeat(200),
+      },
+    );
+  }
+  expect(() => appleAIContext({ messages, tools: [] })).not.toThrow();
+});
+
+it('progressive compaction preserves the question and exact completed writes', () => {
+  const request = {
+    messages: [
+      { role: 'user', content: 'Earlier question' },
+      {
+        role: 'assistant',
+        tool_calls: [
+          {
+            id: 'write',
+            function: {
+              name: 'click',
+              arguments: '{"elementId":"submit","tabId":"one"}',
+            },
+          },
+        ],
+      },
+      { role: 'tool', tool_call_id: 'write', content: '{"applied":true}' },
+      { role: 'user', content: 'Explain the current page' },
+      {
+        role: 'tool',
+        tool_call_id: 'page',
+        content: 'Page evidence '.repeat(200),
+      },
+    ],
+    tools: [],
+  };
+  const sizes = [0, 1, 2, 3].map((level) => {
+    const context = appleAIContext(request, level);
+    const packet = JSON.stringify(context);
+    expect(packet).toContain('Explain the current page');
+    expect(packet).toContain('submit');
+    expect(packet).toContain('applied');
+    expect(packet).toContain('Page evidence');
+    return packet.length;
+  });
+  expect(sizes[1]).toBeLessThan(sizes[0]);
+  expect(sizes[2]).toBeLessThan(sizes[1]);
+  expect(sizes[3]).toBeLessThan(sizes[2]);
+  expect(request.messages).toHaveLength(5);
 });

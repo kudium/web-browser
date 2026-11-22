@@ -89,3 +89,12 @@ it('fills only a real secure-input record bound to the current tab, once', () =>
   });
   expect(appleAIPrerequisite(request)).toBeUndefined();
 });
+
+
+it.each(['Log in to this website', 'Sign in with my saved credentials'])(
+  'reads the page before selecting credentials for %s', (query) => {
+    const request = body();
+    request.messages[1].content = query;
+    expect(appleAIPrerequisite(request)!.choices[0].message.tool_calls[0].function.name).toBe('read_page');
+  }
+);

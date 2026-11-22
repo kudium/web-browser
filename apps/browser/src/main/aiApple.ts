@@ -83,7 +83,11 @@ function runAppleAI(
         const payload = JSON.parse(output);
         if (code !== 0 || payload.error)
           finish(
-            payload.code === 'context_limit'
+            payload.code === 'context_limit' ||
+            (typeof payload.error === 'string' &&
+              /Provided [\d,]+ tokens,? but the maximum allowed is [\d,]+/i.test(
+                payload.error
+              ))
               ? new AppleAIContextError(payload.error)
               : new Error(payload.error || 'Apple AI inference failed.')
           );
@@ -142,18 +146,26 @@ export async function fetchAppleAI(
     : { ...body, tools: (body.tools ?? []).map((tool: any) => tool.function) };
   delete context.kudium_context_management;
   let payload;
-  try {
-    payload = await runAppleAI(JSON.stringify(context), request.signal);
-  } catch (error) {
-    if (error instanceof AppleAIContextError && !managed)
-      throw new Error(
-        'Apple local AI reached its context limit. Enable Context window management in the AI model dialog, or select a model with a larger context. No cloud fallback was used.'
-      );
-    if (!(error instanceof AppleAIContextError)) throw error;
-    request.signal?.throwIfAborted();
-    // Inference produced no actions: one smaller retry cannot repeat effects.
-    context = appleAIContext(body, true);
-    payload = await runAppleAI(JSON.stringify(context), request.signal);
+  for (let level = 0; ; level += 1) {
+    try {
+      payload = await runAppleAI(JSON.stringify(context), request.signal);
+      break;
+    } catch (error) {
+      if (!(error instanceof AppleAIContextError)) throw error;
+      if (!managed)
+        throw new Error(
+          'Apple local AI reached its context limit. Enable Context window management in the AI model dialog, or select a model with a larger context. No cloud fallback was used.',
+        );
+      if (level === 3)
+        throw new Error(
+          'Apple local AI cannot fit this request and its required action history. Try a shorter request or a model with a larger context. No actions were repeated and no cloud fallback was used.',
+        );
+      request.signal?.throwIfAborted();
+      // The native helper returned no actions. Rebuild from canonical data,
+      // shrinking optional observations/tools while preserving action identity.
+      context = appleAIContext(body, level + 1);
+      delete context.kudium_context_management;
+    }
   }
   // Reject every generated call before exposing any to the existing executor.
   const tools = new Set(context.tools.map((tool: any) => tool.name));

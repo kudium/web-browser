@@ -2746,7 +2746,7 @@ body.project-terminal-dragging, body.project-terminal-dragging * { cursor:row-re
 .ai-composer .ai-working-tabs-banner { position:relative; isolation:isolate; align-self:flex-end; flex-shrink:0; max-width:100%; height:30px; min-height:30px; margin:0 0 10px; padding:0 10px; border-radius:15px; background:var(--color-panel-solid); color:var(--gray-12); box-shadow:0 1px 3px var(--gray-a3); }
 .ai-composer .ai-working-tabs-banner:hover { background:var(--gray-2); color:var(--gray-12); }
 .ai-working-tabs-banner::before { content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; background:var(--gray-a5); -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
-.ai-working-tabs-banner[data-working=true]::before { background:conic-gradient(from var(--ai-border-angle),#689afa,#9b84eb,#d897c7,#9b84eb,#689afa); animation:ai-activity-border 4s linear infinite; }
+.ai-working-tabs-banner[data-working=true]::before { background:conic-gradient(from var(--ai-border-angle),#68ddd0,#8ce3af,#e9d99a,#f1a6be,#c3a0ee,#8caff0,#68ddd0); animation:ai-activity-border 24s linear infinite; }
 @keyframes ai-activity-border { to { --ai-border-angle:360deg; } }
 .ai-working-tabs-banner > .loading-spinner { color:var(--accent-11); flex-shrink:0; }
 .ai-working-tabs-banner > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -5451,3 +5451,6 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .site-hook-list-row > .site-hooks-list-item:disabled::after { cursor:default; pointer-events:none; }
 .site-hook-list-row > .site-hook-list-controls { z-index:1; pointer-events:none; }
 .site-hook-list-row > .site-hook-list-controls :is(button:not(.rt-IconButton), input, a, [role='switch'], [role='button']) { pointer-events:auto; }
+
+.ai-composer .ai-feedback-attention { padding:10px 12px; margin-bottom:10px; border:1px solid var(--accent-7); border-radius:8px; background:var(--accent-2); color:var(--accent-12); font-size:12px; line-height:1.5; }
+.ai-working-tabs-banner[data-waiting=true]::before { background:var(--accent-8); }

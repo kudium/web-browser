@@ -1,6 +1,6 @@
 /** @jest-environment-options {"url":"https://example.com"} */
 import { createPersonalDataMatching } from '../browser/personalDataMatching';
-import { fillDocument } from '../main/passwordManager/fill';
+import { fillDocument, fillDocumentScript } from '../main/passwordManager/fill';
 import type { VaultItem } from '../browser/passwordManager';
 
 const item: VaultItem = {
@@ -297,4 +297,30 @@ it('uses a saved Email field when the login username is empty, without clearing 
     expect(fillDocument({ ...item, username: '' }, false)).toEqual({ filled: 1 });
     expect(inputs[0].value).toBe('typed@example.com');
   } finally { visible.mockRestore(); }
+});
+
+it('fills a login identifier described only by its placeholder', () => {
+  document.body.innerHTML = '<form><input placeholder="Email, username or phone"><input type="password"></form>';
+  jest.spyOn(HTMLInputElement.prototype, 'getClientRects').mockReturnValue([{}] as any);
+  expect(fillDocument(item, true)).toEqual({ filled: 2 });
+  expect((document.querySelector('input') as HTMLInputElement).value).toBe('person');
+  jest.restoreAllMocks();
+});
+
+it('executes the shared AI/autofill injection without browser-app module globals', () => {
+  document.body.innerHTML = '<form><input placeholder="Email, username or phone"><input type="password"></form>';
+  jest.spyOn(HTMLInputElement.prototype, 'getClientRects').mockReturnValue([{}] as any);
+  try {
+    // Reproduce the previous AI injection: its default matcher is a module reference.
+    expect(() => new Function(`return (${fillDocument.toString()})(${JSON.stringify(item)},true)`)()).toThrow(ReferenceError);
+    // A new Function has page globals but cannot see this test's imported modules.
+    const result = new Function(`return ${fillDocumentScript(item, true)}`)();
+    expect(result).toEqual({ filled: 2 });
+    expect((document.querySelector('input') as HTMLInputElement).value).toBe('person');
+    document.body.innerHTML = '<input name="email">';
+    const profile = { ...item, kind: 'profile' as const, username: '', password: '', fields: [{ name: 'email', value: 'atlas@example.com', secret: false }] };
+    expect(new Function(`return ${fillDocumentScript(profile, true)}`)()).toEqual({ filled: 1 });
+  } finally {
+    jest.restoreAllMocks();
+  }
 });

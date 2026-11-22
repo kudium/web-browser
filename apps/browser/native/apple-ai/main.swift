@@ -85,6 +85,18 @@ func schema(_ value: [String: Any], name: String) throws -> DynamicGenerationSch
     }
 }
 
+// Match the typed macOS 26 error, plus the token-count wording emitted by
+// newer Foundation Models. Localized text need not contain the word "context".
+@available(macOS 26.0, *)
+func isContextLimit(_ error: Error) -> Bool {
+    if let generationError = error as? LanguageModelSession.GenerationError,
+       case .exceededContextWindowSize = generationError { return true }
+    return error.localizedDescription.range(
+        of: "Provided [0-9,]+ tokens,? but the maximum allowed is [0-9,]+|transcript exceeded the model.s context size",
+        options: [.regularExpression, .caseInsensitive]
+    ) != nil
+}
+
 func emit(_ value: [String: Any]) {
     if let data = try? JSONSerialization.data(withJSONObject: value) { FileHandle.standardOutput.write(data) }
 }
@@ -172,16 +184,11 @@ func infer() async throws {
             }
         }
     }
-    let prompt = "Continue the latest user request using actual tool results when available: \(content(latest ?? [:])). Answer this request, not an earlier question."
-    if #available(macOS 26.4, *) {
-        let transcriptTokens = try await model.tokenCount(for: entries)
-        let promptTokens = try await model.tokenCount(for: prompt)
-        if transcriptTokens + promptTokens + 800 > model.contextSize {
-            emit(["error":"Apple local AI needs a smaller context.","code":"context_limit"]); exit(1)
-        }
-    }
+    // The latest user request is already in the transcript. Repeating it here
+    // wastes scarce tokens, especially for long requests.
+    let prompt = "Continue the latest user request using actual tool results. Do not repeat completed actions."
     let latestText = content(latest ?? [:]).lowercased()
-    let identifyingTab = latestText.range(of:"(?:what|which).*\\btab\\b",options:.regularExpression) != nil
+    let identifyingTab = latestText.range(of:"^(?:what|which) tab (?:am i on|is this|are we on)\\??$",options:.regularExpression) != nil
     let explainingPage = latestText.range(of:"(?:what|summari[sz]e|describe|explain|tell me).*(?:website|page|site)",options:.regularExpression) != nil
     let hasPageResult = receipts.contains { $0.name == "read_page" }
     let answerOnly = identifyingTab || (explainingPage && hasPageResult)
@@ -192,6 +199,13 @@ func infer() async throws {
         let text = response.content.replacingOccurrences(of:"<think>[\\s\\S]*?</think>",with:"",options:.regularExpression).trimmingCharacters(in:.whitespacesAndNewlines)
         emitResponse(text:text,calls:[])
         return
+    }
+    if #available(macOS 26.4, *) {
+        let transcriptTokens = try await model.tokenCount(for: entries)
+        let promptTokens = try await model.tokenCount(for: prompt)
+        if transcriptTokens + promptTokens + 800 > model.contextSize {
+            emit(["error":"Apple local AI needs a smaller context.","code":"context_limit"]); exit(1)
+        }
     }
     let session = LanguageModelSession(model:model,tools:tools,transcript:Transcript(entries:entries))
     do {
@@ -210,7 +224,9 @@ Task {
         else { throw NSError(domain:"AppleAI",code:3,userInfo:[NSLocalizedDescriptionKey:"Apple local AI requires macOS 26 or later."]) }
     } catch {
         let detail = error.localizedDescription
-        emit(["code":detail.localizedCaseInsensitiveContains("context") ? "context_limit" : "inference_failed","error":detail])
+        var contextLimit = false
+        if #available(macOS 26.0, *) { contextLimit = isContextLimit(error) }
+        emit(["code":contextLimit ? "context_limit" : "inference_failed","error":detail])
         exit(1)
     }
     exit(0)

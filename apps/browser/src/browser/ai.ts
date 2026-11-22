@@ -107,6 +107,7 @@ export const AI_TOOLS = [
   'attach_personal_document',
   'upload_chat_attachment',
 
+  'list_autofill_data',
   'list_saved_logins',
   'fill_saved_login',
   'get_access',

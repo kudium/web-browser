@@ -17,12 +17,14 @@ export function appleAIPrerequisite(request: any) {
           .map((part) => part.text)
           .join('\n')
       : '';
+  const filling = /\bfill\b.*\bform\b|\b(?:log[ -]?in|sign[ -]?in)\b/i.test(query);
   const identifying =
     /^(?:what|which)\s+tab\s+(?:is\s+(?:this|it)|am\s+i\s+(?:on|in)|are\s+we\s+on)\??\s*$/i.test(
       query.trim()
     );
   if (
     !identifying &&
+    !filling &&
     !/(?:summari[sz]e|explain|describe|read).*(?:this|current|active|the) (?:web)?(?:page|site)|(?:what|tell me).*(?:this|current|active) (?:web)?(?:page|site)|\bfill\b.*\bform\b/i.test(
       query
     )
@@ -68,7 +70,7 @@ export function appleAIPrerequisite(request: any) {
     return undefined;
   const turn = messages.slice(latestUser + 1);
   if (
-    /\bfill\b.*\bform\b/i.test(query) &&
+    filling &&
     !turn.some((message) =>
       message.tool_calls?.some((call: any) =>
         ['fill_personal_data', 'fill_saved_login'].includes(call.function?.name)

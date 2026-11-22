@@ -1763,7 +1763,7 @@ export function AISidebar({
               </div>
             )}
           </div>
-          {busy && latestAction && (
+          {busy && latestAction && !feedbackId && (
             <div className="ai-current-action" role="status">
               {latestAction.text}
             </div>
@@ -1847,8 +1847,14 @@ export function AISidebar({
             <AIWorkingTabsBadge
               tabs={workingTabs}
               activeTabId={activeTabId}
+              waitingForReply={!!feedbackId}
               onSelect={(id) => onFocusTab?.(id)}
             />
+            {feedbackId && (
+              <div className="ai-feedback-attention" role="alert">
+                The assistant needs your reply. Choose an answer above or type below to continue.
+              </div>
+            )}
             {(blockedMention || blockedContext) && (
               <div className="ai-scope-notice">
                 {blockedContext

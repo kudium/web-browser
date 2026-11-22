@@ -102,7 +102,7 @@ export function reviewedFormItem(
     origin: result.availability === 'site' ? origin : '',
     username: passwords.length ? username?.value || '' : '',
     password: passwords[0]?.value || '',
-    allowAI: false,
+    allowAI: true,
     notes: '',
     fields: selected
       .filter(

@@ -41,6 +41,6 @@ export function saveWebsiteFields(vault: PasswordVault, expected: string, scope:
     } else fields.push(field);
   }
   if (needsUpdate && !confirmUpdate) return { needsUpdate: true, saved: false };
-  vault.save({ ...(saved || { id: '', username: '', password: '', kind: 'knowledge' as const }), title: title.slice(0, 120), origin: url.origin, loginURL: loginURL ? preferredLoginURL(loginURL, url.origin) : saved?.loginURL, fields, ...(saved?.kind === 'login' ? { username: account || saved.username, password: fields.find((field) => /^password$/i.test(field.name))?.value || saved.password } : {}), allowAI: false }, scope);
+  vault.save({ ...(saved || { id: '', username: '', password: '', kind: 'knowledge' as const }), title: title.slice(0, 120), origin: url.origin, loginURL: loginURL ? preferredLoginURL(loginURL, url.origin) : saved?.loginURL, fields, ...(saved?.kind === 'login' ? { username: account || saved.username, password: fields.find((field) => /^password$/i.test(field.name))?.value || saved.password } : {}), allowAI: saved?.allowAI ?? true }, scope);
   return { saved: true, updated: needsUpdate };
 }

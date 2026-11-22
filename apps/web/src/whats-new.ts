@@ -1,5 +1,13 @@
 export const whatsNew = [
   {
+    version: '1.0.21', date: '2026-11-22', title: 'Clearer assistant activity and smarter form filling',
+    highlights: [
+      ['Stay in control of assistant tasks', 'Clearer on-page activity shows what the assistant is doing. Take control when you need to, then resume from the page banner. Requests for your input are easier to notice.'],
+      ['Smarter saved-data filling', 'The assistant can find matching saved logins and form data, keeping protected values out of its context and using local authentication when required. Ask first mode retains action review.'],
+      ['More dependable Apple local AI', 'Improved context management and recovery help the local assistant work within its model limits while retaining completed-action receipts.'],
+    ],
+  },
+  {
     version: '1.0.20', date: '2026-11-21', title: 'Automatic update checks restored',
     highlights: [
       ['Update checks work again', 'This release restores automatic update checking on Apple Silicon and Intel Macs. It also includes the sign-in, autofill, and workspace improvements from 1.0.19.'],

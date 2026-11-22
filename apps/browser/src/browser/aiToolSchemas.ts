@@ -46,6 +46,7 @@ export const AI_TOOL_FIELDS: Record<AITool, string[]> = {
     'frameId',
   ],
 
+  list_autofill_data: ['tabId'],
   list_saved_logins: ['tabId'],
   fill_saved_login: ['tabId', 'accountId'],
   get_access: [],
@@ -581,11 +582,11 @@ const toolDescriptions: Partial<Record<AITool, string>> = {
   read_page:
     'Read a document-text prefix and interactive element IDs. Scrolling does not move the text prefix. When coverage.textTruncated is true and the requested passage is missing, expand maxText or load advanced_interaction and use targeted extract_rows.',
   search_personal_data:
-    'Search enabled basic facts and knowledge in this tab group plus inherited browser data. Up to five matches and 4000 characters. Protected values are excluded; ordinary facts can be confidential. Requires local recipient-specific disclosure review, including Full access. Search on demand rather than loading the entire library.',
+    'Search enabled basic facts and knowledge in this tab group plus inherited browser data. Up to five matches and 4000 characters. Protected values are excluded; ordinary facts can be confidential. AI access authorizes non-protected content without an extra disclosure dialog. Search on demand rather than loading the entire library. For login forms use list_saved_logins first; for other forms list_autofill_data supplies references, field keys and non-protected values. Result id can be passed directly to fill_personal_data; no read is needed.',
   read_personal_data:
-    'Read enabled non-protected fields and a bounded passage from a matching Personal Data record after local recipient-specific disclosure review, including Full access. Source and nextOffset support document retrieval. Ordinary facts can be confidential; protected values are excluded.',
+    'Read enabled non-protected fields and a bounded passage from a matching Personal Data record with AI access enabled, without an extra disclosure dialog. Source and nextOffset support document retrieval. Ordinary facts can be confidential; protected values are excluded.',
   fill_personal_data:
-    'Fill a saved profile, login or payment record locally with approval and authentication. Never returns secret values or submits.',
+    'Fill a saved profile, login or payment record locally with autofill authentication; Ask first reviews the action. Never returns secret values or submits.',
   create_activity:
     'Create an unread Activity event for the user at their request or as a requested task outcome. Supply title, optional activityMessage, HTTP/HTTPS url or recordId of a note in scope. Show returned deepLink as a Markdown link. manage_note automatically creates an Activity; do not duplicate it. Hooks use context.activity.create({title,message,url}) or context.notes.create({title,body}) for a note with an automatic Activity. Configure hooks through configure_site_hooks; preserve existing hooks and verify saved behavior.',
   manage_note:
@@ -598,10 +599,12 @@ const toolDescriptions: Partial<Record<AITool, string>> = {
     'Upload an original user-attached chat file to a website file input using its opaque attachmentId. Uses native upload approval. Does not submit the form.',
   attach_personal_document:
     'Attach a permitted saved document to an observed file input with local approval. Use only when the user requested a document upload. No local paths returned.',
+  list_autofill_data:
+    'List AI-enabled autofill record references and field keys for this website and group. Returns non-protected values for matching fields; protected fields expose keys only. AI access authorizes this without an extra disclosure dialog. Use recordId with fill_personal_data to fill locally. Inspect the page first; ask which record when ambiguous.',
   list_saved_logins:
-    'List locally authorized login references for this tab origin. Never returns passwords. The user must unlock and enable AI access first. Requires local recipient-specific disclosure review, including Full access.',
+    'List AI-enabled saved login references for this website, including captured credentials. Returns usernames for account selection, never passwords. AI access authorizes this without an extra disclosure dialog. Use accountId with fill_saved_login. Never request new credentials before checking.',
   fill_saved_login:
-    'Fill an authorized login locally using accountId, with human approval. Never returns passwords or submits the form. Verify the page afterward.',
+    'Fill an authorized login locally using an accountId from list_saved_logins, with autofill authentication (Ask first reviews the action). Detects the website fields locally; do not supply fieldNames or request credentials again. Never returns passwords or submits the form. Verify the page afterward.',
   list_tabs:
     'Filter with groupId; null lists all accessible tabs. A single referenced group is the default during chat tasks. List session tabs and recover pendingDialog IDs before handle_dialog.',
 };

@@ -59,9 +59,9 @@ const descriptions: Record<MCPTool, string> = {
   find_hook_personal_data:
     'Search up to five relevant Personal Data record and field names in this tab group/inherited browser data, at most 4000 characters. Metadata only, no values. Requires local recipient-specific disclosure review, including Full access. Use selected recordId/fieldName and optional Telegram chat-ID recipientField in reviewed hook setup. A field grant does not authorize reading the record or sending unrelated messages.',
   search_personal_data:
-    'Search enabled basic facts and knowledge in this tab group plus inherited browser data. Up to five matches and 4000 characters. Protected values are excluded; ordinary facts can be confidential. Requires local recipient-specific disclosure review, including Full access. Search on demand rather than loading the entire library.',
+    'Search enabled basic facts and knowledge in this tab group plus inherited browser data. Up to five matches and 4000 characters. Protected values are excluded; ordinary facts can be confidential. AI access authorizes non-protected content without an extra disclosure dialog. Search on demand rather than loading the entire library.',
   read_personal_data:
-    'Read enabled non-protected fields and a bounded passage from a matching Personal Data record after local recipient-specific disclosure review, including Full access. Source and nextOffset support document retrieval. Ordinary facts can be confidential; protected values are excluded.',
+    'Read enabled non-protected fields and a bounded passage from a matching Personal Data record with AI access enabled, without an extra disclosure dialog. Source and nextOffset support document retrieval. Ordinary facts can be confidential; protected values are excluded.',
   fill_personal_data:
     'Fill a saved profile, login or payment record locally with approval and authentication. Never returns secret values or submits.',
   create_activity:
@@ -77,10 +77,12 @@ const descriptions: Record<MCPTool, string> = {
   attach_personal_document:
     'Attach a permitted saved document to an observed file input with local approval. Use only when the user requested a document upload. No local paths returned.',
 
+  list_autofill_data:
+    'List AI-enabled autofill record references and field keys in this website/group. Includes ordinary values for matching; protected values stay local. No extra disclosure dialog. Use recordId with fill_personal_data.',
   list_saved_logins:
-    'List authorized local account references for this website. No passwords returned. Requires unlocked vault, AI access and local recipient-specific disclosure review, including Full access.',
+    'List AI-enabled account references and field keys for this website. Includes ordinary values for matching; protected values stay local. No extra disclosure dialog.',
   fill_saved_login:
-    'Fill an authorized saved login locally with human confirmation. No passwords returned; never submits.',
+    'Fill a saved login locally with autofill authentication. Ask first reviews the action. No passwords returned; never submits.',
   get_access:
     'Read current base and effective access mode. taskOnly indicates a temporary human chat grant.',
   request_access:

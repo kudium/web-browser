@@ -2,7 +2,12 @@
 /* eslint-disable react/require-default-props */
 import { useState } from 'react';
 import { Popover } from '@radix-ui/themes';
-import { ChevronRight, LoaderCircle, Sparkles } from 'lucide-react';
+import {
+  ChevronRight,
+  LoaderCircle,
+  MessageCircle,
+  Sparkles,
+} from 'lucide-react';
 import { AppIcon } from './AppIcon/AppIcon';
 import { PanelPopoverContent } from './PanelDialog';
 
@@ -15,15 +20,18 @@ export interface AIWorkingTab {
 export function AIWorkingTabsBadge({
   tabs,
   activeTabId,
+  waitingForReply = false,
   onSelect,
 }: {
   tabs: AIWorkingTab[];
   activeTabId?: string;
+  waitingForReply?: boolean;
   onSelect: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const working = tabs.some((tab) => tab.id === activeTabId);
-  if (!tabs.length) return null;
+  const working =
+    !waitingForReply && tabs.some((tab) => tab.id === activeTabId);
+  if (!tabs.length && !waitingForReply) return null;
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger>
@@ -31,9 +39,16 @@ export function AIWorkingTabsBadge({
           type="button"
           className="ai-working-tabs-banner"
           data-working={working || undefined}
-          aria-label={`View active AI tabs (${tabs.length})`}
+          data-waiting={waitingForReply || undefined}
+          aria-label={
+            waitingForReply
+              ? 'AI needs your reply'
+              : `View active AI tabs (${tabs.length})`
+          }
         >
-          {working ? (
+          {waitingForReply ? (
+            <MessageCircle size={13} aria-hidden="true" />
+          ) : working ? (
             <LoaderCircle
               size={13}
               className="loading-spinner"
@@ -42,7 +57,7 @@ export function AIWorkingTabsBadge({
           ) : (
             <Sparkles size={13} aria-hidden="true" />
           )}
-          <span>Active AI tabs</span>
+          <span>{waitingForReply ? 'Needs your reply' : 'Active AI tabs'}</span>
           <span className="ai-working-tabs-count" aria-hidden="true">
             {tabs.length > 99 ? '99+' : tabs.length}
           </span>
@@ -81,14 +96,18 @@ export function AIWorkingTabsBadge({
                   className="ai-working-tab-status"
                   data-active={tab.id === activeTabId || undefined}
                 >
-                  {tab.id === activeTabId && (
+                  {!waitingForReply && tab.id === activeTabId && (
                     <LoaderCircle
                       size={11}
                       className="loading-spinner"
                       aria-hidden="true"
                     />
                   )}
-                  {tab.id === activeTabId ? 'Active now' : 'Used in this run'}
+                  {waitingForReply
+                    ? 'Waiting for your reply'
+                    : tab.id === activeTabId
+                      ? 'Active now'
+                      : 'Used in this run'}
                 </span>
               </span>
               <ChevronRight size={12} aria-hidden="true" />
