@@ -95,3 +95,5 @@ AI authoring uses `read_hook_api`, returning the exact shared panel examples and
 Native hook and extension views reuse the system context-menu builder. Inputs receive editing/spelling actions; selections, links and images receive matching actions. Structured hook outputs offer Copy JSON, Copy table or Copy panel content. Links retain group routing and check current access. Do not duplicate menus or expose shell APIs to panel scripts.
 
 Hook editor instances are scoped to selection and stage to prevent editor transactions crossing hook selections. Keep rapid switching covered by regression tests.
+
+Hook list selection applies to the entire card, including status and padding, while Run, switches and menus retain independent targets. Verify the production list with native pointer events; a simplified editor-only fixture does not cover card hit testing.

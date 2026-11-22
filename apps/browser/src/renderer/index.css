@@ -5444,3 +5444,10 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .feature-empty-state > button { margin-top:6px; }
 .sidebar-feature-pane > .feature-empty-state { flex:1; }
 .sidebar-feature-pane > .feature-empty-state + .sidebar-feature-content { flex:0; }
+
+/* The entire hook card selects its hook; controls keep their own actions. */
+.site-hook-list-row { position:relative; }
+.site-hook-list-row > .site-hooks-list-item::after { content:''; position:absolute; inset:0; cursor:pointer; }
+.site-hook-list-row > .site-hooks-list-item:disabled::after { cursor:default; pointer-events:none; }
+.site-hook-list-row > .site-hook-list-controls { z-index:1; pointer-events:none; }
+.site-hook-list-row > .site-hook-list-controls :is(button:not(.rt-IconButton), input, a, [role='switch'], [role='button']) { pointer-events:auto; }
