@@ -124,6 +124,28 @@ conversation state across application restarts.
 
 ## Verification
 
+### Extension context menus
+
+Extensions declaring `contextMenus` use the existing extension menu registry
+for page menus, toolbar action menus, and extension sidebar content. The
+guarded `patch-extension-context-menus.cjs` dependency patch implements
+create/update/remove/removeAll, visibility and title changes, scoped parent
+trees, and checkbox/radio state with `checked` and `wasChecked` click data.
+Menu IDs belong to their extension, so identical IDs cannot collide between
+extensions. Use the shared `attachPanelContextMenu` to combine extension entries
+with native editing and link actions; do not create another menu registry.
+
+A validated native menu choice supplies the existing side-panel user gesture
+gate before dispatching the extension worker's `onClicked` event. Page clicks
+report the clicked tab; extension views without a browser tab do not fabricate
+one. Disabled, hidden, unloaded and foreign-profile entries cannot dispatch.
+Extensions still own their menu visibility and authentication behavior.
+
+The installed-dependency CJS/ESM regressions run through the standard test gate.
+The native side-panel fixture also reproduces Muse's hidden-item creation and
+visible-item update through real classic/module workers, verifies the clicked
+tab, opens the panel from the menu gesture, and checks action checkbox events.
+
 Run TypeScript and the browser unit tests. The new registry and adapter tests
 cover profile boundaries, resource paths, tab settings, visibility, IPC trust,
 and cleanup. Run the real fixture separately from `apps/browser`:

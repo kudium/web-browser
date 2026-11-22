@@ -97,6 +97,8 @@ if (check === 'storage-migration') {
   run(process.execPath, [
     path.join(__dirname, 'extension-actions-regression.cjs'),
   ]);
+  run(process.execPath, [path.join(__dirname, 'extension-context-menu-regression.cjs')]);
+  run(process.execPath, [path.join(__dirname, 'extension-context-menu-regression.cjs'), '--esm']);
   console.log('Running unit tests...');
   run(process.execPath, [require.resolve('jest/bin/jest'), ...jestArgs]);
   if (!desktop) process.exit(0);

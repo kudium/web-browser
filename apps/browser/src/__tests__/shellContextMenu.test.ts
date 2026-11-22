@@ -96,7 +96,7 @@ it('uses the panel content and rechecks access for link actions', () => {
   let allowed = true;
   const open = jest.fn();
   const output = jest.fn(() => [{label:'Copy JSON'}]);
-  attachPanelContextMenu(panel, open, () => allowed, output);
+  attachPanelContextMenu(panel, open, () => allowed, params => params.isEditable ? [] : output());
   listener({}, {...params, linkURL:'https://example.com'});
   const menu = (Menu.buildFromTemplate as jest.Mock).mock.calls.at(-1)[0];
   expect(menu.some((item: any) => item.label === 'Copy JSON')).toBe(true);

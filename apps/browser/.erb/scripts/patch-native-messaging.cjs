@@ -115,6 +115,7 @@ function patchInstalled() {
   require('./patch-extension-updates.cjs').patchInstalled();
   require('./patch-extension-router.cjs').patchInstalled();
   require('./patch-extension-webextension-alias.cjs').patchInstalled();
+  require('./patch-extension-context-menus.cjs').patchInstalled();
 }
 module.exports = { patchSource, patchInstalled };
 if (require.main === module) patchInstalled();

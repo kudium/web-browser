@@ -315,7 +315,7 @@ export function attachExtensionSidePanels(
                 const current = currentOptions(extension, window);
                 return !window.isDestroyed() && host.activeSession === ctx.session &&
                   !!current.tab && current.scope === scope && current.options.enabled !== false;
-              });
+              }, (params) => api.getContextMenuItems(view.webContents, params));
               view.webContents.setWindowOpenHandler(({ url: destination }) => {
                 openLink(destination);
                 return { action: 'deny' };
@@ -527,6 +527,12 @@ export function attachExtensionSidePanels(
     }
     return originalActivate(event, details);
   };
+  // A native extension menu choice is a user gesture, including worker handlers.
+  api.on('context-menu-clicked', ({ extensionId, webContents }) => {
+    const window = ctx.store.tabToWindow.get(webContents);
+    if (window && !window.isDestroyed() && webContents.session === ctx.session)
+      gestures.set(`${extensionId}:${window.id}`, Date.now());
+  });
   api.on('browser-action-popup-created', (popup) => {
     if (popup.browserWindow && popup.parent)
       recordInput(

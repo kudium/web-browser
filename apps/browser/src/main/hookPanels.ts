@@ -259,7 +259,8 @@ export function showHookPanel(binding: Binding, input: unknown) {
             binding.groupId,
           );
       };
-      attachPanelContextMenu(view.webContents, link, () => available(e), () => {
+      attachPanelContextMenu(view.webContents, link, () => available(e), (params) => {
+        if (params.isEditable) return [];
         const content = e.output.content;
         const text = content.type === 'json' ? JSON.stringify(content.value, null, 2)
           : content.type === 'table' ? [content.columns, ...content.rows].map(row => row.join('\t')).join('\n')

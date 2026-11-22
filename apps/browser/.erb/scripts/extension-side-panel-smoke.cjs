@@ -1,5 +1,6 @@
 /* Real extension frames/workers and native sidebar content in disposable profiles. */
 const { app, BrowserWindow, WebContentsView, session } = require('electron');
+require('./patch-extension-context-menus.cjs').patchInstalled();
 const { ElectronChromeExtensions } = require('electron-chrome-extensions');
 const fs = require('node:fs'),
   os = require('node:os'),
@@ -53,7 +54,7 @@ app
           manifest_version: 3,
           name: `${type} sidebar`,
           version: '1',
-          permissions: ['sidePanel', 'storage', 'tabGroups', 'debugger'],
+          permissions: ['sidePanel', 'storage', 'tabGroups', 'debugger', 'contextMenus'],
           action: {},
           side_panel: { default_path: 'panel.html' },
           background: {
@@ -76,8 +77,21 @@ app
       );
       fs.writeFileSync(
         path.join(dir, 'worker.js'),
-        `chrome.runtime.onMessage.addListener((message, sender, respond) => {
-      const operation = message.command === 'groups' ? chrome.tabGroups.query({}) :
+        `chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+      await chrome.storage.local.set({menuClick:{info,tabId:tab?.id}});
+      if(info.menuItemId === 'askMuse') {
+        try { await chrome.sidePanel.open({windowId:tab.windowId}); await chrome.storage.local.set({menuOpened:true}); }
+        catch(error) { await chrome.storage.local.set({menuError:error.message}); }
+      }
+    });
+    chrome.runtime.onMessage.addListener((message, sender, respond) => {
+      const operation = message.command === 'menus' ? (async()=>{
+        await chrome.contextMenus.removeAll();
+        chrome.contextMenus.create({id:'askMuse',title:'Ask Muse',contexts:['page'],visible:false});
+        await chrome.contextMenus.update('askMuse',{title:'Ask Muse about this page',visible:true});
+        chrome.contextMenus.create({id:'useBrowser',title:'Use this browser',type:'checkbox',checked:true,contexts:['action']});
+        return true;
+      })() : message.command === 'groups' ? chrome.tabGroups.query({}) :
         message.command === 'targets' ? chrome.debugger.getTargets() :
         message.command === 'options' ? chrome.sidePanel.getOptions({}) :
         message.command === 'behavior' ? chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:true}) :
@@ -449,6 +463,30 @@ app
       assert.equal(host.state().activeId, undefined);
       api.selectTab(tab.webContents);
       assert(host.state().activeId);
+      const menuSetup = await tab.webContents.executeJavaScript(`chrome.runtime.sendMessage({command:'menus'})`);
+      assert(menuSetup.ok, 'Worker must be able to update registered menus');
+      const pageMenus=api.getContextMenuItems(tab.webContents,{pageURL:tab.webContents.getURL(),mediaType:'none',selectionText:'',isEditable:false});
+      assert.equal(pageMenus[0].label,'Ask Muse about this page','Hidden Muse-style menu becomes visible after update');
+      host.close();
+      pageMenus[0].click(pageMenus[0]);
+      let menuState;
+      for(let i=0;i<80;i++) {
+        menuState=await tab.webContents.executeJavaScript(`chrome.storage.local.get(['menuClick','menuOpened','menuError'])`);
+        if(menuState.menuOpened || menuState.menuError)break;
+        await pause(30);
+      }
+      assert.equal(menuState.menuClick.tabId,tab.webContents.id,'Click events point at the clicked tab');
+      assert.equal(menuState.menuClick.info.menuItemId,'askMuse');
+      assert.equal(menuState.menuOpened,true,menuState.menuError || 'Context-menu gesture opens the panel from the worker');
+      const toolbarMenus=api.api.contextMenus.buildMenuItemsForExtension(extension.id,'browser_action');
+      assert.equal(toolbarMenus[0].label,'Use this browser');assert.equal(toolbarMenus[0].checked,true);
+      toolbarMenus[0].click(toolbarMenus[0]);
+      for(let i=0;i<80;i++) {
+        menuState=await tab.webContents.executeJavaScript(`chrome.storage.local.get('menuClick')`);
+        if(menuState.menuClick?.info.menuItemId==='useBrowser')break;
+        await pause(30);
+      }
+      assert.equal(menuState.menuClick.info.wasChecked,true);assert.equal(menuState.menuClick.info.checked,false);
       host.undock();
       const profileWindow = host.floating.window;
       host.setSession(
@@ -467,7 +505,7 @@ app
       tab2.webContents.close();
       chrome.destroy();
       console.log(
-        `PASS ${type}: extension API, worker calls, gesture gate, isolated content, tab scopes, profile switches and unload`,
+        `PASS ${type}: extension API, real worker context menus and checked clicks, menu gesture gate, isolated content, tab scopes, profile switches and unload`,
       );
     }
     clearTimeout(timeout);

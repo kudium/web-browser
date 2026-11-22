@@ -4,6 +4,7 @@ import type {
   ContextMenuParams,
   MenuItemConstructorOptions,
   WebContents,
+  MenuItem,
 } from 'electron';
 import { nativeMenuLabels } from '../browser/menuLabels';
 
@@ -78,17 +79,15 @@ export function attachPanelContextMenu(
   contents: WebContents,
   openLink: (url: string) => void,
   available: () => boolean,
-  outputItems: () => MenuItemConstructorOptions[] = () => [],
+  outputItems: (params: ContextMenuParams) => Array<MenuItemConstructorOptions | MenuItem> = () => [],
 ) {
   contents.on('context-menu', (_event, params) => {
     if (!available()) return;
-    const items = shellContextMenu(contents, params, !app.isPackaged,
+    const items: Array<MenuItemConstructorOptions | MenuItem> = shellContextMenu(contents, params, !app.isPackaged,
       url => { if (available()) openLink(url); });
-    if (!params.isEditable) {
-      const output = outputItems();
-      if (items.length && output.length) items.push({ type: 'separator' });
-      items.push(...output);
-    }
+    const output = outputItems(params);
+    if (items.length && output.length) items.push({ type: 'separator' });
+    items.push(...output);
     if (items.length) Menu.buildFromTemplate(items).popup({
       frame: contents.mainFrame,
     });
