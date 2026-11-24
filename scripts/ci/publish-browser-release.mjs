@@ -96,7 +96,11 @@ for (const asset of uploads) {
 }
 if (release.draft) gh(['release', 'edit', tag, '--repo', repository, '--draft=false']);
 for (const manifest of manifests) for (const asset of manifest.files) {
-  const response = await fetch(asset.url, { method: 'HEAD', signal: AbortSignal.timeout(30000) });
+  // A pre-publication 404 can remain cached after GitHub publishes the draft.
+  // Verify fresh public bytes without changing the immutable advertised URL.
+  const verificationUrl = new URL(asset.url);
+  verificationUrl.searchParams.set('verify', String(Date.now()));
+  const response = await fetch(verificationUrl.href, { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(30000) });
   if (!response.ok || Number(response.headers.get('content-length')) !== asset.size)
     throw new Error(`GitHub download not publicly accessible: ${asset.url}`);
 }
