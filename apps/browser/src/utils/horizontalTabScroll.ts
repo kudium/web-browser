@@ -13,4 +13,3 @@ export function revealHorizontalTab(tab: HTMLElement) {
   if (!delta) return;
   list.scrollLeft = Math.max(0, Math.min(list.scrollWidth - list.clientWidth, list.scrollLeft + delta));
 }
-
