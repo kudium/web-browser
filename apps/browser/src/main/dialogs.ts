@@ -1,3 +1,4 @@
+import { usesNativeGlass } from './nativeGlass';
 import {
   formReviewDocument,
   formReviewScript,
@@ -447,10 +448,7 @@ export async function showBrowserDialog(
       noLink: true,
     });
   }
-  const usesGlass = () =>
-    process.platform === 'darwin' &&
-    !nativeTheme.prefersReducedTransparency &&
-    !nativeTheme.shouldUseHighContrastColors;
+  const usesGlass = usesNativeGlass;
   const modal = new BrowserWindow({
     parent: owner,
     modal: true,
@@ -471,7 +469,7 @@ export async function showBrowserDialog(
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#00000000',
     ...(process.platform === 'darwin' && {
-      vibrancy: usesGlass() ? ('sidebar' as const) : undefined,
+      vibrancy: usesGlass() ? ('sheet' as const) : undefined,
       visualEffectState: 'followWindow' as const,
     }),
     webPreferences: {

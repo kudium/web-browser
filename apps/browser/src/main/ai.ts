@@ -1,3 +1,4 @@
+import { appleFillRequested } from './aiAppleIntent';
 import { capabilityFailure } from '../browser/aiCapabilityContracts';
 import { AICompletionContract } from './aiCompletionContract';
 import { AILoopGuard } from './aiLoopGuard';
@@ -4939,6 +4940,8 @@ return function registerScopedAI(
               throw new Error(
                 'Load the relevant family with discover_tools before calling this tool.'
               );
+            if (isAppleAIEndpoint(settings.endpoint) && ['fill_saved_login', 'fill_personal_data', 'request_personal_data'].includes(call.function.name) && !appleFillRequested(prompt))
+              throw new Error('The current user request does not authorize filling personal data.');
             const args = JSON.parse(call.function.arguments);
             receiptArgs = args;
             const tabId =
@@ -5004,7 +5007,7 @@ return function registerScopedAI(
             tool_call_id: call.id,
             content:
               isAppleAIEndpoint(settings.endpoint) &&
-              call.function.name === 'list_tabs'
+              ['list_tabs', 'read_page'].includes(call.function.name)
                 ? JSON.stringify(output)
                 : formatAIObservation(call.function.name, output),
           });
@@ -6544,7 +6547,11 @@ return function registerScopedAI(
         };
       }
       if (action === 'update') {
-        const enable = patch?.enabled === true;
+        const before = mcp.status();
+        const advertisingOnly = patch?.tunnelUrl !== undefined &&
+          patch.enabled === before.enabled && !patch.rotate &&
+          (patch.port === undefined || patch.port === before.port);
+        const enable = patch?.enabled === true && !advertisingOnly;
         const status = await mcp.update(patch, binding.assert);
         binding.assert();
         if (enable && status.running) setHumanControl(false);

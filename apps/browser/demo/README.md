@@ -61,3 +61,7 @@ From the repository root, use `npm run showcase:refresh` after starting the rend
 Read [SHOWCASE.md](SHOWCASE.md) for the LLM runbook and verification checklist.
 `atlas-studio/docs/launch-plan.md` contains reusable fictional team and launch data.
 The capture includes both the solid default AI panel and the optional glassy panel.
+
+## Toast documentation photography
+
+Run `env -u ELECTRON_RUN_AS_NODE node node_modules/electron/cli.js .erb/scripts/toast-photography.cjs` from `apps/browser` on a Mac. This uses production native toasts over the fictional Atlas Studio fixture in a disposable profile. It composites real renderer captures at their actual native window positions (system backdrop blur is not represented), verifies visible labels and clipping, and refreshes `toast-stack` and `toast-error` PNG masters, WebP derivatives and the shared verification manifest. Inspect both images before using them; the public tutorial allowlist exposes only WebP files.

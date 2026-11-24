@@ -243,6 +243,28 @@
       "expectedText": "Search switch group",
       "pages": [],
       "verified": true
+    },
+    {
+      "image": "toast-stack.png",
+      "expectedText": [
+        "Information",
+        "Low battery",
+        "Saved",
+        "Dismiss all",
+        "Save energy"
+      ],
+      "verified": true,
+      "source": "Production native appToast overlays, fictional Atlas Studio local fixture, disposable profile; Electron renderer captures composited at actual native window bounds; system backdrop blur is not represented by renderer capture."
+    },
+    {
+      "image": "toast-error.png",
+      "expectedText": [
+        "Could not save",
+        "Try again"
+      ],
+      "verified": true,
+      "source": "Production native appToast overlays, fictional Atlas Studio local fixture, disposable profile; Electron renderer captures composited at actual native window bounds; system backdrop blur is not represented by renderer capture."
     }
-  ]
+  ],
+  "toastUpdatedAt": "2026-11-24T15:54:10.594Z"
 }

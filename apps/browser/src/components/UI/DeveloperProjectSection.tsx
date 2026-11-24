@@ -245,6 +245,11 @@ export function DeveloperProjectSection({
               </PanelDropdownContent>
             </DropdownMenu.Root>
           </div>
+          {project.instructionsNotice && (
+            <p role="status" className="developer-project-notice">
+              {project.instructionsNotice}
+            </p>
+          )}
           {!project.available && (
             <p className="developer-project-notice">
               Folder unavailable. Choose another in Project options.

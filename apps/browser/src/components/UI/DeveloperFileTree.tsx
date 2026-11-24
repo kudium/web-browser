@@ -62,6 +62,14 @@ function FileRow({ node, style }: NodeRendererProps<FileNode>) {
     <button
       type="button"
       draggable={node.data.kind === 'file' && !node.data.status}
+      onPointerEnter={() => {
+        if (node.data.kind === 'file' && !node.data.status)
+          window.electron.siteDeveloper.files(sourceId, { action: 'prepare-drag', path: node.data.path }).catch(() => {});
+      }}
+      onPointerDown={() => {
+        if (node.data.kind === 'file' && !node.data.status)
+          window.electron.siteDeveloper.files(sourceId, { action: 'prepare-drag', path: node.data.path }).catch(() => {});
+      }}
       onDragStart={(event) => {
         // Cancel HTML dragging and hand the real file to the operating system.
         event.preventDefault();

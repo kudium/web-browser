@@ -767,7 +767,7 @@ it('shows hook output and errors by default, with execution details available on
   expect(screen.queryByText('Hooks completed')).toBeNull();
   expect(screen.getByText('hello world')).toBeTruthy();
   expect(screen.getByText('Failed callback')).toBeTruthy();
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Show execution details' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Show details' }));
   expect(screen.getByText('Page load started')).toBeTruthy();
   expect(screen.getByText('Hooks completed')).toBeTruthy();
 });

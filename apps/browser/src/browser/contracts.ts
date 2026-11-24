@@ -37,6 +37,7 @@ export interface BrowserTabRequest {
     | 'close'
     | 'remove'
     | 'unload-group'
+    | 'collapse-groups'
     | 'store'
     | 'task-ended'
     | 'open-external'
@@ -91,6 +92,7 @@ export interface BrowserState {
 export interface BrowserLayout {
   focusedId?: string;
   suspended?: boolean;
+  sidebarSuspended?: boolean;
   tabSwitcher?: boolean;
   apps: IApp[];
   visible: {

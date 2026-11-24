@@ -5,11 +5,14 @@ import {
   SidebarPanelState,
 } from '../browser/sidebarPanels';
 
-export function useSidebarPanels() {
+export function useSidebarPanels(active = false) {
   const [state, setState] = useState<SidebarPanelState>(EMPTY_SIDEBAR_PANELS);
   const restoring = useRef(false);
   const restored = useRef(false);
+  const wasActive = useRef(false);
   useEffect(() => {
+    if (active && !wasActive.current && !state.activeId) restored.current = false;
+    wasActive.current = active;
     try {
       const panel = state.panels.find((entry) => entry.id === state.activeId);
       if (panel) {
@@ -41,7 +44,7 @@ export function useSidebarPanels() {
     } catch {
       /* Layout preferences must not prevent opening a panel. */
     }
-  }, [state.activeId, state.panels]);
+  }, [state.activeId, state.panels, active]);
   useEffect(() => {
     let active = true;
     let received = false;

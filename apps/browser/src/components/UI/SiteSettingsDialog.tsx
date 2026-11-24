@@ -52,6 +52,8 @@ export function SiteSettingsDialog({
   command,
   onCapture,
   fullUrl,
+  showLinkPreview,
+  onLinkPreviewChange,
   siteAutofillEnabled,
   onSiteAutofillChange,
   onFullUrlChange,
@@ -66,6 +68,8 @@ export function SiteSettingsDialog({
   addressBarPlacement?: 'sidebar' | 'header';
   onAddressBarPlacementChange?: (placement: 'sidebar' | 'header') => void;
   fullUrl?: boolean;
+  showLinkPreview?: boolean;
+  onLinkPreviewChange?: (enabled: boolean) => void;
   siteAutofillEnabled?: boolean;
   onSiteAutofillChange?: (enabled: boolean) => void;
   onFullUrlChange?: (enabled: boolean) => void;
@@ -220,6 +224,13 @@ export function SiteSettingsDialog({
                   <h2 id="address-customize-heading">Customize</h2>
                 </div>
                 <div className="site-settings-group">
+                  {onLinkPreviewChange && (
+                    <div className="site-setting-row">
+                      <span className="site-setting-icon"><Settings2 size={18} /></span>
+                      <span className="site-setting-label">Link URL preview</span>
+                      <Switch aria-label="Link URL preview" checked={showLinkPreview !== false} onCheckedChange={onLinkPreviewChange} />
+                    </div>
+                  )}
                   {onSiteAutofillChange && (
                     <div className="site-setting-row">
                       <span className="site-setting-icon">

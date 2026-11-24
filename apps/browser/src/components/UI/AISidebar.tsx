@@ -1403,7 +1403,7 @@ export function AISidebar({
       }}
     >
       <SidebarPanels state={sidebarPanels} active={visible && pane === 'panels'} onClose={onSidebarClose || (() => setPane('assistant'))} />
-      <AssistantPanelHost panel="activity" active={pane === 'activity'}>
+      <AssistantPanelHost panel="activity" visible={visible} active={pane === 'activity'}>
         <div
           className="ai-sidebar-pane ai-activity-pane"
           role="region"
@@ -1424,7 +1424,7 @@ export function AISidebar({
           />
         </div>
       </AssistantPanelHost>
-      <AssistantPanelHost panel="notes" active={pane === 'notes'}>
+      <AssistantPanelHost panel="notes" visible={visible} active={pane === 'notes'}>
         <div
           className="ai-sidebar-pane ai-notes-pane"
           role="region"
@@ -1436,7 +1436,7 @@ export function AISidebar({
           </RenderErrorBoundary>
         </div>
       </AssistantPanelHost>
-      <AssistantPanelHost panel="developer" active={pane === 'developer'}>
+      <AssistantPanelHost panel="developer" visible={visible} active={pane === 'developer'}>
         <DeveloperSidebar
           openTerminalRequest={terminalOpenRequest}
           onManageGroup={onManageGroup}
@@ -1447,7 +1447,7 @@ export function AISidebar({
           onGroupContextMenu={onGroupContextMenu}
         />
       </AssistantPanelHost>
-      <AssistantPanelHost panel="tasks" active={showTasks}>
+      <AssistantPanelHost panel="tasks" visible={visible} active={showTasks}>
         <div
           className="ai-sidebar-pane"
           role="region"
@@ -1460,7 +1460,7 @@ export function AISidebar({
           <AITasksPanel busy={busy} resumable={resumable} />
         </div>
       </AssistantPanelHost>
-      <AssistantPanelHost panel="assistant" active={pane === 'assistant'}>
+      <AssistantPanelHost panel="assistant" visible={visible} active={pane === 'assistant'}>
         <div
           className={`ai-sidebar-pane ai-assistant-layout${
             historyOpen ? ' ai-history-open' : ''

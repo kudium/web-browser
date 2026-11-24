@@ -23,7 +23,7 @@ beforeEach(() => {
   jest
     .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
     .mockImplementation(function rect(this: HTMLElement) {
-      const left = this.getAttribute('data-left') === '100' ? 100 : 0;
+      const left = Number(this.getAttribute('data-left') || 0);
       return {
         left,
         right: left + 100,
@@ -61,7 +61,7 @@ it('lists clipped tabs and selects the chosen overflow tab', async () => {
 });
 
 it('keeps the dropdown hidden in scroll mode', () => {
-  render(
+  const { container } = render(
     <HorizontalTabList mode="scroll" tabs={tabs} onSelect={() => {}}>
       <div className="horizontal-tab" />
       <div className="horizontal-tab" data-left="100" />
@@ -70,4 +70,13 @@ it('keeps the dropdown hidden in scroll mode', () => {
   expect(
     screen.queryByRole('button', { name: 'Show overflow tabs' })
   ).toBeNull();
+  const strip = container.querySelector('[data-overflow="scroll"]')!;
+  expect(strip.getAttribute('data-fade-left')).toBe('false');
+  expect(strip.getAttribute('data-fade-right')).toBe('true');
+  const nodes = strip.querySelectorAll('.horizontal-tab');
+  nodes[0].setAttribute('data-left', '-100');
+  nodes[1].setAttribute('data-left', '0');
+  fireEvent.scroll(strip);
+  expect(strip.getAttribute('data-fade-left')).toBe('true');
+  expect(strip.getAttribute('data-fade-right')).toBe('false');
 });

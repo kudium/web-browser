@@ -6,6 +6,7 @@ import { PanelDropdownContent } from './PanelDialog';
 import { TabIcon, type TabAppearance } from './TabIcon';
 import { ChromeIconButton } from './ChromeIconButton';
 
+
 export function HorizontalTabList({
   mode,
   tabs,
@@ -25,9 +26,12 @@ export function HorizontalTabList({
     const measure = () => {
       const bounds = element.getBoundingClientRect();
       const nodes = element.querySelectorAll<HTMLElement>('.horizontal-tab');
+      const rects = Array.from(nodes, (node) => node.getBoundingClientRect());
+      element.dataset.fadeLeft = String(mode === 'scroll' && rects.some(rect => rect.left < bounds.left - 1));
+      element.dataset.fadeRight = String(mode === 'scroll' && rects.some(rect => rect.right > bounds.right + 1));
       const hidden = tabs
         .filter((tab, index) => {
-          const rect = nodes[index]?.getBoundingClientRect();
+          const rect = rects[index];
           return (
             rect &&
             (rect.left < bounds.left - 1 || rect.right > bounds.right + 1)

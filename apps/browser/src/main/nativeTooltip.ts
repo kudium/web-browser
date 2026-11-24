@@ -2,16 +2,16 @@ import { BrowserWindow, screen } from 'electron';
 import { onWindowClosed } from './windowLifecycle';
 import type { NativeTooltipRequest } from '../browser/nativeUi';
 
-const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'"><style>html,body{margin:0;background:transparent}body{width:320px;padding:6px;box-sizing:border-box;font:12px/18px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}#hint{display:inline-block;max-width:288px;overflow-wrap:anywhere;padding:6px 10px;border:1px solid #0002;border-radius:7px;background:#f7f7f7;color:#202124;box-shadow:0 2px 5px #0003}body.dark #hint{background:#303033;color:#f5f5f5;border-color:#ffffff20}</style><div id="hint"></div>`;
+const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'"><style>html,body{margin:0;background:transparent;overflow:hidden}body{width:320px;padding:6px;box-sizing:border-box;font:12px/18px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}#hint{display:inline-block;box-sizing:border-box;max-width:288px;overflow-wrap:anywhere;padding:6px 10px;border:1px solid #0002;border-radius:7px;background:#f7f7f7;color:#202124;box-shadow:0 2px 5px #0003}body.dark #hint{background:#303033;color:#f5f5f5;border-color:#ffffff20}</style><div id="hint"></div>`;
 
-export function validateTooltip(value: NativeTooltipRequest) {
+export function validateTooltip(value: NativeTooltipRequest, labelLimit = 300) {
   if (!value || typeof value.id !== 'string' || value.id.length > 100)
     throw new Error('Invalid tooltip');
   if (value.label === undefined) return;
   const { anchor } = value;
   if (
     typeof value.label !== 'string' ||
-    value.label.length > 300 ||
+    value.label.length > labelLimit ||
     !anchor ||
     ![anchor.x, anchor.y, anchor.width, anchor.height].every(Number.isFinite) ||
     anchor.width < 0 ||
@@ -51,8 +51,8 @@ export class NativeTooltip {
     if (this.window && !this.window.isDestroyed()) this.window.hide();
   };
 
-  async update(request: NativeTooltipRequest) {
-    validateTooltip(request);
+  async update(request: NativeTooltipRequest, footer?: { x: number; y: number; width: number; height: number }) {
+    validateTooltip(request, footer ? 65536 : 300);
     if (request.label === undefined) {
       if (request.id === this.id) this.hide();
       return;
@@ -98,11 +98,11 @@ export class NativeTooltip {
     )
       return;
     const size = await hint.webContents.executeJavaScript(
-      `(()=>{document.body.className=${JSON.stringify(
+      `(()=>{document.body.style.width=${JSON.stringify(`${footer ? Math.max(40, Math.min(900, footer.width)) : 320}px`)};document.body.className=${JSON.stringify(
         request.dark ? 'dark' : ''
-      )};const e=document.getElementById('hint');e.textContent=${JSON.stringify(
+      )};const e=document.getElementById('hint');e.style.maxWidth=${JSON.stringify(footer ? '100%' : '288px')};e.textContent=${JSON.stringify(
         request.label
-      )};const r=e.getBoundingClientRect();return {width:Math.ceil(r.width)+12,height:Math.ceil(r.height)+12}})()`
+      )};const r=e.getBoundingClientRect();const size={width:Math.ceil(r.width)+12,height:Math.ceil(r.height)+12};document.body.style.width='100%';return size})()`
     );
     if (
       version !== this.version ||
@@ -135,7 +135,15 @@ export class NativeTooltip {
       bottom + 4 + height <= area.y + area.height
         ? Math.round(bottom + 4)
         : Math.max(area.y, Math.round(top - height - 4));
-    hint.setBounds({ x, y, width, height });
+    if (footer) {
+      const footerWidth = Math.min(size.width, footer.width, area.width);
+      const footerHeight = Math.min(size.height, footer.height, area.height);
+      hint.setBounds({
+        x: Math.max(area.x, Math.min(area.x + area.width - footerWidth, Math.round(content.x + footer.x))),
+        y: Math.max(area.y, Math.min(area.y + area.height - footerHeight, Math.round(content.y + footer.y + footer.height - footerHeight))),
+        width: Math.round(footerWidth), height: Math.round(footerHeight),
+      });
+    } else hint.setBounds({ x, y, width, height });
     hint.showInactive();
   }
 }

@@ -1,3 +1,5 @@
+import type { MCPConnection } from '../../../browser/mcp';
+import { normalizeMCPTunnelURL, mcpTunnelConnection } from '../../../browser/mcpTunnel';
 /* eslint jsx-a11y/label-has-associated-control: ["error", { "assert": "htmlFor" }] */
 import { useEffect, useState } from 'react';
 import { Button, Switch, Callout } from '@radix-ui/themes';
@@ -17,7 +19,9 @@ export function ExternalAISettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [format, setFormat] = useState<'http' | 'stdio'>('http');
+  const [format, setFormat] = useState<'http' | 'stdio' | 'tunnel'>('http');
+  const [tunnelDraft, setTunnelDraft] = useState<string>();
+  const [tunnelError, setTunnelError] = useState('');
   const [configuration, setConfiguration] = useState('');
   const [configError, setConfigError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -91,7 +95,7 @@ export function ExternalAISettings() {
           : window.electron.ai.mcpConnection();
       request
         .then((value) => {
-          if (alive) setConfiguration(JSON.stringify(value, null, 2));
+          if (alive) setConfiguration(JSON.stringify(format === 'tunnel' ? mcpTunnelConnection(value as MCPConnection, status.tunnelUrl || '') : value, null, 2));
           return undefined;
         })
         .catch((reason) => {
@@ -101,7 +105,7 @@ export function ExternalAISettings() {
     return () => {
       alive = false;
     };
-  }, [status?.running, status?.url, format, revision, manualOpen]);
+  }, [status?.running, status?.url, status?.tunnelUrl, format, revision, manualOpen]);
   const update = async (enabled: boolean, rotate = false) => {
     setBusy(true);
     setError('');
@@ -122,6 +126,19 @@ export function ExternalAISettings() {
     } finally {
       setBusy(false);
     }
+  };
+  const saveTunnel = async () => {
+    setTunnelError('');
+    try {
+      const tunnelUrl = normalizeMCPTunnelURL(tunnelDraft ?? status?.tunnelUrl ?? '');
+      setBusy(true);
+      const next = await window.electron.ai.mcpUpdate({ enabled: status?.enabled || false, tunnelUrl });
+      setStatus(next);
+      setTunnelDraft(undefined);
+      setRevision(value => value + 1);
+      setNotice(tunnelUrl ? 'Tunnel endpoint saved. Reachability has not been checked.' : 'Tunnel endpoint removed.');
+    } catch (reason) { setTunnelError(message(reason)); }
+    finally { setBusy(false); }
   };
   const copy = async () => {
     try {
@@ -294,19 +311,45 @@ export function ExternalAISettings() {
                   id="ai-mcp-format"
                   value={format}
                   onChange={(event) =>
-                    setFormat(event.target.value as 'http' | 'stdio')
+                    setFormat(event.target.value as 'http' | 'stdio' | 'tunnel')
                   }
                 >
                   <option value="http">HTTP</option>
+                  <option value="tunnel">Custom HTTPS / tunnel</option>
                   <option value="stdio">stdio · Node 22+</option>
                 </select>
                 <Button disabled={busy || !configuration} onClick={copy}>
                   Copy
                 </Button>
               </div>
+              {format === 'tunnel' && (
+                <div className="preference-card">
+                  <div className="preference-row">
+                    <label htmlFor="ai-mcp-tunnel">Custom HTTPS endpoint</label>
+                    <div className="ai-port-controls ai-tunnel-controls">
+                      <input id="ai-mcp-tunnel" type="url" placeholder="https://your-tunnel.example/mcp"
+                        value={tunnelDraft ?? status?.tunnelUrl ?? ''} disabled={busy}
+                        onChange={event => { setTunnelDraft(event.target.value); setTunnelError(''); }}
+                        aria-invalid={!!tunnelError} aria-describedby="ai-mcp-tunnel-help" />
+                      <Button disabled={busy || !status || (tunnelDraft ?? status.tunnelUrl ?? '') === (status.tunnelUrl ?? '')} onClick={saveTunnel}>Save endpoint</Button>
+                    </div>
+                  </div>
+                  <p id="ai-mcp-tunnel-help" className="ai-model-help">
+                    Paste the MCP URL from your tunnel service. Kudium does not start the tunnel.
+                  </p>
+                  <details>
+                    <summary>Tunnel requirements</summary>
+                    <p className="ai-model-help">
+                      Forward to {status?.url}, preserve Authorization and streaming, and set the upstream Host to 127.0.0.1:{status?.port}.
+                      OAuth-only clients need an OAuth gateway. Your tunnel provider can see forwarded traffic.
+                    </p>
+                  </details>
+                  {tunnelError && <p role="alert">{tunnelError}</p>}
+                </div>
+              )}
               <div className="ai-config-address">
                 <span>Endpoint</span>
-                <code>{status.url}</code>
+                <code>{format === 'tunnel' ? status.tunnelUrl || 'No tunnel endpoint configured' : status.url}</code>
               </div>
               <textarea
                 aria-label="MCP configuration"

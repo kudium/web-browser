@@ -333,6 +333,7 @@ const electronHandler = {
       return invokeWhenReady('ai-personal-agents', request);
     },
     mcpUpdate(patch: {
+      tunnelUrl?: string;
       enabled: boolean;
       port?: number;
       rotate?: boolean;
@@ -590,6 +591,11 @@ const electronHandler = {
         action,
         id
       );
+    },
+    droppedProjectFile(file: File): Promise<{ sourceId: string; path: string } | null> {
+      const filePath = webUtils.getPathForFile(file);
+      if (!filePath) return Promise.resolve(null);
+      return ipcRenderer.invoke('site-developer-file-drop', filePath);
     },
     files(
       id: string,
@@ -942,6 +948,10 @@ const electronHandler = {
   },
 };
 
+// One destination dispatch per IPC event, regardless of Activity list subscribers.
+ipcRenderer.on('browser-activity-action', (_event: IpcRendererEvent, entry: import('../browser/activity').BrowserActivity) => {
+  window.dispatchEvent(new CustomEvent('kudiumbrowser-activity-action', {detail:entry}));
+});
 contextBridge.exposeInMainWorld('electron', electronHandler);
 
 export type ElectronHandler = typeof electronHandler;

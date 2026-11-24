@@ -622,3 +622,22 @@ it('persists horizontal-only tabs separately from the existing strip with hover 
   }
   updateBrowserPreferences({ tabDisplayMode: 'horizontal' });
 });
+
+it('enables link previews by default and persists the opt-out', () => {
+  expect(defaultPreferences.showLinkPreview).toBe(true);
+  expect(preferenceControls.find(control => control.key === 'showLinkPreview')).toMatchObject({ section: 'appearance', kind: 'toggle' });
+  expect(() => validatePreferences({ showLinkPreview: 'yes' } as any)).toThrow('Invalid preference');
+  updateBrowserPreferences({ showLinkPreview: false });
+  expect(getBrowserPreferences().showLinkPreview).toBe(false);
+  updateBrowserPreferences({ showLinkPreview: true });
+});
+
+it('offers low battery alerts by default and persists opting out',()=>{
+  expect(defaultPreferences.lowBatteryAlerts).toBe(true);
+  expect(preferenceControls.find(control=>control.key==='lowBatteryAlerts')?.section).toBe('performance');
+  expect(validatePreferences({lowBatteryAlerts:false})).toEqual({lowBatteryAlerts:false});
+  expect(()=>validatePreferences({lowBatteryAlerts:'no'} as any)).toThrow();
+  updateBrowserPreferences({lowBatteryAlerts:false});
+  expect(getBrowserPreferences().lowBatteryAlerts).toBe(false);
+  updateBrowserPreferences({lowBatteryAlerts:true});
+});

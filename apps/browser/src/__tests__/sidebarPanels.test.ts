@@ -8,6 +8,7 @@ import type { BrowserWindow, WebContentsView } from 'electron';
 const mockHandle = jest.fn();
 jest.mock('electron', () => ({
   ipcMain: { handle: (...args: unknown[]) => mockHandle(...args) },
+  BrowserWindow: jest.fn(),
 }));
 
 function fixture() {
@@ -219,4 +220,35 @@ test('sidebar IPC accepts only the registered window main frame', () => {
     floating: false,
   });
   window.emit('closed');
+});
+
+
+test('main-window overlays do not blank an undocked panel, including on resize', async () => {
+  const { host, views, createView } = fixture();
+  const child = Object.assign(new EventEmitter(), {
+    isDestroyed: () => false,
+    setMenu: jest.fn(), focus: jest.fn(), show: jest.fn(), destroy: jest.fn(),
+    loadURL: jest.fn().mockResolvedValue(undefined),
+    getContentBounds: () => ({ width: 520, height: 720 }),
+    contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
+    webContents: Object.assign(new EventEmitter(), { setWindowOpenHandler: jest.fn() }),
+  });
+  (require('electron').BrowserWindow as jest.Mock).mockImplementation(() => child);
+  host.register({ info: { id: 'extension', title: 'Extension', kind: 'extension' }, contentKey: 'v1', createView });
+  host.activate('extension');
+  host.layout('extension', { x: 700, y: 100, width: 300, height: 600 });
+  host.setSuspended(true);
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(false);
+  host.undock();
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+  host.setSuspended(true);
+  child.emit('resize');
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+  expect(createView).toHaveBeenCalledTimes(1);
+  host.dock();
+  host.layout('extension', { x: 700, y: 100, width: 300, height: 600 });
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(false);
+  host.setSuspended(false);
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+  host.dispose();
 });

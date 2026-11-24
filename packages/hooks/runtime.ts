@@ -3,7 +3,7 @@
  */
 export function pageHookBody(source: string): string {
   return (
-    '"use strict"; const {url, document, content, page, log, notify, activity, notes, panel, setInterval, setTimeout, onCleanup, signal, listen, runId} = context;\n' +
+    '"use strict"; const {url, document, content, page, log, notify, activity, notes, panel, toast, os, setInterval, setTimeout, onCleanup, signal, listen, runId} = context;\n' +
     source
   );
 }

@@ -5,7 +5,7 @@ import {
   ChevronDown,
   Link,
   SlidersHorizontal,
-  LockKeyholeOpen,
+  LockOpen,
 } from 'lucide-react';
 import { FormInput } from './FormControls';
 import type { SiteDeveloperState } from '../../browser/siteDeveloper';
@@ -81,7 +81,7 @@ export function AddressBar({
         {groupBadge}
         {insecure && (
           <ChromeIconButton
-            icon={LockKeyholeOpen}
+            icon={LockOpen}
             label="Not secure — site settings"
             className="address-insecure-indicator"
             onClick={onSiteSettings}

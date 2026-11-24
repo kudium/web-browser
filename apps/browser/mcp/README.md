@@ -32,6 +32,20 @@ Linking a group’s project folder creates a managed group section in `BROWSER.m
 
 The guide includes the group’s stable ID and explains how to discover current tabs through MCP. It contains no connection tokens, credentials, tab history or terminal state. The external agent still needs a configured MCP connection: this file does not enable external control or grant new permissions. Routine browsing follows the selected access mode; supported Full access actions can run without repeated approval. Human scope changes, denied actions and protected-data reviews continue to apply.
 
+## User-managed HTTPS tunnels
+
+For HTTPS desktop clients or hosted clients, run a tunnel service of your choice and select **Custom HTTPS / tunnel** in the existing **Client configuration** dropdown under **Other agents & manual setup**. Enter the full MCP endpoint, save it, then copy the JSON. The path is preserved; include `/mcp` unless your proxy maps another path to it. Saving only advertises the URL: Kudium does not install, launch, or validate the tunnel. Clearing the field removes it.
+
+Forward the tunnel to `http://127.0.0.1:43187`, preserving the path, HTTP method, Authorization header and streaming responses. Rewrite the upstream Host header to `127.0.0.1:43187` (substitute your configured port). For example, a separately installed tunnel can use:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:43187 --http-host-header 127.0.0.1:43187
+```
+
+Use the HTTPS URL reported by the provider plus `/mcp`. A hosted client needs a publicly reachable endpoint with a trusted certificate; a same-Mac desktop client can use an appropriately trusted local HTTPS proxy. Keep the tunnel running and the browsing window open. Providers that terminate TLS can see the forwarded traffic, including the bearer token; choose one you trust.
+
+The client must support Streamable HTTP and sending the copied Bearer authorization header. OAuth-only connectors require a user-managed OAuth gateway that authenticates the client and adds Kudium's token upstream; entering a tunnel URL alone does not provide OAuth. Browser Origin headers remain rejected. Local HTTP, npm and personal-agent connections continue using loopback. Existing permissions, pauses and scope apply equally through the tunnel. Reset token or disable external control to revoke tunnel access; refresh the copied configuration after a token reset.
+
 ## Clients that require stdio
 
 Install Node.js 22 or newer. Save the copied connection JSON to a private file with permissions restricted to your OS user. Configure the client:

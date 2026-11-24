@@ -4,9 +4,9 @@ import {
   actionTemplates,
   type HookAction,
 } from '../../../../../packages/hooks/actions';
-import { Button, DropdownMenu, IconButton } from '@radix-ui/themes';
-import { Plus, Trash2, BookOpen, ChevronDown } from 'lucide-react';
+import { Button, DropdownMenu } from '@radix-ui/themes';
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { FormTextField } from './FormTextField';
 import { CodeEditor } from './CodeEditor';
 
@@ -44,10 +44,7 @@ export function HookActionsEditor({
     onChange([...actions, next]);
     setSelectedId(next.id);
   };
-  return (
-    <section className="hook-actions-editor" aria-label="Context menu actions">
-      <div className="hook-actions-toolbar">
-        <span>Context menu</span>
+  const examplesControl = (
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
             <Button
@@ -56,7 +53,7 @@ export function HookActionsEditor({
               color="gray"
               disabled={disabled || actions.length >= 20}
             >
-              Examples <ChevronDown size={12} />
+              Examples <ChevronDown size={12} aria-hidden="true" />
             </Button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
@@ -70,16 +67,19 @@ export function HookActionsEditor({
             ))}
           </DropdownMenu.Content>
         </DropdownMenu.Root>
-        <Button
-          size="1"
-          variant="soft"
-          color="gray"
-          disabled={disabled || actions.length >= 20}
-          onClick={() => add()}
-        >
-          <Plus size={14} /> Add action
+  );
+  return (
+    <section className="hook-actions-editor" aria-label="Context menu actions">
+      <div className="hook-editor-file-actions" role="group" aria-label="Action tools">
+        {examplesControl}
+        <Button size="1" variant="solid" className="hook-action-add" disabled={disabled || actions.length >= 20} onClick={() => add()}>
+          Add action
+        </Button>
+        <Button asChild size="1" variant="ghost" color="gray">
+          <a href="https://browser.kudium.com/tutorials/website-hooks" target="_blank" rel="noreferrer">Help</a>
         </Button>
       </div>
+      <div className="hook-actions-toolbar"><span>Context menu</span></div>
       {!selected ? (
         <div className="hook-actions-empty">
           <strong>Add your first action</strong>
@@ -120,7 +120,8 @@ export function HookActionsEditor({
                 disabled={disabled}
                 onChange={(e) => update({ name: e.target.value })}
               />
-              <IconButton
+              <Button
+                size="1"
                 className="hook-action-delete"
                 variant="ghost"
                 color="gray"
@@ -130,8 +131,8 @@ export function HookActionsEditor({
                   onChange(actions.filter((a) => a.id !== selected.id))
                 }
               >
-                <Trash2 size={15} />
-              </IconButton>
+                Delete
+              </Button>
             </div>
             <fieldset className="hook-action-contexts">
               <legend>Show on</legend>
@@ -160,16 +161,6 @@ export function HookActionsEditor({
               </div>
             </fieldset>
 
-            <div className="hook-action-script-heading">
-              <span>Script</span>
-              <a
-                href="https://browser.kudium.com/tutorials/website-hooks"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <BookOpen size={13} /> Help
-              </a>
-            </div>
             <CodeEditor
               mode="action"
               value={selected.source}

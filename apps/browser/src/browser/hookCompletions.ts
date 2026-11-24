@@ -51,6 +51,8 @@ const members: Record<string, Completion[]> = {
         info: 'Register a listener removed automatically when the hook stops.',
       }
     ),
+    {label:'os',type:'namespace',info:'Operating system APIs, including os.battery.'},
+    {label:'toast',type:'namespace',info:'Browser-owned dismissible notifications and action callbacks.'},
     {
       label: 'activity',
       type: 'namespace',
@@ -104,6 +106,16 @@ const members: Record<string, Completion[]> = {
       detail: '({ title, message?, url? }) → Promise',
       info: 'Creates an unread Activity alert. Use await to wait for saving. URL must be HTTP or HTTPS.',
     }),
+  ],
+  os: ['battery','power','appearance','network','locale'].map(label=>({label,type:'namespace' as const,info:'Operating system status.'})),
+  'os.power': [snippetCompletion('get()',{label:'get',type:'function',info:'Power source and cached Low Power Mode.'}),snippetCompletion('onChange(${handler})',{label:'onChange',type:'function',info:'Power-source/wake events; cleanup is automatic.'})],
+  'os.appearance': [snippetCompletion('get()',{label:'get',type:'function',info:'Dark mode, reduced motion/transparency and contrast.'}),snippetCompletion('onChange(${handler})',{label:'onChange',type:'function',info:'System appearance events; cleanup is automatic.'})],
+  'os.network': [snippetCompletion('get()',{label:'get',type:'function',info:'Local online/offline status, not website reachability.'}),snippetCompletion('onChange(${handler})',{label:'onChange',type:'function',info:'Online/offline events; cleanup is automatic.'})],
+  'os.locale': [snippetCompletion('get()',{label:'get',type:'function',info:'Language, preferred languages and time zone.'})],
+  'os.battery': [snippetCompletion('get()', {label:'get',type:'function',info:'Read cached battery status: available, percent, charging, onBattery and sampledAt.'})],
+  toast: [
+    snippetCompletion('show({id:"${notice}",title:"${Notice}",message:"${Message}"})',{label:'show',type:'function',info:'Show a browser-owned toast. Five seconds, ten with action.'}),
+    snippetCompletion('onAction("${action}",async()=>{\n  ${handler}\n})',{label:'onAction',type:'function',info:'Register a toast action; removed automatically when this hook stops.'}),
   ],
   theme: [
     {label:'primary',type:'property',info:'The current browser primary color (hex).'},

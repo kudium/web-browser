@@ -1,3 +1,5 @@
+import { openActivityDestination } from '../../browser/activity';
+import { useAssistantPanelVisible } from './AssistantPanelContext';
 import { Popover, Select, Switch, Text } from '@radix-ui/themes';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
@@ -60,13 +62,15 @@ function activityTime(timestamp: number) {
 }
 
 export function ActivityPage({
-  active,
+  active: requestedActive,
   onAskAI,
 }: {
   active: boolean;
   // eslint-disable-next-line react/require-default-props
   onAskAI?: () => void;
 }) {
+  const panelVisible = useAssistantPanelVisible();
+  const active = requestedActive && panelVisible;
   const [entries, setEntries] = useState<BrowserActivity[]>([]);
   const [selected, setSelected] = useState<string>();
   const [error, setError] = useState('');
@@ -76,6 +80,8 @@ export function ActivityPage({
   const [soundName, setSoundName] = useState<ActivitySoundName>('chime');
   const notificationsId = useId();
   const [notifications, setNotifications] = useState(false);
+  const toastsId = useId();
+  const [toasts, setToasts] = useState(false);
   const [sound, setSound] = useState(true);
   const [soundReady, setSoundReady] = useState(false);
   const [savingSound, setSavingSound] = useState(false);
@@ -88,6 +94,7 @@ export function ActivityPage({
           setSound(preferences.activitySound);
           setSoundName(preferences.activitySoundName || 'chime');
           setNotifications(preferences.activityNotifications);
+          setToasts(preferences.activityToasts === true);
           setSoundReady(true);
         }
       } catch {
@@ -123,8 +130,11 @@ export function ActivityPage({
     [refresh]
   );
   useEffect(() => {
+    if (!active) return undefined;
     refresh();
-    const stop = window.electron.onActivityChanged?.(refresh);
+    return window.electron.onActivityChanged?.(refresh);
+  }, [active, refresh]);
+  useEffect(() => {
     const open = (event: Event) => {
       const id = (event as CustomEvent<string>).detail;
       if (typeof id !== 'string') return;
@@ -133,7 +143,6 @@ export function ActivityPage({
     };
     window.addEventListener('kudiumbrowser-open-activity', open);
     return () => {
-      stop?.();
       window.removeEventListener('kudiumbrowser-open-activity', open);
     };
   }, [refresh, read]);
@@ -216,6 +225,7 @@ export function ActivityPage({
                       });
                       setSound(preferences.activitySound);
                       setNotifications(preferences.activityNotifications);
+                      setToasts(preferences.activityToasts === true);
                       setError('');
                     } catch {
                       setError('Sound preference could not be saved.');
@@ -281,6 +291,24 @@ export function ActivityPage({
               />
             </div>
             <div className="activity-sound-setting activity-banner-setting">
+              <Text as="label" htmlFor={toastsId}>Browser toasts</Text>
+              <div className="activity-setting-controls">
+                <PreferenceHint label="Browser toasts">
+                  <p>Show a toast for new unread activity. Dismiss or use its action to mark it read. Automatic expiry keeps it unread.</p>
+                </PreferenceHint>
+                <Switch id={toastsId} size="1" checked={toasts} disabled={!soundReady || savingSound}
+                  onCheckedChange={async checked => {
+                    setSavingSound(true);
+                    try {
+                      const preferences = await browser.preferences('update', {activityToasts:checked});
+                      setToasts(preferences.activityToasts === true);
+                      setError('');
+                    } catch { setError('Toast preference could not be saved.'); }
+                    finally { setSavingSound(false); }
+                  }} />
+              </div>
+            </div>
+            <div className="activity-sound-setting activity-banner-setting">
               <Text as="label" htmlFor={notificationsId}>
                 System notifications
               </Text>
@@ -303,6 +331,7 @@ export function ActivityPage({
                         activityNotifications: checked,
                       });
                       setNotifications(preferences.activityNotifications);
+                      setToasts(preferences.activityToasts === true);
                       setError('');
                     } catch {
                       setError('Notification preference could not be saved.');
@@ -399,16 +428,9 @@ export function ActivityPage({
               className="activity-summary"
               aria-label={entry.title}
               onClick={() => {
-                if (entry.noteId) {
+                if (entry.noteId || entry.url) {
                   read(entry.id);
-                  window.dispatchEvent(
-                    new CustomEvent('kudiumbrowser-open-note', {
-                      detail: entry.noteId,
-                    })
-                  );
-                } else if (entry.url) {
-                  read(entry.id);
-                  window.open(entry.url, '_blank', 'noopener,noreferrer');
+                  openActivityDestination(entry);
                 } else if (selected === entry.id) setSelected(undefined);
                 else read(entry.id);
               }}

@@ -13,3 +13,9 @@ export const AssistantPanelWindowContext = createContext<{
   floating: boolean;
   toggle: () => void;
 } | null>(null);
+
+/** Hidden retained panels preserve drafts but pause visibility-only work. */
+export const AssistantPanelVisibilityContext = createContext(true);
+export function useAssistantPanelVisible() {
+  return useContext(AssistantPanelVisibilityContext);
+}

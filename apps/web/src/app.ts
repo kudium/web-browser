@@ -80,7 +80,7 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.get('/docs/notes-and-activity', c => c.html(notesAndActivityDocumentation()));
   app.get('/tutorials', c => c.html(tutorialIndex()));
   app.get('/tutorials/:slug', c => { const tutorial = tutorials.find(t => t.slug === c.req.param('slug')); return tutorial ? c.html(tutorialPage(tutorial)) : c.notFound(); });
-  const demoAssets = new Set(['sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-glassy', 'ai-mentions', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace', 'space-search', 'notes-workspace', 'task-manager', 'favorites-workspace', 'folder-group']);
+  const demoAssets = new Set(['toast-stack', 'toast-error', 'sidebar-expanded', 'sidebar-collapsed', 'address-group-picker', 'workspace-light', 'workspace-dark', 'project-files-light', 'project-files-dark', 'project-editor-light', 'project-editor-dark', 'file-filter', 'project-scripts', 'site-hooks-light', 'site-hooks-dark', 'ai-context', 'ai-glassy', 'ai-mentions', 'ai-active-tabs', 'project-terminal', 'developer-workspace', 'developer-files', 'developer-terminal', 'design-workspace', 'social-workspace', 'space-search', 'notes-workspace', 'task-manager', 'favorites-workspace', 'folder-group']);
   app.get('/assets/product/demo/:filename', async c => {
     const filename = c.req.param('filename');
     const recording = filename === 'space-search.mp4';

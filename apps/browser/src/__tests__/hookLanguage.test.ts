@@ -1,3 +1,4 @@
+import { hookExamples } from '../browser/hookExamples';
 import { hookPanelExamples } from '../browser/hookPanelExamples';
 /** @jest-environment node */
 import path from 'path';
@@ -170,3 +171,9 @@ test('context.theme exposes read-only resolved color types in the hook editor', 
   expect((await query('diagnostics','const primary = context.theme.primary; await context.panel.show({id:"colors",title:"Theme",content:{type:"text",text:primary}});')).diagnostics).toEqual([]);
   expect((await query('diagnostics','context.theme.primary = "#ffffff";')).diagnostics?.some(item => item.message.includes('read-only'))).toBe(true);
 });
+
+test('battery toast example passes the editor API checks',async()=>{
+  const example=hookExamples.find(item=>item.id==='battery-toast')!;
+  expect(example.stage).toBe('after');
+  expect((await query('diagnostics',example.source)).diagnostics).toEqual([]);
+},15000);

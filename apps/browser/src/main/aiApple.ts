@@ -1,3 +1,4 @@
+import { appleLatestInstruction, appleFillRequested, appleCredentialLookupRequested } from './aiAppleIntent';
 import { appleAIPrerequisite } from './aiApplePrerequisite';
 import { aiContextManagement } from '../browser/aiContextManagement';
 import { appleAIContext } from './aiAppleContext';
@@ -135,6 +136,9 @@ export async function fetchAppleAI(
     throw new Error(
       'Apple local AI does not support screenshot attachments here. Use page text or select a vision provider.'
     );
+  const fillAuthorized = appleFillRequested(appleLatestInstruction(body.messages ?? []));
+  if (!fillAuthorized) body.tools = (body.tools ?? []).filter((tool: any) => !['fill_saved_login', 'fill_personal_data', 'request_personal_data'].includes(tool.function?.name));
+  if (!appleCredentialLookupRequested(appleLatestInstruction(body.messages ?? []))) body.tools = (body.tools ?? []).filter((tool: any) => !['list_saved_logins', 'list_autofill_data'].includes(tool.function?.name));
   const prerequisite = appleAIPrerequisite(body);
   if (prerequisite) return Response.json(prerequisite);
   const managed = aiContextManagement(
@@ -170,6 +174,8 @@ export async function fetchAppleAI(
   // Reject every generated call before exposing any to the existing executor.
   const tools = new Set(context.tools.map((tool: any) => tool.name));
   for (const call of payload.choices?.[0]?.message?.tool_calls ?? []) {
+    if (!fillAuthorized && ['fill_saved_login', 'fill_personal_data', 'request_personal_data'].includes(call.function?.name))
+      throw new Error('This request does not authorize filling personal data. No actions were executed.');
     if (!tools.has(call.function?.name))
       throw new Error(
         'Apple AI requested an unknown tool. No actions were executed.'

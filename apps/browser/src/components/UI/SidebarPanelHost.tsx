@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { PanelOverlayProvider } from './PanelDialog';
 import {
   AssistantPanelDocumentContext,
+  AssistantPanelVisibilityContext,
   AssistantPanelWindowContext,
 } from './AssistantPanelContext';
 import { installFocusModality } from '../../utils/focusModality';
@@ -22,6 +23,7 @@ export function SidebarPanelHost({
   id: panel,
   title,
   active,
+  visible = true,
   children,
   windowName = `kudium-sidebar-${panel}`,
   placementKey = `kudium-panel-window-${panel}`,
@@ -31,6 +33,7 @@ export function SidebarPanelHost({
   id: string;
   title: string;
   active: boolean;
+  visible?: boolean;
   children: ReactNode;
   windowName?: string;
   placementKey?: string;
@@ -235,7 +238,9 @@ export function SidebarPanelHost({
               // eslint-disable-next-line react/jsx-no-constructed-context-values
               value={{ title, floating, toggle: floating ? dockBack : undock }}
             >
-              {visited && children}
+              <AssistantPanelVisibilityContext.Provider value={floating || (active && visible)}>
+                {visited && children}
+              </AssistantPanelVisibilityContext.Provider>
             </AssistantPanelWindowContext.Provider>
             <div className="ai-overlay-layer" ref={setOverlay} />
           </PanelOverlayProvider>

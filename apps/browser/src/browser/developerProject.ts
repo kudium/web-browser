@@ -12,6 +12,7 @@ export interface DeveloperProject {
   path: string;
   repository?: string;
   available: boolean;
+  instructionsNotice?: string;
   breadcrumbs?: { name: string; path: string }[];
 }
 export interface ProjectEditor {
@@ -73,7 +74,10 @@ export interface ProjectTerminalEvent {
   sequence: number;
 }
 export function projectErrorMessage(reason: unknown) {
-  return String(reason)
+  const message = String(reason);
+  if (/\b(?:EPERM|EACCES)\b/.test(message))
+    return 'Kudium cannot access this project folder. Check its permissions or choose another folder.';
+  return message
     .replace(
       /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
       ''
@@ -118,7 +122,7 @@ export interface ProjectScriptResult {
 
 export type ProjectFilesRequest =
   | {
-      action: 'list' | 'preview' | 'open-tab' | 'drag';
+      action: 'list' | 'preview' | 'open-tab' | 'drag' | 'prepare-drag';
       path: string;
       hidden?: boolean;
     }

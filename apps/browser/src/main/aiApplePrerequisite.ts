@@ -1,4 +1,6 @@
+import { appleLatestInstruction, appleLoginRequested, appleFillRequested, appleInstructionText } from './aiAppleIntent';
 import { randomUUID } from 'crypto';
+import { appleAILoginPrerequisite } from './aiAppleLoginPrerequisite';
 
 /** Read current page content before asking the small local model to explain it. */
 export function appleAIPrerequisite(request: any) {
@@ -7,17 +9,16 @@ export function appleAIPrerequisite(request: any) {
   messages.forEach((message, index) => {
     if (message.role === 'user') latestUser = index;
   });
-  const content = messages[latestUser]?.content;
-  const query =
-    typeof content === 'string'
-      ? content
-      : Array.isArray(content)
-      ? content
-          .filter((part) => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n')
-      : '';
-  const filling = /\bfill\b.*\bform\b|\b(?:log[ -]?in|sign[ -]?in)\b/i.test(query);
+  const query = appleLatestInstruction(messages);
+  const filling = appleFillRequested(query);
+  if (/^did\s+i\s+ask\s+you\s+to\s+(?:log[ -]?in|sign[ -]?in|fill)\b/i.test(query)) {
+    const previous = [...messages.slice(0, latestUser)].reverse().find((message) => message.role === 'user');
+    const authorized = appleFillRequested(appleInstructionText(previous?.content));
+    return { choices: [{ finish_reason: 'stop', message: { role: 'assistant', tool_calls: [], content: authorized
+      ? 'Your earlier message requested filling sign-in details. This question does not authorize another fill or submission.'
+      : 'No. Your previous message did not request login or filling. I should answer your question without filling or submitting anything.' } }] };
+  }
+
   const identifying =
     /^(?:what|which)\s+tab\s+(?:is\s+(?:this|it)|am\s+i\s+(?:on|in)|are\s+we\s+on)\??\s*$/i.test(
       query.trim()
@@ -25,6 +26,7 @@ export function appleAIPrerequisite(request: any) {
   if (
     !identifying &&
     !filling &&
+    !/^(?:what|which) (?:web)?(?:page|site|website) (?:is this|am i on|are we on)/i.test(query) &&
     !/(?:summari[sz]e|explain|describe|read).*(?:this|current|active|the) (?:web)?(?:page|site)|(?:what|tell me).*(?:this|current|active) (?:web)?(?:page|site)|\bfill\b.*\bform\b/i.test(
       query
     )
@@ -69,6 +71,10 @@ export function appleAIPrerequisite(request: any) {
   )
     return undefined;
   const turn = messages.slice(latestUser + 1);
+  if (appleLoginRequested(query)) {
+    const login = appleAILoginPrerequisite(request, turn, focused.id);
+    if (login) return login;
+  }
   if (
     filling &&
     !turn.some((message) =>

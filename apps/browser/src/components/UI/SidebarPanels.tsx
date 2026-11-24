@@ -28,6 +28,7 @@ export function SidebarPanels({
   const slot = useRef<HTMLDivElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const restoredTarget = useRef(false);
+  const layoutUpdate = useRef<(() => void) | undefined>(undefined);
   useEffect(() => {
     if (restoredTarget.current || !state.targets?.length) return;
     restoredTarget.current = true;
@@ -64,6 +65,7 @@ export function SidebarPanels({
         })
         .catch(() => {});
     };
+    layoutUpdate.current = update;
     const schedule = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(update);
@@ -74,6 +76,7 @@ export function SidebarPanels({
     document.addEventListener('scroll', schedule, true);
     update();
     return () => {
+      layoutUpdate.current = undefined;
       cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener('resize', schedule);
@@ -87,9 +90,10 @@ export function SidebarPanels({
     pickerOpen,
     state.activeId,
     state.openRequest,
-    state.panels,
     state.floating,
   ]);
+  // Metadata refreshes can require layout, but must not hide or detach the view.
+  useLayoutEffect(() => { layoutUpdate.current?.(); }, [state.panels]);
   return (
     <section
       className="ai-sidebar-pane sidebar-feature-pane"

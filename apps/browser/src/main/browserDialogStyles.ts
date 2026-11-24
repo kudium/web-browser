@@ -1,8 +1,10 @@
+import { nativeGlassSurfaceTokens } from './nativeGlass';
 export const browserDialogStyles = `
+${nativeGlassSurfaceTokens}
 :root { color-scheme:light dark; font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:light-dark(#f5f5f7,#28282a); color:light-dark(#252527,#f4f4f5); }
 * { box-sizing:border-box; }
 :root[data-glass='true'] { background:transparent; }
-:root[data-glass='true'] body { background:light-dark(#f5f5f766,#28282a66); }
+:root[data-glass='true'] body { background:light-dark(var(--native-glass-light-tint),var(--native-glass-dark-tint)); }
 :root[data-glass='true'] input, :root[data-glass='true'] textarea, :root[data-glass='true'] select, :root[data-glass='true'] .saved-input { background:light-dark(#ffffff66,#ffffff08); border-color:light-dark(#00000020,#ffffff24); }
 :root[data-glass='true'] .saved-input > input, :root[data-glass='true'] .saved-input > textarea, :root[data-glass='true'] .saved-input > select { background:transparent; }
 @media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {

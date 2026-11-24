@@ -1,3 +1,4 @@
+import { normalizeMCPTunnelURL } from '../browser/mcpTunnel';
 import { capabilityFailure } from '../browser/aiCapabilityContracts';
 /* Sequential request-body reading is bounded to one megabyte. */
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
@@ -329,6 +330,7 @@ export function createMCPController(options: {
 }) {
   let enabled = options.defaultEnabled ?? true;
   let port = 43187;
+  let tunnelUrl = '';
   let token = randomBytes(32).toString('hex');
   let connectorToken: string | undefined;
   let pairing = false;
@@ -353,6 +355,7 @@ export function createMCPController(options: {
     const saved = JSON.parse(fs.readFileSync(options.filename, 'utf8'));
     privateDataDisclosed = saved.privateDataDisclosed !== false;
     enabled = typeof saved.enabled === 'boolean' ? saved.enabled : true;
+    if (saved.tunnelUrl !== undefined) tunnelUrl = normalizeMCPTunnelURL(saved.tunnelUrl);
     if (
       Number.isInteger(saved.port) &&
       saved.port >= 1024 &&
@@ -380,6 +383,7 @@ export function createMCPController(options: {
     running: !!server?.listening,
     port,
     url: `http://127.0.0.1:${port}/mcp`,
+    ...(tunnelUrl ? { tunnelUrl } : {}),
     error,
   });
   const persist = () => {
@@ -391,6 +395,7 @@ export function createMCPController(options: {
         token,
         agentTokens,
         connectorToken,
+        tunnelUrl,
         privateDataDisclosed,
       }),
       { durable: privateDataDisclosed }
@@ -733,7 +738,7 @@ export function createMCPController(options: {
       }
     },
     update: async (
-      patch: { enabled: boolean; port?: number; rotate?: boolean },
+      patch: { enabled: boolean; port?: number; rotate?: boolean; tunnelUrl?: string },
       assertCurrent: () => void = () => {}
     ) => {
       assertCurrent();
@@ -748,6 +753,7 @@ export function createMCPController(options: {
             patch.port > 65535))
       )
         throw new Error('Use a port between 1024 and 65535.');
+      const nextTunnelUrl = patch.tunnelUrl === undefined ? tunnelUrl : normalizeMCPTunnelURL(patch.tunnelUrl);
       updating = true;
       let restarting = false;
       // Never read a caller-mutable patch after an asynchronous boundary.
@@ -755,6 +761,16 @@ export function createMCPController(options: {
       try {
         await ready;
         assertCurrent();
+        // Advertising a user-managed tunnel does not rebind or interrupt local control.
+        if (change.tunnelUrl !== undefined && change.enabled === enabled &&
+            (change.port === undefined || change.port === port) && !change.rotate) {
+          if (disposed) throw new Error('Open the browsing window to configure external control.');
+          const previous = tunnelUrl;
+          tunnelUrl = nextTunnelUrl;
+          try { persist(); } catch (reason) { tunnelUrl = previous; throw reason; }
+          options.changed(status());
+          return status();
+        }
         restarting = true;
         await stop();
         assertCurrent();
@@ -763,6 +779,7 @@ export function createMCPController(options: {
             'Open the browsing window to enable external control.'
           );
         enabled = change.enabled;
+        tunnelUrl = nextTunnelUrl;
         if (change.port !== undefined) port = change.port;
         if (change.rotate || !enabled) {
           token = randomBytes(32).toString('hex');

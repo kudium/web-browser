@@ -1,4 +1,4 @@
-import { appleAIContext, APPLE_AI_INSTRUCTIONS } from '../main/aiAppleContext';
+import { appleAIContext, APPLE_AI_INSTRUCTIONS, APPLE_AI_FORM_INSTRUCTIONS } from '../main/aiAppleContext';
 import { AI_SYSTEM_PROMPT } from '../main/aiSystemPrompt';
 
 it('preserves receipts and schema constraints while compacting local context', () => {
@@ -405,4 +405,15 @@ it('progressive compaction preserves the question and exact completed writes', (
   expect(sizes[2]).toBeLessThan(sizes[1]);
   expect(sizes[3]).toBeLessThan(sizes[2]);
   expect(request.messages).toHaveLength(5);
+});
+
+
+it('includes credential workflows only for a relevant current task', () => {
+  const messages = [{ role: 'user', content: 'Summarize the current page' }];
+  const summary = appleAIContext({ messages, tools: [] });
+  expect(summary.messages.some((message: any) => message.content === APPLE_AI_FORM_INSTRUCTIONS)).toBe(false);
+  const form = appleAIContext({ messages: [{ role: 'user', content: 'Fill this login form' }], tools: [] });
+  expect(form.messages.some((message: any) => message.content === APPLE_AI_FORM_INSTRUCTIONS)).toBe(true);
+  expect(APPLE_AI_FORM_INSTRUCTIONS).toContain('Filling does not authorize submitting');
+  expect(APPLE_AI_INSTRUCTIONS).toContain('Stop on declined permission');
 });

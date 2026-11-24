@@ -101,3 +101,14 @@ it('places near-bottom hints above the anchor and accounts for browser zoom', as
     height: 42,
   });
 });
+
+it('places a full link URL at the bottom of its own webpage viewport', async () => {
+  const tooltip = new NativeTooltip(owner);
+  const url = `https://example.com/path?query=${'long-value'.repeat(40)}#section`;
+  await tooltip.update({ ...request, label: url }, { x: 40, y: 100, width: 300, height: 300 });
+  expect(hint.setBounds).toHaveBeenLastCalledWith({ x: 40, y: 358, width: 160, height: 42 });
+  expect(hint.webContents.executeJavaScript.mock.calls[0][0]).toContain(JSON.stringify(url));
+  expect(hint.setIgnoreMouseEvents).toHaveBeenCalledWith(true);
+  tooltip.hide();
+  expect(hint.hide).toHaveBeenCalled();
+});

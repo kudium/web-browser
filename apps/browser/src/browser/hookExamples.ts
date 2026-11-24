@@ -3,6 +3,30 @@ import type { HookExample } from '../../../../packages/hooks/panel-examples';
 export type { HookExample, HookStage } from '../../../../packages/hooks/panel-examples';
 export const hookExamples: HookExample[] = [
   {
+    id: 'battery-toast',
+    name: 'Battery status with a toast action',
+    stage: 'after',
+    source: `// Cached OS readings: no polling or website notification permission needed.
+// Run on the sites where you want a battery reminder.
+async function showBattery() {
+  const status = await context.os.battery.get();
+  const low = status.available && status.onBattery && status.percent !== null && status.percent <= 20;
+  await context.toast.show({
+    id: 'battery-status',
+    title: low ? 'Low battery' : 'Battery status',
+    message: status.available
+      ? status.percent + '% remaining' + (status.charging ? ' · Charging' : '')
+      : 'Battery information is unavailable on this device.',
+    type: low ? 'warn' : 'info',
+    durationMs: 10000, // Customize from 1000 to 60000 milliseconds.
+    action: { id: 'check-battery', label: 'Check status' },
+  });
+}
+// Actions stop automatically with this hook. Readings are cached for five minutes.
+context.toast.onAction('check-battery', showBattery);
+await showBattery();`,
+  },
+  {
     id: 'dark-mode',
     name: 'Dark mode',
     stage: 'css',

@@ -126,6 +126,7 @@ export function validFilesRequest(
       'terminal-tab',
       'open-tab',
       'drag',
+      'prepare-drag',
     ].includes(request.action) &&
     typeof request.path === 'string' &&
     request.path.length <= 4096 &&
@@ -182,7 +183,7 @@ export async function projectFiles(
       throw new Error('This file changed. Refresh the folder.');
     ensureAccess();
   };
-  if (request.action === 'open-tab' || request.action === 'drag') {
+  if (request.action === 'open-tab' || request.action === 'drag' || request.action === 'prepare-drag') {
     if (!stat.isFile()) throw new Error('Choose a regular file.');
     await recheck();
     return { path: relative, url: pathToFileURL(target).href };

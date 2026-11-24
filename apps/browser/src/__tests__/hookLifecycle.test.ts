@@ -51,6 +51,8 @@ function launch(after: string, before = '', hooks: any[] = [], css = '') {
     invoke,
     removeInsertedCSS,
     insertCSS,
+    osChange: (request: unknown) => (listeners.get('site-developer-os-change') as any)?.(null,request),
+    toastAction: (request: unknown) => (listeners.get('site-developer-toast-action') as any)?.(null,request),
     panelAction: (request: unknown) => (listeners.get('site-developer-panel-action') as any)?.(null,request),
     stop: () => listeners.get('site-developer-stop')!(),
     route: () => listeners.get('site-developer-route')!(),
@@ -222,4 +224,41 @@ it('routes a panel action to its hook handler across before and after stages and
   run.panelAction({token:'run-1',hookId:'',action:'refresh',payload:'stale',requestId:'request-2'});
   await flush();
   expect(run.invoke).not.toHaveBeenCalled();
+});
+
+it('routes battery and toast APIs through approved output IPC and stops action callbacks with the run', async () => {
+  const runtime = launch(`
+    context.toast.onAction('check',()=>context.log('action clicked'));
+    await context.os.battery.get();
+    await context.toast.show({id:'notice',title:'Notice',message:'Battery check',action:{id:'check',label:'Check'}});
+  `);
+  await flush();
+  expect(runtime.invoke).toHaveBeenCalledWith('site-developer-output',expect.objectContaining({kind:'battery',token:'run-1'}));
+  expect(runtime.invoke).toHaveBeenCalledWith('site-developer-output',expect.objectContaining({kind:'toast',input:expect.objectContaining({id:'notice'})}));
+  runtime.toastAction({token:'wrong',hookId:'',action:'check'}); await flush();
+  expect(runtime.send.mock.calls.some(call=>JSON.stringify(call).includes('action clicked'))).toBe(false);
+  runtime.toastAction({token:'run-1',hookId:'',action:'check'}); await flush();
+  expect(runtime.send.mock.calls.some(call=>JSON.stringify(call).includes('action clicked'))).toBe(true);
+  runtime.stop();runtime.send.mockClear();
+  runtime.toastAction({token:'run-1',hookId:'',action:'check'}); await flush();
+  expect(runtime.send).not.toHaveBeenCalled();
+});
+
+it('reads OS status, shares same-kind subscriptions and cleans up on stop', async () => {
+  const runtime = launch(`
+    await context.os.power.get(); await context.os.appearance.get();
+    await context.os.locale.get(); await context.os.network.get();
+    context.os.power.onChange(()=>context.log('first power handler'));
+    context.os.power.onChange(()=>context.log('second power handler'));
+  `);
+  await flush();
+  for (const kind of ['os-power','os-appearance','os-locale'])expect(runtime.invoke).toHaveBeenCalledWith('site-developer-output',expect.objectContaining({kind}));
+  expect(runtime.invoke.mock.calls.filter((call:any[])=>call[1]?.kind==='os-subscribe')).toHaveLength(1);
+  runtime.osChange({token:'run-1',runId:'run-1:default:after',kind:'power',value:{onBattery:true,lowPowerMode:false}});await flush();
+  expect(runtime.send.mock.calls.some(call=>JSON.stringify(call).includes('first power handler'))).toBe(true);
+  expect(runtime.send.mock.calls.some(call=>JSON.stringify(call).includes('second power handler'))).toBe(true);
+  runtime.stop();runtime.send.mockClear();
+  runtime.osChange({token:'run-1',runId:'run-1:default:after',kind:'power',value:{onBattery:false}});await flush();
+  expect(runtime.send).not.toHaveBeenCalled();
+  expect(runtime.invoke).toHaveBeenCalledWith('site-developer-output',expect.objectContaining({kind:'os-unsubscribe'}));
 });

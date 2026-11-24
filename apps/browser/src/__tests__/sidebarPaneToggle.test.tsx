@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useState } from 'react';
 import { useSidebarPaneToggle } from '../utils/hooks/useSidebarPaneToggle';
 
-const panes = ['assistant', 'tasks', 'developer', 'notes', 'activity'] as const;
+const panes = ['assistant', 'tasks', 'developer', 'notes', 'activity', 'panels'] as const;
 
 function useSidebar() {
   const [open, setOpen] = useState(false);

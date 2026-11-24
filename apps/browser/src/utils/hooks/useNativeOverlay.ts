@@ -6,7 +6,9 @@ const overlaySelector = `.rt-BaseDialogOverlay, [data-radix-popper-content-wrapp
 
 // Native website and sidebar WebContentsViews sit above renderer portals.
 // Reuse the same overlap detection and suspension for every native surface.
-export function hasGlobalOverlay(root: ParentNode = document) {
+const allNativeSurfaces = '.browser-viewport, .sidebar-feature-content';
+
+export function hasGlobalOverlay(root: ParentNode = document, surfaces = allNativeSurfaces) {
   return Array.from(
     root.querySelectorAll<HTMLElement>(
       `.rt-BaseDialogOverlay[data-state="open"], [data-radix-popper-content-wrapper], ${developmentOverlaySelector}`
@@ -24,9 +26,9 @@ export function hasGlobalOverlay(root: ParentNode = document) {
     if (!content || content.hidden || !content.getClientRects().length)
       return false;
     const viewports = Array.from(
-      root.querySelectorAll<HTMLElement>('.browser-viewport, .sidebar-feature-content')
+      root.querySelectorAll<HTMLElement>(surfaces)
     ).filter((viewport) => viewport.getClientRects().length);
-    if (!viewports.length) return !element.closest('.ai-overlay-layer');
+    if (!viewports.length) return surfaces === allNativeSurfaces && !element.closest('.ai-overlay-layer');
     const bounds = content.getBoundingClientRect();
     return viewports.some((viewport) => {
       const page = viewport.getBoundingClientRect();
@@ -40,35 +42,45 @@ export function hasGlobalOverlay(root: ParentNode = document) {
   });
 }
 
-export function useNativeOverlay() {
+export function useNativeOverlay(surfaces = allNativeSurfaces) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const update = () => setOpen(hasGlobalOverlay());
+    const update = () => setOpen(hasGlobalOverlay(document, surfaces));
+    const geometry = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(update);
+    const observeSurfaces = () => {
+      geometry?.disconnect();
+      document.querySelectorAll(surfaces).forEach(element => geometry?.observe(element));
+    };
     const relevant = (node: Node) =>
       node instanceof Element &&
-      (node.matches(overlaySelector) || !!node.querySelector(overlaySelector));
+      (node.matches(`${overlaySelector}, ${surfaces}`) || !!node.querySelector(`${overlaySelector}, ${surfaces}`));
     const observer = new MutationObserver((records) => {
       if (
         records.some((record) =>
           record.type === 'attributes'
             ? record.target instanceof Element &&
-              !!record.target.closest(overlaySelector)
+              (!!record.target.closest(overlaySelector) || record.target.matches(surfaces) || !!record.target.querySelector(surfaces))
             : [
                 ...Array.from(record.addedNodes),
                 ...Array.from(record.removedNodes),
               ].some(relevant)
         )
-      )
+      ) {
+        if (records.some(record => record.type === 'childList')) observeSurfaces();
         update();
+      }
     });
     observer.observe(document.body, {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['data-state', 'hidden', 'style'],
+      attributeFilter: ['data-state', 'hidden', 'style', 'class'],
     });
+    window.addEventListener('resize', update);
+    document.addEventListener('scroll', update, true);
+    observeSurfaces();
     update();
-    return () => observer.disconnect();
-  }, []);
+    return () => { observer.disconnect(); geometry?.disconnect(); window.removeEventListener('resize', update); document.removeEventListener('scroll', update, true); };
+  }, [surfaces]);
   return open;
 }

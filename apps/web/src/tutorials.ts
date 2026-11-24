@@ -14,6 +14,7 @@ export type Tutorial = {
     id: string;
     title: string;
     paragraphs?: string[];
+    images?: Array<{name:string;alt:string;caption:string}>;
     reference?: Array<[string, string]>;
     examples?: Array<{ title: string; code: string }>;
   }>;
@@ -439,6 +440,63 @@ export const tutorials: Tutorial[] = [
           "Ask Chat to create or update a named hook, including context menu actions, input forms, Personal Data filling, notes or AI drafts. AI reads the complete API reference used by the editor and preserves your other hooks. Global hooks use the current login profile unless you explicitly ask for All groups; saving shows a local code and scope review.",
           "AI can check code with the editor’s language service and dry-run actions using fictional page fields and answers. Dry-run commands are previews: no fields are filled and no notes or activity are saved. It can also open the editor’s disposable website test window. Action-only page success does not mean an action ran; try the right-click item or request an action dry-run. Test pages have no existing logins or real Personal Data, and automatic website submissions should only be tested when explicitly requested.",
         ],
+      },
+      {
+        id: "os-status", title: "Power, appearance, network and locale",
+        paragraphs: [
+          "Available in Kudium Browser 1.0.22 and later: lifecycle hooks can read simple OS status through context.os. These APIs do not expose files, account names, network addresses, device identifiers or idle/lock information.",
+          "await context.os.power.get() returns onBattery and lowPowerMode. Low Power Mode is nullable, macOS-only and cached five minutes. power.onChange(handler) reports charger/battery transitions and wake events; it does not promise battery percentage or Low Power Mode toggle events.",
+          "await context.os.appearance.get() returns dark, reducedMotion, reducedTransparency and highContrast. appearance.onChange(handler) follows effective app/system appearance and accessibility changes. Respect these values in custom hook designs.",
+          "await context.os.network.get() returns {online}. network.onChange(handler) reports local online/offline transitions. Online does not guarantee internet or website reachability. await context.os.locale.get() returns language, languages and timeZone for formatting dates and numbers.",
+          "Subscriptions return an unsubscribe function and stop automatically with the hook. Native listeners are shared across hooks, and these event APIs do not poll the OS. Low Power Mode queries share a cache and one in-flight request. Read APIs use existing hook authorization and output limits. Preview power/locale readings are fictional and native subscriptions are suppressed. Worker-based Hook Actions do not expose these lifecycle APIs.",
+        ],
+        examples: [{title:"React to connectivity and power",code:`context.os.network.onChange(({online}) => {
+  context.log(online ? "Monitoring can resume" : "Offline: pause monitoring");
+});
+context.os.power.onChange(({onBattery, lowPowerMode}) => {
+  context.log("On battery:", onBattery, "Low Power Mode:", lowPowerMode);
+});
+const appearance = await context.os.appearance.get();
+const locale = await context.os.locale.get();
+context.log(appearance.reducedMotion, locale.timeZone);`}],
+      },
+      {
+        id: "toasts-and-battery",
+        title: "Browser toasts and OS battery status",
+        images: [
+          {name:"toast-stack",alt:"Production info, warning and success toasts stacked over the fictional Atlas Studio page, with Dismiss all and Save energy controls",caption:"Info, warn and success notifications. Each has its own countdown; Dismiss all also clears queued notifications. Available in Kudium Browser 1.0.22 and later."},
+          {name:"toast-error",alt:"Production error toast with a red icon, Try again action and countdown close button",caption:"An error notification with an optional action. Actual browser-owned toast over a disposable Atlas Studio fixture; no personal data. Renderer captures do not reproduce the system backdrop blur. Available in Kudium Browser 1.0.22 and later."},
+        ],
+        paragraphs: [
+          "Available in Kudium Browser 1.0.22 and later: approved website and global lifecycle hooks can use context.toast and context.os.battery. These APIs are not available in older installed versions or in worker-based context menu Hook Actions.",
+          "await context.os.battery.get() returns available, percent, charging, onBattery and sampledAt (a timestamp in milliseconds). Battery percentage is supported on macOS; desktops without a battery and unsupported platforms return available:false and null fields. Readings are cached for five minutes, and simultaneous requests share one operating-system query. Poll no more often than every five minutes.",
+          "context.toast.show({id,title,message,type,action,durationMs}) shows a compact browser-owned glass toast at the top-right. Website CSS cannot change it; title and message are plain text. type can be info, warn, success or error. The older tone option (info, warning, success, error) remains supported; type takes precedence. A toast lasts five seconds, or ten seconds with an action. Set optional durationMs to 1000–60000 milliseconds to choose a different closing time. The countdown ring matches it. Toasts stack up to three per window; extras wait until space is available and start their countdown when shown. Dismiss all clears visible and queued toasts. Reusing an id replaces that notification.",
+          "The hook editor’s Examples picker includes Battery status with a toast action for the After stage. It demonstrates cached battery reads, info/warn types, a custom duration and an action without polling. Turn off Preferences → Performance → Low battery alerts to disable the browser’s automatic reminder; hook-authored toasts and OS APIs remain available.",
+          "Activity page customization also offers Browser toasts (off by default). New unread activities can show a toast with Open note or Open page when linked. Closing it, pressing Escape, Dismiss all or using its action marks it read and updates the list and unread count. Automatic expiry keeps it unread. Reading or deleting elsewhere removes its toast; turning alerts off or locking its group removes it without marking it read. This setting is separate from OS notifications and hook-authored toasts.",
+          "An action is {id,label}. Register its callback with context.toast.onAction(id,handler). A click runs only the originating hook’s callback, and rechecks the current run, website, group lock and approved source. Callbacks are removed when the hook stops. Actions grant no extra privileges. Existing hook review and the ten-outputs-per-minute limit apply. Hook previews suppress real toasts and return fictional battery data at 20%.",
+        ],
+        examples: [{
+          title: "Read battery status and show a toast",
+          code: `const status = await context.os.battery.get();
+if (status.available && status.onBattery && status.percent <= 20) {
+  await context.toast.show({
+    id: "low-battery", title: "Low battery",
+    message: status.percent + "% remaining. Connect your charger.",
+    tone: "warning",
+  });
+}`,
+        }, {
+          title: "Add a toast action",
+          code: `context.toast.onAction("check-battery", async () => {
+  const status = await context.os.battery.get();
+  context.log("Battery:", status.percent);
+});
+await context.toast.show({
+  id: "battery-check", title: "Battery check",
+  message: "Read the latest cached battery status.",
+  action: { id: "check-battery", label: "Check battery" },
+});`,
+        }],
       },
       {
         id: "context-and-api",

@@ -27,6 +27,7 @@ export interface BrowserPreferences {
   personalDataAutofillExcludedSites: string[];
   personalDataAutofillPositions: Record<string, { side: 'left' | 'right'; x: number; y: number }>;
   addressBarFullUrl: boolean;
+  showLinkPreview: boolean;
   addressBarExtensionsExpanded: boolean;
   showExtensionIcons: boolean;
   extensionToolbarOrder: string[] | null;
@@ -49,6 +50,8 @@ export interface BrowserPreferences {
   permissions: 'ask' | 'block';
   allowPopups: boolean;
   activityNotifications: boolean;
+  activityToasts: boolean;
+  lowBatteryAlerts: boolean;
   activitySoundName: ActivitySoundName;
   activitySound: boolean;
   askDownloadLocation: boolean;
@@ -75,6 +78,7 @@ export const defaultPreferences: BrowserPreferences = {
   personalDataAutofillExcludedSites: [],
   personalDataAutofillPositions: {},
   addressBarFullUrl: false,
+  showLinkPreview: true,
   addressBarExtensionsExpanded: true,
   showExtensionIcons: true,
   extensionToolbarOrder: null,
@@ -97,6 +101,8 @@ export const defaultPreferences: BrowserPreferences = {
   permissions: 'ask',
   allowPopups: true,
   activityNotifications: false,
+  activityToasts: false,
+  lowBatteryAlerts: true,
   activitySoundName: 'chime',
   activitySound: true,
   askDownloadLocation: true,
@@ -185,6 +191,13 @@ export const preferenceControls: PreferenceControl[] = [
     title: 'Unpinned groups',
     description:
       'Show a separate section below pinned groups. When off, all groups appear together above the divider.',
+    kind: 'toggle',
+  },
+  {
+    key: 'showLinkPreview',
+    section: 'appearance',
+    title: 'Link URL preview',
+    description: 'Show the full destination URL at the bottom of the webpage when hovering over a link.',
     kind: 'toggle',
   },
   {
@@ -286,6 +299,13 @@ export const preferenceControls: PreferenceControl[] = [
     title: 'Save memory with sleeping tabs',
     description:
       'Unload long-idle hidden pages. Tabs stay saved and reload when selected. Editors, media, downloads and pages with unload warnings are protected.',
+    kind: 'toggle',
+  },
+  {
+    key: 'lowBatteryAlerts',
+    section: 'performance',
+    title: 'Low battery alerts',
+    description: 'Show a browser toast at 20% battery or below while unplugged. Hook-created toasts remain available.',
     kind: 'toggle',
   },
   {

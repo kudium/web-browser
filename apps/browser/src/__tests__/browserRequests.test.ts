@@ -14,11 +14,13 @@ const layout = {
 };
 it('validates complete layouts before existing view state can change', () => {
   expect(isBrowserLayout(layout)).toBe(true);
+  expect(isBrowserLayout({ ...layout, suspended: true, sidebarSuspended: false })).toBe(true);
   expect(isBrowserLayout({ apps: [], visible: [] })).toBe(true);
   [
     null,
     {},
     { ...layout, visible: undefined },
+    { ...layout, sidebarSuspended: 'false' },
     { ...layout, apps: [null] },
     { ...layout, apps: [...layout.apps, layout.apps[0]] },
     { ...layout, apps: [{ ...layout.apps[0], sessionId: {} }] },

@@ -1,3 +1,7 @@
+import { getHookPower, getHookAppearance, getHookLocale, onHookOSChange } from './hookOS';
+import { getBatteryStatus } from './lowBattery';
+import { showAppToast } from './appToast';
+import { validateHookToast } from '../browser/hookToast';
 import { getHookTheme } from './hookTheme';
 import { onAppThemeChanged } from './appTheme';
 // eslint-disable-next-line import/no-relative-packages
@@ -114,9 +118,71 @@ if (window === window.top) {
       const page = Object.freeze(Object.fromEntries(['reload','back','forward','stop'].map(action => [action, () => { if (alive()) send('control', action); }])));
       const output = (kind, input) => {
         if (!alive()) return Promise.reject(new Error('This hook run has stopped'));
-        return ipcRenderer.invoke('site-developer-output', {token, kind, input, hookId: hook.id});
+        return ipcRenderer.invoke('site-developer-output', {token, kind, input, hookId: hook.id, runId:detail.runId});
       };
       const notify = (key, text) => alive() ? ipcRenderer.invoke('site-developer-notify', {token, key, text}) : Promise.reject(new Error('This hook run has stopped'));
+      const toastActions = new Map();
+      const toastListener = (_event, request) => {
+        if (!alive() || request?.token !== token || request.hookId !== (hook.id || '')) return;
+        const handler = toastActions.get(request.action);
+        if (handler) guarded(handler);
+      };
+      ipcRenderer.on('site-developer-toast-action', toastListener);
+      onCleanup(() => {toastActions.clear();ipcRenderer.removeListener?.('site-developer-toast-action',toastListener)});
+      const toast = Object.freeze({
+        show: input => output('toast',input),
+        onAction: (id,handler) => {
+          if(typeof id !== 'string' || typeof handler !== 'function')throw new Error('Provide an action id and handler');
+          toastActions.set(id,handler);
+          const remove=()=>{if(toastActions.get(id)===handler)toastActions.delete(id)};
+          onCleanup(remove);return remove;
+        }
+      });
+      const osHandlers = new Map();
+      const osListener = (_event,request)=>{
+        if(!alive() || request?.token!==token || request.runId!==detail.runId)return;
+        const value=request.kind==='appearance' ? {...request.value,reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches} : request.value;
+        osHandlers.get(request.kind)?.forEach(handler=>guarded(handler,Object.freeze(value)));
+      };
+      ipcRenderer.on('site-developer-os-change',osListener);
+      onCleanup(()=>{ipcRenderer.removeListener?.('site-developer-os-change',osListener);osHandlers.clear()});
+      const subscribeOS = (kind,handler) => {
+        if(typeof handler !== 'function')throw new TypeError('onChange expects a function');
+        if(!osHandlers.has(kind))osHandlers.set(kind,new Set());
+        const handlers=osHandlers.get(kind);
+        if(!handlers.size)output('os-subscribe',kind).catch(report);
+        handlers.add(handler);
+        const cleanup=()=>{
+          handlers.delete(handler);
+          if(!handlers.size)ipcRenderer.invoke('site-developer-output',{token,kind:'os-unsubscribe',input:kind,hookId:hook.id,runId:detail.runId}).catch(()=>{});
+        };
+        onCleanup(cleanup);return cleanup;
+      };
+      const readAppearance=async()=>Object.freeze({...await output('os-appearance'),reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches});
+      const appearanceChange=handler=>{
+        const remove=subscribeOS('appearance',handler);
+        const media=window.matchMedia('(prefers-reduced-motion: reduce)');
+        const changed=()=>{readAppearance().then(value=>guarded(handler,value)).catch(report)};
+        media.addEventListener('change',changed);
+        const cleanup=()=>{remove();media.removeEventListener('change',changed)};
+        onCleanup(cleanup);return cleanup;
+      };
+      const network = Object.freeze({
+        get:async()=>Object.freeze({online:navigator.onLine}),
+        onChange:handler=>{
+          if(typeof handler !== 'function')throw new TypeError('onChange expects a function');
+          const listener=()=>guarded(handler,Object.freeze({online:navigator.onLine}));
+          window.addEventListener('online',listener);window.addEventListener('offline',listener);
+          const cleanup=()=>{window.removeEventListener('online',listener);window.removeEventListener('offline',listener)};
+          onCleanup(cleanup);return cleanup;
+        }
+      });
+      const os = Object.freeze({
+        battery:Object.freeze({get:()=>output('battery')}),
+        power:Object.freeze({get:()=>output('os-power'),onChange:handler=>subscribeOS('power',handler)}),
+        appearance:Object.freeze({get:readAppearance,onChange:appearanceChange}),
+        locale:Object.freeze({get:()=>output('os-locale')}),network,
+      });
       const activity = Object.freeze({create: input => output('activity', input)});
       const notes = Object.freeze({create: input => output('note', input)});
       const panel = Object.freeze({
@@ -131,7 +197,7 @@ if (window === window.top) {
           onCleanup(remove);return remove;
         }
       });
-      const context = Object.freeze({url: location.href, document, notify, activity, notes, panel,
+      const context = Object.freeze({url: location.href, document, notify, activity, notes, panel, toast, os,
         get theme() { return liveTheme; },
         runId: token + ':' + (hook.id || 'default') + ':' + phase,
         signal: controller.signal, onCleanup,
@@ -215,6 +281,7 @@ export function siteDeveloperPreload() {
 interface ManagedPage {
   owner?: BrowserWindow;
   stopTheme?: () => void;
+  osSubscriptions?: Map<string,()=>void>;
   previewConfig?: (url: string) => SiteDeveloperConfig;
   profile: string;
   publish: () => void;
@@ -309,6 +376,7 @@ export function rerunDeveloperHook(contents: WebContents, origin: string, hookId
 export function resetDeveloperState(contents: WebContents, origin: string) {
   const page = pages.get(contents);
   if (!page) return;
+  page.osSubscriptions?.forEach(stop=>stop());page.osSubscriptions?.clear();
   removeHookPanels(contents);
   contents.send('site-developer-stop');
   page.token = undefined;
@@ -440,12 +508,13 @@ export function registerDeveloperPage(
       kind?: unknown;
       input?: unknown;
       hookId?: unknown;
+      runId?: unknown;
     };
     const previewGroup = page?.previewConfig && page.owner
       ? sidebarPanelsFor(page.owner).targetGroup || sidebarPanelsFor(page.owner).activeGroup || `hook-test-${event.sender.id}`
       : undefined;
     const identity = page?.scope() ||
-      (previewGroup && ['panel', 'panel-close', 'panel-response', 'panel-dispose'].includes(String(data?.kind))
+      (previewGroup && ['panel', 'panel-close', 'panel-response', 'panel-dispose', 'toast', 'battery', 'os-power', 'os-appearance', 'os-locale', 'os-subscribe', 'os-unsubscribe'].includes(String(data?.kind))
         ? { groupId: previewGroup, sourceId: `hook-test-${event.sender.id}` }
         : undefined);
     const origin = siteOrigin(event.senderFrame?.url || '');
@@ -479,6 +548,30 @@ export function registerDeveloperPage(
       return removeHookPanels(event.sender, hook?.id || '');
     if (data.kind === 'panel-response')
       return respondHookPanel(event.sender, data.token, data.hookId, data.input);
+    if (data.kind === 'os-subscribe' || data.kind === 'os-unsubscribe') {
+      if (data.input !== 'power' && data.input !== 'appearance') throw new Error('Unknown OS subscription.');
+      const kind = data.input;
+      if(typeof data.runId !== 'string' || data.runId.length>300 || !data.runId.startsWith(page.token + ':'))throw new Error('Invalid OS subscription run.');
+      const runId = data.runId;
+      const key = JSON.stringify([runId,kind]);
+      page.osSubscriptions ||= new Map();
+      page.osSubscriptions.get(key)?.();page.osSubscriptions.delete(key);
+      if (data.kind === 'os-unsubscribe' || page.previewConfig) return;
+      const token = page.token;
+      const authorized = () => !event.sender.isDestroyed() && page.token===token && siteOrigin(event.sender.getURL())===origin &&
+        !getGroupLocks().locked(identity.groupId) && page.scope()?.groupId===identity.groupId &&
+        pageConfig(page,event.sender.getURL()).enabled && hookScriptHash(pageConfig(page,event.sender.getURL()))===page.scriptHash;
+      const stop = onHookOSChange(changed => {
+        if (changed !== kind || !authorized()) return;
+        void Promise.resolve(kind==='power' ? getHookPower() : getHookAppearance()).then(value=>{
+          if(authorized())event.sender.send('site-developer-os-change',{token,hookId:hook?.id||'',runId,kind,value});
+        }).catch(()=>{});
+      });
+      const cleanup=()=>{stop();event.sender.removeListener('destroyed',cleanup)};
+      page.osSubscriptions.set(key,cleanup);
+      event.sender.once('destroyed',cleanup);
+      return;
+    }
     const now = Date.now();
     const panelOutput = data.kind === 'panel' || data.kind === 'panel-close';
     const counter = panelOutput ? 'panelOutputs' : 'outputs';
@@ -515,6 +608,37 @@ export function registerDeveloperPage(
       };
       page.panelOutputs!.push(now);
       return data.kind === 'panel' ? showHookPanel(binding,data.input) : closeHookPanel(binding,data.input);
+    }
+    if (['os-power','os-appearance','os-locale'].includes(String(data.kind))) {
+      page.outputs!.push(now);
+      if (page.previewConfig) {
+        return data.kind==='os-power' ? {onBattery:true,lowPowerMode:false} : data.kind==='os-appearance' ? {dark:false,reducedMotion:false,reducedTransparency:false,highContrast:false} : {language:'en-US',languages:['en-US'],timeZone:'UTC'};
+      }
+      return data.kind==='os-power' ? getHookPower() : data.kind==='os-appearance' ? getHookAppearance() : getHookLocale();
+    }
+    if (data.kind === 'battery') {
+      page.outputs!.push(now);
+      return page.previewConfig ? {available:true,percent:20,charging:false,onBattery:true,sampledAt:now,preview:true} : getBatteryStatus();
+    }
+    if (data.kind === 'toast') {
+      const input = validateHookToast(data.input);
+      page.outputs!.push(now);
+      if (page.previewConfig) return {shown:false,preview:true};
+      const owner = page.owner || BrowserWindow.fromWebContents(event.sender);
+      if (!owner) throw new Error('This hook has no browser toast host.');
+      const token = page.token;
+      return showAppToast(owner, {
+        id: `hook-${event.sender.id}-${input.id}`, title: input.title, message: input.message, tone: input.tone, durationMs:input.durationMs,
+        action: input.action ? {label:input.action.label,run:() => {
+          if (event.sender.isDestroyed()) return;
+          const current = page.scope();
+          const latest = pageConfig(page,event.sender.getURL());
+          const enabledHook = hook ? latest.hooks?.some(candidate => candidate.id === hook.id && candidate.enabled) : true;
+          if (page.token !== token || current?.groupId !== identity.groupId || siteOrigin(event.sender.getURL()) !== origin ||
+            getGroupLocks().locked(identity.groupId) || !latest.enabled || !enabledHook || hookScriptHash(latest) !== page.scriptHash) return;
+          event.sender.send('site-developer-toast-action',{token,hookId:hook?.id || '',action:input.action!.id});
+        }} : undefined,
+      }).then(() => ({shown:true}));
     }
     if (data.kind === 'activity') {
       const input = validateActivity(data.input);

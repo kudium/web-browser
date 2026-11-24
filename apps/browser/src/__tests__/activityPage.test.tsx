@@ -1,3 +1,4 @@
+import { AssistantPanelVisibilityContext } from '../components/UI/AssistantPanelContext';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -48,7 +49,7 @@ beforeAll(() => {
 let request: jest.Mock;
 beforeEach(() => {
   (browser.preferences as jest.Mock).mockImplementation(
-    async (_action, patch) => ({ activitySound: patch?.activitySound ?? true })
+    async (_action, patch) => ({ activitySound: patch?.activitySound ?? true, activityToasts:patch?.activityToasts ?? false })
   );
   request = jest.fn(async (input) =>
     input.action === 'list' ? [entry] : undefined
@@ -303,4 +304,31 @@ it('offers a saved sound toggle and explicit preview in Activity settings', asyn
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith({ action: 'testSound' })
   );
+});
+
+it('unsubscribes hidden Activity and reloads its list on reopening', async () => {
+  const stop = jest.fn();
+  window.electron.onActivityChanged = jest.fn(() => stop);
+  const panel = (visible: boolean) => <AssistantPanelVisibilityContext.Provider value={visible}><Theme><ActivityPage active /></Theme></AssistantPanelVisibilityContext.Provider>;
+  const view = render(panel(true));
+  await waitFor(() => expect(request).toHaveBeenCalledWith({action:'list'}));
+  view.rerender(panel(false));
+  expect(stop).toHaveBeenCalledTimes(1);
+  request.mockClear();
+  view.rerender(panel(true));
+  await waitFor(() => expect(request).toHaveBeenCalledWith({action:'list'}));
+});
+
+it('persists the Activity browser toast toggle independently',async()=>{
+  (browser.preferences as jest.Mock).mockImplementation(async(_action,patch)=>({activitySound:true,activityNotifications:false,activityToasts:patch?.activityToasts??false}));
+  render(<Theme><ActivityPage active /></Theme>);
+  await screen.findByText(entry.title);
+  fireEvent.click(screen.getByRole('button',{name:'Activity settings'}));
+  const toggle=await screen.findByRole('switch',{name:'Browser toasts'});
+  await waitFor(()=>expect(toggle).toBeEnabled());
+  expect(toggle).not.toBeChecked();
+  fireEvent.click(toggle);
+  await waitFor(()=>expect(browser.preferences).toHaveBeenCalledWith('update',{activityToasts:true}));
+  await waitFor(()=>expect(toggle).toBeChecked());
+  expect(screen.getByRole('switch',{name:'System notifications'})).not.toBeChecked();
 });

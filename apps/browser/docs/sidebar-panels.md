@@ -18,6 +18,11 @@ letter and contain only lowercase letters, digits, or hyphens (up to 64 chars).
 These blank windows are permitted only by the trusted workspace host. Remote
 navigation remains blocked.
 
+Retained React pages use `AssistantPanelVisibilityContext` to pause work that
+is only needed while visible. The host reports a docked page as visible only
+when selected and the sidebar is open; floating pages remain visible. Keep
+drafts mounted while pausing subscriptions and refreshes for hidden pages.
+
 ## Isolated native feature content
 
 `main/sidebarPanels.ts` exposes `sidebarPanelsFor(window).register(provider)`.
@@ -39,7 +44,10 @@ switcher. The `SidebarPanels` renderer component supplies the shared header,
 selector, close action, pop-out action, and native content slot. Native panels
 move their existing view into a sandboxed window with a Dock back control.
 Docking or closing that window returns the same view without reloading its
-content or changing its session. Profile changes and unloading still remove
+content or changing its session. Closing the Panels sidebar page hides its
+viewport and preserves the existing view and saved selection. Reopening restores
+that selection without revealing another sidebar page. Provider-list metadata
+refreshes must update geometry without sending an intermediate null layout. Profile changes and unloading still remove
 unavailable content while it is floating.
 Extension requests open only their owning window, without persisting a
 cross-window Assistant pane change.
@@ -216,7 +224,12 @@ popup navigation system. Workspace changes use `AppManager` and its existing
 access checks. Native panel content is hidden while a shared picker is open so
 its popover can receive input, then restored without recreating the content.
 Global menus and dialogs use `useNativeOverlay` and the existing window layout
-suspension for both website viewports and native sidebar content. Include every
+suspension for both website viewports and native sidebar content. Check overlap
+separately for `.browser-viewport` and `.sidebar-feature-content`, and send the
+results through `suspended` and `sidebarSuspended`. A menu covering only a website
+must not hide an unrelated panel. Full-window dialogs still suspend both surfaces in that window. An undocked
+panel belongs to its child window and must remain visible during parent-window
+popups. Recheck overlap when surfaces resize, scroll, appear or disappear. Include every
 native surface in the shared overlap detection, including scoped portals that
 overlap a panel; do not add separate menu-specific suspension state. The native
 UI fixture opens Browser options and checks panel hiding and restoration.

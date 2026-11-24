@@ -6,6 +6,7 @@ export interface MCPStatus {
   running: boolean;
   port: number;
   url: string;
+  tunnelUrl?: string;
   error?: string;
 }
 export interface MCPConnection {

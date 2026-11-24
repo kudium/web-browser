@@ -33,13 +33,13 @@ export function installPersonalDataAutofill(
   });
   const recognized = (input: HTMLInputElement | HTMLTextAreaElement) =>
     input.type === 'password' || match('username', [], descriptor(input)) > 0 || ['name', 'given-name', 'family-name', 'email', 'tel', 'street-address', 'address-line1', 'address-line2', 'address-level1', 'address-level2', 'postal-code', 'country', 'organization'].some((name) => match(name, [], descriptor(input)) > 0);
-  type FormCandidate = { kind: string; canFillLogin?: boolean; fields: { name: string; aliases?: string[]; secret?: boolean }[] };
+  type FormCandidate = { kind: string; canFillLogin?: boolean; fields: { name: string; aliases?: string[]; secret?: boolean; value?: string; fieldIndex?: number }[] };
   const formMatches = (record: FormCandidate, controls: (HTMLInputElement | HTMLTextAreaElement)[]) => {
     if (record.kind === 'login' && record.canFillLogin !== false) return controls.filter((control) => control.type === 'password').length === 1 &&
       !controls.some((control) => control.autocomplete === 'new-password');
     return controls.some((control) => {
       const info = descriptor(control);
-      const scores = record.fields.map((field) => control.type === 'password' && !field.secret ? 0 :
+      const scores = record.fields.map((field) => (field.value !== undefined && !field.value && !(field.secret && field.fieldIndex !== undefined)) ? 0 : control.type === 'password' && !field.secret ? 0 :
         match(field.name, field.aliases || [], info) || (control.type === 'password' && control.autocomplete !== 'new-password' && !/confirm|repeat/i.test(control.name + control.id + info.label)
           ? match(field.name, field.aliases || [], { ...info, autocomplete: 'current-password' }) : 0));
       const best = Math.max(0, ...scores);
@@ -71,6 +71,7 @@ export function installPersonalDataAutofill(
       dragging = true; header.style.cursor = 'grabbing';
       const rect = panel.getBoundingClientRect();
       panel.style.left = `${Math.max(8, Math.min(Math.max(8, innerWidth - rect.width - 8), drag.left + dx))}px`;
+      panel.style.bottom = 'auto';
       panel.style.top = `${Math.max(8, Math.min(Math.max(8, innerHeight - rect.height - 8), drag.top + dy))}px`;
     });
     const finish = (event: PointerEvent) => {
@@ -184,7 +185,18 @@ export function installPersonalDataAutofill(
       if (preserveFocus) panel.dataset.autofocus = 'true';
       const rect = input.getBoundingClientRect();
       panel.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - 298))}px`;
-      panel.style.top = `${Math.max(8, Math.min(rect.bottom + 4, innerHeight - 328))}px`;
+      // Choose space outside the field instead of clamping a full-height
+      // dropdown upward across it. Short viewports use a scrollable panel.
+      const below = Math.max(0, innerHeight - rect.bottom - 12);
+      const above = Math.max(0, rect.top - 12);
+      const useBelow = below >= Math.min(320, above);
+      const room = useBelow ? below : above;
+      panel.style.maxHeight = `${Math.min(320, room)}px`;
+      panel.style.top = useBelow ? `${rect.bottom + 4}px` : 'auto';
+      if (!useBelow) panel.style.bottom = `${innerHeight - rect.top + 4}px`;
+      // If the field occupies almost the entire viewport, a picker cannot
+      // safely fit. Leave the input available rather than covering it.
+      if (room < 44) return;
       panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Personal Data');
       const content = document.createElement('div');
       const loading = document.createElement('div'); loading.className = 'loading';
@@ -295,10 +307,18 @@ export function installPersonalDataAutofill(
       };
 
       type FillRecord = { id: string; kind: string; canFillLogin?: boolean; website?: boolean; selected?: boolean; username?: string; sourceLabel?: string; title: string; fields: (VaultField & { fieldIndex?: number })[] };
+      const noMatches = () => {
+        content.querySelector('.no-form-matches')?.remove();
+        const message = notice('No matching fields available to fill.');
+        message.classList.add('no-form-matches'); content.append(message);
+        content.querySelectorAll('.fill-form').forEach((entry) => entry.remove());
+        refreshQuickFill?.();
+      };
       const fillForm = async (record: FillRecord, supplemental: FillRecord[] = []) => {
         const form = input.form;
         if (!form) return;
         const controls = Array.from(form.elements).filter(usable);
+        if (!formMatches(record, controls)) { noMatches(); return; }
         const values: { control: HTMLInputElement | HTMLTextAreaElement; value: string }[] = [];
         const choices: { control: HTMLInputElement | HTMLTextAreaElement; values: string[] }[] = [];
         const secrets = new Map<number, string>();
@@ -368,7 +388,7 @@ export function installPersonalDataAutofill(
             content.querySelector<HTMLButtonElement>('button')?.focus();
             return;
           }
-          if (!filled) { content.append(notice('No matching fields available to fill.')); return; }
+          if (!filled) { noMatches(); return; }
           finishInput(input);
         } catch { if (generation === current) content.append(notice('Unable to fill this form. Unlock Personal Data and try again.', 'error')); }
       };
@@ -500,7 +520,7 @@ export function installPersonalDataAutofill(
             continue;
           }
           if (input.type === 'password') continue;
-          const matches = record.fields.filter((field) => !field.secret).map((field) => ({ field, score: match(field.name, field.aliases || [], descriptor(input)) })).filter((entry) => entry.score > 0);
+          const matches = record.fields.filter((field) => !field.secret && !!field.value).map((field) => ({ field, score: match(field.name, field.aliases || [], descriptor(input)) })).filter((entry) => entry.score > 0);
           if (!matches.length) continue;
           const heading = document.createElement('div'); heading.className = 'heading'; const name = document.createElement('span'); name.textContent = record.title; heading.append(name); content.append(heading);
           for (const { field } of matches) {
@@ -511,7 +531,7 @@ export function installPersonalDataAutofill(
             });
             entry.setAttribute('aria-label', `Fill ${field.name}: ${field.value}`); content.append(entry);
           }
-          if (input.form) {
+          if (input.form && formMatches(record, Array.from(input.form.elements).filter(usable))) {
             const fill = button('Fill this form', () => { void fillForm(record); });
             fill.className = 'fill-form'; heading.append(fill);
           }
@@ -727,6 +747,12 @@ export function installPersonalDataAutofill(
     else close();
   };
   const onPointer = (event: Event) => { if (!loginPrompt && event.target !== host && event.target !== target) close(); };
+  const onTyping = (event: Event) => {
+    if (event.isTrusted && event.target === target && !loginPrompt) {
+      root?.querySelector('.panel')?.remove(); generation++;
+    }
+  };
+  document.addEventListener('input', onTyping);
   const onKey = (event: KeyboardEvent) => {
     if (!event.isTrusted) return;
     if (event.altKey && ['ArrowDown', 'Enter'].includes(event.key) && target && usable(target) && openCurrent) {
@@ -779,7 +805,7 @@ export function installPersonalDataAutofill(
     disposed = true; enabled = false; close();
     clearTimeout(loginTimer); clearTimeout(loginExpiry); loginObserver?.disconnect(); document.removeEventListener('submit', onSubmit, true);
     document.removeEventListener('click', onLoginClick, true); document.removeEventListener('keydown', onLoginEnter, true);
-    document.removeEventListener('focusin', onFocus);
+    document.removeEventListener('input', onTyping); document.removeEventListener('focusin', onFocus);
     document.removeEventListener('pointerdown', onPointer, true);
     document.removeEventListener('keydown', onKey);
     removeEventListener('scroll', closeField, true); removeEventListener('resize', closeField); removeEventListener('pagehide', close);

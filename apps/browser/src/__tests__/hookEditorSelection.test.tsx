@@ -43,3 +43,12 @@ it('isolates editor state on rapid hook selection within the same stage', () => 
   rendered.rerender(view('one', 'log("one")'));
   expect(screen.getByRole('textbox', {name:'After load code'})).toHaveValue('log("one")');
 });
+
+it('keeps example and import tools outside stage navigation',()=>{
+  render(<Theme><HookEditor code={{before:'',after:'',css:''}} disabled={false} onChange={jest.fn()} examples={<button type="button">Examples</button>}/></Theme>);
+  const tools=screen.getByRole('group',{name:'Hook code tools'});
+  expect(tools).toContainElement(screen.getByRole('button',{name:'Examples'}));
+  expect(tools).toContainElement(screen.getByRole('button',{name:'Import'}));
+  expect(tools.closest('.site-hook-editor-toolbar')).toBeNull();
+  expect(tools.closest('.hook-editor-canvas')).not.toBeNull();
+});

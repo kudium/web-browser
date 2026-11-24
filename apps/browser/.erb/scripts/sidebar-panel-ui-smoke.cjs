@@ -26,7 +26,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-panel-ui-'));
 app.setPath('userData', path.join(root, 'profile'));
 app.on('window-all-closed', () => {});
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const timer = setTimeout(() => app.exit(1), 30000);
+const timer = setTimeout(() => { console.error('Panel UI fixture timed out.'); app.exit(1); }, 60000);
 fs.writeFileSync(
   path.join(root, 'preload.cjs'),
   `const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('electron',{platform:'darwin',ipcRenderer:{on:()=>()=>{},sendMessage:()=>{}},siteDeveloper:{pages:async()=>[],onPagesChanged:()=>()=>{},project:async()=>null,onProjectChanged:()=>()=>{},terminal:async()=>({tabs:[],selected:'',open:false,height:220}),onTerminal:()=>()=>{}},fixtureHookAction:callback=>{ipcRenderer.on('site-developer-panel-action',(_event,request)=>callback(request))},fixtureHookResponse:request=>ipcRenderer.send('fixture-hook-response',request),fixtureOverlay:value=>ipcRenderer.send('fixture-overlay',value),fixtureTheme:theme=>ipcRenderer.invoke('app-theme',{action:'publish',theme}),passwordManager:async r=>r.action==='notes'?[]:{},onPasswordManagerChanged:()=>()=>{},onPasswordManagerLock:()=>()=>{},activity:async r=>r.action==='list'?Array.from({length:30},(_,i)=>({id:String(i),title:'Activity '+i,url:'https://example.com/activity',message:'Output',source:'ai',asRead:false,createdAt:1})):undefined,onActivityChanged:()=>()=>{},browser:{onState:()=>()=>{},preferences:async()=>({activitySound:false}),tooltip:async()=>{},nativeMenu:async()=>{},sidebarPanels:r=>ipcRenderer.invoke('browser-sidebar-panels',r),onSidebarPanels:cb=>{const f=(_e,s)=>cb(s);ipcRenderer.on('browser-sidebar-panels-changed',f);return()=>ipcRenderer.removeListener('browser-sidebar-panels-changed',f)}}});`,
@@ -49,7 +49,7 @@ import ${JSON.stringify(require.resolve('@radix-ui/themes/styles.css'))};
 import ${JSON.stringify(path.resolve('src/renderer/index.css'))};
 import {useNativeOverlay} from ${JSON.stringify(path.resolve('src/utils/hooks/useNativeOverlay'))};
 import {BrowserOptionsMenu} from ${JSON.stringify(path.resolve('src/components/UI/BrowserOptionsMenu'))};
-function Fixture(){const overlay=useNativeOverlay();React.useEffect(()=>window.electron.fixtureOverlay(overlay),[overlay]);const state=useSidebarPanels();const [active,setActive]=React.useState(true);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><div className="browser-viewport" style={{position:"fixed",left:650,top:100,width:40,height:500}}/><BrowserOptionsMenu pageAvailable={true} onSelect={()=>{}}/><aside className="ai-sidebar" style={{height:600,width:368}}><AssistantPageHeader className="fixture-reference-header"><h2>Reference page</h2><ChromeIconButton icon={X} label="Reference action" onClick={()=>{}}/></AssistantPageHeader><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
+function Fixture(){const overlay=useNativeOverlay('.sidebar-feature-content');React.useEffect(()=>window.electron.fixtureOverlay(overlay),[overlay]);const [active,setActive]=React.useState(true);const state=useSidebarPanels(active);return <Theme appearance="dark"><button id="toggle" onClick={()=>setActive(!active)}>Toggle</button><div className="browser-viewport" style={{position:"fixed",left:650,top:100,width:40,height:500}}/><BrowserOptionsMenu pageAvailable={true} onSelect={()=>{}}/><aside className="ai-sidebar" style={{height:600,width:368}}><AssistantPageHeader className="fixture-reference-header"><h2>Reference page</h2><ChromeIconButton icon={X} label="Reference action" onClick={()=>{}}/></AssistantPageHeader><SidebarPanels state={state} active={active} onClose={()=>setActive(false)}/></aside></Theme>}
 import {DeveloperSidebar} from ${JSON.stringify(path.resolve('src/components/UI/DeveloperSidebar'))};
 import {STORAGE_KEY} from ${JSON.stringify(path.resolve('src/utils/constant'))};
 localStorage.setItem(STORAGE_KEY.USER_APPS,JSON.stringify([{id:'home',name:'about:blank',url:'about:blank',sessionId:'work',sessionName:'Work',sessionSlug:'work',groupDisplay:'folder',icon:''}]));
@@ -152,6 +152,17 @@ app
       views.get('one'),
       'Selecting a panel must create its content immediately',
     );
+    await window.webContents.executeJavaScript(`(()=>{const wrapper=document.createElement('div');wrapper.id='unrelated-popup';wrapper.setAttribute('data-radix-popper-content-wrapper','');wrapper.innerHTML='<div data-state="open" style="position:fixed;left:650px;top:120px;width:40px;height:100px">Page menu</div>';document.body.append(wrapper)})()`);
+    await pause(100);
+    assert(views.get('one').getVisible(), 'A popup over only the webpage must not hide the panel');
+    await window.webContents.executeJavaScript(`document.getElementById('unrelated-popup').remove()`);
+    host.undock();
+    await pause(100);
+    host.setSuspended(true);
+    assert(views.get('one').getVisible(), 'Parent popup suspension must not hide an undocked panel');
+    host.setSuspended(false);
+    host.dock();
+    await pause(150);
     const geometry = await window.webContents.executeJavaScript(
       `(()=>{const frame=document.querySelector('.ai-sidebar');const pane=frame.getBoundingClientRect();const slot=document.querySelector('.sidebar-feature-content').getBoundingClientRect();return {pane:pane.width,slot:slot.width,top:slot.top,height:slot.height,innerBottom:pane.bottom-parseFloat(getComputedStyle(frame).borderBottomWidth)}})()`,
     );
@@ -201,6 +212,17 @@ app
         ),
       'retained draft',
     );
+    const retainedView = views.get('one');
+    await window.webContents.executeJavaScript(`document.querySelector('#toggle').click()`);
+    await pause(80);
+    host.close();
+    await pause(80);
+    await window.webContents.executeJavaScript(`document.querySelector('#toggle').click()`);
+    await pause(200);
+    assert.equal(host.state().activeId, 'one', 'Reopening must restore the remembered panel selection');
+    assert.equal(views.get('one'), retainedView, 'Reopening must reuse the existing native view');
+    assert.equal(await retainedView.webContents.executeJavaScript(`document.querySelector('#draft').value`), 'retained draft', 'Reopening must preserve unsaved panel content');
+    console.log('PASS panel close/reopen: remembered selection and retained native draft');
     await choose('Sidebar panel', 'Extension two');
     await pause(150);
     assert(
@@ -393,9 +415,9 @@ app
     assert(imageRequests.length>0,'The panel must load explicit source images');
     assert(imageRequests.every(request=>!request.cookie&&!request.referer&&!request.authorization),'Source images load without cookies, referrer or authorization');
     assert(!imageRequests.some(request=>request.url==='/unlisted.jpg'),'An undeclared URL never reaches the image server');
-    await new Promise(resolve=>imageServer.close(resolve));
+    await new Promise(resolve=>{imageServer.close(resolve);imageServer.closeAllConnections();});
     sourceWindow.destroy();
-    await new Promise(resolve=>server.close(resolve));
+    await new Promise(resolve=>{server.close(resolve);server.closeAllConnections();});
     for (const width of [368,640]) {
     await window.loadFile(path.join(root,'index.html'),{query:{switches:'1',width:String(width)}});
     const bounds=[];

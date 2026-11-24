@@ -398,3 +398,42 @@ it('rescans agent configurations when the user returns to Preferences', async ()
     expect(screen.getByRole('button', { name: 'Connect Hermes' })).toBeEnabled()
   );
 });
+
+it('saves a user tunnel and copies its HTTPS URL with the existing bearer token', async () => {
+  const status = { enabled: true, running: true, port: 43187, url: 'http://127.0.0.1:43187/mcp' };
+  (window.electron.ai.mcpStatus as jest.Mock).mockResolvedValue(status);
+  (window.electron.ai.mcpUpdate as jest.Mock).mockImplementation(async patch => ({ ...status, tunnelUrl: patch.tunnelUrl }));
+  render(<Theme><ExternalAISettings /></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  await screen.findByText('Running');
+  expect(screen.queryByLabelText('Custom HTTPS endpoint')).not.toBeInTheDocument();
+  expect(screen.getByRole('option', { name: /^HTTP$/ })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Client configuration'), { target: { value: 'tunnel' } });
+  fireEvent.change(screen.getByLabelText('Custom HTTPS endpoint'), { target: { value: 'https://custom.example/bridge/mcp' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save endpoint' }));
+  await screen.findByText('Tunnel endpoint saved. Reachability has not been checked.');
+  expect(window.electron.ai.mcpUpdate).toHaveBeenCalledWith({ enabled: true, tunnelUrl: 'https://custom.example/bridge/mcp' });
+  fireEvent.change(screen.getByLabelText('Client configuration'), { target: { value: 'tunnel' } });
+  await waitFor(() => expect((screen.getByLabelText('MCP configuration') as HTMLTextAreaElement).value).toContain('https://custom.example/bridge/mcp'));
+  fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+  await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('Bearer test-token')));
+  fireEvent.change(screen.getByLabelText('Client configuration'), { target: { value: 'http' } });
+  await waitFor(() => expect((screen.getByLabelText('MCP configuration') as HTMLTextAreaElement).value).toContain(status.url));
+});
+
+it('rejects insecure tunnel URLs and keeps unsaved endpoints out of configuration', async () => {
+  (window.electron.ai.mcpStatus as jest.Mock).mockResolvedValue({ enabled: true, running: true, port: 43187, url: 'http://127.0.0.1:43187/mcp' });
+  render(<Theme><ExternalAISettings /></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  await screen.findByText('Running');
+  expect(screen.queryByLabelText('Custom HTTPS endpoint')).not.toBeInTheDocument();
+  expect(screen.getByRole('option', { name: /^HTTP$/ })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Client configuration'), { target: { value: 'tunnel' } });
+  fireEvent.change(screen.getByLabelText('Custom HTTPS endpoint'), { target: { value: 'http://custom.example/mcp' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save endpoint' }));
+  await screen.findByText('Use HTTPS without credentials, query parameters or a fragment.');
+  expect(window.electron.ai.mcpUpdate).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Client configuration'), { target: { value: 'tunnel' } });
+  await screen.findByText('Save an HTTPS tunnel endpoint before copying its configuration.');
+  expect(screen.getByRole('button', { name: 'Copy' })).toBeDisabled();
+});

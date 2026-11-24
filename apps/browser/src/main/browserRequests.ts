@@ -17,6 +17,7 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
     value.visible.length > 16 ||
     !optionalText(value.focusedId) ||
     (value.suspended !== undefined && typeof value.suspended !== 'boolean') ||
+    (value.sidebarSuspended !== undefined && typeof value.sidebarSuspended !== 'boolean') ||
     (value.tabSwitcher !== undefined && typeof value.tabSwitcher !== 'boolean')
   )
     return false;

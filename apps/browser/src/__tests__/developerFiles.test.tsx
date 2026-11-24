@@ -519,7 +519,9 @@ it('cancels HTML dragging and hands the file to the native drag bridge', async (
   const cancelUnknownSource = jest.fn((event: Event) => event.preventDefault());
   window.addEventListener('dragstart', cancelUnknownSource);
   const setData = jest.fn();
-  files.mockResolvedValueOnce({ path: 'buy.png' });
+  files.mockResolvedValue({ path: 'buy.png' });
+  fireEvent.pointerEnter(row);
+  await waitFor(() => expect(files).toHaveBeenCalledWith('one', { action: 'prepare-drag', path: 'buy.png' }));
   try {
     expect(
       fireEvent.dragStart(row, { dataTransfer: { setData, effectAllowed: '' } })

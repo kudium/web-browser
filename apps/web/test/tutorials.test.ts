@@ -16,7 +16,16 @@ describe("browser tutorials", () => {
       expect(html).toContain(`href="${path}"`);
       const page = await app.request(path);
       expect(page.status).toBe(200);
-      expect(await page.text()).toContain(guide.title.replaceAll("&", "&amp;"));
+      const guideHtml=await page.text();
+      expect(guideHtml).toContain(guide.title.replaceAll("&", "&amp;"));
+      for(const section of guide.sections || []) for(const screenshot of section.images || []) {
+        expect(guideHtml).toContain(`/assets/product/demo/${screenshot.name}.webp?v=toast-1`);
+        expect(guideHtml).toContain(screenshot.alt);
+        const image=await app.request(`/assets/product/demo/${screenshot.name}.webp`);
+        expect(image.status).toBe(200);
+        expect(image.headers.get('content-type')).toBe('image/webp');
+        expect((await image.arrayBuffer()).byteLength).toBeGreaterThan(1000);
+      }
       if (guide.image) {
         const image = await app.request(
           `/assets/product/demo/${guide.image}.webp`
@@ -33,6 +42,8 @@ describe("browser tutorials", () => {
       "/tutorials/missing-guide",
       "/assets/product/demo/manifest.json",
       "/assets/product/demo/workspace-light.png",
+      "/assets/product/demo/toast-stack.png",
+      "/assets/product/demo/toast-error.png",
       "/assets/product/demo/unknown.webp",
       "/assets/product/demo/unknown.mp4",
     ]) {

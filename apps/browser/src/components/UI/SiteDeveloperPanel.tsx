@@ -690,7 +690,7 @@ export function SiteDeveloperPanel({
                       )}
                       <label className="hook-execution-details-toggle">
                         <Checkbox size="1" checked={showExecutionDetails} onCheckedChange={(checked) => setShowExecutionDetails(checked === true)} />
-                        Show execution details
+                        Show details
                       </label>
                       <Button
                         size="1"

@@ -2,7 +2,6 @@ import { HookActionsEditor } from './HookActionsEditor';
 // eslint-disable-next-line import/no-relative-packages
 import type { HookAction } from '../../../../../packages/hooks/actions';
 import { HookPresets } from './HookPresets';
-import { Import as ImportIcon } from 'lucide-react';
 /* Optional props use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -93,7 +92,48 @@ export function HookEditor({
           ))}
           <Tabs.Trigger value="actions">Actions{code.actions?.length ? ` (${code.actions.length})` : ''}</Tabs.Trigger>
         </Tabs.List>
-        <div className="hook-editor-file-actions" hidden={showActions}>
+      </div>
+      <input
+        ref={importInput}
+        type="file"
+        hidden
+        aria-label="Import hook file"
+        accept={
+          editor === 'css'
+            ? '.css,text/css'
+            : '.js,.mjs,.txt,text/javascript,text/plain'
+        }
+        onChange={async (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (!file) return;
+          const phase = editor;
+          try {
+            if (file.size > maxLength * 4)
+              throw new Error(
+                `Choose a file with at most ${maxLength.toLocaleString()} characters.`
+              );
+            const source = await file.text();
+            if (source.length > maxLength)
+              throw new Error(
+                `Maximum ${maxLength.toLocaleString()} characters.`
+              );
+            onChange({ [phase]: source });
+            setImportError('');
+          } catch (error) {
+            setImportError(String(error).replace(/^Error: /, ''));
+          }
+        }}
+      />
+      {importError && (
+        <p className="site-hook-import-error" role="alert">
+          {importError}
+        </p>
+      )}
+      <Tabs.Content value={editor} className="site-hook-editor-body" hidden={showActions}>
+        {children}
+        <div className="hook-editor-canvas">
+      <div className="hook-editor-file-actions" role="group" aria-label="Hook code tools" hidden={showActions}>
           {examples || (
             <HookPresets
               disabled={disabled}
@@ -136,50 +176,9 @@ ${source}
             disabled={disabled}
             onClick={() => importInput.current?.click()}
           >
-            <ImportIcon size={15} />
             Import
           </Button>
-        </div>
       </div>
-      <input
-        ref={importInput}
-        type="file"
-        hidden
-        aria-label="Import hook file"
-        accept={
-          editor === 'css'
-            ? '.css,text/css'
-            : '.js,.mjs,.txt,text/javascript,text/plain'
-        }
-        onChange={async (event) => {
-          const file = event.target.files?.[0];
-          event.target.value = '';
-          if (!file) return;
-          const phase = editor;
-          try {
-            if (file.size > maxLength * 4)
-              throw new Error(
-                `Choose a file with at most ${maxLength.toLocaleString()} characters.`
-              );
-            const source = await file.text();
-            if (source.length > maxLength)
-              throw new Error(
-                `Maximum ${maxLength.toLocaleString()} characters.`
-              );
-            onChange({ [phase]: source });
-            setImportError('');
-          } catch (error) {
-            setImportError(String(error).replace(/^Error: /, ''));
-          }
-        }}
-      />
-      {importError && (
-        <p className="site-hook-import-error" role="alert">
-          {importError}
-        </p>
-      )}
-      <Tabs.Content value={editor} className="site-hook-editor-body" hidden={showActions}>
-        {children}
         <CodeEditor
           // External value updates can be deferred by CodeMirror's typing latch.
           // A new hook must get its own document immediately, not queue behind it.
@@ -192,6 +191,7 @@ ${source}
           maxLength={maxLength}
           onChange={(value) => onChange({ [editor]: value })}
         />
+        </div>
       </Tabs.Content>
       <Tabs.Content value="actions" className="site-hook-editor-body hook-actions-body">
         <HookActionsEditor actions={code.actions || []} disabled={disabled} onChange={(actions) => onChange({ actions })} />

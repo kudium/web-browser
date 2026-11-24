@@ -1,5 +1,19 @@
 export const whatsNew = [
   {
+    version: '1.0.22', date: '2026-11-24', title: 'Dependable panels, compact alerts, and more useful hooks',
+    highlights: [
+      ['Panels keep your work', 'Sidebar pages retain their content through popups and reopening, while hidden panels pause unnecessary work. Project-file dragging and browser controls are more dependable.'],
+      ['Compact alerts with useful actions', 'Stacked browser toasts include countdowns, custom durations and Dismiss all. Low-battery alerts offer Save energy and can be disabled in Preferences → Performance. Activity customization can enable toasts that mark activities read when dismissed or acted on.'],
+      ['More useful lifecycle hooks', 'Hooks can read battery, power, appearance, local connectivity and locale status. Shared system listeners clean up when hooks stop. A battery/toast example and illustrated guide explain the APIs.'],
+      ['Cleaner hook editing and navigation', 'Examples are easier to find, Actions editors use the available height, and compact overlays keep stage navigation clear. Horizontal tabs show overflow fades and selection scrolling stays inside the tab strip.'],
+      ['Local AI and autofill fixes', 'Improved Apple local-model context budgets and login intent checks, clearer autofill choices, better dropdown placement and multi-step login handling. Native passkey approval remains pending.'],
+    ],
+    screenshots: [
+      {asset:'toast-stack',alt:'Info, warning and success browser toasts over fictional Atlas Studio content.',caption:'Production toast controls with a countdown, Dismiss all and an optional action. Renderer capture does not reproduce system backdrop blur.'},
+      {asset:'toast-error',alt:'An error toast with a Try again action.',caption:'An error alert with its own action and countdown.'},
+    ],
+  },
+  {
     version: '1.0.21', date: '2026-11-22', title: 'Clearer assistant activity and smarter form filling',
     highlights: [
       ['Stay in control of assistant tasks', 'Clearer on-page activity shows what the assistant is doing. Take control when you need to, then resume from the page banner. Requests for your input are easier to notice.'],

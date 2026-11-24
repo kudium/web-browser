@@ -546,3 +546,42 @@ it('drags the dropdown by its header, clamps it to the viewport, and ignores hea
     dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = '';
   }
 });
+
+it.each(['empty', 'ambiguous', 'matching'])('offers form filling only for usable %s saved values and keeps the field uncovered', async (mode) => {
+  let shadow!: ShadowRoot;
+  const original = HTMLElement.prototype.attachShadow;
+  const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
+    shadow = original.call(this, init); return shadow;
+  });
+  const clicks = new Map<EventTarget, Function>();
+  const originalOn = HTMLButtonElement.prototype.addEventListener;
+  const on = jest.spyOn(HTMLButtonElement.prototype, 'addEventListener').mockImplementation(function (this: HTMLButtonElement, type: string, listener: any, options?: any) {
+    if (type === 'click') clicks.set(this, listener);
+    originalOn.call(this, type, listener, options);
+  });
+  const fields = [{ name: 'Email', value: mode === 'empty' ? '' : 'saved@example.com', secret: false },
+    ...(mode === 'ambiguous' ? [{ name: 'Email', value: 'other@example.com', secret: false }] : [])];
+  const bridge = { invoke: jest.fn(async (channel: string) => {
+    if (channel === 'personal-data-autofill-focus') return true;
+    if (channel.endsWith('enabled')) return true;
+    if (channel.endsWith('position')) return null;
+    return [{ id: 'profile', kind: 'profile', title: 'Profile', fields }];
+  }), on: jest.fn() };
+  document.body.innerHTML = '<form><input type="email" autocomplete="email"></form>';
+  const input = document.querySelector<HTMLInputElement>('input')!;
+  input.getClientRects = () => [{}] as any;
+  // Near the viewport bottom: the old fixed 320px clamp covered this field.
+  input.getBoundingClientRect = () => ({ left: 20, right: 420, top: innerHeight - 100, bottom: innerHeight - 60, width: 400, height: 40 }) as DOMRect;
+  const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+  try {
+    await settle(); input.focus(); await settle();
+    await settle();
+    const panel = shadow.querySelector<HTMLElement>('.panel')!;
+    expect(panel.style.bottom).toBe('104px');
+    expect(panel.style.top).toBe('auto');
+    expect(document.activeElement).toBe(input);
+    expect(!!panel.querySelector('.fill-form')).toBe(mode === 'matching');
+    expect(!!shadow.querySelector('.quick-fill')).toBe(mode === 'matching');
+    if (mode === 'empty') expect(panel.querySelector('[aria-label^="Fill Email:"]')).toBeNull();
+  } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
+});

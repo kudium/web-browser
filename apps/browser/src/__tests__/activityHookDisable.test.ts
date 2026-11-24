@@ -19,7 +19,7 @@ jest.mock('electron', () => ({
   app: { getPath: () => '/tmp' },
   ipcMain: { handle: jest.fn() },
 }));
-jest.mock('../main/preferences', () => ({ getBrowserPreferences: () => ({}) }));
+jest.mock('../main/preferences', () => ({ getBrowserPreferences: () => ({}), onBrowserPreferencesChanged: jest.fn() }));
 jest.mock('../main/activitySound', () => ({ playActivitySound: jest.fn() }));
 jest.mock('../main/activityStore', () => ({
   ActivityStore: class {

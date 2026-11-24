@@ -1,3 +1,5 @@
+import { revealHorizontalTab } from '../../../utils/horizontalTabScroll';
+import { openActivityDestination, type BrowserActivity } from '../../../browser/activity';
 import { focusColorStyle, itemFocusColor } from '../../../utils/focusColor';
 import { TabIcon } from '../../UI/TabIcon';
 import type { BrowserPreferences } from '../../../browser/preferences';
@@ -253,7 +255,7 @@ export function Main() {
     if (!open) { nativePanelRequested.current = false; setNativePanelActive(false); }
     setSavedAIOpen(open);
   }, [setSavedAIOpen]);
-  const sidebarPanels = useSidebarPanels();
+  const sidebarPanels = useSidebarPanels(aiOpen && aiPane === 'panels');
   const lastPanelRequest = useRef(0);
 
   const [aiMounted, setAIMounted] = useState(
@@ -293,11 +295,14 @@ export function Main() {
         token: (previous?.token || 0) + 1,
       }));
     };
+    const action = (event: Event) => openActivityDestination((event as CustomEvent<BrowserActivity>).detail);
+    window.addEventListener('kudiumbrowser-activity-action', action);
     window.addEventListener('kudiumbrowser-open-activity', open);
     return () => {
       active = false;
       stop?.();
       window.removeEventListener('kudiumbrowser-open-activity', open);
+      window.removeEventListener('kudiumbrowser-activity-action', action);
     };
   }, []);
   useEffect(() => {
@@ -413,6 +418,7 @@ export function Main() {
     'sidebar' | 'header'
   >('sidebar');
   const [addressBarFullUrl, setAddressBarFullUrl] = useState(false);
+  const [showLinkPreview, setShowLinkPreview] = useState(true);
   const [autofillExcludedSites, setAutofillExcludedSites] = useState<string[]>(
     []
   );
@@ -1058,7 +1064,7 @@ export function Main() {
     document.addEventListener('wheel', scrollTabs, { passive: false });
     return () => document.removeEventListener('wheel', scrollTabs);
   }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const ids = split
       ? [`left-${split.left}`, `right-${split.right}`]
       : [selected?.id];
@@ -1068,11 +1074,7 @@ export function Main() {
         ? document.getElementById(`page-tab-${id}`)?.closest('.horizontal-tab')
         : null;
       if (!tab || tabOverflowMode === 'dropdown') return;
-      const reveal = () =>
-        tab.scrollIntoView?.({
-          block: 'nearest',
-          inline: 'nearest',
-        });
+      const reveal = () => revealHorizontalTab(tab as HTMLElement);
       reveal();
       const list = tab.closest('.horizontal-tabs');
       if (list) {
@@ -1417,10 +1419,10 @@ export function Main() {
     select(item);
     return true;
   };
-  const nativeOverlayOpen = useNativeOverlay();
+  const nativeOverlayOpen = useNativeOverlay('.browser-viewport');
+  const panelOverlayOpen = useNativeOverlay('.sidebar-feature-content');
   const overlayOpen =
     !!tabSwitcher.shown ||
-    nativeOverlayOpen ||
     !!editingGroup ||
     siteSettingsOpen ||
     !!pageCapture ||
@@ -1431,6 +1433,8 @@ export function Main() {
     sidebarResizing ||
     aiResizing ||
     !!dragged;
+  const pageSuspended = overlayOpen || nativeOverlayOpen;
+  const panelSuspended = overlayOpen || panelOverlayOpen;
   const state = selected && states[selected.id];
   const focusedTab = split
     ? appList.find((tab) => tab.id === split[split.focused])
@@ -1468,6 +1472,7 @@ export function Main() {
       showUnpinnedGroups?: boolean;
       addressBarPlacement?: 'sidebar' | 'header';
       addressBarFullUrl?: boolean;
+      showLinkPreview?: boolean;
       personalDataAutofillExcludedSites?: string[];
       addressBarExtensionsExpanded?: boolean;
       extensionToolbarOrder?: string[] | null;
@@ -1482,6 +1487,7 @@ export function Main() {
       );
       setAddressBarPlacement(preferences.addressBarPlacement || 'sidebar');
       setAddressBarFullUrl(preferences.addressBarFullUrl === true);
+      setShowLinkPreview(preferences.showLinkPreview !== false);
       setAutofillExcludedSites(
         preferences.personalDataAutofillExcludedSites || []
       );
@@ -1743,7 +1749,8 @@ export function Main() {
           appList.some((item) => item.id === id)
       ) as string[];
       browser.sync({
-        suspended: overlayOpen,
+        suspended: pageSuspended,
+        sidebarSuspended: panelSuspended,
         tabSwitcher: !!tabSwitcher.shown,
         focusedId: selected?.id,
         apps: appList
@@ -1754,7 +1761,7 @@ export function Main() {
               .find((space) => space.id === (item.spaceId || 'default'))
               ?.folders.find((folder) => folder.id === item.folderId)?.name,
           })),
-        visible: overlayOpen
+        visible: pageSuspended
           ? []
           : ids.map((id, index) => ({
               id,
@@ -1780,7 +1787,8 @@ export function Main() {
     appList,
     selected?.id,
     split,
-    overlayOpen,
+    pageSuspended,
+    panelSuspended,
     tabSwitcher.shown,
     spaces,
     compact,
@@ -1942,6 +1950,11 @@ export function Main() {
           } catch (error) {
             setMoveMessage(String(error));
           }
+          return;
+        }
+        if (request.action === 'collapse-groups' && request.ids) {
+          const ids = new Set(request.ids);
+          AppManager.set(AppManager.getAll().map(app => ids.has(app.id) ? { ...app, sessionChromeCollapsed: true } : app));
           return;
         }
         if (request.action === 'unload-group' && item) {
@@ -3657,6 +3670,22 @@ export function Main() {
           (side && !!websiteThemeStyle(states[paneSelected.id]?.themeColor)) ||
           undefined
         }
+        onDragOverCapture={(event) => {
+          if (Array.from(event.dataTransfer.types).includes('Files')) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.dataTransfer.dropEffect = 'copy';
+          }
+        }}
+        onDropCapture={(event) => {
+          const file = event.dataTransfer.files[0];
+          if (!file) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.electron.siteDeveloper.droppedProjectFile(file).then(detail => {
+            if (detail) window.dispatchEvent(new CustomEvent('kudiumbrowser-open-project-file', { detail }));
+          }).catch(reason => setMoveMessage(String(reason)));
+        }}
         aria-label={side ? `Tabs on ${side}` : 'Tabs in current group'}
       >
         <PageLoading
@@ -3700,7 +3729,7 @@ export function Main() {
               select(next, side);
               document
                 .getElementById(`page-tab-${side ? `${side}-` : ''}${next.id}`)
-                ?.focus();
+                ?.focus({ preventScroll: true });
             }
           }}
         >
@@ -3936,7 +3965,11 @@ export function Main() {
             setMoveMessage('Drop one group file or project folder at a time.');
             return;
           }
-          dropSidebarFile(event.dataTransfer.files[0]);
+          const file = event.dataTransfer.files[0];
+          window.electron.siteDeveloper.droppedProjectFile(file).then(detail => {
+            if (detail) window.dispatchEvent(new CustomEvent('kudiumbrowser-open-project-file', { detail }));
+            else dropSidebarFile(file);
+          }).catch(reason => setMoveMessage(String(reason)));
         }}
         onDragOver={(event) => {
           if (
@@ -4859,6 +4892,7 @@ export function Main() {
           {addressBarPlacement === 'header' && !showHorizontalTabs && (
             <div className="browser-address-header">{renderAddressBar()}</div>
           )}
+          <div className="browser-window-drag-handle" aria-hidden="true" />
           {addressBarPlacement === 'sidebar' && (
             <div
               className="browser-actions"
@@ -5179,6 +5213,11 @@ export function Main() {
           browser
             .preferences('update', { personalDataAutofillExcludedSites: next })
             .catch((error) => setMoveMessage(String(error)));
+        }}
+        showLinkPreview={showLinkPreview}
+        onLinkPreviewChange={(enabled) => {
+          setShowLinkPreview(enabled);
+          browser.preferences('update', { showLinkPreview: enabled }).catch(error => setMoveMessage(String(error)));
         }}
         fullUrl={addressBarFullUrl}
         onFullUrlChange={(enabled) => {

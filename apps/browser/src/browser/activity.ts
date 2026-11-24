@@ -60,3 +60,9 @@ export function validateActivity(value: unknown): ActivityInput {
     noteId: input.noteId as string | undefined,
   };
 }
+
+/** Shared destination behavior for timeline rows and their browser toast action. */
+export function openActivityDestination(entry: Pick<BrowserActivity, 'noteId' | 'url'>) {
+  if (entry.noteId) window.dispatchEvent(new CustomEvent('kudiumbrowser-open-note', {detail:entry.noteId}));
+  else if (entry.url) window.open(entry.url, '_blank', 'noopener,noreferrer');
+}

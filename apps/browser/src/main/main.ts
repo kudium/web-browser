@@ -1,3 +1,6 @@
+import { saveBrowserEnergy } from './energySaver';
+import { showAppToast, dismissAppToast } from './appToast';
+import { startLowBatteryNotifications } from './lowBattery';
 import { registerAppThemeWindow, refreshAppThemes } from './appTheme';
 /* eslint global-require: off, no-console: off, promise/always-return: off */
 
@@ -45,7 +48,7 @@ import { restrictPackagedDebugging } from './runtimeSecurity';
 import { registerGroupLocks } from './groupLocks';
 import { validateAdvanced } from '../browser/advancedPreferences';
 import { configureDNS, registerAdvancedLifecycle } from './advancedPreferences';
-import { getBrowserPreferences, registerPreferences } from './preferences';
+import { getBrowserPreferences, registerPreferences, onBrowserPreferencesChanged } from './preferences';
 import { browserUserAgent } from './browserIdentity';
 import { registerPasswordManager } from './passwordManager';
 import { registerPasskeys } from './passkeys';
@@ -646,6 +649,46 @@ app
       );
     const mainWindowConfig = MAIN_WINDOW;
     await createNewWindow(mainWindowConfig);
+    if (!app.isPackaged && process.env.KUDIUM_DEMO_TOAST === '1') {
+      setTimeout(() => {
+        const owner = activeWindows.main;
+        if (owner && !owner.isDestroyed()) void showAppToast(owner, {
+          id: 'demo-low-battery', title: 'Low battery',
+          message: '20% remaining. Connect your charger.',
+          tone: 'warning',
+          action: { label: 'Save energy', run: async () => {
+            const result = await saveBrowserEnergy(owner);
+            if (result && !owner.isDestroyed()) await showAppToast(owner, {
+              id: 'energy-saved', title: 'Inactive groups collapsed',
+              message: `${result.unloaded} tabs put to sleep${result.protected ? ` · ${result.protected} protected tabs kept awake` : ''}.`,
+              tone: 'success',
+            });
+          } },
+        });
+      }, 4000);
+    }
+    startLowBatteryNotifications((percent) => {
+      const owner = activeWindows.main;
+      if (owner && !owner.isDestroyed()) void showAppToast(owner, {
+        id: 'low-battery', title: 'Low battery',
+        message: `${percent}% remaining. Connect your charger.`,
+        tone: 'warning',
+          action: { label: 'Save energy', run: async () => {
+            const result = await saveBrowserEnergy(owner);
+            if (result && !owner.isDestroyed()) await showAppToast(owner, {
+              id: 'energy-saved', title: 'Inactive groups collapsed',
+              message: `${result.unloaded} tabs put to sleep${result.protected ? ` · ${result.protected} protected tabs kept awake` : ''}.`,
+              tone: 'success',
+            });
+          } },
+      });
+    }, {
+      enabled: () => getBrowserPreferences().lowBatteryAlerts,
+      onChange: listener => onBrowserPreferencesChanged(() => {
+        if (!getBrowserPreferences().lowBatteryAlerts) dismissAppToast('low-battery');
+        listener();
+      }),
+    });
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.

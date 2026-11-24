@@ -1185,6 +1185,14 @@ export function tutorialPage(tutorial: Tutorial) {
             <section className="tutorial-reference-section" key={section.id} aria-labelledby={section.id}>
               <h2 id={section.id}>{section.title}</h2>
               {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              {section.images?.map((image) => (
+                <figure className="tutorial-screen" key={image.name}>
+                  <a href={`/assets/product/demo/${image.name}.webp?v=toast-1`} aria-label="Open full size screenshot">
+                    <img src={`/assets/product/demo/${image.name}.webp?v=toast-1`} alt={image.alt} width="820" height="580" loading="lazy" />
+                  </a>
+                  <figcaption>{image.caption}</figcaption>
+                </figure>
+              ))}
               {section.reference && (
                 <div className="tutorial-reference-table">
                   <table aria-label={section.title}>

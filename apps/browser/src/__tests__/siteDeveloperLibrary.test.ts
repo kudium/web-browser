@@ -437,12 +437,25 @@ it('starts a native file drag and rechecks group access after loading the icon',
       icon,
     });
     sender.startDrag.mockClear();
+    await handler(event, 'home', { action: 'prepare-drag', path: 'resume #1.pdf' });
+    const lookups = (app.getFileIcon as jest.Mock).mock.calls.length;
+    const dragging = handler(event, 'home', { action: 'drag', path: 'resume #1.pdf' });
+    // The prepared path starts the native drag before any asynchronous work.
+    expect(sender.startDrag).toHaveBeenCalledTimes(1);
+    await dragging;
+    expect((app.getFileIcon as jest.Mock).mock.calls.length).toBe(lookups);
+    const drop = (ipcMain.handle as jest.Mock).mock.calls.slice().reverse()
+      .find(([channel]) => channel === 'site-developer-file-drop')[1];
+    expect(drop(event, path.join(folder, 'other.pdf'))).toBeNull();
+    expect(drop(event, fs.realpathSync(file))).toEqual({ sourceId: 'home', path: 'resume #1.pdf' });
+    expect(drop(event, fs.realpathSync(file))).toBeNull();
+    sender.startDrag.mockClear();
     (app.getFileIcon as jest.Mock).mockImplementation(async () => {
       (isGroupLocked as jest.Mock).mockReturnValue(true);
       return icon;
     });
     await expect(
-      handler(event, 'home', { action: 'drag', path: 'resume #1.pdf' })
+      handler(event, 'home', { action: 'prepare-drag', path: 'resume #1.pdf' })
     ).rejects.toThrow('Unlock');
     expect(sender.startDrag).not.toHaveBeenCalled();
   } finally {

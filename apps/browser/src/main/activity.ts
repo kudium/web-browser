@@ -11,7 +11,8 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { playActivitySound } from './activitySound';
-import { getBrowserPreferences } from './preferences';
+import { getBrowserPreferences, onBrowserPreferencesChanged } from './preferences';
+import { showAppToast, dismissAppToast } from './appToast';
 import { safeStorage } from './localStorage';
 import { ActivityStore } from './activityStore';
 import { getGroupLocks } from './groupLocks';
@@ -21,6 +22,39 @@ import type { BrowserActivity } from '../browser/activity';
 let store: ActivityStore | undefined;
 const watchers = new Set<WebContents>();
 let lastSound = 0;
+const toastIds = new Set<string>();
+function clearStaleToasts(entries: BrowserActivity[]) {
+  const unread = new Set(entries.filter(entry => !entry.asRead &&
+    (!entry.groupId || !getGroupLocks().locked(entry.groupId))).map(entry => entry.id));
+  for (const id of toastIds) if (!getBrowserPreferences().activityToasts || !unread.has(id)) {
+    toastIds.delete(id);
+    dismissAppToast('activity-' + id);
+  }
+}
+function activityToast(entry: BrowserActivity) {
+  const windows = BrowserWindow.getAllWindows().filter(window =>
+    !window.isDestroyed() && watchers.has(window.webContents) && window.isVisible() && !window.isMinimized());
+  const owner = windows.find(window => window.isFocused()) || windows[0];
+  if (!owner) return;
+  const current = () => browserActivity().list().find(item => item.id === entry.id && !item.asRead &&
+    (!item.groupId || !getGroupLocks().locked(item.groupId)));
+  const read = () => { if (current()) browserActivity().read(entry.id); };
+  toastIds.add(entry.id);
+  void showAppToast(owner, {
+    id: 'activity-' + entry.id, title: entry.title,
+    message: (entry.message || 'New activity in Kudium').slice(0, 500),
+    type: 'info', onDismiss: read,
+    action: entry.noteId || entry.url ? {
+      label: entry.noteId ? 'Open note' : 'Open page',
+      run: () => {
+        const latest = current();
+        if (!latest || owner.isDestroyed() || !getBrowserPreferences().activityToasts) return;
+        browserActivity().read(entry.id);
+        owner.webContents.send('browser-activity-action', latest);
+      },
+    } : undefined,
+  }).catch(() => { toastIds.delete(entry.id); });
+}
 export function browserActivity() {
   if (!store) {
     const file = path.join(app.getPath('userData'), 'activity.bin');
@@ -32,6 +66,7 @@ export function browserActivity() {
         )
           return;
         const preferences = getBrowserPreferences();
+        if (preferences.activityToasts) activityToast(entry);
         const now = Date.now();
         if (preferences.activitySound && now - lastSound >= 1500) {
           lastSound = now;
@@ -86,6 +121,7 @@ export function browserActivity() {
         } finally {
           if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
         }
+        clearStaleToasts(entries);
         watchers.forEach((contents) => {
           if (!contents.isDestroyed())
             contents.send('browser-activity-changed');
@@ -98,11 +134,13 @@ export function browserActivity() {
 export function registerActivity(
   isTrusted: (contents: WebContents) => boolean
 ) {
-  getGroupLocks().subscribe(() =>
+  onBrowserPreferencesChanged(() => { if (store) clearStaleToasts(store.list()); });
+  getGroupLocks().subscribe(() => {
+    if (store) clearStaleToasts(store.list());
     watchers.forEach((contents) => {
       if (!contents.isDestroyed()) contents.send('browser-activity-changed');
-    })
-  );
+    });
+  });
   ipcMain.handle(
     'browser-activity',
     (event, request: { action?: unknown; id?: unknown }) => {

@@ -10,8 +10,8 @@ const visible = (element: HTMLElement) => {
     configurable: true,
   });
 };
-function Status() {
-  const open = useNativeOverlay();
+function Status({ surfaces }: { surfaces?: string }) {
+  const open = useNativeOverlay(surfaces);
   return <span>{open ? 'suspended' : 'visible'}</span>;
 }
 it('suspends native pages for global portals, ignores scoped portals, and resumes on dismissal', async () => {
@@ -143,3 +143,46 @@ it.each(['', 'ai-overlay-layer'])(
     expect(hasGlobalOverlay(root)).toBe(false);
   }
 );
+
+it('suspends only the native surface that a popup actually overlaps', () => {
+  const root = document.createElement('div');
+  root.innerHTML = '<div class="browser-viewport"></div><div class="sidebar-feature-content"></div><div data-radix-popper-content-wrapper><div data-state="open"></div></div>';
+  const page = root.querySelector<HTMLElement>('.browser-viewport')!;
+  const panel = root.querySelector<HTMLElement>('.sidebar-feature-content')!;
+  const menu = root.querySelector<HTMLElement>('[data-state]')!;
+  [page, panel, menu].forEach(visible);
+  page.getBoundingClientRect = () => ({ left: 200, right: 800, top: 60, bottom: 700 } as DOMRect);
+  panel.getBoundingClientRect = () => ({ left: 820, right: 1200, top: 100, bottom: 700 } as DOMRect);
+  menu.getBoundingClientRect = () => ({ left: 180, right: 350, top: 100, bottom: 300 } as DOMRect);
+  expect(hasGlobalOverlay(root, '.browser-viewport')).toBe(true);
+  expect(hasGlobalOverlay(root, '.sidebar-feature-content')).toBe(false);
+  menu.getBoundingClientRect = () => ({ left: 900, right: 1100, top: 100, bottom: 300 } as DOMRect);
+  expect(hasGlobalOverlay(root, '.browser-viewport')).toBe(false);
+  expect(hasGlobalOverlay(root, '.sidebar-feature-content')).toBe(true);
+  panel.remove();
+  expect(hasGlobalOverlay(root, '.sidebar-feature-content')).toBe(false);
+});
+
+
+it('rechecks overlap after scrolling and removing the native surface', async () => {
+  render(<Status surfaces=".sidebar-feature-content" />);
+  const panel = document.createElement('div');
+  panel.className = 'sidebar-feature-content';
+  visible(panel);
+  panel.getBoundingClientRect = () => ({ left: 820, right: 1200, top: 100, bottom: 700 } as DOMRect);
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-radix-popper-content-wrapper', '');
+  const menu = document.createElement('div');
+  menu.dataset.state = 'open';
+  visible(menu);
+  menu.getBoundingClientRect = () => ({ left: 200, right: 400, top: 100, bottom: 300 } as DOMRect);
+  wrapper.append(menu);
+  act(() => { document.body.append(panel, wrapper); });
+  expect(screen.getByText('visible')).toBeTruthy();
+  menu.getBoundingClientRect = () => ({ left: 900, right: 1100, top: 100, bottom: 300 } as DOMRect);
+  act(() => document.dispatchEvent(new Event('scroll')));
+  await screen.findByText('suspended');
+  act(() => panel.remove());
+  await screen.findByText('visible');
+  wrapper.remove();
+});

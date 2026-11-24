@@ -194,9 +194,16 @@ export async function projectAction(
     project.available &&
     group &&
     getBrowserPreferences().writeBrowserInstructions
-  )
-    if (getBrowserPreferences().writeBrowserInstructions)
+  ) {
+    try {
       updateBrowserProjectContext(folder, key, group);
+    } catch (reason) {
+      const permissionDenied = ['EPERM', 'EACCES'].includes((reason as NodeJS.ErrnoException).code || '');
+      project.instructionsNotice = permissionDenied
+        ? 'Project linked. Kudium could not update its AI instruction files because folder access is blocked. Check folder permissions or turn off Project browser instructions in AI settings.'
+        : 'Project linked. Its AI instruction files could not be updated. Check BROWSER.md and AGENTS.md, or turn off Project browser instructions in AI settings.';
+    }
+  }
   if (['get', 'link', 'unlink'].includes(action)) return project;
   if (!project.available)
     throw new Error(

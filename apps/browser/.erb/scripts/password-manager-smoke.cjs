@@ -47,8 +47,10 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await app.whenReady();
   session.defaultSession.protocol.handle(
     'https',
-    () =>
+    (request) =>
       new Response(
+        new URL(request.url).pathname === '/username' ? '<form><input id=email autocomplete=username><button>Next</button></form>' :
+        new URL(request.url).pathname === '/password' ? '<form><input id=password type=password autocomplete=current-password><button>Sign in</button></form>' :
         '<form method="post"><input type="hidden" name="csrf_token" value="fixture-token"><div><label for="email">Email address</label><input type="email" name="email" id="email" autocomplete="email"></div><div><label for="password">Password</label><input type="password" name="password" id="password" autocomplete="current-password"></div><button>Sign in</button></form>',
         { headers: { 'content-type': 'text/html' } }
       )
@@ -145,6 +147,36 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   assert.equal(await page.webContents.executeJavaScript("document.querySelector('#password').value"),'secret-test-value','Selecting an email suggestion also fills the password');
   assert.equal(await page.webContents.executeJavaScript("document.querySelector('[name=csrf_token]').value"),'fixture-token','Hidden fields stay unchanged');
   assert.equal(await page.webContents.executeJavaScript('window.fixtureSubmits'),0,'Autofill never submits the form');
+  await invoke({action:'save',item:{id:'other-account',title:'Other',origin:'https://vault.test',kind:'login',username:'other',password:'other-password',fields:[],allowAI:false}});
+  for (const transition of ['navigation', 'same-page']) {
+    await page.loadURL('https://vault.test/username');
+    page.webContents.send('personal-data-autofill-enabled', true);
+    await page.webContents.executeJavaScript("window.fixtureSubmits=0;document.querySelector('form').addEventListener('submit',event=>{event.preventDefault();window.fixtureSubmits++});document.querySelector('#email').focus();undefined");
+    await wait(150); await clickPicker(false); await clickPicker(true); await wait(150);
+    assert.equal(await page.webContents.executeJavaScript("document.querySelector('#email').value"),'person');
+    assert.equal(await page.webContents.executeJavaScript('window.fixtureSubmits'),0);
+    if (transition === 'navigation') await page.loadURL('https://vault.test/password');
+    else await page.webContents.executeJavaScript("document.querySelector('form').innerHTML='<input id=password type=password autocomplete=current-password><button>Sign in</button>';undefined");
+    page.webContents.send('personal-data-autofill-enabled', true);
+    await page.webContents.executeJavaScript("window.fixtureSubmits=0;document.querySelector('form').addEventListener('submit',event=>{event.preventDefault();window.fixtureSubmits++});document.querySelector('#password').focus();undefined");
+    await wait(200);
+    const records = await page.webContents.executeJavaScript('window.autofillFixture.records()');
+    assert.equal(records.find(record=>record.id==='login').selected,true,'Selection survives '+transition);
+    assert.equal(records.find(record=>record.id==='other-account').selected,false);
+    assert.equal(await page.webContents.executeJavaScript("document.querySelector('#password').value"),'','Explicit fill required');
+    const point = await page.webContents.executeJavaScript('window.autofillFixture.quick()');
+    assert(point,'Password-only page offers form filling');
+    page.webContents.sendInputEvent({type:'mouseDown',x:Math.round(point.x),y:Math.round(point.y),button:'left',clickCount:1});
+    page.webContents.sendInputEvent({type:'mouseUp',x:Math.round(point.x),y:Math.round(point.y),button:'left',clickCount:1});
+    await wait(250);
+    assert.equal(await page.webContents.executeJavaScript("document.querySelector('#password').value"),'secret-test-value','Selected account password');
+    assert.equal(await page.webContents.executeJavaScript('window.fixtureSubmits'),0);
+    console.log('PASS two-step login: '+transition+', selected account retained, explicit password fill, no submission.');
+  }
+  await invoke({action:'delete',id:'other-account'});
+  await page.loadURL('https://vault.test/login');
+  page.webContents.send('personal-data-autofill-enabled',true);
+  await page.webContents.executeJavaScript("window.fixtureSubmits=0;document.querySelector('form').addEventListener('submit',event=>{event.preventDefault();window.fixtureSubmits++});undefined");
   await invoke({ action:'save', item:{ id:'login', title:'Test', origin:'https://vault.test', kind:'login', username:'', password:'secret-test-value', fields:[], allowAI:false } });
   await invoke({ action:'save', item:{ id:'email-profile', title:'Personal profile', origin:'', kind:'profile', username:'', password:'', fields:[{name:'Email',value:'saved@example.test',secret:false}], allowAI:false } });
   await page.webContents.executeJavaScript("document.querySelector('#email').value='';document.querySelector('#password').value='';document.activeElement.blur();document.querySelector('#password').focus();undefined");

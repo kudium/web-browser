@@ -142,3 +142,11 @@ it('shows invalid HTTPS certificates as insecure', () => {
   );
   expect(screen.queryByText('Connection uses HTTPS')).not.toBeInTheDocument();
 });
+
+it('lets the user disable link previews from Customize', () => {
+  const change = jest.fn();
+  render(<Theme><SiteSettingsDialog open onOpenChange={jest.fn()} state={undefined} command={jest.fn()}
+    onFullUrlChange={jest.fn()} onAddressBarPlacementChange={jest.fn()} showLinkPreview onLinkPreviewChange={change} /></Theme>);
+  fireEvent.click(screen.getByRole('switch', { name: 'Link URL preview' }));
+  expect(change).toHaveBeenCalledWith(false);
+});

@@ -1,3 +1,4 @@
+import { AssistantPanelVisibilityContext } from '../components/UI/AssistantPanelContext';
 import {
   act,
   fireEvent,
@@ -741,4 +742,25 @@ it('shows separate running, successful and failed indicators in an expanded page
     url: 'https://example.com',
     hookId: 'three',
   });
+});
+
+it('retains the Developer page but stops tab-driven refreshes while its host is hidden', async () => {
+  pages.mockResolvedValue([]);
+  const panel = (visible: boolean) => (
+    <AssistantPanelVisibilityContext.Provider value={visible}>
+      <Theme><DeveloperSidebar active focusedTabId="home" /></Theme>
+    </AssistantPanelVisibilityContext.Provider>
+  );
+  const view = render(panel(true));
+  await waitFor(() => expect(pages).toHaveBeenCalled());
+  view.rerender(panel(false));
+  pages.mockClear();
+  await act(async () => {
+    mockStateListeners.forEach(listener => listener({id:'home'}));
+    window.dispatchEvent(new Event('focus'));
+    await new Promise(resolve => setTimeout(resolve, 220));
+  });
+  expect(pages).not.toHaveBeenCalled();
+  view.rerender(panel(true));
+  await waitFor(() => expect(pages).toHaveBeenCalled());
 });

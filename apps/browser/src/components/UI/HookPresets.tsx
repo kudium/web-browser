@@ -1,13 +1,14 @@
 /* eslint-disable react/require-default-props */
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Button, Dialog, TextField } from '@radix-ui/themes';
-import { Sparkles, BookOpen } from 'lucide-react';
 import { HookExamples } from './HookExamples';
 import type { HookStage } from '../../browser/hookExamples';
 import { HookAISetup } from './HookAISetup';
 import { hookExamples, HookExample } from '../../browser/hookExamples';
 
 const descriptions: Record<string, string> = {
+  'battery-toast': 'Read battery status and show a browser toast with an action and custom closing time.',
   'dark-mode': 'A dark theme for pages without one. Results vary by site.',
   'accent-colors': 'Change link and control colors.',
   'panel-markdown': 'Render formatted output in the shared sidebar.',
@@ -52,7 +53,7 @@ export function HookPresets({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger>
         <Button size="1" variant="ghost" color="gray" disabled={disabled}>
-          <Sparkles size={14} /> Examples
+          Examples <ChevronDown size={12} aria-hidden="true" />
         </Button>
       </Dialog.Trigger>
       <Dialog.Content className="hook-presets-dialog" maxWidth="480px" size="2">
@@ -61,9 +62,7 @@ export function HookPresets({
           Choose an example to customize your website.
         </Dialog.Description>
         <div className="hook-preset-list">
-          {hookExamples
-            .filter((item) => descriptions[item.id])
-            .map((item) => (
+          {hookExamples.map((item) => (
               <button
                 type="button"
                 key={item.id}
@@ -71,7 +70,7 @@ export function HookPresets({
                 onClick={() => setSelected(item.id)}
               >
                 <strong>{item.name}</strong>
-                <span>{descriptions[item.id]}</span>
+                <span>{descriptions[item.id] || `${item.stage === 'css' ? 'CSS' : item.stage === 'before' ? 'Before load' : 'After load'} example`}</span>
               </button>
             ))}
         </div>
@@ -108,7 +107,6 @@ export function HookPresets({
               target="_blank"
               rel="noreferrer"
             >
-              <BookOpen size={14} aria-hidden="true" />
               Help
             </a>
           </Button>

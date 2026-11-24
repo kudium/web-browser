@@ -6,6 +6,9 @@ import {
   IpcMainInvokeEvent,
 } from 'electron';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import path from 'path';
+import type { NativeImage } from 'electron';
 import { discoverProjectScripts } from './projectScriptDiscovery';
 import { registerSidebarDrop } from './sidebarDrop';
 import { registerProjectFolderDrop } from './projectFolderDrop';
@@ -111,6 +114,11 @@ export function developerPageSummaries(
   });
 }
 const libraries = new Map<number, (id: string) => SiteDeveloperPageSummary[]>();
+const preparedFileDrags = new Map<number, {
+  sourceId: string; path: string; folder: string; root: string; file: string;
+  icon: NativeImage; at: number; dragging: boolean;
+}>();
+
 const projects = new Map<
   number,
   (
@@ -170,6 +178,17 @@ export function registerSiteDeveloperLibrary(
         throw new Error('Untrusted project request.');
       return owner;
     };
+    ipcMain.handle('site-developer-file-drop', (event, file: unknown) => {
+      const owner = trusted(event);
+      const prepared = preparedFileDrags.get(event.sender.id);
+      if (!prepared?.dragging || typeof file !== 'string' || file !== prepared.file) return null;
+      const group = owner.groupForSource(prepared.sourceId);
+      if (owner.validateGroup(group) !== prepared.folder ||
+          fs.realpathSync(file) !== prepared.file || !fs.statSync(file).isFile())
+        throw new Error('This project changed. Reopen Files.');
+      preparedFileDrags.delete(event.sender.id);
+      return { sourceId: prepared.sourceId, path: prepared.path };
+    });
     ipcMain.handle(
       'site-developer-files',
       async (event, id: unknown, request: unknown) => {
@@ -191,8 +210,20 @@ export function registerSiteDeveloperLibrary(
           )
             throw new Error('This project changed. Reopen Files.');
         };
+        const prepared = preparedFileDrags.get(event.sender.id);
+        if (request.action === 'drag' && prepared && prepared.sourceId === id &&
+            prepared.path === request.path && prepared.folder === folder && Date.now() - prepared.at < 30000) {
+          ensureAccess();
+          if (fs.realpathSync(folder) !== prepared.root ||
+              fs.realpathSync(path.join(folder, request.path)) !== prepared.file ||
+              !fs.statSync(prepared.file).isFile())
+            throw new Error('This file changed. Refresh the folder.');
+          prepared.dragging = true;
+          event.sender.startDrag({ file: prepared.file, icon: prepared.icon });
+          return { path: request.path };
+        }
         const result = await projectFiles(folder, request, ensureAccess);
-        if (request.action === 'drag') {
+        if (request.action === 'drag' || request.action === 'prepare-drag') {
           if (!result.url) throw new Error('Could not drag this file.');
           const file = fileURLToPath(result.url);
           const icon = await app.getFileIcon(file, { size: 'normal' });
@@ -201,7 +232,10 @@ export function registerSiteDeveloperLibrary(
           if (checked.url !== result.url)
             throw new Error('This file changed. Refresh the folder.');
           ensureAccess();
-          event.sender.startDrag({ file, icon });
+          preparedFileDrags.set(event.sender.id, {
+            sourceId: id, path: request.path, folder, root: fs.realpathSync(folder), file, icon, at: Date.now(), dragging: request.action === 'drag' || (preparedFileDrags.get(event.sender.id)?.file === file && preparedFileDrags.get(event.sender.id)?.dragging === true)
+          });
+          if (request.action === 'drag') event.sender.startDrag({ file, icon });
           return { path: result.path };
         }
         if (request.action === 'terminal-tab') {
@@ -481,6 +515,7 @@ export function registerSiteDeveloperLibrary(
     if (!transfers.size) ipcMain.removeHandler('group-transfer');
     projects.delete(hostId);
     projectHosts.delete(hostId);
+    preparedFileDrags.delete(hostId);
     offLocks();
     clearInterval(terminalAudit);
     audit();
@@ -492,6 +527,7 @@ export function registerSiteDeveloperLibrary(
         'site-developer-terminal',
         'site-developer-scripts',
         'site-developer-files',
+        'site-developer-file-drop',
       ].forEach((channel) => ipcMain.removeHandler(channel));
     if (!libraries.size) ipcMain.removeHandler('site-developer-pages');
   };

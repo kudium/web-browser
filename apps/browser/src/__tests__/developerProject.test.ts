@@ -186,3 +186,24 @@ it('links a project without writing instructions when disabled', async () => {
   expect(fs.existsSync(path.join(folder, 'BROWSER.md'))).toBe(false);
   expect(fs.existsSync(path.join(folder, 'AGENTS.md'))).toBe(false);
 });
+
+it('retains the saved project when optional instruction refresh is denied', async () => {
+  const folder = path.join(mockRoot, 'Downloads');
+  fs.mkdirSync(folder);
+  const group = { name: 'Website', slug: 'website' };
+  await projectAction({} as any, 'group', 'link', () => {}, undefined, folder, group);
+  const original = fs.readFileSync;
+  const denied = jest.spyOn(fs, 'readFileSync').mockImplementation((file, ...args) => {
+    if (String(file) === path.join(fs.realpathSync(folder), 'BROWSER.md'))
+      throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
+    return (original as any)(file, ...args);
+  });
+  try {
+    const project = await projectAction({} as any, 'group', 'get', () => {}, undefined, undefined, group);
+    expect(project).toMatchObject({ path: fs.realpathSync(folder), available: true, instructionsNotice: expect.stringContaining('folder access is blocked') });
+    expect(project?.instructionsNotice).not.toContain('EPERM');
+    expect(dialog.showOpenDialog).not.toHaveBeenCalled();
+  } finally {
+    denied.mockRestore();
+  }
+});

@@ -1,3 +1,5 @@
+import { registerEnergySaver } from './energySaver';
+import { NativeTooltip } from './nativeTooltip';
 import { createSidebarMediaSession } from './sidebarMediaSession';
 import { extractWebsitePrimaryColor } from '../utils/websiteTheme';
 import { createWebsitePrimaryColorCache } from '../utils/websitePrimaryColorCache';
@@ -357,7 +359,12 @@ export function registerElectronBrowser(
   let pipVisible = new Set<string>();
   let suspended = false;
   let autoPiPEnabled = getBrowserPreferences().automaticPictureInPicture;
+  const linkPreviews = new Map<BrowserWindow, { tooltip: NativeTooltip; tabId?: string }>();
+  const hideLinkPreview = (id?: string) => {
+    linkPreviews.forEach(entry => { if (!id || entry.tabId === id) { entry.tooltip.hide(); entry.tabId = undefined; } });
+  };
   const stopPiPPreferences = onBrowserPreferencesChanged?.(() => {
+    if (!getBrowserPreferences().showLinkPreview) hideLinkPreview();
     const enabled = getBrowserPreferences().automaticPictureInPicture;
     if(enabled === autoPiPEnabled)return;
     autoPiPEnabled=enabled;
@@ -442,6 +449,7 @@ export function registerElectronBrowser(
     }
   };
   const close = (id: string) => {
+    hideLinkPreview(id);
     websiteTabRecovery.close(id, configurations.get(id)?.restorationId);
     const view = views.get(id);
     if (view) {
@@ -588,10 +596,12 @@ export function registerElectronBrowser(
         });
       return;
     }
+    if (layout.suspended || focusedId !== layout.focusedId) hideLinkPreview();
     focusedId = layout.focusedId;
     const wasVisible = pipVisible;
     suspended = Boolean(layout.suspended);
     visible = new Set(layout.visible.map((item) => item.id));
+    linkPreviews.forEach(entry => { if (entry.tabId && !visible.has(entry.tabId)) hideLinkPreview(entry.tabId); });
     if (!suspended) pictureInPicture.forEach((controller, id) => {
       if (wasVisible.has(id) !== visible.has(id))
         controller.visibilityChanged(visible.has(id), getBrowserPreferences().automaticPictureInPicture).catch(() => {});
@@ -674,6 +684,30 @@ export function registerElectronBrowser(
         if (!adopted) window.contentView.addChildView(view);
         const browserView = view;
         const contents = view.webContents;
+        contents.on('update-target-url', (_event, url) => {
+          if (!url || !getBrowserPreferences().showLinkPreview || url.length > 65536 ||
+              !visible.has(item.id) || suspended || isGroupLocked(configurations.get(item.id) || item)) {
+            hideLinkPreview(item.id);
+            return;
+          }
+          const owner = hostFor(item.id);
+          if (owner.isDestroyed() || !owner.isFocused()) return;
+          let preview = linkPreviews.get(owner);
+          if (!preview) {
+            preview = { tooltip: new NativeTooltip(owner) };
+            linkPreviews.set(owner, preview);
+            owner.once('closed', () => linkPreviews.delete(owner));
+          }
+          preview.tabId = item.id;
+          const bounds = browserView.getBounds();
+          preview.tooltip.update({ id: item.id, label: url,
+            anchor: { x: bounds.x, y: bounds.y + bounds.height, width: 0, height: 0 },
+            dark: nativeTheme.shouldUseDarkColors,
+          }, bounds).catch(() => hideLinkPreview(item.id));
+        });
+        contents.on('did-start-navigation', () => hideLinkPreview(item.id));
+        contents.once('destroyed', () => hideLinkPreview(item.id));
+
         const mediaSession = createSidebarMediaSession(contents, () => playingMedia.has(item.id), () => publish(item.id, browserView));
         sidebarMediaSessions.set(item.id, mediaSession);
         contents.once('destroyed', () => {
@@ -2248,6 +2282,58 @@ export function registerElectronBrowser(
         break;
     }
   };
+  let savingEnergy = false;
+  const stopEnergySaver = registerEnergySaver(window, async () => {
+    if (savingEnergy) return { unloaded: 0, protected: 0 };
+    savingEnergy = true;
+    let unloaded = 0;
+    let protectedCount = 0;
+    const key = (item: IApp) => JSON.stringify([item.spaceId || 'default', groupKey(item)]);
+    const activeGroups = () => new Set([...configurations.values()].filter(item => visible.has(item.id) || focusedId === item.id).map(key));
+    const eligible = (id: string, view: WebContentsView) => {
+      const item = configurations.get(id);
+      const contents = view.webContents;
+      const permissions = lastStates.get(id)?.siteSettings?.permissions || {};
+      return !!item && !activeGroups().has(key(item)) && !visible.has(id) && !windows?.visibleElsewhere(window, id) &&
+        !isGroupLocked(item) && !edited.has(id) && !playingMedia.has(id) && !pictureInPicture.get(id)?.state.active &&
+        !contents.isDestroyed() && !contents.isLoading() && !contents.isCurrentlyAudible() && !contents.isDevToolsOpened() &&
+        !hasActiveDownloads(contents.session) && !['media', 'camera', 'microphone', 'display-capture'].some(permission => permissions[permission] === 'allow');
+    };
+    try {
+      for (const [id, view] of [...views]) {
+        const item = configurations.get(id);
+        if (!item || activeGroups().has(key(item))) continue;
+        if (!eligible(id, view)) { protectedCount++; continue; }
+        const url = view.webContents.getURL();
+        try {
+          const scroll = await inspectDiscardCandidate(view.webContents);
+          if (!scroll || views.get(id) !== view || !eligible(id, view) || view.webContents.getURL() !== url) { protectedCount++; continue; }
+          const didUnload = await new Promise<boolean>((resolve) => {
+            const contents = view.webContents;
+            let timeout: ReturnType<typeof setTimeout>;
+            const finish = (success: boolean) => {
+              clearTimeout(timeout);
+              contents.removeListener('destroyed', done);
+              contents.removeListener('will-prevent-unload', blocked);
+              resolve(success);
+            };
+            const done = () => finish(true);
+            const blocked = () => finish(false);
+            contents.once('destroyed', done);
+            contents.once('will-prevent-unload', blocked);
+            timeout = setTimeout(() => finish(false), 2000);
+            unloadTab(id, view, scroll);
+          });
+          if (didUnload) unloaded++;
+          else protectedCount++;
+        } catch { protectedCount++; }
+      }
+      const groups = activeGroups();
+      const ids = [...configurations.values()].filter(item => !groups.has(key(item))).map(item => item.id);
+      if (!window.isDestroyed()) window.webContents.send('browser-tab-request', { action: 'collapse-groups', ids });
+      return { unloaded, protected: protectedCount };
+    } finally { savingEnergy = false; }
+  });
   let checkingIdle = false;
   const discardTimer = setInterval(() => {
     if (checkingIdle || suspended || window.isDestroyed()) return;
@@ -2556,7 +2642,7 @@ export function registerElectronBrowser(
         ? window
         : undefined);
     if (!source || !isBrowserLayout(layout)) return;
-    suspendSidebarPanels(source, Boolean(layout.suspended || layout.tabSwitcher));
+    suspendSidebarPanels(source, Boolean((layout.sidebarSuspended ?? layout.suspended) || layout.tabSwitcher));
     const chromeFocused = source.webContents.isFocused();
     if (windows) windows.setLayout(source, layout);
     else applyLayout(layout);
@@ -2674,7 +2760,9 @@ export function registerElectronBrowser(
     aiNewTabs.dispose();
     releaseExtensionOwner(window);
     disposeTasks();
+    hideLinkPreview();
     stopPiPPreferences?.();
+    stopEnergySaver();
     clearInterval(discardTimer);
     pictureInPicture.forEach((controller) => controller.dispose());
     pictureInPicture.clear();

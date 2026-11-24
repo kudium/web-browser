@@ -38,6 +38,20 @@ interface KudiumPanelOutput {
   reveal?: boolean;
 }
 interface KudiumHookContext {
+  /** Cached macOS battery snapshot; unavailable devices return null fields. Preview uses fictional data. */
+  readonly os: {
+    readonly battery: {get():Promise<{available:boolean;percent:number|null;charging:boolean|null;onBattery:boolean|null;sampledAt:number|null;preview?:boolean}>};
+    readonly power: {get():Promise<{onBattery:boolean;lowPowerMode:boolean|null}>;onChange(handler:(value:{onBattery:boolean;lowPowerMode:boolean|null})=>void|Promise<void>):()=>void};
+    readonly appearance: {get():Promise<{dark:boolean;reducedMotion:boolean;reducedTransparency:boolean;highContrast:boolean}>;onChange(handler:(value:{dark:boolean;reducedMotion:boolean;reducedTransparency:boolean;highContrast:boolean})=>void|Promise<void>):()=>void};
+    readonly network: {get():Promise<{online:boolean}>;onChange(handler:(value:{online:boolean})=>void|Promise<void>):()=>void};
+    readonly locale: {get():Promise<{language:string;languages:string[];timeZone:string}>};
+  };
+  /** Browser-owned toast. Plain text; 5s expiry, or 10s when an action is declared. */
+  readonly toast: {
+    show(input:{id:string;title:string;message:string;durationMs?:number;type?:'info'|'warn'|'success'|'error';tone?:'info'|'success'|'warning'|'error';action?:{id:string;label:string}}):Promise<{shown:boolean;preview?:boolean}>;
+    onAction(id:string,handler:()=>void|Promise<void>):()=>void;
+  };
+
   /** Current browser theme; read again after theme changes. Also available as panel CSS variables. */
   readonly theme: Readonly<{primary: string; frame: string; contrast: string}>;
   readonly panel: {
@@ -203,3 +217,6 @@ interface KudiumActionApi {
     create(input: { title: string; message?: string }): void;
   };
 }
+
+declare const os: KudiumHookContext['os'];
+declare const toast: KudiumHookContext['toast'];

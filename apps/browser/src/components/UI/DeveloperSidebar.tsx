@@ -1,3 +1,4 @@
+import { useAssistantPanelVisible } from './AssistantPanelContext';
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import {
@@ -36,7 +37,7 @@ import { developerProjectStore } from '../../browser/developerProjectStore';
 import { FolderOpen } from 'lucide-react';
 
 export function DeveloperSidebar({
-  active,
+  active: requestedActive,
   openTerminalRequest = 0,
   focusedTabId,
   onFocusTab,
@@ -52,6 +53,8 @@ export function DeveloperSidebar({
   onGroupContextMenu?: (id: string) => void;
   onManageGroup?: (id: string) => void;
 }) {
+  const panelVisible = useAssistantPanelVisible();
+  const active = requestedActive && panelVisible;
   const { appList } = useAppList();
   const access = useGroupAccess();
   const tabsById = useMemo(

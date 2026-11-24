@@ -111,8 +111,8 @@ export function validatePreferences(
       validated.linkRoutingRules = validateLinkRoutingRules(value);
       return;
     }
-    if (key === 'activityNotifications' && typeof value === 'boolean') {
-      validated.activityNotifications = value;
+    if ((key === 'activityNotifications' || key === 'activityToasts') && typeof value === 'boolean') {
+      validated[key] = value;
       return;
     }
     if (key === 'activitySoundName' && validActivitySound(value)) {

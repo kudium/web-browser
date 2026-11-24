@@ -141,9 +141,10 @@ export class SidebarPanelRegistry {
     this.suspended = value;
     for (const [id, entry] of this.entries)
       entry.view?.setVisible(
-        !value &&
+        !this.error &&
+          entry.provider.available?.() !== false &&
           id === this.activeId &&
-          (Boolean(entry.shown) || this.floating?.id === id),
+          (this.floating?.id === id || (!value && Boolean(entry.shown))),
       );
   }
   setSession(session?: Session, groupId?: string) {
@@ -278,7 +279,7 @@ export class SidebarPanelRegistry {
       if (child.isDestroyed() || this.floating?.window !== child) return;
       const { width, height } = child.getContentBounds();
       view.setBounds({ x: 0, y: 44, width, height: Math.max(1, height - 44) });
-      view.setVisible(!this.suspended);
+      view.setVisible(!this.error && entry.provider.available?.() !== false);
     };
     child.on('resize', resize);
     child.on('close', (event) => {

@@ -31,10 +31,12 @@ function preference(panel: AssistantPanel, open: boolean) {
 export function AssistantPanelHost({
   panel,
   active,
+  visible = true,
   children,
 }: {
   panel: AssistantPanel;
   active: boolean;
+  visible?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -42,6 +44,7 @@ export function AssistantPanelHost({
       id={panel}
       title={ASSISTANT_PANEL_NAMES[panel]}
       active={active}
+      visible={visible}
       windowName={`kudium-assistant-${panel}`}
       placementKey={`kudium-assistant-window-${panel}`}
       onDock={() => preference(panel, true)}
