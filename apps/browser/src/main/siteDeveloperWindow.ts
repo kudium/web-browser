@@ -260,7 +260,7 @@ export function registerSiteDeveloperWindows(
         ...(request.action === 'run-site-hook' ? { hookId: request.hookId } : {}),
         ...(request.grantId ? { grantId: request.grantId } : {}),
         ...(request.action === 'set-site-developer'
-          ? { developer: request.developer, run: request.run, hookId: request.hookId }
+          ? { developer: request.developer, run: request.run, hookId: request.hookId, reloadAfterSave: request.reloadAfterSave }
           : {}),
       });
       update(true);

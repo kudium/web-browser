@@ -888,6 +888,12 @@ export function SiteDeveloperPanel({
           </DropdownMenu.Trigger>
           <DropdownMenu.Content align="end">
             <DropdownMenu.Item
+              disabled={disabled || !validDeveloperConfig(draft)}
+              onSelect={() => send('set-site-developer', { developer: draft, reloadAfterSave: true })}
+            >
+              Save & Reload page
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
               disabled={
                 disabled ||
                 dirty ||

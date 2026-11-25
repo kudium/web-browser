@@ -1825,7 +1825,7 @@ export function registerElectronBrowser(
                 }
               });
               window.webContents.send('site-developer-library-changed');
-              if (request.run && request.developer?.enabled)
+              if (request.reloadAfterSave || (request.run && request.developer?.enabled))
                 window.webContents.send('browser-tab-request', {
                   action: 'select',
                   id: request.id,
@@ -1995,7 +1995,8 @@ export function registerElectronBrowser(
                 publish(id, view);
               }
             });
-            if (request.run && request.developer?.enabled) {
+            if (request.reloadAfterSave) contents.reload();
+            else if (request.run && request.developer?.enabled) {
               if (typeof request.hookId === 'string')
                 rerunDeveloperHook(contents, origin, request.hookId);
               else contents.reload();

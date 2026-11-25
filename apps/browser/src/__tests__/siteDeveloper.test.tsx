@@ -798,3 +798,15 @@ it('footer runs the selected saved hook even while another hook is running, and 
   fireEvent.click(screen.getByRole('button', { name: 'Save & Run' }));
   expect(send).toHaveBeenLastCalledWith('set-site-developer', expect.objectContaining({ run: true, hookId: 'reader', developer: expect.objectContaining({ hooks: [expect.objectContaining({ after: "log('updated reader')" })] }) }));
 });
+
+it('footer options save the current draft and request a page reload even with hooks disabled', async () => {
+  const send = jest.fn();
+  render(<Theme><SiteDeveloperPanel disabled={false} send={send} origin="https://example.com"
+    developer={{ config: { ...emptyDeveloperConfig, enabled: false, after: "log('saved')" }, status: 'waiting', logs: [] }} /></Theme>);
+  fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), { target: { value: "log('latest')" } });
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Hook footer options' }), { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Save & Reload page' }));
+  expect(send).toHaveBeenLastCalledWith('set-site-developer', { developer: expect.objectContaining({ after: "log('latest')", enabled: false }), reloadAfterSave: true });
+  expect(isBrowserCommand({ id: 'page', url: 'https://example.com', action: 'set-site-developer', ...send.mock.calls.at(-1)![1] })).toBe(true);
+  expect(isBrowserCommand({ id: 'page', action: 'set-site-developer', developer: emptyDeveloperConfig, reloadAfterSave: 'true' })).toBe(false);
+});

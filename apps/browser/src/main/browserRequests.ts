@@ -156,7 +156,8 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
     (value.url === undefined || text(value.url, 65536)) &&
     (value.action !== 'set-site-developer' ||
       (validDeveloperConfig(value.developer) &&
-        (value.run === undefined || typeof value.run === 'boolean'))) &&
+        (value.run === undefined || typeof value.run === 'boolean') &&
+        (value.reloadAfterSave === undefined || typeof value.reloadAfterSave === 'boolean'))) &&
     (!['toggle-site-hook', 'run-site-hook'].includes(value.action) ||
       (typeof value.hookId === 'string' && typeof value.url === 'string')) &&
     (value.action !== 'ask-hook-ai' || text(value.prompt, 30000)) &&

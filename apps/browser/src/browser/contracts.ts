@@ -147,6 +147,7 @@ export interface BrowserCommand {
   url?: string;
   developer?: SiteDeveloperConfig;
   run?: boolean;
+  reloadAfterSave?: boolean;
   prompt?: string;
   extensionId?: string;
   grantId?: string;
