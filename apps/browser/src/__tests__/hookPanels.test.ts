@@ -154,7 +154,12 @@ it.each(hookPanelExamples)(
       document,
       url: 'https://example.com/',
       content: document.documentElement.outerHTML,
+      onCleanup: () => {},
+      listen: () => {},
       panel: {
+        loadState: async () => null,
+        saveState: async () => {},
+        clearState: async () => {},
         show: publish,
         update: publish,
         onAction: (id: string, handler: (payload: unknown) => unknown) =>
@@ -192,7 +197,8 @@ it.each(hookPanelExamples)(
         const a = document.createElement('a');
         a.href = 'https://example.com/three';
         document.body.append(a);
-        await handlers.get(action.id)!({});
+        if (sample.id === 'panel-navigator' && ['navigator-highlight','navigator-jump'].includes(action.id)) continue;
+        await handlers.get(action.id)!(sample.id === 'panel-navigator' && action.id === 'navigator-search' ? {query:'Page'} : {});
         const update = outputs.at(-1);
         expect(update.reveal).toBe(false);
         if (update.content.type === 'html') {

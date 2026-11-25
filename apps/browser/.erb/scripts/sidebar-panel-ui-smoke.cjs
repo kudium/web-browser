@@ -385,6 +385,17 @@ app
       const exampleView=window.contentView.children.find(v=>!previousViews.has(v)&&v.webContents);
       assert(exampleView,sample.id+': actual page hook must publish its panel');
       await pause(120);
+      if(sample.id==='panel-navigator') {
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelectorAll('.section').length`),1);
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('navigator-search',{query:'fixture'})`);
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.getElementById('query').value`),'fixture');
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('navigator-highlight',{index:0})`);
+        assert((await sourceWindow.webContents.executeJavaScript(`document.querySelector('h1').style.outline`)).includes('solid'));
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('navigator-jump',{index:0})`);
+        assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('.section').getAttribute('aria-current')`),'true');
+        await exampleView.webContents.executeJavaScript(`kudiumHookPanel.invoke('navigator-highlight',{index:-1})`);
+        assert.equal(await sourceWindow.webContents.executeJavaScript(`document.querySelector('h1').style.outline`),'');
+      }
       if(sample.id==='panel-markdown') {
         assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('#panel-output h1').textContent`),'Hook fixture page');
         assert.equal(await exampleView.webContents.executeJavaScript(`document.querySelector('#panel-output a').href`),pageURL);

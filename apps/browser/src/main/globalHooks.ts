@@ -6,6 +6,7 @@ import { EventEmitter } from 'events';
 import { createHash } from 'crypto';
 import {
   ALL_GROUPS_HOOK_SCOPE,
+  globalHookEnabledOnWebsite,
   type GlobalHookConfig,
 } from '../browser/hookMarketplace';
 import {
@@ -53,6 +54,8 @@ export function validGlobalHooks(value: unknown): value is GlobalHookConfig {
     Array.isArray(config.hooks) &&
     config.hooks.every(
       (h) =>
+        (h.autoMode === undefined || typeof h.autoMode === 'boolean') &&
+        (h.enabledSites === undefined || (Array.isArray(h.enabledSites) && h.enabledSites.length <= 100 && h.enabledSites.every(host => typeof host === 'string' && host.length <= 253 && /^[a-z0-9.-]+$/.test(host)))) &&
         Array.isArray(h.exclusions) &&
         h.exclusions.length <= 100 &&
         h.exclusions.every(
@@ -172,7 +175,7 @@ export function effectiveHookConfig(
           hook.enabled &&
           hookMatchesPath(hook.path, url) &&
           hookMatchesWebsite(hook, url) &&
-          !hookWebsiteExclusions(hook.exclusions, url).length
+          globalHookEnabledOnWebsite(hook, url)
       )
       .map((hook) => ({
         ...hook,

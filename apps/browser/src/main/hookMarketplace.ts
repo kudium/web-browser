@@ -41,6 +41,7 @@ const hosts = new WeakMap<
     destinations: () => HookDestination[];
     installInPreferences?: boolean;
     openSiteEditor?: (target: HookDestination, hookId: string) => void;
+    runHook?: (target: HookDestination, hookId: string) => void;
   }
 >();
 const globalEditors = new WeakMap<
@@ -250,6 +251,7 @@ export function registerHookMarketplace(
   options: {
     installInPreferences?: boolean;
     openSiteEditor?: (target: HookDestination, hookId: string) => void;
+    runHook?: (target: HookDestination, hookId: string) => void;
   } = {},
 ) {
   hosts.set(host.webContents, { destinations, ...options });
@@ -522,6 +524,12 @@ export function registerHookMarketplace(
           input.allGroups === true,
           BrowserWindow.fromWebContents(event.sender) || undefined,
         );
+      if (input.action === 'global-run') {
+        const handler = hosts.get(event.sender)?.runHook;
+        if (!handler || !input.hookId.startsWith('global:')) throw new Error('Hook execution is unavailable in this window.');
+        handler(target, input.hookId);
+        return null;
+      }
       if (input.action === 'state') return state();
       if (input.action === 'global-save') {
         if (editorBinding) {
@@ -545,6 +553,7 @@ export function registerHookMarketplace(
         return state();
       }
       if (input.action === 'install') {
+        if (input.autoMode !== undefined && typeof input.autoMode !== 'boolean') throw new Error('Invalid hook mode.');
         if (input.allGroups && !input.global)
           throw new Error('All groups requires a general hook.');
         const stored = previews.get(input.receipt);
@@ -600,8 +609,8 @@ export function registerHookMarketplace(
           const global = getGlobalHooks(hookScope);
           const hooks = replace(global.hooks).map((h) => ({
             ...h,
-            exclusions:
-              global.hooks.find((old) => old.id === h.id)?.exclusions || [],
+            exclusions: global.hooks.find((old) => old.id === h.id)?.exclusions || [],
+            ...(input.replaceId ? {} : h.id === hook.id && input.autoMode ? { autoMode: true, enabledSites: [] } : {}),
           }));
           saveGlobalHooks(
             hookScope,

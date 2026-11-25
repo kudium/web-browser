@@ -56,3 +56,14 @@ it('explains a disabled global master switch without saving a website override',
   expect(await screen.findByText(/Global hooks are disabled. Enable them in Preferences/)).toBeInTheDocument();
   expect(request.mock.calls.some(([input]) => input.action === 'global-save')).toBe(false);
 });
+
+it('enables an Auto hook only for the current website and saves the choice immediately', async () => {
+  const hook = { id: 'auto', name: 'Auto reader', enabled: true, autoMode: true, enabledSites: [], path: '/*', exclusions: [], before: '', after: 'log("ready")', css: '' };
+  const request = jest.fn(async input => ({ global: input.action === 'global-save' ? input.config : { enabled: true, hooks: input.allGroups ? [hook] : [] }, globalHash: 'hash' }));
+  window.electron.hookMarketplace = { request } as any;
+  render(<Theme><SiteGlobalHookList url="https://example.com/page" disabled={false} /></Theme>);
+  const toggle = await screen.findByRole('switch', { name: 'Enable Auto reader on this website' });
+  expect(toggle).toHaveAttribute('aria-checked', 'false');
+  fireEvent.click(toggle);
+  await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'global-save', allGroups: true, config: { enabled: true, hooks: [{ ...hook, enabledSites: ['example.com'] }] } })));
+});

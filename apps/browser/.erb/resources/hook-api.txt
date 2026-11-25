@@ -58,6 +58,9 @@ interface KudiumHookContext {
     show(output: KudiumPanelOutput): Promise<{ id: string }>;
     update(output: KudiumPanelOutput): Promise<{ id: string }>;
     close(id: string): Promise<void>;
+    loadState(id: string): Promise<any>;
+    saveState(id: string, value: any): Promise<void>;
+    clearState(id: string): Promise<void>;
     onAction(
       id: string,
       handler: (payload: unknown) => unknown | Promise<unknown>,

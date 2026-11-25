@@ -188,6 +188,9 @@ if (window === window.top) {
       const panel = Object.freeze({
         show: input => {hasPanel=true;return output('panel', input)}, update: input => {hasPanel=true;return output('panel', input)},
         close: id => output('panel-close', id),
+        loadState: id => output('panel-state-load', {id}),
+        saveState: (id, value) => output('panel-state-save', {id, value}),
+        clearState: id => output('panel-state-clear', {id}),
         onAction: (id, handler) => {
           if (typeof id !== 'string' || typeof handler !== 'function') throw new Error('Provide an action id and handler');
           const key = JSON.stringify([hook.id || '',id]);
@@ -514,7 +517,7 @@ export function registerDeveloperPage(
       ? sidebarPanelsFor(page.owner).targetGroup || sidebarPanelsFor(page.owner).activeGroup || `hook-test-${event.sender.id}`
       : undefined;
     const identity = page?.scope() ||
-      (previewGroup && ['panel', 'panel-close', 'panel-response', 'panel-dispose', 'toast', 'battery', 'os-power', 'os-appearance', 'os-locale', 'os-subscribe', 'os-unsubscribe'].includes(String(data?.kind))
+      (previewGroup && ['panel-state-load', 'panel-state-save', 'panel-state-clear', 'panel', 'panel-close', 'panel-response', 'panel-dispose', 'toast', 'battery', 'os-power', 'os-appearance', 'os-locale', 'os-subscribe', 'os-unsubscribe'].includes(String(data?.kind))
         ? { groupId: previewGroup, sourceId: `hook-test-${event.sender.id}` }
         : undefined);
     const origin = siteOrigin(event.senderFrame?.url || '');
@@ -544,6 +547,18 @@ export function registerDeveloperPage(
           );
     if (data.hookId !== undefined && !hook)
       throw new Error('Hook is no longer enabled.');
+    if (['panel-state-load', 'panel-state-save', 'panel-state-clear'].includes(String(data.kind))) {
+      if (page.previewConfig) throw new Error('Persistent panel state is unavailable in isolated previews.');
+      const now = Date.now();
+      page.panelOutputs = (page.panelOutputs || []).filter(time => now - time < 60000);
+      if (page.panelOutputs.length >= 60) throw new Error('Panel state limit: sixty operations per minute.');
+      page.panelOutputs.push(now);
+      return import('./hookPanelState').then(({ hookPanelState }) => {
+        // Recheck after module loading: navigation, locks or edits may have revoked access.
+        if (pages.get(event.sender) !== page || page.token !== data.token || page.origin !== origin || getGroupLocks().locked(identity.groupId) || hookScriptHash(pageConfig(page, event.sender.getURL())) !== page.scriptHash) throw new Error('Hook access changed before saving panel state.');
+        return hookPanelState({ profile: page.profile, groupId: identity.groupId, origin, hookId: hook?.id || '' }, String(data.kind).replace('panel-state-', ''), data.input);
+      });
+    }
     if (data.kind === 'panel-dispose')
       return removeHookPanels(event.sender, hook?.id || '');
     if (data.kind === 'panel-response')

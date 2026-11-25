@@ -28,6 +28,7 @@ export interface GroupOption {
   group?: IApp;
   leadingIcon?: ReactNode;
   canManage?: boolean;
+  disabled?: boolean;
 }
 export function GroupPicker({
   options,
@@ -48,8 +49,10 @@ export function GroupPicker({
   triggerDetail,
   triggerContent,
   onManage,
+  header,
   unselectedLabel = 'Choose a group',
 }: {
+  header?: ReactNode;
   onManage?: (option: GroupOption) => void;
   options: GroupOption[];
   value: string;
@@ -127,6 +130,7 @@ export function GroupPicker({
     return () => cancelAnimationFrame(frame);
   }, [open, active, id]);
   const choose = (next: string) => {
+    if (options.find(option => option.id === next)?.disabled) return;
     onChange(next);
     setOpen(false);
     onOpenChange?.(false);
@@ -186,6 +190,7 @@ export function GroupPicker({
         className={`group-picker ${contentClassName}`}
         sideOffset={6}
       >
+        {header}
         {searchable && (
           <TextField.Root
             aria-label={`Search ${label.toLowerCase()}`}
@@ -234,6 +239,7 @@ export function GroupPicker({
                 key={option.id}
                 type="button"
                 role="option"
+                disabled={option.disabled}
                 id={`${id}-${index}`}
                 tabIndex={searchable ? -1 : 0}
                 aria-selected={option.id === value}

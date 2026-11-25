@@ -10,9 +10,10 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import { OPEN_HOOK_MARKETPLACE } from './HookMarketplaceDialog';
 import { PreferenceHint } from './PreferenceHint';
-import type {
-  GlobalHook,
-  HookMarketplaceState,
+import {
+  globalHookEnabledOnWebsite,
+  type GlobalHook,
+  type HookMarketplaceState,
 } from '../../browser/hookMarketplace';
 import {
   hookMatchesPath,
@@ -93,7 +94,7 @@ export function SiteGlobalHookList({
   const save = async (
     allGroups: boolean,
     hook: GlobalHook,
-    patch?: Partial<Pick<GlobalHook, 'enabled' | 'exclusions'>>,
+    patch?: Partial<Pick<GlobalHook, 'enabled' | 'exclusions' | 'enabledSites'>>,
   ) => {
     const scope = scopes.find((item) => item.allGroups === allGroups);
     if (!scope || saving.current) return;
@@ -145,7 +146,7 @@ export function SiteGlobalHookList({
             }
           })
           .map((hook) => ({ ...scope, hook,
-            excluded: hookWebsiteExclusions(hook.exclusions, url!).length > 0,
+            excluded: !globalHookEnabledOnWebsite(hook, url!),
             wildcardExcluded: hookWebsiteExclusions(hook.exclusions, url!).some(
               (rule) => rule.startsWith('*.'),
             ),
@@ -209,10 +210,10 @@ export function SiteGlobalHookList({
                   return;
                 }
                 const host = new URL(url!).hostname;
-                void save(allGroups, hook, { exclusions: enabled
-                  ? hook.exclusions.filter((rule) => rule !== host)
-                  : [...new Set([...hook.exclusions, host])],
-                      });
+                void save(allGroups, hook, hook.autoMode ? {
+                  enabledSites: enabled ? [...new Set([...(hook.enabledSites || []), host])] : (hook.enabledSites || []).filter(item => item !== host),
+                  ...(enabled ? { exclusions: hook.exclusions.filter(rule => rule !== host) } : {}),
+                } : { exclusions: enabled ? hook.exclusions.filter(rule => rule !== host) : [...new Set([...hook.exclusions, host])] });
               }}
             />
             </Popover.Trigger>

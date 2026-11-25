@@ -57,6 +57,7 @@ export function HookMarketplaceDialog() {
     id: string; name: string; global: boolean; enabled?: boolean; scopeEnabled?: boolean; destinationId: string; allGroups: boolean; location: string; updated: boolean;
   }>();
   const [allGroups, setAllGroups] = useState(false);
+  const [autoMode, setAutoMode] = useState(false);
   const [checkingInstalled, setCheckingInstalled] = useState(false);
   const [updates, setUpdates] = useState<HookUpdate[]>([]);
   const [updatesChecked, setUpdatesChecked] = useState(false);
@@ -121,6 +122,7 @@ export function HookMarketplaceDialog() {
     ) => {
       generation.current += 1;
       setLaunchToken(generation.current);
+      setAutoMode(false);
       const { current } = generation;
       setOpen(true);
       setMode(detail.mode || 'import');
@@ -308,6 +310,7 @@ export function HookMarketplaceDialog() {
         id,
         receipt: preview.receipt,
         global: selectedUpdate ? selectedUpdate.global : allGroups,
+        ...(!replace && allGroups && autoMode ? { autoMode: true } : {}),
         ...(replace && selectedUpdate
           ? {
               replaceId: selectedUpdate.hookId,
@@ -594,7 +597,7 @@ export function HookMarketplaceDialog() {
           <section className="hook-install-success" aria-label="Installation complete">
             <CheckCircle2 size={32} aria-hidden="true" />
             <p role="status">{installation.updated ? 'Updated successfully.' : 'Installed successfully.'} {' '}
-              {installation.enabled === false ? 'This hook remains disabled.' : 'This hook is enabled.'}</p>
+              {installation.enabled === false ? 'This hook remains disabled.' : autoMode && !installation.updated ? 'Auto mode: enable it on websites where you want it to run.' : 'This hook is enabled.'}</p>
             <p>Open Hook Editor to customize it or run it on the current page. Enabled hooks also run when matching pages load.</p>
             {installation.scopeEnabled === false && (
               <p>Hooks are also off for {installation.location}. Turn them on in the editor to let this hook run.</p>
@@ -1185,11 +1188,13 @@ export function HookMarketplaceDialog() {
               </p>
             )}
             {destination}
+            {allGroups && !selectedUpdate && <label className="hook-mode-choice"><input type="checkbox" checked={autoMode} onChange={event => setAutoMode(event.target.checked)} disabled={busy} /> Auto · enable separately on each website</label>}
+            {allGroups && !selectedUpdate && autoMode && <p className="hook-update-notice">Off on every website initially. Enable it for a website in Hook Developer → Global hooks. Global disable still applies everywhere.</p>}
             <div className="hook-install-footer">
               <p>
                 {selectedUpdate
                   ? 'Updates the existing hook and preserves its settings.'
-                  : 'New hooks are enabled when installed.'}
+                  : autoMode && allGroups ? 'Installed in Auto mode; off on websites until enabled there.' : 'New hooks are enabled when installed.'}
               </p>
               <div className="hook-dialog-actions">
                 <Button

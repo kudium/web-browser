@@ -253,3 +253,18 @@ it('website exclusions survive reloads, while global disable and removal apply a
   expect(effectiveHookConfig('two', 'https://other.com/articles/1').hooks).toEqual([]);
   expect(getGlobalHooks(scope).hooks).toEqual([]);
 });
+
+it('Auto is off by default per website, remembers allowed websites, and master switches override them', () => {
+  const auto = { ...hook, autoMode: true, enabledSites: [] as string[] };
+  const save = (enabled: boolean, entry = auto) => saveGlobalHooks('one', { enabled, hooks: [entry] }, globalHookHash(getGlobalHooks('one')));
+  save(true);
+  expect(effectiveHookConfig('one', 'https://example.com/articles/one').hooks).toEqual([]);
+  auto.enabledSites = ['example.com'];
+  save(true);
+  expect(effectiveHookConfig('one', 'https://example.com/articles/one').hooks).toEqual([expect.objectContaining({ id: 'global:global-one' })]);
+  expect(effectiveHookConfig('one', 'https://other.com/articles/one').hooks).toEqual([]);
+  save(false);
+  expect(effectiveHookConfig('one', 'https://example.com/articles/one').hooks).toEqual([]);
+  save(true, { ...auto, enabled: false });
+  expect(effectiveHookConfig('one', 'https://example.com/articles/one').hooks).toEqual([]);
+});

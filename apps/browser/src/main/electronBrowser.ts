@@ -2535,7 +2535,13 @@ export function registerElectronBrowser(
           },
         ];
       }),
-      { openSiteEditor: (target, hookId) => {
+      { runHook: (target, hookId) => {
+        const view = views.get(target.id);
+        if (!view || view.webContents.isDestroyed() || siteOrigin(view.webContents.getURL()) !== new URL(target.url).origin) throw new Error('Open this website before running a hook.');
+        const effective = effectiveHookConfig(target.profile, view.webContents.getURL());
+        if (!effective.hooks?.some(hook => hook.id === hookId && hook.enabled)) throw new Error('Enable this hook on this website first. Global disable overrides website choices.');
+        rerunDeveloperHook(view.webContents, new URL(target.url).origin, hookId);
+      }, openSiteEditor: (target, hookId) => {
         developerWindows.open({ sender: window.webContents } as IpcMainEvent, target.id, new URL(target.url).origin, hookId);
       } }
     );

@@ -123,6 +123,9 @@ const members: Record<string, Completion[]> = {
     {label:'contrast',type:'property',info:'Readable text color for the primary background (hex).'},
   ],
   panel: [
+    snippetCompletion('loadState("${navigator}")',{label:'loadState',type:'function',info:'Restore encrypted JSON state for this hook, website and group; null when absent.'}),
+    snippetCompletion('saveState("${navigator}", ${value})',{label:'saveState',type:'function',info:'Persist up to 32 KB JSON; ten state ids per hook/website/group. Unavailable in previews.'}),
+    snippetCompletion('clearState("${navigator}")',{label:'clearState',type:'function',info:'Remove remembered state for this hook, website and group.'}),
     snippetCompletion('show({id:"${output}",title:"${Hook output}",content:{type:"markdown",text:"${# Results}"},reveal:true})',{label:'show',type:'function',info:'Create or replace an output panel. reveal is optional.'}),
     snippetCompletion('update({id:"${output}",title:"${Hook output}",content:{type:"json",value:${data}}})',{label:'update',type:'function',info:'Update a panel by id without rerunning the hook.'}),
     snippetCompletion('onAction("${refresh}",async payload=>{\n  ${handler}\n})',{label:'onAction',type:'function',info:'Register a handler for a declared panel action in this hook run.'}),

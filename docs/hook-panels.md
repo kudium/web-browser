@@ -146,3 +146,39 @@ the main action. Controls support keyboard focus, disabled states and
 `aria-invalid="true"`. Connect validation text with `aria-describedby`. These
 classes are optional; custom CSS is applied afterward and can override them.
 Buttons still need the existing action bridge or custom event handlers.
+
+## Remembered progress and page navigation
+
+`context.panel.saveState(id, value)` saves JSON to encrypted local browser storage.
+`loadState(id)` returns the last value or `null`; `clearState(id)` deletes it.
+Main derives the profile, tab group, website origin and hook id from the approved
+run; scripts cannot select another scope. State survives reload/restart and code
+updates that retain the same hook id. It is local, not synchronized, and does not
+restore a panel automatically: load state and publish the panel when the hook starts.
+Ten ids per hook/website/group, 32 KB UTF-8 JSON per value; operations share the
+sixty-per-minute panel budget. No plaintext fallback; previews cannot persist.
+Handle unavailable storage with in-memory state. Deleting the panel does not erase
+saved progress; call `clearState` explicitly. A newly installed copy has another id.
+
+The shared **Panel: page navigator with saved progress** example adds search,
+heading links, hover/focus highlighting, page-selection context and Reset progress.
+It stores only the search query and selected heading. Source elements stay in the
+page hook; the isolated panel receives labels and indices. DOM highlights are
+removed on cleanup. Inputs/results remain intact on close/reopen; saved query
+and chosen heading restore after navigation or restart when the hook runs again.
+
+## Installed global hooks in the picker
+
+The panel picker has **Active** and **Global hooks** views. Active lists existing
+output; Global hooks lists installed hooks matching the current webpage. Clicking
+an enabled lifecycle hook runs it in that page; action-only hooks remain context
+menu actions. Off/disabled hooks explain their status and retain Manage, opening
+Hook Developer for the current page. Global execution reuses the normal reviewed
+runtime and never runs a hook in a different panel-pinned group.
+
+Installation offers **Auto · enable separately on each website** for All groups
+hooks. Auto starts with an empty website allowlist. Hook Developer’s Global hooks
+switch immediately adds/removes the current website. Global master switches
+still override website choices. Existing installations retain their behavior;
+updates preserve Auto mode and the allowed/excluded websites. Auto can also be
+changed in the global editor, with an Enabled websites list.

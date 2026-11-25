@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useEffect } from 'react';
+import { useLayoutEffect, useRef, useEffect, useState } from 'react';
 import {
   X,
   SquareStack,
@@ -13,6 +13,16 @@ import { AssistantPageHeader } from './AssistantPageHeader';
 import { ChromeIconButton } from './ChromeIconButton';
 import { GroupPicker } from './GroupPicker';
 import { EmptyState } from './EmptyState';
+import { useAppList } from '../../utils/hooks/useAppList';
+import {
+  globalHookEnabledOnWebsite,
+  type GlobalHook,
+  type HookMarketplaceState,
+} from '../../browser/hookMarketplace';
+import {
+  hookMatchesPath,
+  hookMatchesWebsite,
+} from '../../browser/siteDeveloper';
 import { HookIcon } from './HookIcon';
 
 /** Shared slot for isolated native feature content; geometry belongs to this shell. */
@@ -25,6 +35,76 @@ export function SidebarPanels({
   active: boolean;
   onClose: () => void;
 }) {
+  const [pickerTab, setPickerTab] = useState<'active' | 'global'>('active');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [globalChoices, setGlobalChoices] = useState<
+    Array<{
+      hook: GlobalHook;
+      allGroups: boolean;
+      enabled: boolean;
+      masterEnabled: boolean;
+    }>
+  >([]);
+  const [hookError, setHookError] = useState('');
+  const { appList, lastIndex } = useAppList();
+  const currentPage = appList[lastIndex];
+  useEffect(() => {
+    if (
+      !pickerOpen ||
+      pickerTab !== 'global' ||
+      !currentPage ||
+      !window.electron?.hookMarketplace
+    )
+      return;
+    let live = true;
+    const refresh = async () => {
+      try {
+        setGlobalChoices([]);
+        const scopes = await Promise.all(
+          [true, false].map(async (allGroups) => ({
+            allGroups,
+            state: (await window.electron.hookMarketplace.request({
+              action: 'state',
+              id: currentPage.id,
+              allGroups,
+            })) as HookMarketplaceState,
+          })),
+        );
+        if (!live) return;
+        setGlobalChoices(
+          scopes.flatMap(({ allGroups, state: hookState }) =>
+            hookState.global.hooks
+              .filter(
+                (hook) =>
+                  hookMatchesPath(hook.path, hookState.destination.url) &&
+                  hookMatchesWebsite(hook, hookState.destination.url),
+              )
+              .map((hook) => ({
+                hook,
+                allGroups,
+                masterEnabled: hookState.global.enabled && hook.enabled,
+                enabled:
+                  hookState.global.enabled &&
+                  hook.enabled &&
+                  globalHookEnabledOnWebsite(hook, hookState.destination.url),
+              })),
+          ),
+        );
+        setHookError('');
+      } catch (error) {
+        if (live) {
+          setGlobalChoices([]);
+          setHookError(String(error).replace(/^Error: /, ''));
+        }
+      }
+    };
+    void refresh();
+    window.addEventListener('kudium-hooks-changed', refresh);
+    return () => {
+      live = false;
+      window.removeEventListener('kudium-hooks-changed', refresh);
+    };
+  }, [pickerOpen, pickerTab, currentPage?.id, currentPage?.url]);
   const slot = useRef<HTMLDivElement>(null);
   const restoredTarget = useRef(false);
   const layoutUpdate = useRef<(() => void) | undefined>(undefined);
@@ -49,8 +129,10 @@ export function SidebarPanels({
     let lastLayout = '';
     const update = () => {
       const rect = element?.getBoundingClientRect();
-      const bounds = active && !state.floating && rect && rect.width > 0 && rect.height > 0
-        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null;
+      const bounds =
+        active && !state.floating && rect && rect.width > 0 && rect.height > 0
+          ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+          : null;
       const signature = JSON.stringify(bounds);
       if (signature === lastLayout) return;
       lastLayout = signature;
@@ -66,7 +148,12 @@ export function SidebarPanels({
     // A fixed-width native slot moves while its parent opens; position changes
     // do not trigger ResizeObserver. Reconcile once the shell finishes moving.
     const motionEnd = (event: Event) => {
-      if (event.target instanceof Element && element && event.target.contains(element)) schedule();
+      if (
+        event.target instanceof Element &&
+        element &&
+        event.target.contains(element)
+      )
+        schedule();
     };
     document.addEventListener('transitionend', motionEnd);
     document.addEventListener('transitioncancel', motionEnd);
@@ -89,14 +176,11 @@ export function SidebarPanels({
         .sidebarPanels({ action: 'layout', id, bounds: null })
         .catch(() => {});
     };
-  }, [
-    active,
-    state.activeId,
-    state.openRequest,
-    state.floating,
-  ]);
+  }, [active, state.activeId, state.openRequest, state.floating]);
   // Metadata refreshes can require layout, but must not hide or detach the view.
-  useLayoutEffect(() => { layoutUpdate.current?.(); }, [state.panels]);
+  useLayoutEffect(() => {
+    layoutUpdate.current?.();
+  }, [state.panels]);
   return (
     <section
       className="ai-sidebar-pane sidebar-feature-pane"
@@ -106,29 +190,100 @@ export function SidebarPanels({
       <AssistantPageHeader edgeToEdge>
         <GroupPicker
           label="Sidebar panel"
-          unselectedLabel="Choose a panel"
+          unselectedLabel={
+            state.panels.find((panel) => panel.id === state.activeId)?.title ||
+            'Choose a panel'
+          }
           placeholder="Search panels…"
-          options={state.panels.map((panel) => ({
-            id: panel.id,
-            name: panel.title,
-            detail: panel.detail,
-            canManage: panel.canManage,
-            leadingIcon:
-              panel.kind === 'hook' ? (
-                <HookIcon size={14} />
-              ) : (
-                <SquareStack size={14} />
-              ),
-          }))}
+          header={
+            <nav className="panel-picker-tabs" aria-label="Panel picker views">
+              <button
+                type="button"
+                aria-pressed={pickerTab === 'active'}
+                onClick={() => setPickerTab('active')}
+              >
+                Active ({state.panels.length})
+              </button>
+              <button
+                type="button"
+                aria-pressed={pickerTab === 'global'}
+                onClick={() => setPickerTab('global')}
+              >
+                Global hooks
+              </button>
+            </nav>
+          }
+          onOpenChange={setPickerOpen}
+          options={
+            pickerTab === 'active'
+              ? state.panels.map((panel) => ({
+                  id: panel.id,
+                  name: panel.title,
+                  detail: panel.detail,
+                  canManage: panel.canManage,
+                  leadingIcon:
+                    panel.kind === 'hook' ? (
+                      <HookIcon size={14} />
+                    ) : (
+                      <SquareStack size={14} />
+                    ),
+                }))
+              : globalChoices.map(
+                  ({ hook, allGroups, enabled, masterEnabled }) => ({
+                    id: `global-choice:${allGroups ? 'all:' : ''}${hook.id}`,
+                    name: hook.name,
+                    detail: enabled
+                      ? 'Run on this page'
+                      : !masterEnabled
+                        ? 'Disabled globally · Manage to enable'
+                        : 'Off on this website · Manage to enable',
+                    canManage: true,
+                    disabled:
+                      !enabled ||
+                      ![hook.before, hook.after, hook.css].some((source) =>
+                        source.trim(),
+                      ),
+                    leadingIcon: <HookIcon size={14} />,
+                  }),
+                )
+          }
           onManage={(panel) => {
-            void browser
-              .sidebarPanels({ action: 'manage', id: panel.id })
-              .catch(() => {});
+            if (pickerTab === 'global' && currentPage) {
+              void window.electron.hookMarketplace
+                .request({
+                  action: 'site-editor-open',
+                  id: currentPage.id,
+                  hookId: '',
+                })
+                .catch((error) => setHookError(String(error)));
+            } else
+              void browser
+                .sidebarPanels({ action: 'manage', id: panel.id })
+                .catch(() => {});
           }}
           value={state.activeId || ''}
-          disabled={!state.panels.length}
+          disabled={!state.panels.length && !currentPage}
           triggerClassName="sidebar-feature-panel-picker"
           onChange={(id) => {
+            if (id.startsWith('global-choice:') && currentPage) {
+              const choice = globalChoices.find(
+                (item) =>
+                  `global-choice:${item.allGroups ? 'all:' : ''}${item.hook.id}` ===
+                  id,
+              );
+              if (choice)
+                void window.electron.hookMarketplace
+                  .request({
+                    action: 'global-run',
+                    id: currentPage.id,
+                    hookId: `global:${choice.allGroups ? 'all:' : ''}${choice.hook.id}`,
+                    allGroups: choice.allGroups,
+                  })
+                  .catch((error) =>
+                    setHookError(String(error).replace(/^Error: /, '')),
+                  );
+              return;
+            }
             void browser
               .sidebarPanels({ action: 'activate', id })
               .catch(() => {});
@@ -243,10 +398,34 @@ export function SidebarPanels({
           }}
         />
       ) : null}
-      <div className="sidebar-feature-content" ref={slot} style={{ position: 'relative' }}>
-        {state.snapshot && <img className="sidebar-panel-snapshot" src={state.snapshot.image}
-          data-presentation-id={state.snapshot.presentationId} alt="" aria-hidden="true"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', borderRadius: 8 }} />}
+      {hookError && (
+        <p role="alert" className="site-hook-import-error">
+          {hookError}
+        </p>
+      )}
+      <div
+        className="sidebar-feature-content"
+        ref={slot}
+        style={{ position: 'relative' }}
+      >
+        {state.snapshot && (
+          <img
+            className="sidebar-panel-snapshot"
+            src={state.snapshot.image}
+            data-presentation-id={state.snapshot.presentationId}
+            alt=""
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'fill',
+              pointerEvents: 'none',
+              borderRadius: 8,
+            }}
+          />
+        )}
       </div>
     </section>
   );

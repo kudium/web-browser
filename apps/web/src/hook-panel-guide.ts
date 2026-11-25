@@ -43,7 +43,7 @@ export const hookPanelGuide: Tutorial = {
         ],
       ],
       examples: hookPanelExamples
-        .filter((e) => !["panel-html", "panel-media"].includes(e.id))
+        .filter((e) => !["panel-html", "panel-media", "panel-navigator"].includes(e.id))
         .map((e) => ({ title: e.name, code: e.source })),
     },
     {
@@ -56,7 +56,7 @@ export const hookPanelGuide: Tutorial = {
         "Use kudiumHookPanel.onUpdate(output => ...) to render output.content.data. The hook handler retains the original hook’s page access and approval. The panel receives only the JSON you send it; the bridge does not grant more permissions.",
       ],
       examples: hookPanelExamples
-        .filter((e) => ["panel-html", "panel-media"].includes(e.id))
+        .filter((e) => ["panel-html", "panel-media", "panel-navigator"].includes(e.id))
         .map((e) => ({ title: e.name, code: e.source })),
     },
     {
@@ -103,6 +103,10 @@ export const hookPanelGuide: Tutorial = {
       id: "state-and-groups",
       title: "State, groups and links",
       paragraphs: [
+        "The panel picker separates Active output from Global hooks. Matching enabled global hooks can run on the current page. Manage opens the page’s hook controls. Auto installation keeps a global hook off on every website until enabled there; global disable still overrides website choices. Updates preserve Auto mode and website choices.",
+        "Persist small JSON preferences or progress with await context.panel.saveState(id,value), restore with loadState(id) (null when absent), and remove with clearState(id). State is encrypted locally and isolated by browser profile, tab group, website origin and hook id. It survives page reloads and browser restarts; the hook must publish its panel again. Website JavaScript and the isolated panel document cannot read this browser-owned storage directly.",
+        "Save at explicit user actions, not every keystroke. Each hook can store ten named states per website/group, up to 32 KB each; state operations share the sixty-per-minute panel limit. Secure storage must be available; isolated previews do not persist real state. Catch errors and retain in-memory progress when persistence is unavailable. Store only the inputs or progress you need, not whole pages.",
+        "The Page navigator example restores a search query and selected heading, lists matching sections, highlights a heading on hover or focus, scrolls to it on click, follows text selection, and offers Reset saved progress. Navigation handlers run in the original page; panel code receives safe text labels and indices only.",
         "Updating data while HTML, CSS and script stay the same preserves inputs and the native view. Replacing the design recreates it. Switching sidebar pages preserves the view, selected panel and existing picker behavior. Opening the panel never reruns the hook.",
         "A panel belongs to its originating hook, page and group. Auto follows the focused group; selecting another group cannot give the old hook access to it. Website links use the existing browser navigation and open in the authorized source group.",
         "context.panel.close(id) removes output. Navigating, disabling, changing or stopping the hook removes its panels and revokes actions. Outputs are runtime state, not a persisted database, and must be republished when the hook starts again.",

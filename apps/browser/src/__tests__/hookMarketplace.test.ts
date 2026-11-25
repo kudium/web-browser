@@ -679,3 +679,13 @@ it('hides the retained native editor when opening the marketplace so returning i
   await handler({ sender: mockEditorContents, senderFrame: mockEditorContents.mainFrame }, { action: 'browse' });
   expect(mockHost.hide).toHaveBeenCalled();
 });
+
+it('routes global quick-run only through the registered owner and exact available destination', async () => {
+  const runHook = jest.fn();
+  registerHookMarketplace(mockHost as any, () => targets, { runHook });
+  await handler(event, { action:'global-run',id:'tab',hookId:'global:all:reader',allGroups:true });
+  expect(runHook).toHaveBeenCalledWith(targets[0], 'global:all:reader');
+  await expect(handler(event, { action:'global-run',id:'missing',hookId:'global:all:reader' })).rejects.toThrow('destination');
+  await expect(handler(event, { action:'global-run',id:'tab',hookId:'site-hook' })).rejects.toThrow('unavailable');
+  expect(runHook).toHaveBeenCalledTimes(1);
+});

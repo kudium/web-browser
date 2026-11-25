@@ -209,6 +209,8 @@ export function GlobalHookEditorPage() {
                 disabled={busy}
                 onChange={(sites) => setDraft({ ...draft, sites })}
               />
+              <label><input type="checkbox" checked={!!draft.autoMode} disabled={busy} onChange={event => setDraft({ ...draft, autoMode: event.target.checked, enabledSites: draft.enabledSites || [] })} /> Auto · enable separately per website</label>
+              {draft.autoMode && <FormTextField label="Enabled websites" value={(draft.enabledSites || []).join(', ')} disabled={busy} placeholder="example.com" onChange={event => setDraft({ ...draft, enabledSites: event.target.value.split(',').map(host => host.trim().toLowerCase()).filter(Boolean) })} />}
               <FormTextField
                 label="Excluded domains"
                 value={draft.exclusions.join(', ')}

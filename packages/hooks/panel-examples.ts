@@ -8,6 +8,127 @@ export interface HookExample {
 /** Shared with the website tutorial so copied examples match the app runtime. */
 export const hookPanelExamples: HookExample[] = [
   {
+    id: "panel-navigator",
+    name: "Panel: page navigator with saved progress",
+    stage: "after",
+    source: `// Page access stays in this hook; the panel receives labels and indices only.
+/** @type {{query?:string, heading?:string}} */
+let savedNavigator = {};
+let stateNotice = '';
+try { savedNavigator = (await context.panel.loadState('navigator')) || {}; }
+catch (_) { stateNotice = 'Progress is kept for this session; saved state is unavailable.'; }
+let searchTerm = typeof savedNavigator.query === 'string' ? savedNavigator.query.slice(0, 120) : '';
+let chosenHeading = typeof savedNavigator.heading === 'string' ? savedNavigator.heading : '';
+/** @type {HTMLElement[]} */
+let headingTargets = [];
+/** @type {HTMLElement | undefined} */
+let highlightedHeading;
+let originalOutline = { outline: "", offset: "" };
+const clearHighlight = () => {
+  if (highlightedHeading) {
+    highlightedHeading.style.outline = originalOutline.outline;
+    highlightedHeading.style.outlineOffset = originalOutline.offset;
+    highlightedHeading = undefined;
+  }
+};
+/** @param {number} index */
+const highlightHeading = index => {
+  clearHighlight();
+  const target = headingTargets[index];
+  if (!target || !target.isConnected) return;
+  highlightedHeading = target;
+  originalOutline = { outline: target.style.outline, offset: target.style.outlineOffset };
+  target.style.outline = '2px solid ' + context.theme.primary;
+  target.style.outlineOffset = '5px';
+};
+context.onCleanup(clearHighlight);
+const navigatorDesign = {
+  html: '<main class="kudium-form"><header><h1>Page navigator</h1><button id="refresh" class="kudium-button" title="Refresh sections" aria-label="Refresh sections"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 12M4 12l2.3 6A7 7 0 0 0 18 17"/></svg></button></header><form id="search-form"><label class="kudium-field">Find a section<input id="query" type="search" maxlength="120" placeholder="Search page headings"></label><button class="kudium-button kudium-button-primary" type="submit">Find</button></form><p id="summary" class="kudium-hint" role="status"></p><div id="sections"></div><p id="selection" class="kudium-hint"></p><p id="notice" class="kudium-hint"></p><p id="error" role="alert"></p><button id="forget" class="kudium-button">Reset saved progress</button></main>',
+  css: 'main{padding:16px}header{display:flex;align-items:center;justify-content:space-between;gap:12px}h1{font-size:18px;font-weight:600;margin:0}form{display:flex;align-items:end;gap:8px;margin-top:16px}.kudium-field{flex:1;min-width:0}#sections{display:flex;flex-direction:column;gap:4px;margin:12px 0}.section{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:transparent;color:inherit;border:0;border-radius:8px;padding:10px;cursor:pointer}.section:hover,.section[aria-current=true]{background:color-mix(in srgb,CanvasText 8%,Canvas)}.section span{min-width:0;overflow-wrap:anywhere;flex:1}.section small{opacity:.55;font-size:11px}.section:focus-visible{outline:2px solid var(--kudium-primary);outline-offset:1px}#error{font-size:12px;color:light-dark(#b91c1c,#fca5a5)}#selection{overflow-wrap:anywhere}button svg{display:block}#forget{font-size:11px;opacity:.7}@media(max-width:260px){form{flex-wrap:wrap}form button{width:100%}}',
+  script: String.raw\`let activeNavigatorData;
+const errorBox = document.getElementById('error');
+const call = async (action, payload) => {
+  errorBox.textContent = '';
+  try { return await kudiumHookPanel.invoke(action, payload); }
+  catch (error) { errorBox.textContent = error.message || 'Try again.'; }
+};
+kudiumHookPanel.onUpdate(output => {
+  const data = output.content.data;
+  activeNavigatorData = data;
+  const queryInput = document.getElementById('query');
+  if (document.activeElement !== queryInput) queryInput.value = data.query;
+  document.getElementById('summary').textContent = data.items.length ? data.items.length + ' sections · hover to highlight, click to jump' : data.total ? 'No sections match. Try another word.' : 'No headings found on this page.';
+  document.getElementById('selection').textContent = data.selection ? 'Selected on page: ' + data.selection : '';
+  document.getElementById('notice').textContent = data.notice;
+  const list = document.getElementById('sections');
+  list.replaceChildren();
+  for (const item of data.items) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'section';
+    button.setAttribute('aria-current', String(item.label === data.heading));
+    const label = document.createElement('span'); label.textContent = item.label;
+    const level = document.createElement('small'); level.textContent = item.level;
+    button.append(label, level);
+    button.onmouseenter = () => { void call('navigator-highlight', { index: item.index }); };
+    button.onfocus = button.onmouseenter;
+    button.onmouseleave = () => { void call('navigator-highlight', { index: -1 }); };
+    button.onblur = button.onmouseleave;
+    button.onclick = () => { void call('navigator-jump', { index: item.index }); };
+    list.append(button);
+  }
+});
+document.getElementById('search-form').onsubmit = async event => {
+  event.preventDefault(); const button = event.currentTarget.querySelector('button');
+  button.disabled = true; try { await call('navigator-search', { query: document.getElementById('query').value }); } finally { button.disabled = false; }
+};
+document.getElementById('refresh').onclick = () => { void call('navigator-search', { query: document.getElementById('query').value }); };
+document.getElementById('forget').onclick = () => { void call('navigator-reset', {}); };\`
+};
+const rememberNavigator = async () => {
+  try { await context.panel.saveState('navigator', { query: searchTerm, heading: chosenHeading }); stateNotice = ''; }
+  catch (_) { stateNotice = 'Progress is kept for this session; saved state is unavailable.'; }
+};
+const publishNavigator = async (reveal = false) => {
+  clearHighlight();
+  headingTargets = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6')).filter(element => element instanceof HTMLElement).filter(element => element.textContent.trim()).slice(0, 100);
+  const items = headingTargets.map((element, index) => ({ index, label: element.textContent.trim().slice(0, 180), level: element.tagName })).filter(item => item.label.toLowerCase().includes(searchTerm.toLowerCase()));
+  return context.panel.update({ id: 'navigator', title: 'Page navigator', reveal,
+    content: { type: 'html', ...navigatorDesign, data: { items, total: headingTargets.length, query: searchTerm, heading: chosenHeading, selection: String(document.getSelection() || '').trim().slice(0, 160), notice: stateNotice } },
+    actions: [{ id: 'navigator-search', label: 'Find sections' }, { id: 'navigator-highlight', label: 'Highlight section' }, { id: 'navigator-jump', label: 'Jump to section' }, { id: 'navigator-reset', label: 'Reset progress' }]
+  });
+};
+context.panel.onAction('navigator-search', async raw => {
+  const input = /** @type {{query?:unknown}} */ (raw);
+  if (!input || typeof input.query !== 'string') throw new Error('Enter a search term.');
+  searchTerm = input.query.slice(0, 120); await rememberNavigator(); return publishNavigator();
+});
+context.panel.onAction('navigator-highlight', raw => {
+  const input = /** @type {{index:number}} */ (raw);
+  if (!Number.isInteger(input?.index)) throw new Error('Choose a section.');
+  highlightHeading(input.index);
+});
+context.panel.onAction('navigator-jump', async raw => {
+  const input = /** @type {{index:number}} */ (raw);
+  const target = Number.isInteger(input?.index) ? headingTargets[input.index] : undefined;
+  if (!target?.isConnected) throw new Error('The page changed. Refresh sections and try again.');
+  target.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  chosenHeading = target.textContent.trim().slice(0, 180);
+  await rememberNavigator(); await publishNavigator(); highlightHeading(input.index);
+});
+context.panel.onAction('navigator-reset', async () => {
+  try { await context.panel.clearState('navigator'); stateNotice = ''; } catch (_) { stateNotice = 'Saved state could not be cleared. Try again.'; }
+  searchTerm = ''; chosenHeading = ''; return publishNavigator();
+});
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let selectionTimer;
+context.listen(document, 'selectionchange', () => {
+  if (selectionTimer) return;
+  selectionTimer = context.setTimeout(() => { selectionTimer = undefined; void publishNavigator().catch(() => {}); }, 250);
+});
+await publishNavigator(true);
+`
+  },
+  {
     id: "panel-markdown",
     name: "Panel: Markdown output",
     stage: "after",

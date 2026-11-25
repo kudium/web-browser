@@ -6,7 +6,7 @@ import type {
 } from '../../../../packages/hooks/package';
 // eslint-disable-next-line import/no-relative-packages
 import { parseHookPackage } from '../../../../packages/hooks/package';
-import type { SiteHook } from './siteDeveloper';
+import { hookWebsiteExclusions, type SiteHook } from './siteDeveloper';
 
 export type {
   HookPackage,
@@ -22,6 +22,12 @@ export interface InstalledHookSource {
 }
 export interface GlobalHook extends SiteHook {
   exclusions: string[];
+  autoMode?: boolean;
+  enabledSites?: string[];
+}
+export function globalHookEnabledOnWebsite(hook: GlobalHook, url: string) {
+  return !hookWebsiteExclusions(hook.exclusions, url).length &&
+    (!hook.autoMode || !!hook.enabledSites?.includes(new URL(url).hostname));
 }
 export interface GlobalHookConfig {
   enabled: boolean;
@@ -49,6 +55,7 @@ type ScopedHookMarketplaceRequest =
   | { action: 'open-install'; url: string }
   | { action: 'preview'; url: string }
   | { action: 'state'; id?: string }
+  | { action: 'global-run'; id: string; hookId: string }
   | { action: 'global-editor-open'; id?: string; hookId?: string }
   | { action: 'site-editor-open'; id: string; hookId: string }
   | { action: 'global-test-run'; url: string; hook: GlobalHook }
@@ -58,6 +65,7 @@ type ScopedHookMarketplaceRequest =
       id?: string;
       receipt: string;
       global: boolean;
+      autoMode?: boolean;
       replaceId?: string;
       expectedHash?: string;
     }
