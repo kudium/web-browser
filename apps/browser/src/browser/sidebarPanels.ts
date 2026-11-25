@@ -4,6 +4,7 @@ export interface SidebarPanelInfo {
   detail?: string;
   kind: 'extension' | 'hook' | 'feature';
   key?: string;
+  canManage?: boolean;
 }
 export interface SidebarPanelBounds {
   x: number;
@@ -50,6 +51,7 @@ export interface SidebarPanelState {
 }
 export type SidebarPanelRequest =
   | { action: 'list' }
+  | { action: 'manage'; id: string }
   | { action: 'activate'; id: string; reveal?: boolean }
   | { action: 'target'; groupId?: string }
   | { action: 'close' }

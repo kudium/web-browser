@@ -48,3 +48,13 @@ test('releases native page suspension when an open picker unmounts', () => {
   unmount();
   expect(onOpenChange).toHaveBeenLastCalledWith(false);
 });
+
+test('manages a panel without selecting it and closes the picker first', () => {
+  const onChange = jest.fn(), onManage = jest.fn(), onOpenChange = jest.fn();
+  render(<Theme><GroupPicker options={[{ id: 'one', name: 'Gallery', canManage: true }]} value="one" label="Panel" disabled={false} onChange={onChange} onManage={onManage} onOpenChange={onOpenChange} /></Theme>);
+  fireEvent.click(screen.getByRole('button', { name: 'Panel' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Manage Gallery' }));
+  expect(onManage).toHaveBeenCalledWith(expect.objectContaining({ id: 'one' }));
+  expect(onChange).not.toHaveBeenCalled();
+  expect(onOpenChange).toHaveBeenLastCalledWith(false);
+});

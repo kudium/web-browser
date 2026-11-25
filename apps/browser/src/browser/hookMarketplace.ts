@@ -79,13 +79,14 @@ type ScopedHookMarketplaceRequest =
       listingId?: string;
       expectedVersion?: number;
     }
-  | { action: 'updates'; id?: string }
+  | { action: 'updates'; id?: string; hookId?: string }
   | { action: 'account-status' }
   | { action: 'account-preferences' };
 export type HookMarketplaceRequest = ScopedHookMarketplaceRequest & {
   allGroups?: boolean;
 };
 export interface HookMarketplaceState {
+  scopeAllGroups?: boolean;
   installedHook?: { id: string; name: string; global: boolean; enabled?: boolean; scopeEnabled?: boolean };
   material?: { translucentChrome: boolean; translucentAI: boolean };
   editorHook?: GlobalHook;

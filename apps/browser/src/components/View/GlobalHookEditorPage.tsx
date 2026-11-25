@@ -1,4 +1,4 @@
-import { hookSourceValidator } from "../../browser/hookValidation";
+import { hookSourceValidator } from '../../browser/hookValidation';
 import { OPEN_HOOK_MARKETPLACE } from '../UI/HookMarketplaceDialog';
 import { FormDisclosure } from '../UI/FormDisclosure';
 import { FormTextField } from '../UI/FormTextField';
@@ -31,7 +31,7 @@ export function GlobalHookEditorPage() {
   const [testing, setTesting] = useState(false);
   useEffect(
     () => window.electron.hookMarketplace.onTestState(setTestState),
-    []
+    [],
   );
   useEffect(() => {
     let live = true;
@@ -62,7 +62,11 @@ export function GlobalHookEditorPage() {
         .catch((reason) => setError(String(reason).replace(/^Error: /, '')));
     };
     window.addEventListener('kudium-hook-published', refresh);
-    return () => window.removeEventListener('kudium-hook-published', refresh);
+    window.addEventListener('kudium-hooks-changed', refresh);
+    return () => {
+      window.removeEventListener('kudium-hook-published', refresh);
+      window.removeEventListener('kudium-hooks-changed', refresh);
+    };
   }, []);
   useEffect(() => {
     // Let the native window paint its lightweight form before CodeMirror mounts.
@@ -97,7 +101,7 @@ export function GlobalHookEditorPage() {
           ...state.global,
           hooks: exists
             ? state.global.hooks.map((item) =>
-                item.id === hook.id ? hook : item
+                item.id === hook.id ? hook : item,
               )
             : [...state.global.hooks, hook],
         },
@@ -127,7 +131,7 @@ export function GlobalHookEditorPage() {
                 sites: draft.sites?.filter((site) => site.host),
                 exclusions: draft.exclusions.filter(Boolean),
               },
-            }
+            },
       );
     } catch (reason) {
       setError(String(reason).replace(/^Error: /, ''));
@@ -151,7 +155,7 @@ export function GlobalHookEditorPage() {
         </IconButton>
       </EditorWindowHeader>
       {error && (
-        <p role="alert" className="site-hook-import-error" style={{ whiteSpace: "pre-line" }}>
+        <p role="alert" className="site-hook-import-error" style={{ whiteSpace: 'pre-line' }}>
           {error}
         </p>
       )}
@@ -179,7 +183,7 @@ export function GlobalHookEditorPage() {
               draft.sites
                 ?.filter((site) => site.host)
                 .map(
-                  (site) => `${site.includeSubdomains ? '*.' : ''}${site.host}`
+                  (site) => `${site.includeSubdomains ? '*.' : ''}${site.host}`,
                 )
                 .join(', ') || 'All websites',
               draft.path !== '/*' ? draft.path : '',
@@ -235,7 +239,9 @@ export function GlobalHookEditorPage() {
             </div>
           )}
           <FormDisclosure title="Test hook">
-            {!!draft.actions?.length && <p className="hook-actions-hint">Open the test website, then right-click a matching selection or field to try an action. Notes and activity are previewed.</p>}
+            {!!draft.actions?.length && (
+              <p className="hook-actions-hint">Open the test website, then right-click a matching selection or field to try an action. Notes and activity are previewed.</p>
+            )}
             <div className="global-hook-test-controls">
               <HookTestWebsiteField
                 value={testURL}
@@ -251,7 +257,7 @@ export function GlobalHookEditorPage() {
                   testing ||
                   !testURL.trim() ||
                   (![draft.before, draft.after, draft.css].some((source) =>
-                    source.trim()
+                    source.trim(),
                   ) && !draft.actions?.some((action) => action.source.trim()))
                 }
                 onClick={() => {
@@ -318,7 +324,7 @@ export function GlobalHookEditorPage() {
             !draft ||
             dirty ||
             (![draft.before, draft.after, draft.css].some((source) =>
-              source.trim()
+              source.trim(),
             ) && !draft.actions?.some((action) => action.source.trim()))
           }
           title={dirty ? 'Save changes before publishing' : undefined}
@@ -330,12 +336,31 @@ export function GlobalHookEditorPage() {
                   hookId: `global:${draft!.id}`,
                   allGroups: true,
                 },
-              })
+              }),
             )
           }
         >
           {draft?.publication ? 'Republish' : 'Publish'}
         </Button>
+        {draft?.installed && (
+          <Button
+            variant="soft"
+            disabled={busy || dirty}
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                  detail: {
+                    mode: 'updates',
+                    hookId: `global:${draft.id}`,
+                    allGroups: true,
+                  },
+                }),
+              )
+            }
+          >
+            Check for updates
+          </Button>
+        )}
         <Button
           disabled={
             busy ||
@@ -344,7 +369,7 @@ export function GlobalHookEditorPage() {
             !draft.name.trim() ||
             !draft.path.startsWith('/') ||
             [draft.before, draft.after, draft.css].some(
-              (source) => source.length > 20000
+              (source) => source.length > 20000,
             )
           }
           onClick={() => {

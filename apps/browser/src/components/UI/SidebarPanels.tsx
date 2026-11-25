@@ -112,8 +112,19 @@ export function SidebarPanels({
             id: panel.id,
             name: panel.title,
             detail: panel.detail,
-            leadingIcon: panel.kind === 'hook' ? <HookIcon size={14} /> : <SquareStack size={14} />,
+            canManage: panel.canManage,
+            leadingIcon:
+              panel.kind === 'hook' ? (
+                <HookIcon size={14} />
+              ) : (
+                <SquareStack size={14} />
+              ),
           }))}
+          onManage={(panel) => {
+            void browser
+              .sidebarPanels({ action: 'manage', id: panel.id })
+              .catch(() => {});
+          }}
           value={state.activeId || ''}
           disabled={!state.panels.length}
           triggerClassName="sidebar-feature-panel-picker"

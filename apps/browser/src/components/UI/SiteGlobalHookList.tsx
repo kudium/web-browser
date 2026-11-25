@@ -8,6 +8,7 @@ import {
   Switch,
 } from '@radix-ui/themes';
 import { MoreHorizontal } from 'lucide-react';
+import { OPEN_HOOK_MARKETPLACE } from './HookMarketplaceDialog';
 import { PreferenceHint } from './PreferenceHint';
 import type {
   GlobalHook,
@@ -61,7 +62,7 @@ export function SiteGlobalHookList({
               action: 'state',
               allGroups,
             })) as HookMarketplaceState,
-          }))
+          })),
         );
         if (live && version === requestVersion.current) {
           setScopes((previous) =>
@@ -69,10 +70,10 @@ export function SiteGlobalHookList({
             previous.every(
               (scope, index) =>
                 scope.allGroups === results[index].allGroups &&
-                scope.state.globalHash === results[index].state.globalHash
+                scope.state.globalHash === results[index].state.globalHash,
             )
               ? previous
-              : results
+              : results,
           );
         }
       } catch (reason) {
@@ -92,7 +93,7 @@ export function SiteGlobalHookList({
   const save = async (
     allGroups: boolean,
     hook: GlobalHook,
-    patch?: Partial<Pick<GlobalHook, 'enabled' | 'exclusions'>>
+    patch?: Partial<Pick<GlobalHook, 'enabled' | 'exclusions'>>,
   ) => {
     const scope = scopes.find((item) => item.allGroups === allGroups);
     if (!scope || saving.current) return;
@@ -111,14 +112,14 @@ export function SiteGlobalHookList({
             patch === undefined
               ? scope.state.global.hooks.filter((item) => item.id !== hook.id)
               : scope.state.global.hooks.map((item) =>
-                  item.id === hook.id ? { ...item, ...patch } : item
+                  item.id === hook.id ? { ...item, ...patch } : item,
                 ),
         },
       })) as HookMarketplaceState;
       setScopes((previous) =>
         previous.map((item) =>
-          item.allGroups === allGroups ? { ...item, state } : item
-        )
+          item.allGroups === allGroups ? { ...item, state } : item,
+        ),
       );
     } catch (reason) {
       setError(String(reason).replace(/^Error: /, ''));
@@ -145,10 +146,12 @@ export function SiteGlobalHookList({
           })
           .map((hook) => ({ ...scope, hook,
             excluded: hookWebsiteExclusions(hook.exclusions, url!).length > 0,
-            wildcardExcluded: hookWebsiteExclusions(hook.exclusions, url!).some(rule => rule.startsWith('*.')),
-          }))
+            wildcardExcluded: hookWebsiteExclusions(hook.exclusions, url!).some(
+              (rule) => rule.startsWith('*.'),
+            ),
+          })),
       ),
-    [scopes, url]
+    [scopes, url],
   );
   return (
     <>
@@ -207,8 +210,9 @@ export function SiteGlobalHookList({
                 }
                 const host = new URL(url!).hostname;
                 void save(allGroups, hook, { exclusions: enabled
-                  ? hook.exclusions.filter(rule => rule !== host)
-                  : [...new Set([...hook.exclusions, host])] });
+                  ? hook.exclusions.filter((rule) => rule !== host)
+                  : [...new Set([...hook.exclusions, host])],
+                      });
               }}
             />
             </Popover.Trigger>
@@ -231,7 +235,26 @@ export function SiteGlobalHookList({
                 </IconButton>
               </DropdownMenu.Trigger>
               <DropdownMenu.Content>
-                <DropdownMenu.Item
+                  {hook.installed && (
+                    <DropdownMenu.Item
+                      onSelect={() =>
+                        window.dispatchEvent(
+                          new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                            detail: {
+                              mode: 'updates',
+                              origin: url,
+                              hookId: `global:${hook.id}`,
+                              allGroups,
+                            },
+                          }),
+                        )
+                      }
+                    >
+                      Check for updates
+                    </DropdownMenu.Item>
+                  )}
+
+                  <DropdownMenu.Item
                   onSelect={() => {
                     void window.electron.hookMarketplace
                       .request({
@@ -257,7 +280,8 @@ export function SiteGlobalHookList({
             </DropdownMenu.Root>
           </div>
         </div>
-      ))}
+      ),
+      )}
       {matching.some((item) => item.wildcardExcluded) && (
         <small className="site-hook-list-note">This website is covered by a domain exclusion. Use Edit / Rename to manage excluded websites.</small>
       )}

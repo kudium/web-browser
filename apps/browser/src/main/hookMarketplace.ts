@@ -1,4 +1,4 @@
-import { hookSourceValidator } from "../browser/hookValidation";
+import { hookSourceValidator } from '../browser/hookValidation';
 import { createHookTestWindow, validateHookTest } from './hookTestWindow';
 /* Update checks deliberately fetch one source at a time to bound network work. */
 /* eslint-disable no-await-in-loop, no-restricted-syntax, no-continue */
@@ -37,7 +37,11 @@ import { protectWindowNavigation } from './windowNavigation';
 
 const hosts = new WeakMap<
   WebContents,
-  { destinations: () => HookDestination[]; installInPreferences?: boolean; openSiteEditor?: (target: HookDestination, hookId: string) => void }
+  {
+    destinations: () => HookDestination[];
+    installInPreferences?: boolean;
+    openSiteEditor?: (target: HookDestination, hookId: string) => void;
+  }
 >();
 const globalEditors = new WeakMap<
   WebContents,
@@ -52,11 +56,10 @@ const globalEditors = new WeakMap<
 const globalEditorWindows = new Map<string, BrowserWindow>();
 let registered = false;
 let publish:
-  | ((data: unknown) => Promise<{ id: string; version: number }>)
-  | undefined;
+  ((data: unknown) => Promise<{ id: string; version: number }>) | undefined;
 let accountStatus: (() => { signedIn: boolean; email?: string }) | undefined;
 export function setHookAccountStatus(
-  status: () => { signedIn: boolean; email?: string }
+  status: () => { signedIn: boolean; email?: string },
 ) {
   accountStatus = status;
 }
@@ -86,20 +89,26 @@ export function deliverHookInstallLinks(host: BrowserWindow) {
       window.isVisible() &&
       window.getParentWindow() === host &&
       hosts.get(window.webContents)?.installInPreferences &&
-      readyHosts.has(window.webContents)
+      readyHosts.has(window.webContents),
   );
   const destination = preferences || host;
   destination.show();
   destination.focus();
   pendingLinks
     .splice(0)
-    .forEach((url) => destination.webContents.send('hook-marketplace-install', url));
+    .forEach((url) =>
+      destination.webContents.send('hook-marketplace-install', url),
+    );
 }
 /** Route in-browser links directly; development builds need no OS registration. */
-export function openHookInstallLink(value: string, host: BrowserWindow): boolean {
+export function openHookInstallLink(
+  value: string,
+  host: BrowserWindow,
+): boolean {
   try {
     const url = new URL(value);
-    if (url.protocol !== 'kudium:' || url.hostname !== 'install-hook') return false;
+    if (url.protocol !== 'kudium:' || url.hostname !== 'install-hook')
+      return false;
   } catch {
     return false;
   }
@@ -122,16 +131,126 @@ export function hookDestinationsFor(contents?: WebContents): HookDestination[] {
 }
 
 /** Reuse the owning browser's editor and its live tab binding. */
-export function openInstalledSiteHook(contents: WebContents, target: HookDestination, hookId: string) {
+export function openInstalledSiteHook(
+  contents: WebContents,
+  target: HookDestination,
+  hookId: string,
+) {
   const open = hosts.get(contents)?.openSiteEditor;
   if (!open) throw new Error('The website is no longer available.');
   open(target, hookId);
 }
 
+function openGlobalHookEditor(
+  target: HookDestination,
+  hookId: string | undefined,
+  allGroups: boolean,
+  owner?: BrowserWindow,
+) {
+  const hookScope = allGroups ? ALL_GROUPS_HOOK_SCOPE : target.profile;
+  const global = getGlobalHooks(hookScope);
+  const hook = hookId
+    ? global.hooks.find((item) => item.id === hookId)
+    : {
+        id: randomUUID(),
+        name: 'New global hook',
+        testUrl: 'https://example.com',
+        path: '/*',
+        enabled: false,
+        before: '',
+        after: '',
+        css: '',
+        exclusions: [],
+      };
+  if (!hook) throw new Error('This hook no longer exists.');
+  if (!hookId && global.hooks.length >= 20)
+    throw new Error('Maximum 20 hooks.');
+  const key = `${hookScope}\n${hook.id}`;
+  const existing = globalEditorWindows.get(key);
+  if (existing && !existing.isDestroyed()) {
+    existing.show();
+    existing.focus();
+    return null;
+  }
+  const editor = createHookEditorWindow(`${hook.name} — Hook Editor`, owner);
+  const contents = editor.webContents;
+  globalEditors.set(contents, {
+    target,
+    allGroups: allGroups,
+    hook,
+  });
+  globalEditorWindows.set(key, editor);
+  const commands = (
+    source: import('electron').IpcMainEvent,
+    command: unknown,
+  ) => {
+    if (source.sender !== contents || source.senderFrame !== contents.mainFrame)
+      return;
+    if (command === 'close') editor.close();
+    if (command === 'expand') {
+      if (editor.isMaximized()) editor.unmaximize();
+      else editor.maximize();
+    }
+  };
+  ipcMain.on('site-developer-command', commands);
+  editor.once('closed', () => {
+    const binding = globalEditors.get(contents);
+    if (binding) {
+      binding.testGeneration = (binding.testGeneration || 0) + 1;
+      binding.testWindow?.destroy();
+    }
+    globalEditors.delete(contents);
+    globalEditorWindows.delete(key);
+    ipcMain.removeListener('site-developer-command', commands);
+  });
+  const documentURL = resolveHtmlPath('index.html', 'global-hook-editor');
+  protectWindowNavigation(contents, documentURL, (url) =>
+    shell.openExternal(url),
+  );
+  let shown = false;
+  const showEditor = () => {
+    if (shown || editor.isDestroyed()) return;
+    shown = true;
+    editor.show();
+  };
+  contents.once('dom-ready', showEditor);
+  editor.once('ready-to-show', showEditor);
+  editor.loadURL(documentURL).catch(() => editor.close());
+  return null;
+}
+
+export function manageInstalledPanelHook(
+  owner: BrowserWindow,
+  sourceId: string,
+  hookId: string,
+) {
+  const target = hookDestinationsFor(owner.webContents).find(
+    (item) => item.id === sourceId,
+  );
+  if (!target) throw new Error('The source website is no longer available.');
+  if (hookId.startsWith('global:'))
+    return openGlobalHookEditor(
+      target,
+      hookId.replace(/^global:(?:all:)?/, ''),
+      hookId.startsWith('global:all:'),
+      owner,
+    );
+  const config = getSiteSettings(
+    target.profile,
+    new URL(target.url).origin,
+  ).developer;
+  if (!config || (hookId && !config.hooks?.some((hook) => hook.id === hookId)))
+    throw new Error('This hook no longer exists.');
+  return openInstalledSiteHook(owner.webContents, target, hookId);
+}
+
 export function registerHookMarketplace(
   host: BrowserWindow,
   destinations: () => HookDestination[],
-  options: { installInPreferences?: boolean; openSiteEditor?: (target: HookDestination, hookId: string) => void } = {}
+  options: {
+    installInPreferences?: boolean;
+    openSiteEditor?: (target: HookDestination, hookId: string) => void;
+  } = {},
 ) {
   hosts.set(host.webContents, { destinations, ...options });
   if (registered) return;
@@ -217,6 +336,9 @@ export function registerHookMarketplace(
             'account-status',
             'account-preferences',
             'publish',
+            'preview',
+            'updates',
+            'install',
           ].includes(input.action)
         )
           throw new Error('Unsupported hook editor action.');
@@ -225,6 +347,13 @@ export function registerHookMarketplace(
           input.hookId !== `global:${editorBinding.hook.id}`
         )
           throw new Error('Editor can only publish its selected hook.');
+        if (
+          input.action === 'install' &&
+          (!input.global || input.replaceId !== editorBinding.hook.id)
+        )
+          throw new Error('Editor can only update its selected hook.');
+        if (input.action === 'updates')
+          input = { ...input, hookId: `global:${editorBinding.hook.id}` };
         input = { ...input, allGroups: editorBinding.allGroups };
       }
       if (
@@ -262,7 +391,7 @@ export function registerHookMarketplace(
               editorBinding.testGeneration === generation
             )
               event.sender.send('global-hook-test-state', state);
-          }
+          },
         );
         return null;
       }
@@ -275,8 +404,10 @@ export function registerHookMarketplace(
       }
       if (input.action === 'open-install') {
         const host = BrowserWindow.fromWebContents(event.sender);
-        if (!host || !hosts.has(event.sender)) throw new Error('Untrusted hook installer.');
-        if (!openHookInstallLink(input.url, host)) throw new Error('Invalid hook install link.');
+        if (!host || !hosts.has(event.sender))
+          throw new Error('Untrusted hook installer.');
+        if (!openHookInstallLink(input.url, host))
+          throw new Error('Invalid hook install link.');
         return;
       }
       if (input.action === 'browse') {
@@ -301,24 +432,24 @@ export function registerHookMarketplace(
       const globalOnly =
         input.allGroups === true &&
         (['state', 'global-save', 'updates', 'global-editor-open'].includes(
-          input.action
+          input.action,
         ) ||
           (input.action === 'install' && input.global));
       const target = editorBinding
         ? editorBinding.target
         : globalOnly &&
-          hosts.has(event.sender) &&
-          (!available.length ||
-            ('id' in input && input.id === ALL_GROUPS_HOOK_SCOPE))
-        ? {
-            id: ALL_GROUPS_HOOK_SCOPE,
-            name: 'All websites',
-            groupName: 'All groups',
-            groupId: ALL_GROUPS_HOOK_SCOPE,
-            profile: ALL_GROUPS_HOOK_SCOPE,
-            url: 'https://kudium.invalid/',
-          }
-        : resolve(event.sender, 'id' in input ? input.id : undefined);
+            hosts.has(event.sender) &&
+            (!available.length ||
+              ('id' in input && input.id === ALL_GROUPS_HOOK_SCOPE))
+          ? {
+              id: ALL_GROUPS_HOOK_SCOPE,
+              name: 'All websites',
+              groupName: 'All groups',
+              groupId: ALL_GROUPS_HOOK_SCOPE,
+              profile: ALL_GROUPS_HOOK_SCOPE,
+              url: 'https://kudium.invalid/',
+            }
+          : resolve(event.sender, 'id' in input ? input.id : undefined);
       const { origin } = new URL(target.url);
       const hookScope =
         input.allGroups === true ? ALL_GROUPS_HOOK_SCOPE : target.profile;
@@ -327,13 +458,14 @@ export function registerHookMarketplace(
         return {
           ...(editorBinding
             ? {
+                scopeAllGroups: editorBinding.allGroups,
                 material: {
                   translucentChrome: getBrowserPreferences().translucentChrome,
                   translucentAI: getBrowserPreferences().translucentAI,
                 },
                 editorHook:
                   global.hooks.find(
-                    (hook) => hook.id === editorBinding.hook.id
+                    (hook) => hook.id === editorBinding.hook.id,
                   ) || editorBinding.hook,
               }
             : {}),
@@ -348,12 +480,13 @@ export function registerHookMarketplace(
             : (() => {
                 const config = getSiteSettings(
                   target.profile,
-                  origin
+                  origin,
                 ).developer;
                 return config &&
                   ([config.before, config.after, config.css].some((code) =>
-                    code.trim()
-                  ) || config.actions?.some((action) => action.source.trim()))
+                    code.trim(),
+                  ) ||
+                    config.actions?.some((action) => action.source.trim()))
                   ? {
                       id: '',
                       name: config.name || 'Default hook',
@@ -369,104 +502,41 @@ export function registerHookMarketplace(
         };
       };
       if (input.action === 'site-editor-open') {
-        if (input.allGroups || !state().siteHooks.some(hook => hook.id === input.hookId))
+        if (
+          input.allGroups ||
+          !state().siteHooks.some((hook) => hook.id === input.hookId)
+        )
           throw new Error('This hook no longer exists on this website.');
         const binding = getSiteDeveloperBinding(event.sender);
-        openInstalledSiteHook(binding?.host || event.sender, target, input.hookId);
-        return null;
-      }
-      if (input.action === 'global-editor-open') {
-        const global = getGlobalHooks(hookScope);
-        const hook = input.hookId
-          ? global.hooks.find((item) => item.id === input.hookId)
-          : {
-              id: randomUUID(),
-              name: 'New global hook',
-              testUrl: 'https://example.com',
-              path: '/*',
-              enabled: false,
-              before: '',
-              after: '',
-              css: '',
-              exclusions: [],
-            };
-        if (!hook) throw new Error('This hook no longer exists.');
-        if (!input.hookId && global.hooks.length >= 20)
-          throw new Error('Maximum 20 hooks.');
-        const key = `${hookScope}\n${hook.id}`;
-        const existing = globalEditorWindows.get(key);
-        if (existing && !existing.isDestroyed()) {
-          existing.show();
-          existing.focus();
-          return null;
-        }
-        const editor = createHookEditorWindow(
-          `${hook.name} — Hook Editor`,
-          BrowserWindow.fromWebContents(event.sender) || undefined
-        );
-        const contents = editor.webContents;
-        globalEditors.set(contents, {
+        openInstalledSiteHook(
+          binding?.host || event.sender,
           target,
-          allGroups: input.allGroups === true,
-          hook,
-        });
-        globalEditorWindows.set(key, editor);
-        const commands = (
-          source: import('electron').IpcMainEvent,
-          command: unknown
-        ) => {
-          if (
-            source.sender !== contents ||
-            source.senderFrame !== contents.mainFrame
-          )
-            return;
-          if (command === 'close') editor.close();
-          if (command === 'expand') {
-            if (editor.isMaximized()) editor.unmaximize();
-            else editor.maximize();
-          }
-        };
-        ipcMain.on('site-developer-command', commands);
-        editor.once('closed', () => {
-          const binding = globalEditors.get(contents);
-          if (binding) {
-            binding.testGeneration = (binding.testGeneration || 0) + 1;
-            binding.testWindow?.destroy();
-          }
-          globalEditors.delete(contents);
-          globalEditorWindows.delete(key);
-          ipcMain.removeListener('site-developer-command', commands);
-        });
-        const documentURL = resolveHtmlPath('index.html', 'global-hook-editor');
-        protectWindowNavigation(contents, documentURL, (url) =>
-          shell.openExternal(url)
+          input.hookId,
         );
-        let shown = false;
-        const showEditor = () => {
-          if (shown || editor.isDestroyed()) return;
-          shown = true;
-          editor.show();
-        };
-        contents.once('dom-ready', showEditor);
-        editor.once('ready-to-show', showEditor);
-        editor.loadURL(documentURL).catch(() => editor.close());
         return null;
       }
+      if (input.action === 'global-editor-open')
+        return openGlobalHookEditor(
+          target,
+          input.hookId,
+          input.allGroups === true,
+          BrowserWindow.fromWebContents(event.sender) || undefined,
+        );
       if (input.action === 'state') return state();
       if (input.action === 'global-save') {
         if (editorBinding) {
           const current = getGlobalHooks(hookScope);
           const edited = input.config?.hooks?.find(
-            (hook) => hook.id === editorBinding.hook.id
+            (hook) => hook.id === editorBinding.hook.id,
           );
           if (
             !edited ||
             input.config.enabled !== current.enabled ||
             JSON.stringify(
-              input.config.hooks.filter((hook) => hook.id !== edited.id)
+              input.config.hooks.filter((hook) => hook.id !== edited.id),
             ) !==
               JSON.stringify(
-                current.hooks.filter((hook) => hook.id !== edited.id)
+                current.hooks.filter((hook) => hook.id !== edited.id),
               )
           )
             throw new Error('Editor can only change its selected hook.');
@@ -511,19 +581,19 @@ export function registerHookMarketplace(
           if (!input.replaceId) {
             if (hooks.length >= 20)
               throw new Error(
-                'This destination already has 20 hooks. Remove one first.'
+                'This destination already has 20 hooks. Remove one first.',
               );
             return [...hooks, hook];
           }
           const previous = hooks.find((h) => h.id === input.replaceId);
           if (!previous || hookPackageHash(previous) !== input.expectedHash)
             throw new Error(
-              'The installed hook changed. Review the update again.'
+              'The installed hook changed. Review the update again.',
             );
           return hooks.map((h) =>
             h.id === input.replaceId
               ? { ...h, ...hook, id: h.id, enabled: h.enabled }
-              : h
+              : h,
           );
         };
         if (input.global) {
@@ -536,7 +606,7 @@ export function registerHookMarketplace(
           saveGlobalHooks(
             hookScope,
             { ...global, hooks },
-            globalHookHash(global)
+            globalHookHash(global),
           );
         } else {
           const config = getSiteSettings(target.profile, origin).developer || {
@@ -546,10 +616,19 @@ export function registerHookMarketplace(
             css: '',
           };
           updateSiteSettings(target.profile, origin, {
-            developer: { ...config,
+            developer: {
+              ...config,
               enabled: input.replaceId ? config.enabled : true,
-              ...(!input.replaceId && !config.enabled ? { defaultEnabled: false } : {}),
-              hooks: replace((config.hooks || []).map(item => !input.replaceId && !config.enabled ? { ...item, enabled: false } : item)),
+              ...(!input.replaceId && !config.enabled
+                ? { defaultEnabled: false }
+                : {}),
+              hooks: replace(
+                (config.hooks || []).map((item) =>
+                  !input.replaceId && !config.enabled
+                    ? { ...item, enabled: false }
+                    : item,
+                ),
+              ),
             },
           });
         }
@@ -561,11 +640,15 @@ export function registerHookMarketplace(
             name: hook.name,
             global: input.global,
             enabled: input.replaceId
-              ? (input.global ? getGlobalHooks(hookScope).hooks : getSiteSettings(target.profile, origin).developer?.hooks)?.find(item => item.id === input.replaceId)?.enabled
+              ? (input.global
+                  ? getGlobalHooks(hookScope).hooks
+                  : getSiteSettings(target.profile, origin).developer?.hooks
+                )?.find((item) => item.id === input.replaceId)?.enabled
               : true,
             scopeEnabled: input.global
               ? getGlobalHooks(hookScope).enabled
-              : getSiteSettings(target.profile, origin).developer?.enabled === true,
+              : getSiteSettings(target.profile, origin).developer?.enabled ===
+                true,
           },
         };
       }
@@ -579,6 +662,11 @@ export function registerHookMarketplace(
           ...global.map((hook) => ({ hook, global: true })),
           ...site.map((hook) => ({ hook, global: false })),
         ]) {
+          if (
+            input.hookId &&
+            (entry.hook.id !== input.hookId.replace(/^global:(?:all:)?/, '') || entry.global !== input.hookId.startsWith('global:'))
+          )
+            continue;
           const current = entry.hook.installed;
           if (!current) continue;
           const local = {
@@ -591,7 +679,9 @@ export function registerHookMarketplace(
             name: entry.hook.name,
             path: entry.hook.path,
             actions: entry.hook.actions,
-            schemaVersion: entry.hook.actions?.length ? 2 : current.package.schemaVersion,
+            schemaVersion: entry.hook.actions?.length
+              ? 2
+              : current.package.schemaVersion,
             lifecycle: {
               before: entry.hook.before,
               after: entry.hook.after,
@@ -609,11 +699,16 @@ export function registerHookMarketplace(
           try {
             const url = current.packageId
               ? `https://browser.kudium.com/v1/hooks/${encodeURIComponent(
-                  current.packageId
+                  current.packageId,
                 )}/package`
               : current.url;
             const loaded = await preview(event.sender, url);
-            if (hookPackageHash(loaded.package) !== current.contentHash)
+            if (
+              hookPackageHash(loaded.package) !== current.contentHash ||
+              (loaded.publication &&
+                current.version &&
+                loaded.publication.version > current.version)
+            )
               item.preview = loaded;
           } catch {
             item.error = 'Could not check this source for updates.';
@@ -630,7 +725,7 @@ export function registerHookMarketplace(
         let hook: SiteHook | undefined;
         if (input.hookId.startsWith('global:'))
           hook = getGlobalHooks(hookScope).hooks.find(
-            (h) => `global:${h.id}` === input.hookId
+            (h) => `global:${h.id}` === input.hookId,
           );
         else if (input.hookId) hook = hooks.find((h) => h.id === input.hookId);
         else if (!input.allGroups) {
@@ -642,21 +737,22 @@ export function registerHookMarketplace(
               path: '/*',
               enabled: config.enabled,
               actions: config.actions,
-                      before: config.before,
+              before: config.before,
               after: config.after,
               css: config.css,
             };
         }
         if (
           !hook ||
-          (![hook.before, hook.after, hook.css].some((code) => code.trim()) && !hook.actions?.some((action) => action.source.trim()))
+          (![hook.before, hook.after, hook.css].some((code) => code.trim()) &&
+            !hook.actions?.some((action) => action.source.trim()))
         )
           throw new Error('Add code and save your hook before publishing.');
         const pkg = parseHookPackage({
           schemaVersion: hook.actions?.length ? 2 : 1,
           ...(hook.actions?.length ? { actions: hook.actions } : {}),
           minimumBrowserVersion: '1.0.0',
-          ...(input.testUrl ?? hook.testUrl
+          ...((input.testUrl ?? hook.testUrl)
             ? { testUrl: input.testUrl ?? hook.testUrl }
             : {}),
           name: input.name ?? hook.name,
@@ -665,18 +761,18 @@ export function registerHookMarketplace(
           applicability: hook.sites?.length
             ? 'site'
             : input.general
-            ? 'general'
-            : 'site',
+              ? 'general'
+              : 'site',
           sites: hook.sites?.length
             ? hook.sites
             : input.general
-            ? []
-            : [
-                {
-                  host: new URL(target.url).hostname,
-                  includeSubdomains: false,
-                },
-              ],
+              ? []
+              : [
+                  {
+                    host: new URL(target.url).hostname,
+                    includeSubdomains: false,
+                  },
+                ],
           path: hook.path,
           lifecycle: { before: hook.before, after: hook.after, css: hook.css },
         });
@@ -704,15 +800,15 @@ export function registerHookMarketplace(
                         license: pkg.license,
                       },
                     }
-                  : item
+                  : item,
               ),
             },
-            globalHookHash(current)
+            globalHookHash(current),
           );
         }
         return published;
       }
       throw new Error('Unknown hook marketplace action.');
-    }
+    },
   );
 }

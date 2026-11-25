@@ -370,3 +370,18 @@ test('compositor capture failures use the shared fallback without losing panel s
   expect(host.state().snapshot).toBeUndefined();
   expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
 });
+
+test('manages only available registered providers without activating or recreating views', async () => {
+  const { window, createView } = fixture();
+  const registry = new SidebarPanelRegistry(window as unknown as BrowserWindow);
+  const manage = jest.fn();
+  registry.register({ info: { id: 'gallery', title: 'Gallery', kind: 'hook' }, contentKey: 'gallery', createView, manage });
+  expect(registry.state().panels[0].canManage).toBe(true);
+  await registry.manage('gallery');
+  expect(manage).toHaveBeenCalledTimes(1);
+  expect(createView).not.toHaveBeenCalled();
+  await expect(registry.manage('foreign')).rejects.toThrow('unavailable');
+  registry.register({ info: { id: 'gallery', title: 'Gallery', kind: 'hook' }, contentKey: 'gallery', createView, manage, available: () => false });
+  await expect(registry.manage('gallery')).rejects.toThrow('unavailable');
+  expect(manage).toHaveBeenCalledTimes(1);
+});

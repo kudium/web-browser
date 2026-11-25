@@ -520,6 +520,7 @@ export function SiteDeveloperPanel({
                         >
                           Rename
                         </DropdownMenu.Item>
+                        {hook.installed && <DropdownMenu.Item disabled={dirty} onSelect={() => window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { mode: 'updates', origin, hookId: hook.id, allGroups: false } }))}>Check for updates</DropdownMenu.Item>}
                         <DropdownMenu.Item
                           color="red"
                           onSelect={() =>

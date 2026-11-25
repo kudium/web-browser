@@ -106,6 +106,7 @@ function id(value: unknown) {
 export function attachExtensionSidePanels(
   api: ElectronChromeExtensions,
   profileId: string,
+  manage?: (owner: BrowserWindow, contents: WebContents | undefined, extensionId: string) => void,
 ) {
   const ctx = (api as unknown as { ctx: Context }).ctx;
   if (!ctx?.router?.apiHandler || !ctx.store)
@@ -274,6 +275,7 @@ export function attachExtensionSidePanels(
           });
           host.register({
             info: { id: key, title: extension.name, kind: 'extension', key: `extension:${extension.id}` },
+            manage: manage ? () => manage(window, currentOptions(extension, window).tab, extension.id) : undefined,
             groupId: `extension:${extension.id}`,
             contentKey: url,
             available: () => {

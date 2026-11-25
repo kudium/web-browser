@@ -57,6 +57,7 @@ export function HookMarketplaceDialog() {
     id: string; name: string; global: boolean; enabled?: boolean; scopeEnabled?: boolean; destinationId: string; allGroups: boolean; location: string; updated: boolean;
   }>();
   const [allGroups, setAllGroups] = useState(false);
+  const [checkingInstalled, setCheckingInstalled] = useState(false);
   const [updates, setUpdates] = useState<HookUpdate[]>([]);
   const [updatesChecked, setUpdatesChecked] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState<HookUpdate>();
@@ -116,7 +117,7 @@ export function HookMarketplaceDialog() {
         hookId?: string;
         url?: string;
         allGroups?: boolean;
-      } = {}
+      } = {},
     ) => {
       generation.current += 1;
       setLaunchToken(generation.current);
@@ -149,13 +150,29 @@ export function HookMarketplaceDialog() {
         });
         if (generation.current !== current) return;
         setDestinations(targets);
+        const savedGroup = (() => {
+          try {
+            return localStorage.getItem('kudium-hook-install-group');
+          } catch {
+            return null;
+          }
+        })();
+        const explicitScope =
+          detail.allGroups !== undefined ||
+          detail.mode === 'publish' ||
+          detail.mode === 'updates';
+        const remembered = targets.find((item) => item.groupId === savedGroup);
+        const useAll = explicitScope ? detail.allGroups === true : !remembered;
+        setAllGroups(useAll);
         const target =
+          (!explicitScope && remembered) ||
           targets.find(
             (item) =>
               detail.origin &&
-              new URL(item.url).origin === new URL(detail.origin).origin
-          ) || targets[0];
-        setId(detail.allGroups ? '@all-groups' : target?.id || '');
+              new URL(item.url).origin === new URL(detail.origin).origin,
+          ) ||
+          targets[0];
+        setId(useAll ? '@all-groups' : target?.id || '');
         setState(undefined);
         if (detail.url) {
           const loaded = await invoke({ action: 'preview', url: detail.url });
@@ -173,7 +190,7 @@ export function HookMarketplaceDialog() {
     window.addEventListener(OPEN_HOOK_MARKETPLACE, listener);
     const view = new URL(window.location.href).searchParams.get('view');
     const off =
-      (view === 'main' || view === 'settings')
+      view === 'main' || view === 'settings'
         ? window.electron.hookMarketplace.onInstall((urlValue) => {
             launch({ url: urlValue }).catch(() => {});
           })
@@ -197,9 +214,12 @@ export function HookMarketplaceDialog() {
         const result = await invoke({ action: 'state', id, allGroups });
         if (!live) return;
         setState(result);
+        if (result.scopeAllGroups !== undefined) setAllGroups(result.scopeAllGroups);
         setSavedGlobals(result.global.hooks);
         if (mode === 'updates') {
-          const items = await invoke({ action: 'updates', id, allGroups });
+          const items = await invoke({ action: 'updates', id, allGroups,
+            ...(hookId ? { hookId } : {}),
+          });
           if (live) {
             setUpdates(items);
             setUpdatesChecked(true);
@@ -259,7 +279,7 @@ export function HookMarketplaceDialog() {
       setState(result);
       setSavedGlobals(result.global.hooks);
       setMessage(
-        'Global hook settings saved. Reload affected pages to start enabled hooks.'
+        'Global hook settings saved. Reload affected pages to start enabled hooks.',
       );
     });
   const openGlobalEditor = (selectedId?: string) =>
@@ -297,7 +317,8 @@ export function HookMarketplaceDialog() {
       });
       setState(result);
       setSavedGlobals(result.global.hooks);
-      if (!result.installedHook) throw new Error('Could not confirm installation. Check your hooks list before trying again.');
+      if (!result.installedHook) throw new Error('Could not confirm installation. Check your hooks list before trying again.',
+        );
       setInstallation({
         ...result.installedHook, destinationId: id, allGroups,
         location: allGroups ? 'All groups' : result.installedHook.global ? result.destination.groupName : new URL(result.destination.url).host,
@@ -312,13 +333,59 @@ export function HookMarketplaceDialog() {
   const alreadyInstalled =
     !selectedUpdate &&
     !!preview &&
-    (allGroups ? state?.global.hooks : state?.siteHooks)?.some(
+    (allGroups ? state?.global.hooks : [...(state?.global.hooks || []), ...(state?.siteHooks || [])]
+    )?.some(
       (hook) =>
         hook.installed?.url === preview.source ||
-        (preview.publication &&
-          hook.installed?.packageId === preview.publication.id)
+        (preview.publication?.id &&
+          hook.installed?.packageId === preview.publication.id),
     );
-  const saveLabel = alreadyInstalled ? 'Install another copy' : 'Install hook';
+  const saveLabel = alreadyInstalled
+    ? checkingInstalled
+      ? 'Checking for updates…'
+      : 'Already installed'
+    : 'Install hook';
+  useEffect(() => {
+    if (!preview || !state || selectedUpdate) return undefined;
+    const existing = (
+      allGroups
+        ? state.global.hooks
+        : [...state.global.hooks, ...state.siteHooks]
+    ).find(
+      (hook) =>
+        hook.installed?.url === preview.source ||
+        (preview.publication?.id &&
+          hook.installed?.packageId === preview.publication.id),
+    );
+    if (!existing) return undefined;
+    let live = true;
+    setCheckingInstalled(true);
+    invoke({ action: 'updates', id, allGroups, hookId: state.global.hooks.some(hook => hook.id === existing.id) ? `global:${existing.id}` : existing.id })
+      .then((items: HookUpdate[]) => {
+        if (!live) return;
+        const update = items.find(
+          (item) =>
+            item.hookId === existing.id &&
+            item.global ===
+              state.global.hooks.some((hook) => hook.id === existing.id),
+        );
+        if (update?.error) setMessage(update.error);
+        if (update?.preview) {
+          setSelectedUpdate(update);
+          setPreview(update.preview);
+        }
+      })
+      .catch((error) => {
+        if (live) setMessage(String(error));
+      })
+      .finally(() => {
+        if (live) setCheckingInstalled(false);
+      });
+    return () => {
+      live = false;
+      setCheckingInstalled(false);
+    };
+  }, [preview?.receipt, state?.destination.id, allGroups, selectedUpdate]);
   const savedHook = hookId
     ? state?.siteHooks.find((hook) => hook.id === hookId) ||
       savedGlobals.find((hook) => `global:${hook.id}` === hookId)
@@ -329,7 +396,7 @@ export function HookMarketplaceDialog() {
     setDescription(savedHook?.publication?.description || '');
     setListingId(savedHook?.publication?.id || '');
     setExpectedVersion(
-      savedHook?.publication ? String(savedHook.publication.version) : ''
+      savedHook?.publication ? String(savedHook.publication.version) : '',
     );
     if (savedHook?.publication) setLicense(savedHook.publication.license);
     if (hookId.startsWith('global:')) setGeneral(true);
@@ -384,9 +451,9 @@ export function HookMarketplaceDialog() {
         .filter(
           (target) =>
             target.profile === currentTarget?.profile &&
-            target.groupId !== currentTarget?.groupId
+            target.groupId !== currentTarget?.groupId,
         )
-        .map((target) => target.groupName)
+        .map((target) => target.groupName),
     ),
   ];
   const chooseDestination = (targetId: string) => {
@@ -403,7 +470,7 @@ export function HookMarketplaceDialog() {
       'Applies to every group in the app, including groups added later.';
   else if (sharedGroups.length)
     scopeDescription = `Also applies to ${sharedGroups.join(
-      ', '
+      ', ',
     )} because these groups share the same browser session.`;
   const destination = (
     <div className="hook-marketplace-destination">
@@ -413,12 +480,20 @@ export function HookMarketplaceDialog() {
           options={groupOptions}
           value={allGroups ? '@all-groups' : currentTarget?.groupId || ''}
           onChange={(groupId) => {
+            try {
+              localStorage.setItem('kudium-hook-install-group', groupId);
+            } catch {
+              /* Optional preference. */
+            }
             setAllGroups(groupId === '@all-groups');
             setState(undefined);
             setUpdates([]);
-            if (groupId === '@all-groups') return;
+            if (groupId === '@all-groups') {
+              setId('@all-groups');
+              return;
+            }
             const target = destinations.find(
-              (item) => item.groupId === groupId
+              (item) => item.groupId === groupId,
             );
             if (target) chooseDestination(target.id);
           }}
@@ -457,7 +532,10 @@ export function HookMarketplaceDialog() {
         <div className="hook-marketplace-header">
           <div>
             <Dialog.Title mb="1">
-              {installation ? (installation.updated ? 'Hook updated' : 'Hook installed') : mode === 'publish' && listingId
+              {installation ? installation.updated
+                  ? 'Hook updated'
+                  : 'Hook installed'
+                : mode === 'publish' && listingId
                 ? 'Republish hook'
                 : modeTitles[mode]}
             </Dialog.Title>
@@ -515,21 +593,28 @@ export function HookMarketplaceDialog() {
         {installation && (
           <section className="hook-install-success" aria-label="Installation complete">
             <CheckCircle2 size={32} aria-hidden="true" />
-            <p role="status">{installation.updated ? 'Updated successfully.' : 'Installed successfully.'} {installation.enabled === false ? 'This hook remains disabled.' : 'This hook is enabled.'}</p>
+            <p role="status">{installation.updated ? 'Updated successfully.' : 'Installed successfully.'} {' '}
+              {installation.enabled === false ? 'This hook remains disabled.' : 'This hook is enabled.'}</p>
             <p>Open Hook Editor to customize it or run it on the current page. Enabled hooks also run when matching pages load.</p>
-            {installation.scopeEnabled === false && <p>Hooks are also off for {installation.location}. Turn them on in the editor to let this hook run.</p>}
+            {installation.scopeEnabled === false && (
+              <p>Hooks are also off for {installation.location}. Turn them on in the editor to let this hook run.</p>
+            )}
             <div className="hook-dialog-actions">
               <Button variant="soft" color="gray" disabled={busy} onClick={() => close(false)}>Done</Button>
               <Button disabled={busy} onClick={() => run(async () => {
                 await invoke(installation.global
-                  ? { action: 'global-editor-open', id: installation.destinationId, allGroups: installation.allGroups, hookId: installation.id }
-                  : { action: 'site-editor-open', id: installation.destinationId, allGroups: false, hookId: installation.id });
+                  ? { action: 'global-editor-open', id: installation.destinationId, allGroups: installation.allGroups, hookId: installation.id,
+                          }
+                  : { action: 'site-editor-open', id: installation.destinationId, allGroups: false, hookId: installation.id,
+                          },
+                    );
                 setOpen(false);
               })}>Open Hook Editor</Button>
             </div>
           </section>
         )}
-        {!installation && <div className="hook-marketplace-body">
+        {!installation && (
+          <div className="hook-marketplace-body">
           {mode === 'import' && !preview && (
             <>
               <button
@@ -605,7 +690,9 @@ export function HookMarketplaceDialog() {
                         checked={hook.enabled}
                         disabled={busy}
                         onChange={(event) =>
-                          saveGlobals({ ...state.global, hooks: state.global.hooks.map(item => item.id === hook.id ? { ...item, enabled: event.target.checked } : item) })
+                          saveGlobals({ ...state.global, hooks: state.global.hooks.map((item) => item.id === hook.id ? { ...item, enabled: event.target.checked } : item,
+                              ),
+                            })
                         }
                       />
                       {hook.name}
@@ -629,8 +716,8 @@ export function HookMarketplaceDialog() {
                             global: {
                               ...state.global,
                               hooks: state.global.hooks.filter(
-                                (item) => item.id !== hook.id
-                              ),
+                                (item) => item.id !== hook.id,
+                                ),
                             },
                           });
                       }}
@@ -767,8 +854,8 @@ export function HookMarketplaceDialog() {
                     ? savedHook.sites
                         .map(
                           (site) =>
-                            `${site.includeSubdomains ? '*.' : ''}${site.host}`
-                        )
+                            `${site.includeSubdomains ? '*.' : ''}${site.host}`,
+                          )
                         .join(', ')
                     : general
                     ? 'any website'
@@ -820,10 +907,10 @@ export function HookMarketplaceDialog() {
                             {savedHook.sites
                               .map(
                                 (site) =>
-                                  `${site.includeSubdomains ? '*.' : ''}${
-                                    site.host
-                                  }`
-                              )
+                                    `${site.includeSubdomains ? '*.' : ''}${
+                                      site.host
+                                    }`,
+                                )
                               .join(', ')}
                           </option>
                         ) : null}
@@ -856,7 +943,9 @@ export function HookMarketplaceDialog() {
                   </details>
                   {savedHook && (
                     <div className="hook-publish-source">
-                      {savedHook.actions?.map(action => <details key={action.id}><summary>{action.name} · context menu</summary><pre>{action.source}</pre></details>)}
+                      {savedHook.actions?.map((action) => (
+                          <details key={action.id}><summary>{action.name} · context menu</summary><pre>{action.source}</pre></details>
+                        ))}
                       {(['before', 'after', 'css'] as const)
                         .filter((phase) => savedHook[phase].trim())
                         .map((phase) => (
@@ -886,7 +975,11 @@ export function HookMarketplaceDialog() {
               )}
               <div className="hook-publish-footer">
                 {message && (
-                  <p className="hook-dialog-message" role={preview || installation || message.includes("Fix these code errors") ? "alert" : "status"} style={{ whiteSpace: "pre-line" }}>
+                  <p className="hook-dialog-message" role={preview || installation || message.includes('Fix these code errors')
+                          ? 'alert'
+                          : 'status'
+                      }
+                      style={{ whiteSpace: 'pre-line' }}>
                     {message}
                   </p>
                 )}
@@ -962,7 +1055,8 @@ export function HookMarketplaceDialog() {
               ))}
             </div>
           )}
-        </div>}
+        </div>
+        )}
         {preview && (
           <section className="hook-package-preview">
             <Button
@@ -989,15 +1083,17 @@ export function HookMarketplaceDialog() {
             <p>{preview.package.description}</p>
             {alreadyInstalled && (
               <p className="hook-update-notice">
-                This hook is already installed here. Saving adds a separate
-                disabled copy.
+                This hook is already installed here.{' '}
+                {checkingInstalled
+                  ? 'Checking the latest version…'
+                  : 'You can install another copy if needed.'}
               </p>
             )}
             {selectedUpdate && (
               <p className="hook-update-notice">
                 {selectedUpdate.modified
-                  ? 'You have local edits. Applying this version overwrites them. You can save a separate disabled copy instead.'
-                  : 'Review the changes below. The updated hook will be saved disabled.'}
+                  ? 'You have local edits. Updating overwrites them. Install another copy to keep your edits.'
+                  : 'Review the changes below. Updating preserves the enabled state and website exclusions.'}
               </p>
             )}
             <details className="hook-source-review" open={!!selectedUpdate}>
@@ -1019,28 +1115,33 @@ export function HookMarketplaceDialog() {
 
             <div className="hook-preview-facts">
               <span>{preview.package.license}</span>
-              {preview.package.path !== '/*' && <span>Path: {preview.package.path}</span>}
+              {preview.package.path !== '/*' && (
+                  <span>Path: {preview.package.path}</span>
+                )}
               <span>
                 {preview.package.applicability === 'general'
                   ? 'General hook'
                   : preview.package.sites
                       .map(
                         (site) =>
-                          `${site.host}${
-                            site.includeSubdomains ? ' + subdomains' : ''
-                          }`
-                      )
+                            `${site.host}${
+                              site.includeSubdomains ? ' + subdomains' : ''
+                            }`,
+                        )
                       .join(', ')}
               </span>
             </div>
               <p className="hook-preview-source">Source: {preview.source}</p>
-              {!!preview.package.actions?.length && <p>Actions ask for permission when run. Updates do not carry permission grants.</p>}
-              {preview.package.actions?.map(action => <details key={action.id}><summary>{action.name} · {action.contexts.join(', ')}</summary><pre>{action.source}</pre></details>)}
+              {!!preview.package.actions?.length && (
+                <p>Actions ask for permission when run. Updates do not carry permission grants.</p>
+              )}
+              {preview.package.actions?.map((action) => (
+                <details key={action.id}><summary>{action.name} · {action.contexts.join(', ')}</summary><pre>{action.source}</pre></details>))}
               {(['before', 'after', 'css'] as const)
                 .filter(
                   (phase) =>
                     preview.package.lifecycle[phase].trim() ||
-                    selectedUpdate?.localPackage.lifecycle[phase].trim()
+                    selectedUpdate?.localPackage.lifecycle[phase].trim(),
                 )
                 .map((phase) => (
                   <details key={phase} open>
@@ -1085,21 +1186,29 @@ export function HookMarketplaceDialog() {
             )}
             {destination}
             <div className="hook-install-footer">
-              <p>Installs disabled. Enable it in Hook Editor when ready.</p>
+              <p>
+                {selectedUpdate
+                  ? 'Updates the existing hook and preserves its settings.'
+                  : 'New hooks are enabled when installed.'}
+              </p>
               <div className="hook-dialog-actions">
                 <Button
-                  disabled={busy || !state}
+                  disabled={busy ||
+                    checkingInstalled ||
+                    !state ||
+                    (!!alreadyInstalled && !selectedUpdate)
+                  }
                   onClick={() => install(!!selectedUpdate)}
                 >
-                  {selectedUpdate ? 'Apply update' : saveLabel}
+                  {selectedUpdate ? 'Update existing hook' : saveLabel}
                 </Button>
-                {selectedUpdate && (
+                {(selectedUpdate || alreadyInstalled) && (
                   <Button
-                    disabled={busy || !state}
+                    disabled={busy || !state || editorWindow}
                     variant="soft"
                     onClick={() => install(false)}
                   >
-                    Save separate copy
+                    Install another copy
                   </Button>
                 )}
               </div>
@@ -1107,7 +1216,11 @@ export function HookMarketplaceDialog() {
           </section>
         )}
         {message && mode !== 'publish' && (
-          <p className="hook-dialog-message" role={preview || installation || message.includes("Fix these code errors") ? "alert" : "status"} style={{ whiteSpace: "pre-line" }}>
+          <p className="hook-dialog-message" role={preview || installation || message.includes('Fix these code errors')
+                ? 'alert'
+                : 'status'
+            }
+            style={{ whiteSpace: 'pre-line' }}>
             {message}
           </p>
         )}

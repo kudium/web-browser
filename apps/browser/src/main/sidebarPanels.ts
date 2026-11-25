@@ -19,6 +19,7 @@ export interface SidebarPanelProvider {
   contentKey: string;
   available?: () => boolean;
   createView: () => WebContentsView;
+  manage?: () => void | Promise<unknown>;
   opened?: () => void;
   closed?: () => void;
 }
@@ -55,7 +56,7 @@ export class SidebarPanelRegistry {
     return {
       panels: [...this.entries.values()]
         .filter(({ provider }) => provider.available?.() !== false)
-        .map(({ provider }) => provider.info),
+        .map(({ provider }) => ({ ...provider.info, canManage: !!provider.manage })),
       activeId: this.activeId,
       openRequest: this.request,
       floating: Boolean(this.floating),
@@ -64,6 +65,11 @@ export class SidebarPanelRegistry {
       snapshot: this.snapshot?.id === this.activeId && !this.floating ? this.snapshot : undefined,
       ...(this.error && { error: this.error }),
     };
+  }
+  async manage(id: string) {
+    const entry = this.entries.get(id);
+    if (!entry?.provider.manage || entry.provider.available?.() === false) throw new Error('Panel management is unavailable.');
+    await entry.provider.manage();
   }
   private publish() {
     if (!this.window.isDestroyed() && !this.window.webContents.isDestroyed())
@@ -432,6 +438,7 @@ export function registerSidebarPanelWindow(window: BrowserWindow) {
         throw new Error('Invalid sidebar panel request');
       if (request.action === 'activate' && typeof request.id === 'string')
         host.activate(request.id, request.reveal !== false);
+      else if (request.action === 'manage' && typeof request.id === 'string') return host.manage(request.id).then(() => host.state());
       else if (request.action === 'close') host.close();
       else if (
         request.action === 'target' &&

@@ -3,6 +3,7 @@
 import {
   app,
   BrowserWindow,
+  Menu,
   MenuItemConstructorOptions,
   Session,
   WebContents,
@@ -467,7 +468,9 @@ export async function applyExtensions(
       handlers.requestPermissions?.(extension, permissions) ||
       Promise.resolve(false),
   });
-  attachExtensionSidePanels(api, profileId);
+  attachExtensionSidePanels(api, profileId, (owner, contents, extensionId) => {
+    Menu.buildFromTemplate(extensionMenu(owner, contents, extensionId, profileId)).popup({ window: owner });
+  });
   attachExtensionBrowserAPIs(api);
   const profile: Profile = {
     revision: 0,
@@ -1025,10 +1028,11 @@ export function extensionCatalog() {
 export function extensionMenu(
   owner: BrowserWindow,
   contents?: WebContents,
-  extensionId?: string
+  extensionId?: string,
+  profileId?: string
 ): MenuItemConstructorOptions[] {
   const current =
-    getExtensionProfile(active.get(owner.id) || '') ||
+    getExtensionProfile(profileId || active.get(owner.id) || '') ||
     getExtensionProfiles().find((profile) => profile.owner === owner);
   const items = read().filter(item => !extensionId || item.id === extensionId);
   const setPolicy = (id: string, patch: Partial<InstalledExtension>) =>

@@ -500,9 +500,9 @@ it('opens the shared native window, binds saves to its hook and reuses an open e
   });
   expect(result.editorHook.css).toBe('p{color:blue}');
   expect(getGlobalHooks('profile-one').hooks).toEqual([]);
-  await expect(
-    handler(editorEvent, { action: 'preview', url: 'https://example.com' })
-  ).rejects.toThrow('Unsupported');
+  const preview = await handler(editorEvent, { action: 'preview', url: 'https://example.com' });
+  expect(preview.receipt).toBeTruthy();
+  await expect(handler(editorEvent, { action: 'install', receipt: preview.receipt, global: true, replaceId: 'another-hook' })).rejects.toThrow('selected hook');
   await handler(editorEvent, {
     action: 'global-test-run',
     url: 'https://example.com',

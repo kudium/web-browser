@@ -267,3 +267,14 @@ animation frame and flush the final width on release. Hook-output updates must
 not resend unchanged native bounds. The shared registry restores the current
 slot when an active document changes, respecting suspension, so new HTML output
 cannot depend on redundant renderer layout messages or flash over a resize drag.
+
+## Managing a panel provider
+
+Providers may supply a `manage` callback. The shared registry advertises
+`canManage` and accepts a trusted owner-window `manage` request for an available
+registered provider. GroupPicker renders its Manage button separately from the
+selection button and closes the popover before dispatch. Management never
+activates the provider or creates its view. Hook providers open their original
+site/global editor and source scope; extension providers reuse `extensionMenu`
+with their own profile. Do not infer ownership by parsing renderer panel labels
+or maintain another extension management path.

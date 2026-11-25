@@ -16,7 +16,7 @@ jest.mock('../utils/hooks/useAppList', () => ({
   useAppList: () => ({ appList: [] }),
 }));
 jest.mock('../components/UI/GroupPicker', () => ({
-  GroupPicker: () => <span>All groups</span>,
+  GroupPicker: ({ options, value, onChange, label, disabled }: any) => <select aria-label={label} value={value} disabled={disabled} onChange={event => onChange(event.target.value)}>{options.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>,
 }));
 const target = {
   id: 'tab',
@@ -51,6 +51,7 @@ const state = {
 let request: jest.Mock;
 let installListener: (url: string) => void;
 beforeEach(() => {
+  localStorage.clear();
   window.history.replaceState({}, '', '/?view=settings');
   request = jest.fn(async (input) => {
     if (input.action === 'destinations') return [target];
@@ -201,4 +202,39 @@ it('saves global enable switches immediately without a Save click', async () => 
   act(() => window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { mode: 'global', allGroups: true } })));
   fireEvent.click(await screen.findByRole('checkbox', { name: 'Reader' }));
   await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'global-save', config: { enabled: true, hooks: [{ ...hook, enabled: true }] } })));
+});
+
+
+it('defaults imports to All groups, remembers a chosen group, and drops unavailable saved groups', async () => {
+  render(<Theme><HookMarketplaceDialog /></Theme>);
+  const launch = () => act(() => { window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { url: preview.source } })); });
+  launch();
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Hook group' })).toHaveValue('@all-groups'));
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Hook group' })).toBeEnabled());
+  fireEvent.change(screen.getByRole('combobox', { name: 'Hook group' }), { target: { value: 'office' } });
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Hook group' })).toHaveValue('office'));
+  launch();
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Hook group' })).toHaveValue('office'));
+  localStorage.setItem('kudium-hook-install-group', 'deleted-group');
+  launch();
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Hook group' })).toHaveValue('@all-groups'));
+});
+
+it('offers a reviewed update to an existing hook instead of requiring another copy', async () => {
+  const installed = { id: 'existing', name: preview.package.name, enabled: false, path: '/*', before: '', after: '', css: 'a { color: blue; }', installed: { url: preview.source, packageId: 'listing', contentHash: 'original', package: preview.package } };
+  const latest = { ...preview, receipt: 'latest-receipt', publication: { ...preview.publication, id: 'listing', version: 2 }, package: { ...preview.package, lifecycle: { ...preview.package.lifecycle, css: 'a { color: red; }' } } };
+  const normalRequest = request.getMockImplementation()!;
+  request.mockImplementation(async input => {
+    if (input.action === 'state') return { ...state, global: { enabled: true, hooks: [installed] } };
+    if (input.action === 'updates') return [{ hookId: 'existing', global: true, modified: true, localHash: 'local-hash', localPackage: preview.package, current: installed.installed, preview: latest }];
+    return normalRequest(input);
+  });
+  render(<Theme><HookMarketplaceDialog /></Theme>);
+  act(() => window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { url: preview.source, allGroups: true } })));
+  const update = await screen.findByRole('button', { name: 'Update existing hook' });
+  await waitFor(() => expect(update).toBeEnabled());
+  expect(screen.getByText(/You have local edits/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Install another copy' })).toBeInTheDocument();
+  fireEvent.click(update);
+  await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'install', receipt: 'latest-receipt', replaceId: 'existing', expectedHash: 'local-hash', global: true, allGroups: true })));
 });

@@ -27,6 +27,7 @@ export interface GroupOption {
   icon?: string;
   group?: IApp;
   leadingIcon?: ReactNode;
+  canManage?: boolean;
 }
 export function GroupPicker({
   options,
@@ -46,8 +47,10 @@ export function GroupPicker({
   footer,
   triggerDetail,
   triggerContent,
+  onManage,
   unselectedLabel = 'Choose a group',
 }: {
+  onManage?: (option: GroupOption) => void;
   options: GroupOption[];
   value: string;
   onChange: (id: string) => void;
@@ -78,7 +81,7 @@ export function GroupPicker({
           !tab.archived &&
           (aiGroupId(tab) === option.id ||
             groupKey(tab) === option.id ||
-            loginProfileKey(tab) === option.id)
+            loginProfileKey(tab) === option.id),
       );
     if (group) return <GroupIcon item={group} tabs={tabs} />;
     return (
@@ -225,29 +228,51 @@ export function GroupPicker({
           aria-label={label}
           className="group-picker-results"
         >
-          {visible.map((option, index) => (
-            <button
-              type="button"
-              role="option"
-              id={`${id}-${index}`}
-              key={option.id}
-              tabIndex={searchable ? -1 : 0}
-              aria-selected={option.id === value}
-              title={option.hint || option.name}
-              data-active={index === active || undefined}
-              onMouseEnter={() => setActive(index)}
-              onClick={() => choose(option.id)}
-              onContextMenu={(event) => showContext(event, option.id)}
-              onKeyDown={(event) => contextKey(event, option.id)}
-            >
-              {renderIcon(option)}
-              <span>
-                <strong>{option.name}</strong>
-                {option.detail && <small>{option.detail}</small>}
-              </span>
-              {option.id === value && <Check size={14} />}
-            </button>
-          ))}
+          {visible.map((option, index) => {
+            const choice = (
+              <button
+                key={option.id}
+                type="button"
+                role="option"
+                id={`${id}-${index}`}
+                tabIndex={searchable ? -1 : 0}
+                aria-selected={option.id === value}
+                title={option.hint || option.name}
+                data-active={index === active || undefined}
+                onMouseEnter={() => setActive(index)}
+                onClick={() => choose(option.id)}
+                onContextMenu={(event) => showContext(event, option.id)}
+                onKeyDown={(event) => contextKey(event, option.id)}
+              >
+                {renderIcon(option)}
+                <span>
+                  <strong>{option.name}</strong>
+                  {option.detail && <small>{option.detail}</small>}
+                </span>
+                {option.id === value && <Check size={14} />}
+              </button>
+            );
+            if (!onManage) return choice;
+            return (
+              <div className="group-picker-option-row" key={option.id}>
+                {choice}
+                {option.canManage && (
+                  <button
+                    type="button"
+                    className="group-picker-manage"
+                    aria-label={`Manage ${option.name}`}
+                    onClick={() => {
+                      setOpen(false);
+                      onOpenChange?.(false);
+                      onManage(option);
+                    }}
+                  >
+                    Manage
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
         {allowCustom &&
           query.trim() &&

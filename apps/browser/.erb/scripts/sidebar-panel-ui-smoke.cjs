@@ -95,6 +95,7 @@ app
       if (event.sender === window.webContents) host.setSuspended(value);
     });
     const views = new Map();
+    const managed = [];
     for (const id of ['one', 'two'])
       host.register({
         info: {
@@ -103,6 +104,7 @@ app
           kind: 'feature',
           key: `saved:${id}`,
         },
+        manage: () => { managed.push(id); },
         contentKey: id,
         createView: () => {
           const view = new WebContentsView({
@@ -151,6 +153,13 @@ app
       'Your side panels',
     );
     await choose('Sidebar panel', 'Extension one');
+    await window.webContents.executeJavaScript(`document.querySelector('[aria-label="Sidebar panel"]').click()`);
+    await pause(150);
+    await window.webContents.executeJavaScript(`document.querySelector('[aria-label="Manage Extension two"]').click()`);
+    await pause(150);
+    assert.deepEqual(managed,['two']);
+    assert.equal(host.state().activeId,'one','Managing another panel must not select it');
+    assert.equal(views.has('two'),false,'Managing a panel must not create its content');
     await pause(200);
     assert(
       views.get('one'),
@@ -371,7 +380,7 @@ app
       mediaFixture = sample.id === 'panel-media';
       approved.after=sample.source;
       const previousViews=new Set(window.contentView.children);
-      await sourceWindow.loadURL(pageURL);
+    await sourceWindow.loadURL(pageURL);
       for(let i=0;i<50&&!host.state().panels.some(p=>p.kind==='hook');i++)await pause(50);
       const exampleView=window.contentView.children.find(v=>!previousViews.has(v)&&v.webContents);
       assert(exampleView,sample.id+': actual page hook must publish its panel');

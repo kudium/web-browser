@@ -30,7 +30,7 @@ jest.mock('electron', () => ({
   }),
 }));
 
-function fixture(extraHandlers: Array<[string, any]> = []) {
+function fixture(extraHandlers: Array<[string, any]> = [], manage?: any) {
   const extension = {
     id: 'a'.repeat(32),
     name: 'Panel fixture',
@@ -91,7 +91,7 @@ function fixture(extraHandlers: Array<[string, any]> = []) {
   const api = Object.assign(new EventEmitter(), {
     ctx: { session: profileSession, store, router },
   });
-  attachExtensionSidePanels(api as any, 'profile-a');
+  attachExtensionSidePanels(api as any, 'profile-a', manage);
   const event = { extension, sender: {}, type: 'service-worker' };
   const call = (name: string, options?: any) =>
     handlers.get(`sidePanel.${name}`).callback(event, options);
@@ -286,4 +286,14 @@ test('sidebar API requests use the logical owning window instead of an unrelated
   expect(f.router.handlers.get('windows.getCurrent').callback(f.event)).toEqual(
     { id: 999 },
   );
+});
+
+
+test('management uses the existing extension control with its logical owner and current tab', () => {
+  const manage = jest.fn(), f = fixture([], manage);
+  [...f.providers.values()][0].manage();
+  expect(manage).toHaveBeenCalledWith(f.window, expect.objectContaining({ id: 10 }), f.extension.id);
+  f.setTab(11);
+  [...f.providers.values()][0].manage();
+  expect(manage).toHaveBeenLastCalledWith(f.window, expect.objectContaining({ id: 11 }), f.extension.id);
 });
