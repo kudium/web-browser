@@ -47,7 +47,7 @@ it('starts browsing without changing optional settings', async () => {
     await screen.findByRole('button', { name: 'Start browsing' })
   );
   await waitFor(() =>
-    expect(screen.getByTitle('Start page website')).toBeInTheDocument()
+    expect(screen.queryByRole('button',{name:'Start browsing'})).not.toBeInTheDocument()
   );
   expect(browser.preferenceAction).toHaveBeenCalledTimes(1);
 });
@@ -69,7 +69,11 @@ it('remembers completed onboarding', async () => {
     setupCompleted: true,
   });
   render(<BrowserWelcome />);
-  expect(await screen.findByTitle('Start page website')).toBeInTheDocument();
+  expect(await screen.findByRole('heading',{name:'Keep in Dock'})).toBeInTheDocument();
+  expect(screen.queryByTitle('Start page website')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Start browsing'})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Show in Finder'}));
+  await waitFor(()=>expect(browser.preferenceAction).toHaveBeenCalledWith('reveal-app-for-dock'));
 });
 
 it('shows a blank start page with browser shortcuts after setup', async () => {
@@ -88,5 +92,6 @@ it('uses a custom HTTP(S) start page and rejects privileged URLs even in saved d
   view.unmount();
   (browser.preferences as jest.Mock).mockResolvedValue({setupCompleted:true,startPage:'custom',startPageURL:'javascript:alert(1)'});
   render(<BrowserWelcome />);
-  expect(await screen.findByTitle('Start page website')).not.toHaveAttribute('src','javascript:alert(1)');
+  expect(await screen.findByRole('heading',{name:'Keep in Dock'})).toBeInTheDocument();
+  expect(screen.queryByTitle('Start page website')).not.toBeInTheDocument();
 });

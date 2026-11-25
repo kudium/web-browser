@@ -78,7 +78,10 @@ export function BrowserWelcome({
         </div>
       </section>
     );
-  if (!completed) {
+  const customURL = (() => {
+    try { const parsed = new URL(startPageURL); return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password ? parsed.href : ''; } catch { return ''; }
+  })();
+  if (!completed || startPage === 'kudium' || (startPage === 'custom' && !customURL)) {
     const options = [
       {
         title: 'Default browser',
@@ -142,7 +145,7 @@ export function BrowserWelcome({
           <div className="browser-onboarding-content">
             <img className="browser-onboarding-logo" src={kudiumLogo} alt="" />
             <h1>Welcome to Kudium.</h1>
-            <p>A few finishing touches. Choose what works for you.</p>
+            <p>{completed ? "Make yourself at home. Your browser, your way." : "A few finishing touches. Choose what works for you."}</p>
           </div>
           <div className="browser-onboarding-options">
             {options.map((option) => {
@@ -158,7 +161,7 @@ export function BrowserWelcome({
                     type="button"
                     className="browser-onboarding-option-action"
                     disabled={
-                      busy || option.done || !info?.systemSetupAvailable
+                      preview || busy || option.done || !info?.systemSetupAvailable
                     }
                     onClick={() => apply(option.action)}
                   >
@@ -187,30 +190,28 @@ export function BrowserWelcome({
             </p>
           )}
           <footer className="browser-onboarding-footer">
-            <button
+            {!completed && !preview && <button
               className="browser-onboarding-primary"
               type="button"
               disabled={busy}
               onClick={() => finish()}
             >
               {busy ? 'One moment…' : 'Start browsing'}
-            </button>
+            </button>}
+            {!preview && <nav className="browser-welcome-shortcuts" aria-label="Browser shortcuts">
+              <button type="button" onClick={() => { void browser.preferences('open', {section:'hooks'}); }}>Manage global hooks</button>
+              <button type="button" onClick={() => { void browser.preferences('open', {section:'appearance'}); }}>Customize start page</button>
+              <button type="button" onClick={() => { void browser.preferences('open', {section:'import'}); }}>Import browsing data</button>
+            </nav>}
             <p>You can change these settings later in Preferences.</p>
           </footer>
         </div>
       </section>
     );
   }
-  const url =
-    process.env.NODE_ENV === 'production'
-      ? 'https://browser.kudium.com'
-      : 'http://localhost:3000';
-  const customURL = (() => {
-    try { const parsed = new URL(startPageURL); return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password ? parsed.href : ''; } catch { return ''; }
-  })();
   return <section className="browser-start-page" aria-label="Start page">
     {startPage === 'blank' ? <div className="browser-start-blank"><img src={kudiumLogo} alt="Kudium" /><p>Open a tab or enter an address to start browsing.</p></div> :
-      <iframe className="browser-showcase" title="Start page website" src={startPage === 'custom' && customURL ? customURL : url}
+      <iframe className="browser-showcase" title="Start page website" src={customURL}
         sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />}
     {!preview && <nav className="browser-start-actions" aria-label="Browser shortcuts">
       <button type="button" onClick={() => { void browser.preferences('open', {section:'hooks'}); }}>Manage global hooks</button>

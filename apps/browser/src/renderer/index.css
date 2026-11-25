@@ -5607,3 +5607,8 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .recommendation-stack .recommendation-card > .recommendation-select:hover { background:var(--gray-a3); }
 
 .recommendation-stack .recommendation-card:not([data-front]) { box-shadow:0 2px 6px var(--black-a2); }
+
+.browser-welcome-shortcuts { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 16px; margin-top:16px; }
+.browser-welcome-shortcuts button { padding:5px 0; border:0; background:transparent; color:var(--accent-11); font-size:12px; cursor:pointer; }
+.browser-welcome-shortcuts button:hover { text-decoration:underline; }
+.browser-welcome-shortcuts button:focus-visible { outline:2px solid var(--accent-8); outline-offset:3px; border-radius:3px; }
