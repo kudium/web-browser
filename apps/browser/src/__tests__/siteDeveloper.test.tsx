@@ -643,7 +643,7 @@ it('lets users keep a custom hook disabled while the site is enabled', () => {
   });
 });
 
-it('offers publishing beside save and run for saved default code and blocks unsaved changes', () => {
+it('keeps publishing in footer options and blocks unsaved changes', async () => {
   const config = { ...emptyDeveloperConfig, after: 'log("saved")' };
   const listener = jest.fn();
   window.addEventListener('kudium-hooks-dialog', listener);
@@ -657,8 +657,10 @@ it('offers publishing beside save and run for saved default code and blocks unsa
       />
     </Theme>
   );
-  const publish = screen.getByRole('button', { name: 'Publish' });
-  expect(publish).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Hook footer options' }), { key: 'Enter' });
+  const publish = await screen.findByRole('menuitem', { name: 'Publish' });
+  expect(publish).not.toHaveAttribute('aria-disabled', 'true');
   fireEvent.click(publish);
   expect(listener.mock.calls[0][0].detail).toEqual({
     mode: 'publish',
@@ -668,7 +670,8 @@ it('offers publishing beside save and run for saved default code and blocks unsa
   fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), {
     target: { value: 'draft' },
   });
-  expect(publish).toBeDisabled();
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Hook footer options' }), { key: 'Enter' });
+  expect(await screen.findByRole('menuitem', { name: 'Publish' })).toHaveAttribute('aria-disabled', 'true');
   view.unmount();
   window.removeEventListener('kudium-hooks-dialog', listener);
 });

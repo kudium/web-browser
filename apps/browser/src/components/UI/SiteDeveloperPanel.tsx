@@ -850,28 +850,6 @@ export function SiteDeveloperPanel({
           Save hooks
         </Button>
         <Button
-          variant="soft"
-          color="gray"
-          disabled={
-            disabled ||
-            dirty ||
-            (![code.before, code.after, code.css].some((value) =>
-              value.trim()
-            ) &&
-              !code.actions?.some((action) => action.source.trim()))
-          }
-          title={publishHint}
-          onClick={() =>
-            window.dispatchEvent(
-              new CustomEvent(OPEN_HOOK_MARKETPLACE, {
-                detail: { mode: 'publish', origin, hookId },
-              })
-            )
-          }
-        >
-          Publish
-        </Button>
-        <Button
           disabled={
             disabled ||
             !validDeveloperConfig(draft) ||
@@ -902,6 +880,35 @@ export function SiteDeveloperPanel({
           <RotateCw size={14} />
           {dirty ? 'Save & Run' : 'Run'}
         </Button>
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger>
+            <IconButton size="2" variant="soft" color="gray" aria-label="Hook footer options" title="More options">
+              <MoreHorizontal size={16} />
+            </IconButton>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content align="end">
+            <DropdownMenu.Item
+              disabled={
+                disabled ||
+                dirty ||
+                (![code.before, code.after, code.css].some((value) =>
+                  value.trim()
+                ) &&
+                  !code.actions?.some((action) => action.source.trim()))
+              }
+              title={publishHint}
+              onSelect={() =>
+                window.dispatchEvent(
+                  new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                    detail: { mode: 'publish', origin, hookId },
+                  })
+                )
+              }
+            >
+              Publish
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
       </EditorWindowFooter>
       <AlertDialog.Root
         open={!!listAction}
