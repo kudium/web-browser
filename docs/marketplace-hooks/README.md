@@ -4,6 +4,11 @@ Portable source packages for hooks published by Kudium HQ. Import JSON on the
 marketplace publisher page to review and publish updates. Publication is separate
 from committing these files or releasing the browser.
 
+## Panel hooks
+
+See [PANEL-HOOKS.md](PANEL-HOOKS.md) for the researched article player, GitHub PR
+navigator, page explorer, source-generation commands and native QA.
+
 ## Research for the November 14, 2026 additions
 
 - [Mozilla built-in translation request](https://connect.mozilla.org/t5/ideas/get-built-in-translation-feature/idi-p/5347): 276 kudos and 91 comments when reviewed; marked Delivered. Supports translation as an established user need, not an unmet Firefox feature today.

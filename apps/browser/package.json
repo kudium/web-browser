@@ -56,6 +56,7 @@
     "test:chat-scroll": "node .erb/scripts/run-browser-ui-smoke.cjs --ai-chat-scroll-only",
     "test:space-footer": "node .erb/scripts/run-browser-ui-smoke.cjs --space-footer-only",
     "test:real-sites": "electron .erb/scripts/browser-ui-smoke.cjs --real-sites-only",
+    "test:marketplace-panels": "node .erb/scripts/run-extension-side-panel-smoke.cjs --marketplace",
     "test:extension-side-panels": "node .erb/scripts/run-extension-side-panel-smoke.cjs",
     "test:muse-compatibility": "node .erb/scripts/run-extension-side-panel-smoke.cjs --muse",
     "test:task-manager": "electron .erb/scripts/browser-ui-smoke.cjs --task-manager-only",

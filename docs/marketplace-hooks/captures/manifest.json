@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-11-25T16:18:28.587Z",
+  "native": true,
+  "pages": [
+    {
+      "id": "listen-article",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API",
+      "title": "Web Speech API - Web APIs | MDN"
+    },
+    {
+      "id": "page-explorer",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API",
+      "title": "Web Speech API - Web APIs | MDN"
+    },
+    {
+      "id": "pr-navigator",
+      "url": "https://github.com/microsoft/TypeScript/pull/65667/files",
+      "title": "Add tests for path edge cases in resolution, emit, and builds by magurotuna · Pull Request #65667 · microsoft/TypeScript · GitHub"
+    }
+  ]
+}

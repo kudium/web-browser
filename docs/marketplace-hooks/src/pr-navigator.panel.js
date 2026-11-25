@@ -1,0 +1,14 @@
+let prData;
+const el=id=>document.getElementById(id);
+async function action(id,payload){el('error').textContent='';try{await kudiumHookPanel.invoke(id,payload);}catch(error){el('error').textContent=error.message;}}
+function renderFiles(){if(!prData)return;const query=el('search').value.toLowerCase(),filter=el('filter').value;
+  const list=prData.files.filter(file=>file.path.toLowerCase().includes(query)&&(filter!=='todo'||!file.reviewed)&&(filter!=='test'||file.test));
+  el('files').replaceChildren(...list.map(file=>{
+    const row=document.createElement('div');row.className='item row';
+    const jump=document.createElement('button');jump.className='grow';jump.style.cssText='background:none;padding:0;text-align:left';
+    const name=document.createElement('strong');name.textContent=file.path;const detail=document.createElement('small');detail.textContent=file.folder+(file.test?' · test':'')+(file.additions||file.deletions?' · +'+file.additions+' −'+file.deletions:'');jump.append(name,detail);jump.onclick=()=>action('pr-jump',{index:file.index});
+    const check=document.createElement('button');check.textContent=file.reviewed?'✓':'○';check.setAttribute('aria-label',(file.reviewed?'Uncheck ':'Mark checked ')+file.path);check.setAttribute('aria-pressed',String(file.reviewed));check.onclick=()=>action('pr-check',{index:file.index});row.append(jump,check);return row;
+  }));if(!list.length){const empty=document.createElement('p');empty.className='empty';empty.textContent=prData.files.length?'No files match this filter.':'Open Files changed, then Refresh to build your review map.';el('files').append(empty);}
+}
+el('search').oninput=renderFiles;el('filter').onchange=renderFiles;el('refresh').onclick=()=>action('pr-refresh');
+kudiumHookPanel.onUpdate(output=>{prData=output.content.data;el('title').textContent=prData.title;el('branch').textContent=prData.branch?'Branch · '+prData.branch:'';el('loaded').textContent=prData.files.length;el('checked').textContent=prData.files.filter(file=>file.reviewed).length;el('tests').textContent=prData.files.filter(file=>file.test).length;el('files-link').href=prData.url+'/files';el('notice').textContent='Showing '+prData.files.length+' loaded files'+(prData.total>prData.files.length?' of '+prData.total+' reported by GitHub':'')+'.';el('description').textContent=prData.description||'Open the conversation tab, then refresh to read the description.';el('threads-title').textContent=prData.comments.length+' loaded review threads';el('threads').replaceChildren(...prData.comments.map(text=>{const p=document.createElement('p');p.className='item';p.textContent=text;return p;}));renderFiles();});

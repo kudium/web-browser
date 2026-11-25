@@ -1,0 +1,20 @@
+[
+  {
+    "source": "listen-article.json",
+    "url": "https://browser.kudium.com/hooks/9594f984-2792-4e3e-ab02-489943094819",
+    "version": 1,
+    "contentHash": "4b55f9362846393c3383e89d111ba36da1d1f24f5a9be3d622af43600f49ec4c"
+  },
+  {
+    "source": "pr-navigator.json",
+    "url": "https://browser.kudium.com/hooks/f837e01e-e524-4ac8-86d6-f78ee850a85c",
+    "version": 3,
+    "contentHash": "176b973c8d4913b52efe4df55f73a49bd5ce52ad0f52dac00d9edcc4fd58a30e"
+  },
+  {
+    "source": "page-explorer.json",
+    "url": "https://browser.kudium.com/hooks/37473415-ec2d-4d6c-b3ae-66784c8728b8",
+    "version": 2,
+    "contentHash": "fe272e9e6934cea6e4540ae86e913d8f3a898297038c8da176d8b9a976fbee96"
+  }
+]
