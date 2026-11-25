@@ -1,5 +1,15 @@
 export const whatsNew = [
   {
+    version: '1.0.25', date: '2026-11-25', title: 'Faster hook access and panel history',
+    highlights: [
+      ['Clearer hook installation', 'Choose On matching websites to start immediately, or Only where I enable it (Auto) to opt in separately on each website. Compact, aligned controls explain both choices.'],
+      ['Run hooks on the page you are viewing', 'The panel picker resolves the live current website. Enable here and run activates a website-disabled hook locally; globally disabled hooks and wildcard exclusions keep their restrictions.'],
+      ['Return to previous panels', 'Back and Forward retain panel views, drafts and scroll positions. Controls hide when there is no history and keep stable sizing during navigation.'],
+      ['Copy hooks your way', 'Duplicate hooks, copy global hooks to the local section, or copy local hooks to global hooks. Each copy has independent hook and action identities.'],
+      ['Find your latest work', 'Developer lists sort active hooks first, then by saved edit time, including the default hook. Opening the editor selects the first sorted hook unless you requested a specific one.'],
+    ],
+  },
+  {
     version: '1.0.24', date: '2026-11-25', title: 'Global hooks, a cleaner workspace, and clearer update feedback',
     highlights: [
       ['Run global hooks from your panel', 'Find global hooks in the panel picker, run them on the current page, or open their settings. Auto mode lets each website opt in; global disable still applies everywhere. Installed hooks can update in place, and installation remembers your selected group.'],
