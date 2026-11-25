@@ -124,6 +124,9 @@ Both architectures must pass type checks, tests, signing/notarization checks and
 checksum validation before a tag is pushed or any channel is published.
 
 Both signed application bundles are submitted to Apple before waiting for review.
+Uploads use the direct S3 endpoint rather than transfer acceleration, with a
+30-minute upload limit. A transport failure stops the release; it never bypasses
+Apple acceptance or the installer verification gates.
 Each build retains `notarization.json` with its submission ID, signed code hash
 and uploaded archive checksum. Short status requests retry transient failures
 without submitting again. Only an accepted, unchanged application is stapled and

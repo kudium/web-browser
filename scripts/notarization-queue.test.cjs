@@ -31,6 +31,7 @@ test('submits without a long wait, retains ID, and avoids duplicate upload on re
   await submit(f.options,{run:f.run,log:()=>{}});
   const calls=f.calls.filter(([,args])=>args.includes('submit'));
   assert.equal(calls.length,1);assert(!calls[0][1].includes('--wait'));
+  assert(calls[0][1].includes('--no-s3-acceleration'), 'Use direct S3 uploads to avoid acceleration endpoint stalls');
   const record=JSON.parse(await fs.readFile(path.join(f.dir,'notarization.json')));
   assert.equal(record.id,id);assert(!JSON.stringify(record).includes('test-key'));
 }));

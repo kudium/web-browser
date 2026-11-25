@@ -8,7 +8,10 @@ const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 
 async function command(file, args, timeout = 60000) {
   try { return await execute(file, args, { timeout, maxBuffer: 1024 * 1024 }); }
-  catch { throw new Error(`${path.basename(file)} did not complete successfully`); }
+  catch (error) {
+    const reason = error.killed ? 'timed out' : `exited with code ${error.code ?? 'unknown'}`;
+    throw new Error(`${path.basename(file)} ${reason}`);
+  }
 }
 function authorization(options) {
   if (options.appleApiKey) return ['--key', options.appleApiKey, '--key-id', options.appleApiKeyId, '--issuer', options.appleApiIssuer];
@@ -45,7 +48,7 @@ async function submit(options, { run = command, log = console.log } = {}) {
   const cdHash = await fingerprint(options.appPath, run);
   await run('/usr/bin/ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', options.appPath, files.archive], 300000);
   const sha256 = await checksum(files.archive);
-  const result = await run('/usr/bin/xcrun', ['notarytool', 'submit', files.archive, ...authorization(options), '--output-format', 'json'], 900000);
+  const result = await run('/usr/bin/xcrun', ['notarytool', 'submit', files.archive, ...authorization(options), '--no-s3-acceleration', '--output-format', 'json'], 1800000);
   let response;
   try { response = JSON.parse(result.stdout); } catch { throw new Error('Apple submission did not return a submission ID'); }
   if (!uuid.test(response.id || '')) throw new Error('Apple submission returned an invalid submission ID');
