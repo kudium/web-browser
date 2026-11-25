@@ -1,3 +1,11 @@
+- Global hooks are available directly in the panel picker, with quick run and management controls. Auto mode lets websites opt in individually, while global disable still applies everywhere.
+- Global and website hook editors share compact footer options; enable and Auto switches save immediately. Installed hooks can update in place, and installation remembers your selected group.
+- Group unloading collapses folders, with options to unload other groups or every group in a space. Toasts report the number of tabs unloaded.
+- Reorder spaces by dragging their footer icons. Customize sidebar text size and container backgrounds, and explore useful features through compact stacked recommendations.
+- The local welcome guide is the default Start page, including Dock and OS setup actions. Choose a blank or custom Start page and preview it in Preferences.
+- Restarting for an update now shows immediate progress feedback, prevents duplicate clicks, and restores a retry action if installation fails.
+- Hooks can save panel state locally and link panel inputs and navigation back to the current page. Marketplace lists recently updated hooks first.
+
 - Keep panel content visible beneath dialogs with retained snapshots; unrelated popups and resizing leave the live panel visible.
 - Drag collection headers within a space to reorder them. The order saves immediately without moving groups or changing their login sessions.
 - A compact Discover Kudium sidebar stack introduces up to three recommendations at a time. Explore hooks in a new tab, discover browser tools gradually, or choose Later to hide recommendations for three days.

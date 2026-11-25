@@ -111,7 +111,7 @@ it('selects scope and model in the composer and expands scope explicitly for men
     entries: [{ kind: 'file', name: 'home.html', path: 'src/home.html' }],
   });
   Object.assign(window, {
-    electron: { ai, siteDeveloper: { files: projectFiles } },
+    electron: { ai, ipcRenderer: { on: jest.fn(() => () => {}), sendMessage: jest.fn() }, siteDeveloper: { files: projectFiles } },
   });
   const { rerender } = render(<AISidebar />);
   await screen.findByRole('button', { name: 'AI model' });
@@ -234,7 +234,7 @@ it('offers thinking controls for Ollama and saves the selected setting', async (
     onScope: () => () => {},
     onPermissions: () => () => {},
   };
-  Object.assign(window, { electron: { ai } });
+  Object.assign(window, { electron: { ai, ipcRenderer: { on: jest.fn(() => () => {}), sendMessage: jest.fn() } } });
   render(<AISidebar />);
   const control = await screen.findByRole('button', { name: 'AI model' });
   const input = screen.getByRole('textbox', { name: 'Task for AI' });

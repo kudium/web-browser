@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { SidebarPanels } from '../components/UI/SidebarPanels';
 import { browser } from '../browser/client';
+beforeEach(() => { Object.assign(window, { electron: { ipcRenderer: { on: jest.fn(() => () => {}), sendMessage: jest.fn() } } }); });
 jest.mock('../browser/client', () => ({ browser: { sidebarPanels: jest.fn().mockResolvedValue({}) } }));
 jest.mock('../components/UI/GroupPicker', () => ({ GroupPicker: () => null }));
 jest.mock('../components/UI/AssistantPageHeader', () => ({ AssistantPageHeader: () => null }));
