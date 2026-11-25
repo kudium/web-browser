@@ -493,14 +493,28 @@ export function hookDetailPage(detail: Detail, viewer?: string, admin = false) {
                   href={`/hook-images/${key}/main.webp`}
                   target="_blank"
                   rel="noopener"
+                  data-hook-screenshot
+                  aria-label={`View ${hook.name} screenshot ${index + 1}`}
                 >
                   <img
-                    src={`/hook-images/${key}/main.webp`}
+                    src={`/hook-images/${key}/thumb.webp`}
                     alt={`${hook.name} screenshot ${index + 1}`}
                     loading={index ? "lazy" : "eager"}
                   />
                 </a>
               ))}
+              <dialog className="hook-image-viewer" aria-label={`${hook.name} screenshots`} data-hook-image-viewer>
+                <div className="hook-image-viewer-toolbar">
+                  <span data-image-caption aria-live="polite" />
+                  <button type="button" data-image-close aria-label="Close image viewer" autoFocus>×</button>
+                </div>
+                <div className="hook-image-viewer-stage">
+                  <button type="button" data-image-previous aria-label="Previous screenshot">‹</button>
+                  <img data-image-full alt="" />
+                  <p data-image-error role="status" hidden>Unable to load this screenshot.</p>
+                  <button type="button" data-image-next aria-label="Next screenshot">›</button>
+                </div>
+              </dialog>
             </section>
           )}
           <section className="hook-code-section">

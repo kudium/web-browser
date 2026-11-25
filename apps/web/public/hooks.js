@@ -1,4 +1,52 @@
 (() => {
+  const viewer = document.querySelector('[data-hook-image-viewer]');
+  if (viewer && typeof viewer.showModal === 'function') {
+    const thumbnails = [...document.querySelectorAll('[data-hook-screenshot]')];
+    const image = viewer.querySelector('[data-image-full]');
+    const error = viewer.querySelector('[data-image-error]');
+    const previous = viewer.querySelector('[data-image-previous]');
+    const next = viewer.querySelector('[data-image-next]');
+    let selected = 0;
+    let opener;
+    const showImage = index => {
+      selected = (index + thumbnails.length) % thumbnails.length;
+      const thumbnail = thumbnails[selected];
+      error.hidden = true;
+      image.hidden = false;
+      image.alt = thumbnail.querySelector('img').alt;
+      image.src = thumbnail.href;
+      viewer.querySelector('[data-image-caption]').textContent = `Screenshot ${selected + 1} of ${thumbnails.length}`;
+      previous.hidden = next.hidden = thumbnails.length < 2;
+    };
+    image.addEventListener('error', () => { image.hidden = true; error.hidden = false; });
+    thumbnails.forEach((thumbnail, index) => thumbnail.addEventListener('click', event => {
+      event.preventDefault();
+      opener = thumbnail;
+      showImage(index);
+      viewer.showModal();
+      document.documentElement.classList.add('hook-image-viewer-open');
+    }));
+    previous.addEventListener('click', () => showImage(selected - 1));
+    next.addEventListener('click', () => showImage(selected + 1));
+    viewer.querySelector('[data-image-close]').addEventListener('click', () => viewer.close());
+    viewer.addEventListener('keydown', event => {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        showImage(selected + (event.key === 'ArrowLeft' ? -1 : 1));
+      }
+    });
+    viewer.addEventListener('click', event => {
+      if (event.target !== viewer) return;
+      const bounds = viewer.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) viewer.close();
+    });
+    viewer.addEventListener('close', () => {
+      document.documentElement.classList.remove('hook-image-viewer-open');
+      image.removeAttribute('src');
+      opener?.focus({ preventScroll: true });
+    });
+  }
   document.addEventListener('error', event => {
     if (event.target instanceof HTMLImageElement && event.target.hasAttribute('data-hook-site-icon')) event.target.hidden = true;
   }, true);
