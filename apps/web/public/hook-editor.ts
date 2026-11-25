@@ -89,6 +89,19 @@ function mount(field: HTMLTextAreaElement) {
       status.textContent = `Ln ${line.number}, Col ${update.state.selection.main.head - line.from + 1} · ${update.state.doc.length.toLocaleString()} / ${limit.toLocaleString()} characters`;
     }),
   ] }) });
+  const copyStatus = document.createElement('span');
+  copyStatus.className = 'hook-copy-announcement'; copyStatus.setAttribute('role', 'status');
+  const copy = button('Copy', async () => {
+    try {
+      await navigator.clipboard.writeText(view.state.doc.toString());
+      copy.textContent = 'Copied';
+    } catch { copy.textContent = 'Try again'; }
+    copyStatus.textContent = copy.textContent;
+    window.setTimeout(() => { if (copy.isConnected) { copy.textContent = 'Copy'; copyStatus.textContent = ''; } }, 2000);
+  });
+  copy.classList.add('hook-copy-button');
+  copy.setAttribute('aria-label', `Copy ${label}`);
+  host.append(copy, copyStatus);
   views.set(field, view);
   toolbar.append(language); host.prepend(toolbar); host.append(status);
   status.textContent = `Ln 1, Col 1 · ${field.value.length.toLocaleString()} / ${limit.toLocaleString()} characters`;

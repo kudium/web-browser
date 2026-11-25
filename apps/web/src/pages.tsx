@@ -1255,12 +1255,12 @@ export function authPage(
     reset = page === "reset-password",
     forgot = page === "forgot-password";
   const title = signup
-    ? "Create your Kudium account."
+    ? "Make yourself at home."
     : reset
-    ? "Reset your Kudium password."
+    ? "A fresh start."
     : forgot
-    ? "Recover your Kudium account."
-    : "Sign in to Kudium.";
+    ? "Let’s get you back in."
+    : "Welcome back.";
   const available = configured && (!(forgot || reset) || mailEnabled);
   return (
     "<!doctype html>" +
@@ -1269,107 +1269,117 @@ export function authPage(
         <main className="auth-layout">
           <section className="auth-intro">
             <h1>{title}</h1>
-            <p>One account for your browser workspace.</p>
+            <p>Your browser. Your workspace. Your Kudium.</p>
             <p className="auth-note">
-              Sign in to publish hooks, join discussions, or approve your browser’s connection
-              request. Return to Sync in Preferences to set up encrypted sync.
+              Publish your hooks, join the conversation, and connect your browser.
+              Everything starts with one account.
             </p>
           </section>
-          <section className="auth-card">
-            <h2>
-              {signup
-                ? "Create an account"
-                : reset
-                ? "Reset password"
-                : forgot
-                ? "Password recovery"
-                : "Sign in"}
-            </h2>
-            {available ? (
-              <><div className="auth-alternatives">
-                {!forgot && !reset && googleEnabled && <button type="button" className="account-button auth-provider" data-google-sign-in><svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.9h11a9.4 9.4 0 0 1-4.1 6.2v5.2h6.7c3.9-3.6 6-8.8 6-15.2Z"/><path fill="#34A853" d="M24 44c5.5 0 10.2-1.8 13.6-4.3l-6.7-5.2c-1.8 1.2-4.1 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.4H5.7v5.3A20.5 20.5 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.6 28a12.3 12.3 0 0 1 0-8V14.7H5.7a20 20 0 0 0 0 18.6Z"/><path fill="#EA4335" d="M24 11.6c3 0 5.6 1 7.7 3l5.8-5.8A19.3 19.3 0 0 0 24 4 20.5 20.5 0 0 0 5.7 14.7l6.9 5.3c1.6-4.8 6.1-8.4 11.4-8.4Z"/></svg> Continue with Google</button>}
-                {!forgot && !reset && <button type="button" className="account-button auth-provider" data-passkey-sign-in>Sign in with a passkey</button>}
-                {!forgot && !reset && <p className="auth-divider">or continue with email</p>}
-              </div><form data-auth-form={page}>
-                {signup && (
-                  <label>
-                    Your name
-                    <input
-                      name="name"
-                      autoComplete="name"
-                      required
-                      maxLength={100}
-                    />
-                  </label>
-                )}
-                {!reset && (
-                  <label>
-                    Email address
-                    <input
-                      name="email"
-                      type="email"
-                      autoComplete={signup ? "email" : "username webauthn"}
-                      required
-                      maxLength={254}
-                    />
-                  </label>
-                )}
-                {!forgot && (
-                  <label>
-                    {reset ? "New password" : "Password"}
-                    <input
-                      name="password"
-                      type="password"
-                      autoComplete={
-                        signup || reset ? "new-password" : "current-password"
-                      }
-                      required
-                      minLength={12}
-                      maxLength={128}
-                    />
-                  </label>
-                )}
-                {signup && (
-                  <p className="auth-note">
-                    Use at least 12 characters.
-                    {mailEnabled
-                      ? " Check your inbox to verify your email before signing in."
-                      : ""}
-                  </p>
-                )}
-                <button className="button" type="submit">
-                  {signup
-                    ? "Create account →"
-                    : reset
-                    ? "Save new password →"
-                    : forgot
-                    ? "Send reset link →"
-                    : "Sign in →"}
-                </button>
-                <p data-auth-message role="status" aria-live="polite" />
-              </form></>
-            ) : (
-              <p role="status">
-                {!configured
-                  ? "Account service is not configured yet."
-                  : "Email recovery is not available yet. Contact hello@kudium.com for help."}
-              </p>
-            )}
-            {!forgot && !reset && <p className="auth-privacy">Read how we handle your data in our <a href="/privacy">Privacy Policy</a>.</p>}
-            {signup ? (
-              <p>
-                Already have an account? <a href="/sign-in">Sign in</a>
-              </p>
-            ) : (
-              <p>
-                New to Kudium? <a href="/sign-up">Create an account</a>
-              </p>
-            )}
-            {mailEnabled && !signup && !forgot && !reset && (
-              <a className="text-link" href="/forgot-password">
-                Forgot your password?
-              </a>
-            )}
+          <section className="auth-card" aria-label="Account access">
+            <div data-auth-entry>
+              <h2>
+                {signup
+                  ? "Create an account"
+                  : reset
+                  ? "Reset password"
+                  : forgot
+                  ? "Password recovery"
+                  : "Sign in"}
+              </h2>
+              {available ? (
+                <><div className="auth-alternatives">
+                  {!forgot && !reset && googleEnabled && <button type="button" className="account-button auth-provider" data-google-sign-in><svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.9h11a9.4 9.4 0 0 1-4.1 6.2v5.2h6.7c3.9-3.6 6-8.8 6-15.2Z"/><path fill="#34A853" d="M24 44c5.5 0 10.2-1.8 13.6-4.3l-6.7-5.2c-1.8 1.2-4.1 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.4H5.7v5.3A20.5 20.5 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.6 28a12.3 12.3 0 0 1 0-8V14.7H5.7a20 20 0 0 0 0 18.6Z"/><path fill="#EA4335" d="M24 11.6c3 0 5.6 1 7.7 3l5.8-5.8A19.3 19.3 0 0 0 24 4 20.5 20.5 0 0 0 5.7 14.7l6.9 5.3c1.6-4.8 6.1-8.4 11.4-8.4Z"/></svg> Continue with Google</button>}
+                  {!forgot && !reset && <button type="button" className="account-button auth-provider" data-passkey-sign-in>Sign in with a passkey</button>}
+                  {!forgot && !reset && <p className="auth-divider">or continue with email</p>}
+                </div><form data-auth-form={page}>
+                  {signup && (
+                    <label>
+                      Your name
+                      <input
+                        name="name"
+                        autoComplete="name"
+                        required
+                        maxLength={100}
+                      />
+                    </label>
+                  )}
+                  {!reset && (
+                    <label>
+                      Email address
+                      <input
+                        name="email"
+                        type="email"
+                        autoComplete={signup ? "email" : "username webauthn"}
+                        required
+                        maxLength={254}
+                      />
+                    </label>
+                  )}
+                  {!forgot && (
+                    <label>
+                      {reset ? "New password" : "Password"}
+                      <input
+                        name="password"
+                        type="password"
+                        autoComplete={
+                          signup || reset ? "new-password" : "current-password"
+                        }
+                        required
+                        minLength={12}
+                        maxLength={128}
+                      />
+                    </label>
+                  )}
+                  {signup && (
+                    <p className="auth-note">
+                      Use at least 12 characters.
+                      {mailEnabled
+                        ? " Check your inbox to verify your email before signing in."
+                        : ""}
+                    </p>
+                  )}
+                  <button className="button" type="submit">
+                    {signup
+                      ? "Create account →"
+                      : reset
+                      ? "Save new password →"
+                      : forgot
+                      ? "Send reset link →"
+                      : "Sign in →"}
+                  </button>
+                  <p data-auth-message role="status" aria-live="polite" aria-atomic="true" />
+                </form></>
+              ) : (
+                <p role="status">
+                  {!configured
+                    ? "Account service is not configured yet."
+                    : "Email recovery is not available yet. Contact hello@kudium.com for help."}
+                </p>
+              )}
+              {!forgot && !reset && <p className="auth-privacy">Read how we handle your data in our <a href="/privacy">Privacy Policy</a>.</p>}
+              {signup ? (
+                <p>
+                  Already have an account? <a href="/sign-in">Sign in</a>
+                </p>
+              ) : (
+                <p>
+                  New to Kudium? <a href="/sign-up">Create an account</a>
+                </p>
+              )}
+              {mailEnabled && !signup && !forgot && !reset && (
+                <a className="text-link" href="/forgot-password">
+                  Forgot your password?
+                </a>
+              )}
+            </div>
+            <section className="auth-success" data-auth-success hidden aria-labelledby="auth-success-title">
+              <div className="auth-success-icon" aria-hidden="true">✉</div>
+              <h2 id="auth-success-title" tabIndex={-1}>Check your inbox</h2>
+              <p data-auth-success-description />
+              <p className="auth-success-hint">Can’t find it? Check your spam or junk folder.</p>
+              <a className="button" href="/sign-in">Continue to sign in</a>
+              <button className="auth-back" type="button" data-auth-back>Use a different email</button>
+            </section>
           </section>
         </main>
         <script src={`/assets/auth.js?v=${authScriptVersion}`} defer />

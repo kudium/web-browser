@@ -35,6 +35,17 @@ export function CodeEditor({
   maxLength?: number;
   mode?: 'lifecycle' | 'action';
 }) {
+  const [copyStatus, setCopyStatus] = useState('Copy');
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => { clearTimeout(copyTimer.current); }, []);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(view?.state.doc.toString() ?? value);
+      setCopyStatus('Copied');
+    } catch { setCopyStatus('Try again'); }
+    clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopyStatus('Copy'), 2000);
+  };
   const change = useRef(onChange);
   useLayoutEffect(() => { change.current = onChange; }, [onChange]);
   // Keep CodeMirror configuration stable as parent drafts/logs update.
@@ -84,20 +95,25 @@ export function CodeEditor({
     [language, label, maxLength, mode]
   );
   return (
-    <CodeMirror
-      className="site-hook-code"
-      onCreateEditor={setView}
-      value={value}
-      onChange={edit}
-      extensions={extensions}
-      theme={appearance}
-      editable={!disabled}
-      height="100%"
-      basicSetup={{
-        foldGutter: true,
-        highlightActiveLine: true,
-        autocompletion: true,
-      }}
-    />
+    <div className="site-hook-code hook-copy-host">
+      <button type="button" className="hook-copy-button" aria-label={`Copy ${label}`} onClick={copy}>
+        <span role="status" aria-live="polite">{copyStatus}</span>
+      </button>
+      <CodeMirror
+        className="hook-copy-editor"
+        onCreateEditor={setView}
+        value={value}
+        onChange={edit}
+        extensions={extensions}
+        theme={appearance}
+        editable={!disabled}
+        height="100%"
+        basicSetup={{
+          foldGutter: true,
+          highlightActiveLine: true,
+          autocompletion: true,
+        }}
+      />
+    </div>
   );
 }

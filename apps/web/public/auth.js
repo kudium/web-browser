@@ -1,6 +1,28 @@
 const form = document.querySelector('[data-auth-form]');
 const message = document.querySelector('[data-auth-message]');
-function showMessage(text) { if (message) message.textContent = text; }
+function showMessage(text, error = false) {
+  if (!message) return;
+  message.textContent = text;
+  message.dataset.error = String(error);
+  message.setAttribute('role', error ? 'alert' : 'status');
+}
+function showEmailConfirmation(email, recovery = false) {
+  const success = document.querySelector('[data-auth-success]');
+  if (!success) return;
+  document.querySelector('[data-auth-entry]').hidden = true;
+  success.hidden = false;
+  success.querySelector('[data-auth-success-description]').textContent = recovery
+    ? `If an account exists for ${email}, we’ll send a link to reset your password.`
+    : `We’ve sent a verification link to ${email}. Open it to activate your account, then sign in.`;
+  success.querySelector('[data-auth-back]').textContent = recovery ? 'Try another email' : 'Use a different email';
+  showMessage('');
+  success.querySelector('h2').focus();
+}
+document.querySelector('[data-auth-back]')?.addEventListener('click', () => {
+  document.querySelector('[data-auth-success]').hidden = true;
+  document.querySelector('[data-auth-entry]').hidden = false;
+  form.elements.email.focus();
+});
 async function authRequest(path, body) {
   const response = await fetch(`/api/auth/${path}`, {
     method: 'POST', credentials: 'same-origin', redirect: 'error',
@@ -28,12 +50,12 @@ if (form) form.addEventListener('submit', async event => {
     const callbackURL = `${location.origin}${destination}`;
     if (mode === 'sign-up') {
       const result = await authRequest('sign-up/email', { name: String(fields.get('name') || '').trim(), email, password, callbackURL });
-      if (!result.token) { showMessage('Check your email to verify your account, then sign in.'); return; }
+      if (!result.token) { showEmailConfirmation(email); return; }
     } else if (mode === 'sign-in') {
       await authRequest('sign-in/email', { email, password, callbackURL });
     } else if (mode === 'forgot-password') {
       await authRequest('request-password-reset', { email, redirectTo: `${location.origin}/reset-password` });
-      showMessage('If that email belongs to an account, a reset link is on its way.'); return;
+      showEmailConfirmation(email, true); return;
     } else if (mode === 'reset-password') {
       const token = new URLSearchParams(location.search).get('token');
       if (!token) throw new Error('This reset link is incomplete. Request a new link.');
@@ -42,7 +64,7 @@ if (form) form.addEventListener('submit', async event => {
       location.assign('/sign-in'); return;
     }
     location.assign(destination);
-  } catch (error) { showMessage(error instanceof Error ? error.message : 'Unable to complete this request.'); }
+  } catch (error) { showMessage(error instanceof Error ? error.message : 'Unable to complete this request.', true); }
   finally { button.disabled = false; alternatives.forEach((button, index) => { button.disabled = disabledStates[index]; }); }
 });
 const signOut = document.querySelector('[data-sign-out]');
