@@ -1,5 +1,14 @@
 export const whatsNew = [
   {
+    version: '1.0.26', date: '2026-11-25', title: 'Flexible panels and smarter address suggestions',
+    highlights: [
+      ['Dock panels your way', 'Move AI, Developer, hooks and other panels to the right or bottom using the compact header control. Resize the dock without losing panel content; placement and dimensions are remembered.'],
+      ['More useful address suggestions', 'Find open tabs, history and search engines as you type. Compact horizontal suggestions include Chat with AI and access to command actions.'],
+      ['Page Developer Tools', 'Open the inspector with Command–Option–I. Dock it right, bottom, in a separate window or in the shared panel, with resizing and stable page geometry when switching positions.'],
+      ['Cleaner workspace controls', 'Space rows use the available width and reveal actions on hover. Preferences have better-sized inputs, a separate start-page preview and softer update buttons.'],
+    ],
+  },
+  {
     version: '1.0.25', date: '2026-11-25', title: 'Faster hook access and panel history',
     highlights: [
       ['Clearer hook installation', 'Choose On matching websites to start immediately, or Only where I enable it (Auto) to opt in separately on each website. Compact, aligned controls explain both choices.'],
