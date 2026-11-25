@@ -237,7 +237,7 @@ export interface BrowserClient {
         | 'import'
         | 'passwords'
         | 'spaces'
-        | 'hooks'
+        | 'hooks' | 'appearance' | 'shortcuts' | 'performance' | 'routing' | 'ai' | 'extensions'
         | 'updates';
     }
   ): Promise<BrowserPreferences>;

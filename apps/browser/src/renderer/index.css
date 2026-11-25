@@ -5531,3 +5531,16 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 @media (prefers-reduced-motion:reduce) { .hook-copy-host > .hook-copy-button { transition:none; } }
 
 .site-global-hook-heading { display:flex; align-items:center; gap:6px; }
+
+.browser-recommendations { margin:8px 5px 10px; min-width:0; }
+.recommendations-heading { display:flex; align-items:center; justify-content:space-between; padding:0 7px 6px; color:var(--gray-11); font-size:10px; }
+.recommendations-heading button { border:0; background:transparent; padding:3px 5px; font:inherit; color:var(--gray-11); cursor:pointer; border-radius:5px; }
+.recommendation-stack { display:flex; flex-direction:column; padding-bottom:5px; }
+.recommendation-stack .recommendation-card { position:relative; margin:0; background:var(--color-panel-solid); box-shadow:0 2px 8px var(--black-a2); padding:10px; border-radius:11px; }
+.recommendation-stack .recommendation-card + .recommendation-card { margin: -2px 3px 0; }
+.recommendation-stack .recommendation-card:nth-child(3) { margin-left:6px; margin-right:6px; }
+.recommendation-card button { font-weight:500; }
+.recommendations-heading button:hover { background:var(--gray-a3); }
+.recommendations-heading button:focus-visible { outline:2px solid var(--accent-9); outline-offset:2px; }
+.browser-recommendations > p { font-size:11px; color:var(--gray-11); padding:0 7px; }
+.compact-sidebar .browser-recommendations { display:none; }

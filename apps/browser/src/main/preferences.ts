@@ -87,7 +87,7 @@ let openPage:
         | 'import'
         | 'passwords'
         | 'spaces'
-        | 'hooks'
+        | 'hooks' | 'appearance' | 'shortcuts' | 'performance' | 'routing' | 'ai' | 'extensions'
       | 'updates',
       personalDataScope?: string
     ) => void)
@@ -324,7 +324,7 @@ export function updateBrowserPreferences(patch: Partial<BrowserPreferences>) {
 }
 export function showBrowserPreferences(
   _owner: BrowserWindow,
-  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks'
+  section?: 'archive' | 'sync' | 'import' | 'passwords' | 'spaces' | 'hooks' | 'appearance' | 'shortcuts' | 'performance' | 'routing' | 'ai' | 'extensions'
       | 'updates',
   personalDataScope?: string
 ) {
@@ -339,7 +339,7 @@ export function registerPreferences(
       | 'import'
       | 'passwords'
       | 'spaces'
-      | 'hooks'
+      | 'hooks' | 'appearance' | 'shortcuts' | 'performance' | 'routing' | 'ai' | 'extensions'
       | 'updates',
     personalDataScope?: string
   ) => void,
@@ -385,7 +385,7 @@ export function registerPreferences(
           | 'import'
           | 'passwords'
           | 'spaces'
-          | 'hooks'
+          | 'hooks' | 'appearance' | 'shortcuts' | 'performance' | 'routing' | 'ai' | 'extensions'
           | 'updates';
       }
     ) => {
@@ -398,8 +398,8 @@ export function registerPreferences(
             patch?.section === 'import' ||
             patch?.section === 'passwords' ||
             patch?.section === 'spaces' ||
-            patch?.section === 'hooks' || patch?.section === 'updates'
-            ? patch.section
+            patch?.section === 'hooks' || patch?.section === 'updates' || ['appearance', 'shortcuts', 'performance', 'routing', 'ai', 'extensions'].includes(patch?.section || '')
+            ? patch?.section
             : undefined
         );
       if (action === 'update') {

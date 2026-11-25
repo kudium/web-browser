@@ -5,7 +5,7 @@ import { BrowserPreferences } from '../../browser/preferences';
 
 const storageKey = 'kudium-first-group-sync-suggestion';
 export function AccountSyncSuggestion() {
-  const [eligible, setEligible] = useState(false);
+  const eligible = useSyncSuggestionEligibility();
   const [dismissed, setDismissed] = useState(() => {
     try {
       // Older versions stored "shown" on first impression, before any choice.
@@ -14,33 +14,6 @@ export function AccountSyncSuggestion() {
       return false;
     }
   });
-  useEffect(() => {
-    let alive = true;
-    let revision = 0;
-    const refresh = (preferences?: BrowserPreferences) => {
-      const request = ++revision;
-      Promise.all([
-        preferences ? Promise.resolve(preferences) : browser.preferences('get'),
-        browser.accountSync('status'),
-      ])
-        .then(([current, status]) => {
-          if (alive && request === revision && 'connected' in status) {
-            setEligible(!current.cloudSync.enabled || !status.connected);
-          }
-          return undefined;
-        })
-        .catch(() => {});
-    };
-    const unsubscribe = browser.onPreferences(refresh);
-    window.addEventListener('focus', refreshOnFocus);
-    function refreshOnFocus() { refresh(); }
-    refresh();
-    return () => {
-      alive = false;
-      unsubscribe();
-      window.removeEventListener('focus', refreshOnFocus);
-    };
-  }, []);
   const dismiss = () => {
     try {
       localStorage.setItem(storageKey, 'dismissed');
@@ -76,4 +49,36 @@ export function AccountSyncSuggestion() {
       </button>
     </div>
   );
+}
+
+export function useSyncSuggestionEligibility() {
+  const [eligible, setEligible] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    let revision = 0;
+    const refresh = (preferences?: BrowserPreferences) => {
+      const request = ++revision;
+      Promise.all([
+        preferences ? Promise.resolve(preferences) : browser.preferences('get'),
+        browser.accountSync('status'),
+      ])
+        .then(([current, status]) => {
+          if (alive && request === revision && 'connected' in status) {
+            setEligible(!current.cloudSync.enabled || !status.connected);
+          }
+          return undefined;
+        })
+        .catch(() => {});
+    };
+    const unsubscribe = browser.onPreferences(refresh);
+    window.addEventListener('focus', refreshOnFocus);
+    function refreshOnFocus() { refresh(); }
+    refresh();
+    return () => {
+      alive = false;
+      unsubscribe();
+      window.removeEventListener('focus', refreshOnFocus);
+    };
+  }, []);
+  return eligible;
 }

@@ -70,8 +70,7 @@ import { SpaceSettingsForm } from '../../UI/SpaceSettingsForm';
 import { EmptySpaceWelcome } from '../../UI/EmptySpaceWelcome';
 import { BrowserWelcome } from '../../UI/BrowserWelcome';
 import { AccountSyncPublisher } from '../../UI/AccountSyncPublisher';
-import { BrowserImportSuggestion } from '../../UI/BrowserImportSuggestion';
-import { AccountSyncSuggestion } from '../../UI/AccountSyncSuggestion';
+import { BrowserRecommendations } from '../../UI/BrowserRecommendations';
 import { TabSwitcher } from '../../UI/TabSwitcher';
 import { useTabSwitcher } from '../../../utils/hooks/useTabSwitcher';
 import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
@@ -4722,8 +4721,11 @@ export function Main() {
           )}
         </SidebarPager>
         <AccountSyncPublisher tabs={appList} states={states} />
-        {!windowWorkspace.state()?.private && <BrowserImportSuggestion />}
-        {!windowWorkspace.state()?.private && <AccountSyncSuggestion />}
+        {!windowWorkspace.state()?.private && <BrowserRecommendations onMarketplace={() => {
+          if (!selected || lockedGroup(selected)) return false;
+          command('navigate', 'https://browser.kudium.com/hooks');
+          return true;
+        }} />}
         <AppUpdateBanner compact={compact} onWhatsNew={openWhatsNew} />
         <SidebarMediaWidget
           selectedId={selected?.id}
