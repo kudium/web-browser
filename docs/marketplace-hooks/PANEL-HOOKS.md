@@ -68,3 +68,12 @@ a slim progress control, and expandable voice settings and transcript. The publi
 The marketplace gallery shows actual playback, expanded voice settings and the
 follow-along transcript. WebP masters and image hashes are in the capture manifest. Native QA checks both
 collapsed and expanded layouts at 280/368/640px and captures the transcript state.
+
+## Navigator redesigns (published PR version 4, explorer version 3)
+
+Both panels share compact counts, system typography, SVG icons, search controls
+and quiet list rows. PR filenames and folders are separated, with full paths in
+tooltips. The explorer uses a segmented outline/source switcher. Additional context
+is expandable. Native QA verifies file search, unchecked filtering and external
+source filtering, plus source-list layouts at 280/368/640px. Refreshed gallery WebP
+files and hashes are recorded together in the capture manifest.

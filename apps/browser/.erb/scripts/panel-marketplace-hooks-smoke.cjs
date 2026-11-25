@@ -48,11 +48,15 @@ app.whenReady().then(async()=>{
   await click(currentView,'stop');await until(()=>currentView.webContents.executeJavaScript('!speechSynthesis.speaking'),'stop');
   manifest.push(await runHook('page-explorer','https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API'));
   assert(await currentView.webContents.executeJavaScript('Number(document.getElementById("sections").textContent)>5'));
-  await capture('page-explorer','outline');await click(currentView,'links-tab');await until(()=>currentView.webContents.executeJavaScript('document.getElementById("links-tab").getAttribute("aria-pressed")==="true"'),'source tab');await capture('page-explorer','sources');
+  await capture('page-explorer','outline');await click(currentView,'links-tab');await until(()=>currentView.webContents.executeJavaScript('document.getElementById("links-tab").getAttribute("aria-pressed")==="true"'),'source tab');for(const width of [280,368,640]){currentView.setBounds({x:860,y:0,width,height:800});await pause(100);assert(await currentView.webContents.executeJavaScript('document.documentElement.scrollWidth<=innerWidth+1'),'sources layout overflow at '+width);}
+  currentView.setBounds({x:860,y:0,width:368,height:800});await capture('page-explorer','sources');
+  assert(await currentView.webContents.executeJavaScript('document.getElementById("link-filter").value="external";document.getElementById("link-filter").dispatchEvent(new Event("change"));[...document.querySelectorAll("#results a small")].every(node=>node.textContent.includes("external source"))'),'external source filter');
   manifest.push(await runHook('pr-navigator','https://github.com/microsoft/TypeScript/pull/65667/files'));
   assert(await currentView.webContents.executeJavaScript('Number(document.getElementById("loaded").textContent)>0'),'GitHub file extraction');
   await capture('pr-navigator','files');const checklist=await currentView.webContents.executeJavaScript('document.querySelector("#files button[aria-pressed]").getAttribute("aria-label")');
   await currentView.webContents.executeJavaScript('document.querySelector("#files button[aria-pressed]").click()');await until(()=>currentView.webContents.executeJavaScript('Number(document.getElementById("checked").textContent)===1'),'local checklist');await capture('pr-navigator','checked');
+  assert(await currentView.webContents.executeJavaScript('document.getElementById("filter").value="todo";document.getElementById("filter").dispatchEvent(new Event("change"));!document.querySelector("#files button[aria-pressed=true]")'),'unchecked files filter');
+  assert(await currentView.webContents.executeJavaScript('document.getElementById("search").value="__no_matching_file_987654__";document.getElementById("search").dispatchEvent(new Event("input"));document.querySelector("#files .empty")?.textContent.includes("No files match")'),'file search empty state');
   fs.writeFileSync(path.join(captures,'manifest.json'),JSON.stringify({capturedAt:new Date().toISOString(),native:true,pages:manifest},null,2));
   console.log('PASS public panel hooks: package execution, native sandbox, responsive layouts, real local speech play/pause/resume/seek/stop, outline links and PR checklist.');
 }).then(()=>{owner?.destroy();fs.rmSync(root,{recursive:true,force:true});app.quit();}).catch(error=>{console.error(error);owner?.destroy();app.exit(1)});

@@ -13,13 +13,22 @@
   {
     "source": "pr-navigator.json",
     "url": "https://browser.kudium.com/hooks/f837e01e-e524-4ac8-86d6-f78ee850a85c",
-    "version": 3,
-    "contentHash": "176b973c8d4913b52efe4df55f73a49bd5ce52ad0f52dac00d9edcc4fd58a30e"
+    "version": 4,
+    "contentHash": "5ab92a7d334ad3992ef6b4ec23a83dc556490b8e43fda1bffa89ee0a9c6c267c",
+    "screenshots": [
+      "pr-navigator-overview.webp",
+      "pr-navigator-checked.webp"
+    ]
   },
   {
     "source": "page-explorer.json",
     "url": "https://browser.kudium.com/hooks/37473415-ec2d-4d6c-b3ae-66784c8728b8",
-    "version": 2,
-    "contentHash": "fe272e9e6934cea6e4540ae86e913d8f3a898297038c8da176d8b9a976fbee96"
+    "version": 3,
+    "contentHash": "bbf27f48b8073ffdb8898f8dcf940f02281494b02cdb943057d32f95cc969753",
+    "screenshots": [
+      "page-explorer-overview.webp",
+      "page-explorer-outline.webp",
+      "page-explorer-sources.webp"
+    ]
   }
 ]

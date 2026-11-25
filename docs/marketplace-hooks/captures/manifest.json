@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-25T16:46:29.739Z",
+  "capturedAt": "2026-11-25T16:51:11.691Z",
   "native": true,
   "pages": [
     {
@@ -25,8 +25,8 @@
         "file": "listen-article-overview.webp",
         "width": 1600,
         "height": 1036,
-        "bytes": 125888,
-        "sha256": "e7478fa43cecb2d88313ae3c92eeb45f60e4581c35bf77d12c6951c62505b7aa"
+        "bytes": 125940,
+        "sha256": "2196d2d3fd16d0542c97aae88b1d98327a7d1632294787ceae3d67175249834f"
       },
       {
         "file": "listen-article-settings.webp",
@@ -39,8 +39,53 @@
         "file": "listen-article-transcript.webp",
         "width": 736,
         "height": 1600,
-        "bytes": 70686,
-        "sha256": "2c966bba6f3aec0dd7a8cb5c7036da79bf8888bbf55d797c8315ffc137beeb91"
+        "bytes": 70818,
+        "sha256": "683696a059b116a725c96ee2e161f7a6b7d542dbd694285734a4fa68ea222e22"
+      }
+    ]
+  },
+  "pr-navigatorGallery": {
+    "packageSHA256": "3837bad659675e728d8e585070f9a59e464875fd6052ac80184e38fb9e0a02f2",
+    "assets": [
+      {
+        "file": "pr-navigator-overview.webp",
+        "width": 1600,
+        "height": 1036,
+        "bytes": 109684,
+        "sha256": "52d4ddbaf66e7a0991148798194870418743e4a669e607af8969c77505c501a3"
+      },
+      {
+        "file": "pr-navigator-checked.webp",
+        "width": 736,
+        "height": 1600,
+        "bytes": 56480,
+        "sha256": "9d1ac07c729bfb1fa455b34d2b765421f736dfb272c111fae61e075b452756e0"
+      }
+    ]
+  },
+  "page-explorerGallery": {
+    "packageSHA256": "c1985f7cb2dd30e6fec033334873264d632e212d8ef104d2fe928f2fa787b493",
+    "assets": [
+      {
+        "file": "page-explorer-overview.webp",
+        "width": 1600,
+        "height": 1036,
+        "bytes": 144790,
+        "sha256": "5cf520e56a6fd8e0791c4e1725b57036d53452efe68c792fd2904914e57fb7c6"
+      },
+      {
+        "file": "page-explorer-outline.webp",
+        "width": 736,
+        "height": 1600,
+        "bytes": 37598,
+        "sha256": "b0ebd06c1fbf5c00dd439a874e2800f3dd5d475fa6a21d642308ba21503b17c8"
+      },
+      {
+        "file": "page-explorer-sources.webp",
+        "width": 736,
+        "height": 1600,
+        "bytes": 51650,
+        "sha256": "079c9081341b3f5dfd61865016aebcb7f43af3d24a7cbee6fa4dd9d1ed5359ac"
       }
     ]
   }
