@@ -227,3 +227,29 @@ it('blocks invalid source before writing the global hook configuration', () => {
   expect(() => saveGlobalHooks('syntax-profile', { enabled: true, hooks: [{ ...hook, after: 'const broken = ;' }] }, hash)).toThrow('After load, line 1');
   expect(globalHookHash(getGlobalHooks('syntax-profile'))).toBe(hash);
 });
+
+it('website exclusions survive reloads, while global disable and removal apply across all profiles', () => {
+  const scope = ALL_GROUPS_HOOK_SCOPE;
+  const save = (config: ReturnType<typeof getGlobalHooks>) => saveGlobalHooks(scope, config, globalHookHash(getGlobalHooks(scope)));
+  save({ enabled: true, hooks: [{ ...hook, exclusions: ['example.com'] }] });
+  for (const profile of ['one', 'two']) {
+    expect(effectiveHookConfig(profile, 'https://example.com/articles/1').hooks).toEqual([]);
+    expect(effectiveHookConfig(profile, 'http://example.com/articles/2').hooks).toEqual([]);
+    expect(effectiveHookConfig(profile, 'https://other.com/articles/1').hooks).toHaveLength(1);
+    expect(effectiveHookConfig(profile, 'https://sub.example.com/articles/1').hooks).toHaveLength(1);
+    expect(effectiveHookConfig(profile, 'https://notexample.com/articles/1').hooks).toHaveLength(1);
+  }
+  const folder = mockFolder;
+  mockFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-reload-'));
+  getGlobalHooks(scope);
+  fs.rmSync(mockFolder, { recursive: true, force: true });
+  mockFolder = folder;
+  expect(getGlobalHooks(scope).hooks[0].exclusions).toEqual(['example.com']);
+  save({ enabled: true, hooks: [{ ...hook, enabled: false, exclusions: [] }] });
+  expect(effectiveHookConfig('one', 'https://example.com/articles/1').hooks).toEqual([]);
+  expect(effectiveHookConfig('two', 'https://other.com/articles/1').hooks).toEqual([]);
+  save({ enabled: true, hooks: [] });
+  expect(effectiveHookConfig('one', 'https://example.com/articles/1').hooks).toEqual([]);
+  expect(effectiveHookConfig('two', 'https://other.com/articles/1').hooks).toEqual([]);
+  expect(getGlobalHooks(scope).hooks).toEqual([]);
+});

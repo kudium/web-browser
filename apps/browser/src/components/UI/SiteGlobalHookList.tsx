@@ -14,6 +14,7 @@ import type {
 import {
   hookMatchesPath,
   hookMatchesWebsite,
+  hookWebsiteExclusions,
 } from '../../browser/siteDeveloper';
 /* eslint-disable react/require-default-props */
 export function SiteGlobalHookList({
@@ -87,7 +88,7 @@ export function SiteGlobalHookList({
   const save = async (
     allGroups: boolean,
     hook: GlobalHook,
-    enabled?: boolean
+    patch?: Partial<Pick<GlobalHook, 'enabled' | 'exclusions'>>
   ) => {
     const scope = scopes.find((item) => item.allGroups === allGroups);
     if (!scope || saving.current) return;
@@ -103,10 +104,10 @@ export function SiteGlobalHookList({
         config: {
           ...scope.state.global,
           hooks:
-            enabled === undefined
+            patch === undefined
               ? scope.state.global.hooks.filter((item) => item.id !== hook.id)
               : scope.state.global.hooks.map((item) =>
-                  item.id === hook.id ? { ...item, enabled } : item
+                  item.id === hook.id ? { ...item, ...patch } : item
                 ),
         },
       })) as HookMarketplaceState;
@@ -129,22 +130,19 @@ export function SiteGlobalHookList({
           .filter((hook) => {
             if (!url) return false;
             try {
-              const host = new URL(url).hostname;
               return (
+                ['http:', 'https:'].includes(new URL(url).protocol) &&
                 hookMatchesPath(hook.path, url) &&
-                hookMatchesWebsite(hook, url) &&
-                !hook.exclusions.some((rule) =>
-                  rule.startsWith('*.')
-                    ? host === rule.slice(2) ||
-                      host.endsWith(`.${rule.slice(2)}`)
-                    : host === rule
-                )
+                hookMatchesWebsite(hook, url)
               );
             } catch {
               return false;
             }
           })
-          .map((hook) => ({ ...scope, hook }))
+          .map((hook) => ({ ...scope, hook,
+            excluded: hookWebsiteExclusions(hook.exclusions, url!).length > 0,
+            wildcardExcluded: hookWebsiteExclusions(hook.exclusions, url!).some(rule => rule.startsWith('*.')),
+          }))
       ),
     [scopes, url]
   );
@@ -153,7 +151,7 @@ export function SiteGlobalHookList({
       {matching.length > 0 && (
         <span className="site-hook-list-section">Global hooks</span>
       )}
-      {matching.map(({ allGroups, state, hook }) => (
+      {matching.map(({ allGroups, state, hook, excluded, wildcardExcluded }) => (
         <div className="site-hook-list-row" key={`${allGroups}:${hook.id}`}>
           <button
             type="button"
@@ -184,15 +182,18 @@ export function SiteGlobalHookList({
               {allGroups ? 'All groups' : 'This session'}
             </span>
             <span className="site-hook-list-status">
-              {state.global.enabled && hook.enabled ? 'Active' : 'Paused'}
+              {!state.global.enabled || !hook.enabled ? 'Disabled everywhere' : excluded ? 'Disabled here' : 'Active'}
             </span>
             <Switch
               size="1"
-              aria-label={`Enable global hook ${hook.name}`}
-              checked={hook.enabled}
-              disabled={disabled || busy}
+              aria-label={`Enable ${hook.name} on this website`}
+              checked={state.global.enabled && hook.enabled && !excluded}
+              disabled={disabled || busy || !state.global.enabled || !hook.enabled || wildcardExcluded}
               onCheckedChange={(enabled) => {
-                void save(allGroups, hook, enabled);
+                const host = new URL(url!).hostname;
+                void save(allGroups, hook, { exclusions: enabled
+                  ? hook.exclusions.filter(rule => rule !== host)
+                  : [...new Set([...hook.exclusions, host])] });
               }}
             />
             <DropdownMenu.Root>
@@ -221,6 +222,9 @@ export function SiteGlobalHookList({
                 >
                   Edit / Rename
                 </DropdownMenu.Item>
+                <DropdownMenu.Item onSelect={() => { void save(allGroups, hook, { enabled: !hook.enabled }); }}>
+                  {hook.enabled ? 'Disable everywhere' : 'Enable everywhere'}
+                </DropdownMenu.Item>
                 <DropdownMenu.Item
                   color="red"
                   onSelect={() => setDeletion({ allGroups, hook })}
@@ -232,6 +236,10 @@ export function SiteGlobalHookList({
           </div>
         </div>
       ))}
+      {matching.some((item) => item.wildcardExcluded) && (
+        <small className="site-hook-list-note">This website is covered by a domain exclusion. Use Edit / Rename to manage excluded websites.</small>
+      )}
+      {matching.length > 0 && <small className="site-hook-list-note">Switches apply only to this website. Global disable and delete apply everywhere in the hook’s scope.</small>}
       {matching.some((item) => !item.state.global.enabled) && (
         <small className="site-hook-list-note">
           Global hooks are paused in Preferences.

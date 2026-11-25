@@ -13,6 +13,7 @@ import {
   validDeveloperConfig,
   hookMatchesPath,
   hookMatchesWebsite,
+  hookWebsiteExclusions,
   type SiteDeveloperConfig,
 } from '../browser/siteDeveloper';
 import { getSiteSettings } from './siteSettings';
@@ -171,12 +172,7 @@ export function effectiveHookConfig(
           hook.enabled &&
           hookMatchesPath(hook.path, url) &&
           hookMatchesWebsite(hook, url) &&
-          !hook.exclusions.some((rule) =>
-            rule.startsWith('*.')
-              ? target.hostname === rule.slice(2) ||
-                target.hostname.endsWith(`.${rule.slice(2)}`)
-              : target.hostname === rule
-          )
+          !hookWebsiteExclusions(hook.exclusions, url).length
       )
       .map((hook) => ({
         ...hook,

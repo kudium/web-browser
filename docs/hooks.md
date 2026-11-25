@@ -13,6 +13,22 @@ same-document navigation, including back/forward and SPA routes.
 Before load runs only on a new document; its DOM may not exist yet. Route changes
 clean up previous work, reapply matching CSS, and rerun matching after-load code.
 
+## Global hooks and website exceptions
+
+In a website’s Developer hook list, the switch beside a global hook enables or
+disables it for that hostname only, across HTTP and HTTPS. The hook remains
+installed, and excluded hooks stay visible so you can enable them here again.
+Other websites keep their existing behavior. Exact hostname exclusions do not
+include subdomains; manage wildcard exclusions in the global hook editor.
+
+Use **Disable everywhere** in the hook’s options, or disable it in Global hooks,
+to stop it throughout its installed scope. **Enable everywhere** restores the
+global switch while preserving website exceptions. A website switch cannot
+bypass a disabled global hook or the global master switch. Deleting the global
+hook removes it throughout its scope, including its website exceptions. An
+All groups hook covers every group; a narrower hook covers its session only.
+Separately installed copies remain independent hooks.
+
 ## Work that stops cleanly
 
 Timers created inside a hook with `setInterval` or `setTimeout` are owned by that

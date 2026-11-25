@@ -208,3 +208,11 @@ export function hookMatchesWebsite(hook: SiteHook, url: string): boolean {
     )
   );
 }
+
+/** Host exclusions apply to the installed global hook, independently of its master switch. */
+export function hookWebsiteExclusions(exclusions: string[], url: string): string[] {
+  const host = new URL(url).hostname;
+  return exclusions.filter(rule => rule.startsWith('*.')
+    ? host === rule.slice(2) || host.endsWith(`.${rule.slice(2)}`)
+    : host === rule);
+}
