@@ -1446,7 +1446,9 @@ export function Main() {
     aiResizing ||
     !!dragged || !!collectionDrag;
   const pageSuspended = overlayOpen || nativeOverlayOpen;
-  const panelSuspended = overlayOpen || panelOverlayOpen;
+  // Website dialogs and resize/drag state must not blanket-hide an unrelated
+  // native sidebar. Only an overlay actually covering its slot suspends it.
+  const panelSuspended = panelOverlayOpen;
   const state = selected && states[selected.id];
   const focusedTab = split
     ? appList.find((tab) => tab.id === split[split.focused])

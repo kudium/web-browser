@@ -11,6 +11,7 @@ import { flushHistory, closeHistoryPersistence } from '../main/history';
 import { getSiteSettings, updateSiteSettings } from '../main/siteSettings';
 import { applyExtensions, releaseExtensionOwner } from '../main/extensions';
 import { registerBrowser } from '../main/browser';
+import * as sidebarPanels from '../main/sidebarPanels';
 import { showBrowserDialog } from '../main/dialogs';
 import { inspectDiscardCandidate } from '../main/tabDiscard';
 import { bindDownloadSource } from '../main/downloads';
@@ -341,7 +342,8 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     sender = window.webContents,
     list = apps,
     visibleIds = ['one'],
-    focusedId: string | undefined = undefined
+    focusedId: string | undefined = undefined,
+    visibility = {}
   ) =>
     ipcMain.emit(
       'browser-sync',
@@ -352,6 +354,7 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
       {
         apps: list,
         focusedId,
+        ...visibility,
         visible: visibleIds.map((id) => ({
           id,
           x: 76,
@@ -361,6 +364,16 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
         })),
       }
     );
+  const suspendPanel = jest.spyOn(sidebarPanels, 'suspendSidebarPanels');
+  for (const visibility of [
+    { suspended: true, sidebarSuspended: false },
+    { suspended: true, sidebarSuspended: false, tabSwitcher: true },
+    { suspended: false, sidebarSuspended: true },
+  ]) {
+    emit(window.webContents, [], [], undefined, visibility);
+    expect(suspendPanel).toHaveBeenLastCalledWith(window, visibility.sidebarSuspended);
+  }
+  suspendPanel.mockRestore();
   emit({} as any);
   expect(WebContentsView).not.toHaveBeenCalled();
   emit();

@@ -2642,7 +2642,7 @@ export function registerElectronBrowser(
         ? window
         : undefined);
     if (!source || !isBrowserLayout(layout)) return;
-    suspendSidebarPanels(source, Boolean((layout.sidebarSuspended ?? layout.suspended) || layout.tabSwitcher));
+    suspendSidebarPanels(source, Boolean(layout.sidebarSuspended ?? layout.suspended));
     const chromeFocused = source.webContents.isFocused();
     if (windows) windows.setLayout(source, layout);
     else applyLayout(layout);

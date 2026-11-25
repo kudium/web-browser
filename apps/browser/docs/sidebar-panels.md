@@ -252,6 +252,11 @@ hook documents have a separate minimal sandbox preload, not the trusted app
 preload; bridge calls require the original enabled hook/frame/token and matching
 group. Do not expose privileged shell or extension APIs to custom HTML.
 
+Resize and drag state must not suspend native sidebar content. Send only the
+sidebar surface’s actual overlay intersection through `sidebarSuspended`; the
+main process must honor an explicit false even when website suspension or the
+tab switcher is active.
+
 During sidebar resizing, pointer movements coalesce to one width update per
 animation frame and flush the final width on release. Hook-output updates must
 not resend unchanged native bounds. The shared registry restores the current
