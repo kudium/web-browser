@@ -35,6 +35,7 @@ test('builds both architectures with separate output, verification and collectio
   const steps = buildSteps('/checkout with spaces', '/output with spaces', 'v1.2.3-beta.1');
   assert.deepEqual(steps.slice(0, 8).map(([command, args]) => [command, args[0]]), [['npm', 'ci'], ['node', 'node_modules/electron/install.js'], ['node', '--test'], ['npx', 'tsc'], ['npm', 'test'], ['npm', 'run'], ['npm', 'run'], ['node', 'scripts/ci/prepare-browser-release.mjs']]);
   assert.deepEqual(steps[5][1], ['run', 'test:extension-side-panels']);
+  assert.ok(steps.some(([command, args, cwd]) => command === 'node' && args[0] === '.erb/scripts/run-extension-side-panel-smoke.cjs' && args.includes('--ui') && cwd === '/checkout with spaces/apps/browser'));
   assert.deepEqual(steps[2][1], ['--test', 'scripts/release-update-metadata.test.cjs']);
   assert.equal(steps[2][2], '/checkout with spaces');
   for (const arch of ['arm64', 'x64']) {

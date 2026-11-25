@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useEffect, useState } from 'react';
+import { useLayoutEffect, useRef, useEffect } from 'react';
 import {
   X,
   SquareStack,
@@ -26,7 +26,6 @@ export function SidebarPanels({
   onClose: () => void;
 }) {
   const slot = useRef<HTMLDivElement>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const restoredTarget = useRef(false);
   const layoutUpdate = useRef<(() => void) | undefined>(undefined);
   useEffect(() => {
@@ -50,7 +49,7 @@ export function SidebarPanels({
     let lastLayout = '';
     const update = () => {
       const rect = element?.getBoundingClientRect();
-      const bounds = active && !pickerOpen && !state.floating && rect && rect.width > 0 && rect.height > 0
+      const bounds = active && !state.floating && rect && rect.width > 0 && rect.height > 0
         ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null;
       const signature = JSON.stringify(bounds);
       if (signature === lastLayout) return;
@@ -92,7 +91,6 @@ export function SidebarPanels({
     };
   }, [
     active,
-    pickerOpen,
     state.activeId,
     state.openRequest,
     state.floating,
@@ -119,7 +117,6 @@ export function SidebarPanels({
           value={state.activeId || ''}
           disabled={!state.panels.length}
           triggerClassName="sidebar-feature-panel-picker"
-          onOpenChange={setPickerOpen}
           onChange={(id) => {
             void browser
               .sidebarPanels({ action: 'activate', id })
@@ -142,7 +139,6 @@ export function SidebarPanels({
             })),
           ]}
           triggerClassName="sidebar-feature-group-picker"
-          onOpenChange={setPickerOpen}
           onChange={(id) => {
             const groupId = id || undefined;
             try {
@@ -236,7 +232,11 @@ export function SidebarPanels({
           }}
         />
       ) : null}
-      <div className="sidebar-feature-content" ref={slot} />
+      <div className="sidebar-feature-content" ref={slot} style={{ position: 'relative' }}>
+        {state.snapshot && <img className="sidebar-panel-snapshot" src={state.snapshot.image}
+          data-presentation-id={state.snapshot.presentationId} alt="" aria-hidden="true"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', borderRadius: 8 }} />}
+      </div>
     </section>
   );
 }

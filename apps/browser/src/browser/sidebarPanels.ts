@@ -46,6 +46,7 @@ export interface SidebarPanelState {
   floating?: boolean;
   targets?: SidebarPanelTarget[];
   targetGroup?: string;
+  snapshot?: import('./contracts').BrowserSnapshot;
 }
 export type SidebarPanelRequest =
   | { action: 'list' }

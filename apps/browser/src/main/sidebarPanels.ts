@@ -1,5 +1,7 @@
 import { BrowserWindow, ipcMain, WebContentsView } from 'electron';
 import type { Session } from 'electron';
+import { presentSnapshots } from './snapshotPresentation';
+import type { BrowserSnapshot } from '../browser/contracts';
 import { clipSidebarPanelBounds } from '../browser/sidebarPanels';
 import type {
   SidebarPanelInfo,
@@ -27,6 +29,9 @@ export class SidebarPanelRegistry {
     { provider: SidebarPanelProvider; view?: WebContentsView; shown?: boolean }
   >();
   private suspended = false;
+  private snapshot?: BrowserSnapshot;
+  private preparingView?: WebContentsView;
+  private suspensionRevision = 0;
   activeSession?: Session;
   activeGroup?: string;
   private activeId?: string;
@@ -54,6 +59,7 @@ export class SidebarPanelRegistry {
       floating: Boolean(this.floating),
       targets: this.targets,
       targetGroup: this.targetGroup,
+      snapshot: this.snapshot?.id === this.activeId && !this.floating ? this.snapshot : undefined,
       ...(this.error && { error: this.error }),
     };
   }
@@ -152,14 +158,35 @@ export class SidebarPanelRegistry {
     this.publish();
   }
   setSuspended(value: boolean) {
+    if (this.suspended === value) return;
     this.suspended = value;
-    for (const [id, entry] of this.entries)
-      entry.view?.setVisible(
-        !this.error &&
-          entry.provider.available?.() !== false &&
-          id === this.activeId &&
-          (this.floating?.id === id || (!value && Boolean(entry.shown))),
+    const revision = ++this.suspensionRevision;
+    this.preparingView = undefined;
+    const entry = this.entries.get(this.activeId || '');
+    const view = entry?.view;
+    if (value && !this.floating && entry?.shown && view && !view.webContents.isDestroyed()) {
+      // Native views sit above HTML dialogs. Paint a captured replacement before
+      // hiding the live view, preserving its document and scroll/draft state.
+      this.preparingView = view;
+      void view.webContents.capturePage().then(async image => {
+        if (revision !== this.suspensionRevision || this.floating || entry.view !== view || this.activeId !== entry.provider.info.id) return;
+        await presentSnapshots(this.window, [{ id: entry.provider.info.id, ...this.lastBounds!, image: image.toDataURL() }], {
+          selector: '.sidebar-panel-snapshot',
+          publish: frames => { this.snapshot = frames[0]; this.publish(); },
+        });
+        if (revision === this.suspensionRevision && entry.view === view) { this.preparingView = undefined; view.setVisible(false); }
+      }).catch(() => {
+        if (revision === this.suspensionRevision) { this.preparingView = undefined; view.setVisible(false); }
+      });
+      return;
+    }
+    for (const [id, item] of this.entries)
+      item.view?.setVisible(
+        !this.error && item.provider.available?.() !== false && id === this.activeId &&
+        (this.floating?.id === id || (!value && Boolean(item.shown))),
       );
+    this.snapshot = undefined;
+    this.publish();
   }
   setSession(session?: Session, groupId?: string) {
     if (session === this.activeSession && groupId === this.activeGroup) return;
@@ -252,7 +279,7 @@ export class SidebarPanelRegistry {
     entry.view.setBorderRadius(8);
     entry.view.setBounds(clipped);
     entry.shown = true;
-    entry.view.setVisible(!this.suspended);
+    entry.view.setVisible(!this.suspended || this.preparingView === entry.view);
   }
   /** Reparent the existing view so extension state/session survive placement changes. */
   undock() {
@@ -260,6 +287,9 @@ export class SidebarPanelRegistry {
       this.floating.window.focus();
       return;
     }
+    ++this.suspensionRevision;
+    this.preparingView = undefined;
+    this.snapshot = undefined;
     const id = this.activeId;
     const entry = id && this.entries.get(id);
     if (!id || !entry || entry.provider.available?.() === false || this.error)
@@ -354,6 +384,9 @@ export class SidebarPanelRegistry {
     this.publish();
   }
   dispose() {
+    ++this.suspensionRevision;
+    this.preparingView = undefined;
+    this.snapshot = undefined;
     this.dock();
     for (const entry of this.entries.values())
       if (entry.view) this.destroyView(entry.view);

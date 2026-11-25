@@ -62,7 +62,10 @@ The isolated build explicitly runs Electron's runtime installer after `npm ci`,
 before tests. Electron 45 no longer performs that step automatically; its installer
 verifies the upstream distribution checksum and can reuse the local download cache.
 
-Beta/stable builds also run `test:extension-side-panels` before packaging. This
+Beta/stable builds also run `test:extension-side-panels` and its `--ui` native
+fixture before packaging. The UI gate verifies retained panel content beneath
+overlapping dialogs, restores the same live view on dismissal, and checks
+close/reopen and shared frame geometry. This
 uses real extension frames and classic/module workers in disposable Mac
 profiles to verify the sidebar API, resource isolation, tab-specific options,
 active-profile changes, user-gesture enforcement, events and unload cleanup.

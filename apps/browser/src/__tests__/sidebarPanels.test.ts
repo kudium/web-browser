@@ -21,6 +21,7 @@ function fixture() {
       mainFrame: frame,
       isDestroyed: () => false,
       send: jest.fn(),
+      executeJavaScript: jest.fn().mockResolvedValue(undefined),
     }),
   });
   const views: any[] = [];
@@ -32,6 +33,7 @@ function fixture() {
       webContents: Object.assign(new EventEmitter(), {
         isDestroyed: () => false,
         close: jest.fn(),
+        capturePage: jest.fn().mockResolvedValue({ toDataURL: () => 'data:image/png;base64,fixture' }),
       }),
     };
     views.push(view);
@@ -113,7 +115,7 @@ test('restoring selection does not take over another sidebar page', () => {
   expect(host.state().openRequest).toBe(0);
 });
 
-test('feature panels share a stable view, resize safely and hide behind workspace overlays', () => {
+test('feature panels share a stable view, resize safely and hide behind workspace overlays', async () => {
   const { host, views, createView } = fixture();
   host.register({
     info: { id: 'hook-output', title: 'Hook output', kind: 'hook' },
@@ -131,8 +133,12 @@ test('feature panels share a stable view, resize safely and hide behind workspac
     height: 600,
   });
   host.setSuspended(true);
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(host.state().snapshot?.image).toBe('data:image/png;base64,fixture');
   expect(views[0].setVisible).toHaveBeenLastCalledWith(false);
   host.setSuspended(false);
+  expect(host.state().snapshot).toBeUndefined();
   expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
   host.layout('hook-output', null);
   host.setSuspended(true);
@@ -265,6 +271,9 @@ test('main-window overlays do not blank an undocked panel, including on resize',
   host.activate('extension');
   host.layout('extension', { x: 700, y: 100, width: 300, height: 600 });
   host.setSuspended(true);
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(host.state().snapshot?.image).toBe('data:image/png;base64,fixture');
   expect(views[0].setVisible).toHaveBeenLastCalledWith(false);
   host.undock();
   expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
@@ -318,3 +327,27 @@ test('replaces a shown hook document at its current bounds without a duplicate r
   host.setSuspended(false);
   expect(views[1].setVisible).toHaveBeenLastCalledWith(true);
 });
+
+
+test.each(['dismiss', 'switch', 'dispose'])(
+  'a pending panel capture cannot hide or reveal stale content after %s', async action => {
+    const { host, views, createView } = fixture();
+    for (const id of ['one', 'two']) host.register({ info: { id, title: id, kind: 'hook' }, contentKey: id, createView });
+    host.activate('one');
+    const bounds = { x: 600, y: 100, width: 400, height: 600 };
+    host.layout('one', bounds);
+    let finish!: (image: { toDataURL: () => string }) => void;
+    views[0].webContents.capturePage.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    host.setSuspended(true);
+    host.layout('one', bounds);
+    expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+    if (action === 'dismiss') host.setSuspended(false);
+    else if (action === 'switch') host.activate('two');
+    else host.dispose();
+    finish({ toDataURL: () => 'data:image/png;base64,stale' });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(host.state().snapshot).toBeUndefined();
+    if (action === 'dismiss') expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+    if (action === 'switch') expect(views[1].setVisible).toHaveBeenLastCalledWith(false);
+  },
+);

@@ -178,10 +178,20 @@ app
     for (let i = 0; i < 50 && views.get('one').getVisible(); i++) await pause(50);
     assert.equal(views.get('one').getVisible(), false,
       'Shared overlay handling must hide the native panel beneath Browser options');
+    assert(await window.webContents.executeJavaScript(`(()=>{const image=document.querySelector('.sidebar-panel-snapshot');return !!image && image.complete && image.naturalWidth>0;})()`),
+      'An overlapping popup must leave a decoded panel image visible beneath it');
     await window.webContents.executeJavaScript(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`);
     for (let i = 0; i < 50 && !views.get('one').getVisible(); i++) await pause(50);
     assert.equal(views.get('one').getVisible(), true,
       'Dismissing Browser options must restore the retained native panel');
+    assert(!host.state().snapshot, 'Restoring the native panel must release captured pixels');
+    await window.webContents.executeJavaScript(`(()=>{const dialog=document.createElement('div');dialog.className='rt-BaseDialogOverlay';dialog.id='fixture-group-dialog';dialog.dataset.state='open';dialog.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.2)';dialog.innerHTML='<div role="dialog">Group dialog</div>';document.body.append(dialog);})()`);
+    for (let i = 0; i < 50 && views.get('one').getVisible(); i++) await pause(50);
+    assert.equal(views.get('one').getVisible(), false, 'A full-window group dialog must receive input above native content');
+    assert(await window.webContents.executeJavaScript(`(()=>{const image=document.querySelector('.sidebar-panel-snapshot');return !!image && image.complete && image.naturalWidth>0;})()`), 'A full-window dialog must not blank the panel background');
+    await window.webContents.executeJavaScript(`document.getElementById('fixture-group-dialog').remove()`);
+    for (let i = 0; i < 50 && !views.get('one').getVisible(); i++) await pause(50);
+    assert.equal(views.get('one').getVisible(), true, 'Closing the group dialog must restore live content');
     const alignment = await window.webContents.executeJavaScript(`(()=>{
       const normal=document.querySelector('.fixture-reference-header'),panel=document.querySelector('.sidebar-feature-pane .assistant-page-header');
       return {normalHeight:normal.getBoundingClientRect().height,panelHeight:panel.getBoundingClientRect().height,

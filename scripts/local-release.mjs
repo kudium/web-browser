@@ -45,6 +45,7 @@ export function buildSteps(checkout, artifacts, tag) {
     ['npm', ['run', 'test:migrations'], browser],
     ['node', ['scripts/ci/prepare-browser-release.mjs', tag], checkout],
     ['npm', ['run', 'build'], browser],
+    ['node', ['.erb/scripts/run-extension-side-panel-smoke.cjs', '--ui'], browser],
   ];
   for (const arch of ['arm64', 'x64']) {
     const build = path.join(artifacts, 'builds', arch);

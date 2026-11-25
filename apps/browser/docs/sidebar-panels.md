@@ -227,7 +227,12 @@ Global menus and dialogs use `useNativeOverlay` and the existing window layout
 suspension for both website viewports and native sidebar content. Check overlap
 separately for `.browser-viewport` and `.sidebar-feature-content`, and send the
 results through `suspended` and `sidebarSuspended`. A menu covering only a website
-must not hide an unrelated panel. Full-window dialogs still suspend both surfaces in that window. An undocked
+must not hide an unrelated panel. Full-window dialogs still suspend both surfaces in that window. Before hiding
+a docked native panel, capture and paint its pixels through the shared snapshot
+presentation helper so its background does not disappear. Keep the existing
+view alive, release the capture on resume, and reject late capture results after
+dismissal, panel switches, or host disposal. Panel pickers use this same overlap
+path rather than reporting a null layout when they open. An undocked
 panel belongs to its child window and must remain visible during parent-window
 popups. Recheck overlap when surfaces resize, scroll, appear or disappear. Include every
 native surface in the shared overlap detection, including scoped portals that
