@@ -1,7 +1,7 @@
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import { Button, Popover, TextField } from '@radix-ui/themes';
-import { Search, ChevronDown, Check } from 'lucide-react';
+import { Search, ChevronDown, Check, Settings2 } from 'lucide-react';
 import {
   ReactNode,
   MouseEvent,
@@ -261,13 +261,14 @@ export function GroupPicker({
                     type="button"
                     className="group-picker-manage"
                     aria-label={`Manage ${option.name}`}
+                    title={`Manage ${option.name}`}
                     onClick={() => {
                       setOpen(false);
                       onOpenChange?.(false);
                       onManage(option);
                     }}
                   >
-                    Manage
+                    <Settings2 size={14} aria-hidden="true" />
                   </button>
                 )}
               </div>
