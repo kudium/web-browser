@@ -4297,7 +4297,7 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
   font-size: 13px;
   font-weight: 500;
 }
-.hook-marketplace-dialog :is(input:not([type="checkbox"]):not(.rt-TextFieldInput), select, textarea) {
+.hook-marketplace-dialog :is(input:not([type="checkbox"]):not([type="radio"]):not(.rt-TextFieldInput), select, textarea) {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--gray-a6);
@@ -4583,6 +4583,41 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .hook-source-review > details {
   margin: 0 12px 12px;
 }
+/* Installation mode is a mutually exclusive choice, not a consent checkbox. */
+.hook-install-mode {
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 8px;
+}
+.hook-install-mode legend { padding: 0 0 10px; font-size: 13px; font-weight: 500; }
+.hook-marketplace-dialog .hook-install-mode-option {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: row;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--gray-a2);
+  cursor: pointer;
+}
+.hook-install-mode-option:hover { background: var(--gray-a3); }
+.hook-install-mode-option[data-selected="true"] { background: var(--accent-a3, var(--gray-a4)); }
+.hook-install-mode-option:focus-within { outline: 2px solid var(--accent-8); outline-offset: 2px; }
+.hook-install-mode-option input[type="radio"] {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--accent-9);
+}
+.hook-install-mode-option > span { min-width: 0; display: grid; gap: 4px; }
+.hook-install-mode-option strong { font-size: 13px; font-weight: 500; line-height: 1.5; }
+.hook-install-mode-option small { margin-top: 0; font-size: 12px; line-height: 1.5; color: var(--gray-11); overflow-wrap: anywhere; }
+.hook-install-mode-tag { margin-left: 4px; font-size: 11px; color: var(--accent-11); }
+.hook-install-mode:disabled .hook-install-mode-option { opacity: .6; cursor: default; }
 .hook-install-footer {
   display: flex;
   align-items: center;
@@ -4970,12 +5005,12 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .hook-publish-options-body details > summary { padding:8px 0; color:var(--gray-11); }
 .hook-publish-options-body details > label { padding:8px 0; }
 .hook-publish-options-body .hook-publish-source { display:grid; gap:8px; }
-.hook-marketplace-dialog :is(input:not([type="checkbox"]):not(.rt-TextFieldInput), select, textarea) { background:var(--gray-a2); border-color:var(--gray-a5); }
+.hook-marketplace-dialog :is(input:not([type="checkbox"]):not([type="radio"]):not(.rt-TextFieldInput), select, textarea) { background:var(--gray-a2); border-color:var(--gray-a5); }
 .hook-marketplace-dialog .app-form-input { height:36px; background:var(--gray-a2); box-shadow:inset 0 0 0 1px var(--gray-a5); }
 .hook-marketplace-dialog .app-form-input .rt-TextFieldInput { padding:0 10px; border:0; background:transparent; }
 .hook-publish-browser > .hook-publish-footer { position:static; background:transparent; padding:16px 0 0; margin:0; }
 @media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {
-  .hook-marketplace-dialog :is(.app-form-input, input:not([type="checkbox"]):not(.rt-TextFieldInput), select, textarea) { background:var(--color-panel-solid); }
+  .hook-marketplace-dialog :is(.app-form-input, input:not([type="checkbox"]):not([type="radio"]):not(.rt-TextFieldInput), select, textarea) { background:var(--color-panel-solid); }
 }
 
 /* Keep names separate from controls in the narrow hook sidebar. */

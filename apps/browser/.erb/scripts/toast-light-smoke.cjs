@@ -1,0 +1,25 @@
+// Light-mode QA uses real native overlays and a disposable fictional page.
+const {app,BrowserWindow,nativeTheme}=require('electron');
+const fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert');
+const {execFileSync}=require('child_process');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'kudium-toast-light-'));app.setPath('userData',path.join(root,'profile'));
+require('esbuild').buildSync({entryPoints:['src/main/appToast.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(root,'toast.cjs')});
+const {showAppToast}=require(path.join(root,'toast.cjs'));const wait=ms=>new Promise(r=>setTimeout(r,ms));
+app.whenReady().then(async()=>{nativeTheme.themeSource='light';const owner=new BrowserWindow({show:true,width:820,height:650,webPreferences:{sandbox:true}});try{
+ await owner.loadFile(path.resolve('demo/atlas-studio/public/index.html'));owner.focus();await wait(300);
+ for(const type of ['info','warn','success'])await showAppToast(owner,{id:type,type,title:type==='warn'?'Low battery':type==='success'?'Saved':'Ready to continue',message:type==='warn'?'20% remaining. Save energy by unloading other tab groups.':'Your workspace is ready. Changes have been saved.',durationMs:60000,...(type==='warn'?{action:{label:'Save energy',run:()=>{}}}:{})});
+ const windows=owner.getChildWindows().filter(w=>w.isVisible());assert.equal(windows.length,3);
+ const stack=[...windows].sort((a,b)=>a.getBounds().y-b.getBounds().y);
+ for(let i=1;i<stack.length;i++)assert(stack[i].getBounds().y>=stack[i-1].getBounds().y+stack[i-1].getBounds().height+8,'Stack must not overlap');
+ assert.equal(await stack[0].webContents.executeJavaScript("document.querySelector('.dismiss-all').hidden"),false);
+
+ for(const w of windows){const m=await w.webContents.executeJavaScript(`(()=>{const card=document.getElementById('toast');return {dark:document.body.classList.contains('dark'),color:getComputedStyle(card).color,title:document.getElementById('title').textContent,message:document.getElementById('message').textContent,clipped:document.documentElement.scrollHeight>innerHeight,horizontal:document.documentElement.scrollWidth>innerWidth,countdown:getComputedStyle(document.querySelector('.remaining')).animationDuration,action:document.querySelector('.action').hidden?null:getComputedStyle(document.querySelector('.action')).color}})()`);assert(!m.dark);assert.equal(m.color,'rgb(32, 33, 36)');assert(m.title&&m.message);assert(!m.clipped&&!m.horizontal);assert.equal(m.countdown,'60s');console.log('LIGHT',m);fs.writeFileSync(path.join(root,m.title==='Low battery'?'battery-renderer.png':m.title==='Saved'?'success-renderer.png':'info-renderer.png'),(await w.webContents.capturePage()).toPNG());}
+ await wait(250);const bounds=owner.getBounds();try{execFileSync('/usr/sbin/screencapture',['-x','-R'+[bounds.x,bounds.y,bounds.width,bounds.height].join(','),path.join(root,'light-stack-native.png')]);console.log('Native compositor capture saved');}catch{console.log('Native screen capture unavailable; renderer captures retained');}
+ for(const w of owner.getChildWindows())w.destroy();let clicked=0;
+ await showAppToast(owner,{id:'error',type:'error',title:'Could not save',message:'Please try again. Your changes are still here.',durationMs:60000,action:{label:'Try again',run:()=>{clicked++}}});
+ const error=owner.getChildWindows()[0];error.webContents.debugger.attach('1.3');await error.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
+ const bg=await error.webContents.executeJavaScript(`getComputedStyle(document.getElementById('toast')).backgroundColor`);assert.equal(bg,'rgb(250, 250, 250)');fs.writeFileSync(path.join(root,'error-reduced-transparency.png'),(await error.webContents.capturePage()).toPNG());error.webContents.debugger.detach();
+ const point=await error.webContents.executeJavaScript(`(()=>{const r=document.querySelector('.action').getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`);error.webContents.sendInputEvent({type:'mouseDown',...point,button:'left',clickCount:1});error.webContents.sendInputEvent({type:'mouseUp',...point,button:'left',clickCount:1});await wait(100);assert.equal(clicked,1);assert(error.isDestroyed());
+ owner.setContentSize(380,650);await showAppToast(owner,{id:'narrow',type:'warn',title:'Low battery',message:'20% remaining. Save energy by unloading the other tab groups in this workspace.',durationMs:60000,action:{label:'Save energy',run:()=>{}}});const narrow=owner.getChildWindows()[0];assert.equal(await narrow.webContents.executeJavaScript('document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth'),false);fs.writeFileSync(path.join(root,'light-narrow-renderer.png'),(await narrow.webContents.capturePage()).toPNG());
+ console.log('PASS light-mode tones, action click, countdown, stack, narrow layout and reduced transparency. Evidence:',root);
+ }finally{owner.destroy();}}).then(()=>app.quit()).catch(e=>{console.error(e);app.exit(1)});

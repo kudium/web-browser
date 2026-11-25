@@ -1188,8 +1188,19 @@ export function HookMarketplaceDialog() {
               </p>
             )}
             {destination}
-            {allGroups && !selectedUpdate && <label className="hook-mode-choice"><input type="checkbox" checked={autoMode} onChange={event => setAutoMode(event.target.checked)} disabled={busy} /> Auto · enable separately on each website</label>}
-            {allGroups && !selectedUpdate && autoMode && <p className="hook-update-notice">Off on every website initially. Enable it for a website in Hook Developer → Global hooks. Global disable still applies everywhere.</p>}
+            {allGroups && !selectedUpdate && (
+              <fieldset className="hook-install-mode" disabled={busy}>
+                <legend>Start this hook</legend>
+                <label className="hook-install-mode-option" data-selected={!autoMode}>
+                  <input type="radio" name="hook-install-mode" checked={!autoMode} onChange={() => setAutoMode(false)} aria-label="On matching websites" />
+                  <span><strong>On matching websites</strong><small>Enabled immediately wherever this hook applies.</small></span>
+                </label>
+                <label className="hook-install-mode-option" data-selected={autoMode}>
+                  <input type="radio" name="hook-install-mode" checked={autoMode} onChange={() => setAutoMode(true)} aria-label="Only where I enable it (Auto)" />
+                  <span><strong>Only where I enable it <span className="hook-install-mode-tag">Auto</span></strong><small>Starts off. Enable it for a website in Hook Developer → Global hooks.</small></span>
+                </label>
+              </fieldset>
+            )}
             <div className="hook-install-footer">
               <p>
                 {selectedUpdate

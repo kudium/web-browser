@@ -8,6 +8,8 @@ import type {
 import { parseHookPackage } from '../../../../packages/hooks/package';
 import { hookWebsiteExclusions, type SiteHook } from './siteDeveloper';
 
+export const CURRENT_HOOK_PAGE = '@current-page';
+
 export type {
   HookPackage,
   PublishedHookPackage,

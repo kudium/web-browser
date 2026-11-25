@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { SiteDeveloperPanel } from '../components/UI/SiteDeveloperPanel';
 import { SiteSettingsDialog } from '../components/UI/SiteSettingsDialog';
@@ -809,4 +809,71 @@ it('footer options save the current draft and request a page reload even with ho
   expect(send).toHaveBeenLastCalledWith('set-site-developer', { developer: expect.objectContaining({ after: "log('latest')", enabled: false }), reloadAfterSave: true });
   expect(isBrowserCommand({ id: 'page', url: 'https://example.com', action: 'set-site-developer', ...send.mock.calls.at(-1)![1] })).toBe(true);
   expect(isBrowserCommand({ id: 'page', action: 'set-site-developer', developer: emptyDeveloperConfig, reloadAfterSave: 'true' })).toBe(false);
+});
+
+it('duplicates the selected local hook, saves immediately and opens the independent copy', () => {
+  const hook = { id: 'reader', name: 'Reader', enabled: true, path: '/*', before: '', after: 'log("ready")', css: '' };
+  const send = jest.fn();
+  render(<Theme><SiteDeveloperPanel disabled={false} send={send} developer={{ config: { ...emptyDeveloperConfig, enabled: true, hooks: [hook] }, status: 'waiting', logs: [] }} /></Theme>);
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Options for Reader' }), { key: 'ArrowDown' });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate hook' }));
+  const config = send.mock.calls.at(-1)![1].developer;
+  expect(config.hooks).toHaveLength(2);
+  expect(config.hooks[0]).toEqual(hook);
+  expect(config.hooks[1]).toMatchObject({ name: 'Reader copy', after: hook.after, enabled: true });
+  expect(config.hooks[1].id).not.toBe(hook.id);
+  expect(screen.getByRole('textbox', { name: 'After load code' })).toHaveValue(hook.after);
+  expect(screen.getByRole('button', { name: /^Reader copy/ })).toHaveAttribute('aria-pressed', 'true');
+});
+
+it('copies a global hook into the local section and keeps the existing local draft', async () => {
+  const globalHook = { id: 'global-reader', name: 'Global reader', enabled: true, path: '/*', before: '', after: 'log("global")', css: '', exclusions: [], autoMode: true, enabledSites: [] };
+  window.electron = { hookMarketplace: { request: jest.fn(async input => ({ global: { enabled: true, hooks: input.allGroups ? [globalHook] : [] }, globalHash: 'hash' })) } } as any;
+  const local = { id: 'local', name: 'Local', enabled: true, path: '/*', before: '', after: 'log("local")', css: '' };
+  const send = jest.fn();
+  render(<Theme><SiteDeveloperPanel origin="https://example.com/" disabled={false} send={send} selectedHookId="local" developer={{ config: { ...emptyDeveloperConfig, enabled: true, hooks: [local] }, status: 'waiting', logs: [] }} /></Theme>);
+  fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), { target: { value: 'log("unsaved local")' } });
+  fireEvent.keyDown(await screen.findByRole('button', { name: 'Global options for Global reader' }), { key: 'ArrowDown' });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Copy to local hooks' }));
+  await waitFor(() => expect(send).toHaveBeenCalledWith('set-site-developer', { developer: expect.objectContaining({ hooks: [expect.objectContaining({ after: 'log("unsaved local")' }), expect.objectContaining({ name: 'Global reader copy', after: 'log("global")' })] }) }));
+  const copied = send.mock.calls.at(-1)![1].developer.hooks[1];
+  expect(copied.id).not.toBe(globalHook.id); expect(copied).not.toHaveProperty('autoMode');
+  expect(screen.getByRole('textbox', { name: 'After load code' })).toHaveValue('log("global")');
+});
+
+it('lists active local hooks first and then recent edits without changing the selected editor', () => {
+  const base = { enabled: true, path: '/*', before: '', after: 'log("ready")', css: '' };
+  const hooks = [{ ...base, id: 'off', name: 'Off', enabled: false, updatedAt: 300 }, { ...base, id: 'old', name: 'Old', updatedAt: 100 }, { ...base, id: 'new', name: 'New', updatedAt: 200 }];
+  render(<Theme><SiteDeveloperPanel disabled={false} send={jest.fn()} selectedHookId="old" developer={{ config: { ...emptyDeveloperConfig, enabled: true, hooks }, status: 'waiting', logs: [] }} /></Theme>);
+  const names = [...screen.getByLabelText('Site hooks').querySelectorAll('.site-hooks-list-item')].map(item => item.textContent).filter(name => ['Off', 'Old', 'New'].includes(name || ''));
+  expect(names).toEqual(['New', 'Old', 'Off']);
+  expect(screen.getByRole('button', { name: 'Old' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+it('includes the default hook in the same active and last-edited order', () => {
+  const edited = { id: 'edited', name: 'Edited hook', enabled: true, updatedAt: 200, path: '/*', before: '', after: 'log("edited")', css: '' };
+  const config = { ...emptyDeveloperConfig, enabled: true, updatedAt: 100, hooks: [edited] };
+  const view = render(<Theme><SiteDeveloperPanel disabled={false} send={jest.fn()} selectedHookId="edited" developer={{ config, status: 'waiting', logs: [] }} /></Theme>);
+  const names = () => [...screen.getByLabelText('Site hooks').querySelectorAll('.site-hooks-list-item')].map(item => item.textContent);
+  expect(names()).toEqual(['Edited hook', 'Default hook']);
+  view.rerender(<Theme><SiteDeveloperPanel disabled={false} send={jest.fn()} selectedHookId="edited" developer={{ config: { ...config, updatedAt: 300 }, status: 'waiting', logs: [] }} /></Theme>);
+  expect(names()).toEqual(['Default hook', 'Edited hook']);
+  expect(screen.getByRole('button', { name: 'Edited hook' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+it('opens the latest active hook after loading, without resetting manual selection on later saves', () => {
+  const base = { enabled: true, path: '/*', before: '', after: 'log("ready")', css: '' };
+  const config = { ...emptyDeveloperConfig, enabled: true, updatedAt: 100, hooks: [{ ...base, id: 'old', name: 'Old', updatedAt: 200 }, { ...base, id: 'latest', name: 'Latest', updatedAt: 300 }] };
+  const content = (developer: any) => <Theme><SiteDeveloperPanel disabled={false} send={jest.fn()} developer={developer} /></Theme>;
+  const view = render(content(undefined));
+  view.rerender(content({ config, status: 'waiting', logs: [] }));
+  expect(screen.getByRole('button', { name: 'Latest' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: 'Old' }));
+  view.rerender(content({ config: { ...config, updatedAt: 500 }, status: 'waiting', logs: [] }));
+  expect(screen.getByRole('button', { name: 'Old' })).toHaveAttribute('aria-pressed', 'true');
+});
+it('preserves an explicit default-hook target instead of automatically selecting the newest hook', () => {
+  const hook = { id: 'new', name: 'Newest', enabled: true, updatedAt: 200, path: '/*', before: '', after: '', css: '' };
+  render(<Theme><SiteDeveloperPanel disabled={false} send={jest.fn()} selectedHookId="" developer={{ config: { ...emptyDeveloperConfig, enabled: true, hooks: [hook] }, status: 'waiting', logs: [] }} /></Theme>);
+  expect(screen.getByRole('button', { name: 'Default hook' })).toHaveAttribute('aria-pressed', 'true');
 });

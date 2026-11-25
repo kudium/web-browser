@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import {
   effectiveHookConfig,
+  enableGlobalHookForRun,
   getGlobalHooks,
   globalHookHash,
   saveGlobalHooks,
@@ -210,7 +211,7 @@ it('removes unchanged legacy Form tools and preserves customized copies', () => 
   // Once retired, even a manually restored legacy ID is user-owned.
   const current = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
   saveGlobalHooks(ALL_GROUPS_HOOK_SCOPE, { ...current, hooks: [bundled] }, globalHookHash(current));
-  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks).toEqual([bundled]);
+  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks).toEqual([expect.objectContaining(bundled)]);
 });
 
 it('preserves customized Form tools during retirement', () => {
@@ -267,4 +268,48 @@ it('Auto is off by default per website, remembers allowed websites, and master s
   expect(effectiveHookConfig('one', 'https://example.com/articles/one').hooks).toEqual([]);
   save(true, { ...auto, enabled: false });
   expect(effectiveHookConfig('one', 'https://example.com/articles/one').hooks).toEqual([]);
+});
+
+it('quick-run enables only the clicked website for an Auto hook and persists through the normal scope', () => {
+  const auto = { ...hook, autoMode: true, enabledSites: [], exclusions: [] };
+  saveGlobalHooks(ALL_GROUPS_HOOK_SCOPE, { enabled: true, hooks: [auto] }, globalHookHash(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE)));
+  const changed = jest.fn(); const off = onGlobalHooksChanged(changed);
+  enableGlobalHookForRun('one', 'https://example.com/articles/1', 'global:all:global-one');
+  expect(getGlobalHooks(ALL_GROUPS_HOOK_SCOPE).hooks[0].enabledSites).toEqual(['example.com']);
+  expect(effectiveHookConfig('one', 'https://example.com/articles/1').hooks).toHaveLength(1);
+  expect(effectiveHookConfig('one', 'https://other.com/articles/1').hooks).toHaveLength(0);
+  expect(changed).toHaveBeenCalledTimes(1);
+  enableGlobalHookForRun('one', 'https://example.com/articles/1', 'global:all:global-one');
+  expect(changed).toHaveBeenCalledTimes(1); off();
+});
+it('quick-run respects global disable, matching rules and wildcard exclusions without changing settings', () => {
+  for (const config of [
+    { enabled: false, hooks: [hook] },
+    { enabled: true, hooks: [{ ...hook, enabled: false }] },
+    { enabled: true, hooks: [hook] },
+  ]) {
+    saveGlobalHooks('one', config, globalHookHash(getGlobalHooks('one')));
+    const before = getGlobalHooks('one');
+    expect(() => enableGlobalHookForRun('one', 'https://private.example.com/articles/1', 'global:global-one')).toThrow();
+    expect(getGlobalHooks('one')).toEqual(before);
+  }
+  expect(() => enableGlobalHookForRun('one', 'https://example.com/other', 'global:global-one')).toThrow('match');
+  expect(() => enableGlobalHookForRun('one', 'https://example.com/articles/1', 'global:missing')).toThrow('installed');
+});
+it('quick-run removes an exact website exclusion without altering other exclusions or other scopes', () => {
+  const config = { enabled: true, hooks: [{ ...hook, exclusions: ['example.com', 'other.com'] }] };
+  saveGlobalHooks('one', config, globalHookHash(getGlobalHooks('one')));
+  enableGlobalHookForRun('one', 'https://example.com/articles/1', 'global:global-one');
+  expect(getGlobalHooks('one').hooks[0].exclusions).toEqual(['other.com']);
+  expect(getGlobalHooks('two').hooks).toEqual([]);
+});
+
+it('persists edit times for only the changed global hook', () => {
+  saveGlobalHooks('one', { enabled: true, hooks: [hook, { ...hook, id: 'other' }] }, globalHookHash(getGlobalHooks('one')));
+  const original = getGlobalHooks('one');
+  expect(original.hooks[0].updatedAt).toEqual(expect.any(Number));
+  saveGlobalHooks('one', { ...original, hooks: original.hooks.map(item => item.id === hook.id ? { ...item, after: 'log("edited")' } : item) }, globalHookHash(original));
+  const edited = getGlobalHooks('one');
+  expect(edited.hooks[0].updatedAt).toBeGreaterThan(original.hooks[0].updatedAt!);
+  expect(edited.hooks[1].updatedAt).toBe(original.hooks[1].updatedAt);
 });

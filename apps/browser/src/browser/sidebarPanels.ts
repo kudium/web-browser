@@ -42,6 +42,8 @@ export interface SidebarPanelTarget {
 export interface SidebarPanelState {
   panels: SidebarPanelInfo[];
   activeId?: string;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
   openRequest: number;
   error?: string;
   floating?: boolean;
@@ -51,6 +53,7 @@ export interface SidebarPanelState {
 }
 export type SidebarPanelRequest =
   | { action: 'list' }
+  | { action: 'back' | 'forward' }
   | { action: 'manage'; id: string }
   | { action: 'activate'; id: string; reveal?: boolean }
   | { action: 'target'; groupId?: string }

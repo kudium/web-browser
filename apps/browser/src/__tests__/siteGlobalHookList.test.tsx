@@ -1,3 +1,4 @@
+beforeAll(() => { HTMLElement.prototype.scrollIntoView = jest.fn(); global.ResizeObserver = jest.fn(() => ({ observe() {}, unobserve() {}, disconnect() {} })) as any; });
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
@@ -66,4 +67,16 @@ it('enables an Auto hook only for the current website and saves the choice immed
   expect(toggle).toHaveAttribute('aria-checked', 'false');
   fireEvent.click(toggle);
   await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'global-save', allGroups: true, config: { enabled: true, hooks: [{ ...hook, enabledSites: ['example.com'] }] } })));
+});
+
+it('offers copy to local hooks without modifying the original global hook', async () => {
+  const hook = { id: 'reader', name: 'Reader', enabled: true, path: '/*', exclusions: [], before: '', after: 'log("ready")', css: '' };
+  const request = jest.fn(async input => ({ global: { enabled: true, hooks: input.allGroups ? [hook] : [] }, globalHash: 'hash' }));
+  window.electron = { hookMarketplace: { request } } as any;
+  const onCopyLocal = jest.fn();
+  render(<Theme><SiteGlobalHookList url="https://example.com/" disabled={false} onCopyLocal={onCopyLocal} /></Theme>);
+  fireEvent.keyDown(await screen.findByRole('button', { name: 'Global options for Reader' }), { key: 'ArrowDown' });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Copy to local hooks' }));
+  expect(onCopyLocal).toHaveBeenCalledWith(hook);
+  expect(request.mock.calls.some(([input]) => input.action === 'global-save')).toBe(false);
 });

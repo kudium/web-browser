@@ -1,3 +1,9 @@
+- Install a hook now offers clear On matching websites and Only where I enable it (Auto) choices, with aligned controls and concise explanations.
+- Run matching global hooks from the panel picker on the live current website. Website-disabled hooks offer Enable here and run; global disable and wildcard exclusions remain enforced.
+- Panel headers include Back and Forward history that retains native views, drafts and scroll positions. Navigation controls hide when there is no history and keep stable sizing while navigating.
+- Duplicate hooks, copy global hooks into the local section, and copy local hooks to global hooks. Copies save through existing settings paths with independent hook/action IDs and no inherited marketplace update identity.
+- Developer hook lists sort active hooks first and then by saved edit time, including the default hook. Opening the editor selects the first sorted hook unless a specific hook was requested; manual selection stays intact during updates.
+
 - Global hooks are available directly in the panel picker, with quick run and management controls. Auto mode lets websites opt in individually, while global disable still applies everywhere.
 - Global and website hook editors share compact footer options; enable and Auto switches save immediately. Installed hooks can update in place, and installation remembers your selected group.
 - Group unloading collapses folders, with options to unload other groups or every group in a space. Toasts report the number of tabs unloaded.

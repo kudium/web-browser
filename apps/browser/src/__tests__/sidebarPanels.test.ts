@@ -250,6 +250,9 @@ test('sidebar IPC accepts only the registered window main frame', () => {
   ).toEqual({
     panels: [],
     targets: [],
+    canGoBack: false,
+    canGoForward: false,
+    snapshot: undefined,
     targetGroup: undefined,
     openRequest: 0,
     activeId: undefined,
@@ -384,4 +387,34 @@ test('manages only available registered providers without activating or recreati
   registry.register({ info: { id: 'gallery', title: 'Gallery', kind: 'hook' }, contentKey: 'gallery', createView, manage, available: () => false });
   await expect(registry.manage('gallery')).rejects.toThrow('unavailable');
   expect(manage).toHaveBeenCalledTimes(1);
+});
+
+test('panel history returns to retained views and discards forward history after a new selection', () => {
+  const { host, createView } = fixture();
+  for (const id of ['a', 'b', 'c']) host.register({ info: { id, title: id, kind: 'hook' }, contentKey: id, createView });
+  host.activate('a'); host.layout('a', { x: 600, y: 50, width: 400, height: 650 });
+  expect(host.state().canGoBack).toBe(false);
+  host.activate('b'); host.activate('b');
+  expect(createView).toHaveBeenCalledTimes(2);
+  host.navigate(-1);
+  expect(host.state()).toMatchObject({ activeId: 'a', canGoBack: false, canGoForward: true });
+  expect(createView).toHaveBeenCalledTimes(2);
+  host.navigate(1);
+  expect(host.state()).toMatchObject({ activeId: 'b', canGoBack: true, canGoForward: false });
+  host.navigate(-1); host.activate('c');
+  expect(host.state()).toMatchObject({ activeId: 'c', canGoBack: true, canGoForward: false });
+  host.navigate(-1); expect(host.state().activeId).toBe('a');
+  host.navigate(1); expect(host.state().activeId).toBe('c');
+});
+test('panel history skips removed and out-of-group providers and survives closing', () => {
+  const { host, createView } = fixture(); let available = true;
+  for (const id of ['a', 'b', 'c']) host.register({ info: { id, title: id, kind: 'hook' }, contentKey: id, createView, available: () => id !== 'b' || available });
+  host.activate('a'); host.activate('b'); host.activate('c');
+  available = false;
+  host.navigate(-1); expect(host.state().activeId).toBe('a');
+  host.navigate(1); expect(host.state().activeId).toBe('c');
+  host.remove('a');
+  expect(host.state().canGoBack).toBe(false);
+  host.close(); expect(host.state().canGoBack).toBe(true);
+  host.navigate(-1); expect(host.state().activeId).toBe('c');
 });

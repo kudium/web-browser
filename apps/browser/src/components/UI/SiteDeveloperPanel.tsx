@@ -1,3 +1,7 @@
+import { sortHooksForDisplay, defaultHookForOrdering, firstDeveloperHook } from '../../browser/hookOrdering';
+import { copySiteHook } from '../../browser/hookCopy';
+import { copyHookToGlobal } from '../../utils/copyHookToGlobal';
+import type { SiteHook } from '../../browser/siteDeveloper';
 import { assertDeveloperSources } from "../../browser/hookValidation";
 import { SiteGlobalHookList } from './SiteGlobalHookList';
 import { FormTextField } from './FormTextField';
@@ -50,7 +54,7 @@ export function SiteDeveloperPanel({
   disabled,
   send: sendCommand,
   origin = '',
-  selectedHookId = '',
+  selectedHookId,
   toolbarTarget,
 }: {
   developer: SiteDeveloperState | undefined;
@@ -83,7 +87,24 @@ export function SiteDeveloperPanel({
     // current draft, so the Run control is ready as soon as state is confirmed.
     if (send('set-site-developer', { developer: next })) setDraft(next);
   };
-  const [hookId, setHookId] = useState(selectedHookId);
+  const [hookId, setHookId] = useState(() => selectedHookId ?? firstDeveloperHook(saved));
+  const initialSelection = useRef<{ origin: string; selectedHookId?: string } | undefined>(undefined);
+  const [copying, setCopying] = useState(false);
+  const [copyMessage, setCopyMessage] = useState('');
+  const copyToLocal = (hook: SiteHook) => {
+    if ((draft.hooks?.length || 0) >= 20) { setSaveError('This website already has 20 hooks. Remove one first.'); return; }
+    const copy = copySiteHook(hook);
+    const next = { ...draft, enabled: true, ...(!draft.enabled ? { defaultEnabled: false } : {}), hooks: [...(draft.hooks || []), copy] };
+    if (send('set-site-developer', { developer: next })) { setDraft(next); setHookId(copy.id); }
+  };
+  const copyToGlobal = async (hook: SiteHook) => {
+    if (copying) return;
+    setCopying(true); setCopyMessage(''); setSaveError('');
+    try { await copyHookToGlobal(hook); setCopyMessage('Copied to global hooks in All groups.'); }
+    catch (error) { setSaveError(String(error).replace(/^Error: /, '')); }
+    finally { setCopying(false); }
+  };
+
   const [listAction, setListAction] = useState<{
     id: string;
     name: string;
@@ -96,8 +117,12 @@ export function SiteDeveloperPanel({
     run?: boolean;
   }>();
   useEffect(() => {
-    setHookId(selectedHookId);
-  }, [selectedHookId]);
+    if (!developer) return;
+    const previous = initialSelection.current;
+    if (previous && previous.origin === origin && previous.selectedHookId === selectedHookId) return;
+    initialSelection.current = { origin, selectedHookId };
+    setHookId(selectedHookId ?? firstDeveloperHook(saved));
+  }, [origin, selectedHookId, serialized, developer]);
   const selectedHook = draft.hooks?.find((hook) => hook.id === hookId);
   const code = selectedHook || draft;
   const updateCode = (patch: Partial<typeof code>) =>
@@ -396,7 +421,8 @@ export function SiteDeveloperPanel({
               </div>
             </div>
             <div className="site-hooks-list">
-              <div className="site-hook-list-row">
+              {sortHooksForDisplay([defaultHookForOrdering(draft), ...(draft.hooks || [])], hook => hook, hook => draft.enabled && hook.enabled).map((hook) => hook.id === '' ? (
+                <div className="site-hook-list-row" key="default">
                 <button
                   type="button"
                   className="site-hooks-list-item"
@@ -445,6 +471,9 @@ export function SiteDeveloperPanel({
                       >
                         Rename
                       </DropdownMenu.Item>
+                      <DropdownMenu.Item disabled={(draft.hooks?.length || 0) >= 20} onSelect={() => copyToLocal({ ...draft, id: 'default', name: draft.name || 'Default hook', path: '/*' })}>Duplicate hook</DropdownMenu.Item>
+                      <DropdownMenu.Item disabled={copying} onSelect={() => { void copyToGlobal({ ...draft, id: 'default', name: draft.name || 'Default hook', path: '/*' }); }}>Copy to global hooks</DropdownMenu.Item>
+
                       <DropdownMenu.Item
                         color="red"
                         onSelect={() =>
@@ -461,7 +490,7 @@ export function SiteDeveloperPanel({
                   </DropdownMenu.Root>
                 </div>
               </div>
-              {draft.hooks?.map((hook) => (
+              ) : (
                 <div className="site-hook-list-row" key={hook.id}>
                   <button
                     type="button"
@@ -520,6 +549,8 @@ export function SiteDeveloperPanel({
                         >
                           Rename
                         </DropdownMenu.Item>
+                        <DropdownMenu.Item disabled={(draft.hooks?.length || 0) >= 20} onSelect={() => copyToLocal(hook)}>Duplicate hook</DropdownMenu.Item>
+                        <DropdownMenu.Item disabled={copying} onSelect={() => { void copyToGlobal(hook); }}>Copy to global hooks</DropdownMenu.Item>
                         {hook.installed && <DropdownMenu.Item disabled={dirty} onSelect={() => window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { mode: 'updates', origin, hookId: hook.id, allGroups: false } }))}>Check for updates</DropdownMenu.Item>}
                         <DropdownMenu.Item
                           color="red"
@@ -538,7 +569,7 @@ export function SiteDeveloperPanel({
                   </div>
                 </div>
               ))}
-              <SiteGlobalHookList url={origin} disabled={disabled} />
+              <SiteGlobalHookList url={origin} disabled={disabled} onCopyLocal={copyToLocal} localCopyDisabled={(draft.hooks?.length || 0) >= 20} />
             </div>
           </aside>
           <div className="site-hook-detail">
@@ -821,6 +852,7 @@ export function SiteDeveloperPanel({
           ))}
         </section>
       )}
+      {copyMessage && <p role="status">{copyMessage}</p>}
       {saveError && <p role="alert" className="site-hook-import-error" style={{ whiteSpace: "pre-line" }}>{saveError}</p>}
       <EditorWindowFooter
         status={

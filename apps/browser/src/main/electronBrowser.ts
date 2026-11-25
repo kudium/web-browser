@@ -28,7 +28,7 @@ import {
   certificateErrorFor,
   allowWebsiteCertificateErrors,
 } from './websiteCertificates';
-import { effectiveHookConfig } from './globalHooks';
+import { effectiveHookConfig, enableGlobalHookForRun } from './globalHooks';
 import { registerHookMarketplace, openHookInstallLink } from './hookMarketplace';
 import { aiGroupId } from '../browser/aiGroups';
 import { projectFileNavigation } from './projectFileNavigation';
@@ -2545,9 +2545,10 @@ export function registerElectronBrowser(
           },
         ];
       }),
-      { runHook: (target, hookId) => {
+      { currentTabId: () => focusedId, runHook: (target, hookId) => {
         const view = views.get(target.id);
         if (!view || view.webContents.isDestroyed() || siteOrigin(view.webContents.getURL()) !== new URL(target.url).origin) throw new Error('Open this website before running a hook.');
+        enableGlobalHookForRun(target.profile, view.webContents.getURL(), hookId);
         const effective = effectiveHookConfig(target.profile, view.webContents.getURL());
         if (!effective.hooks?.some(hook => hook.id === hookId && hook.enabled)) throw new Error('Enable this hook on this website first. Global disable overrides website choices.');
         rerunDeveloperHook(view.webContents, new URL(target.url).origin, hookId);

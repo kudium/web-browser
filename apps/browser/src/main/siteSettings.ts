@@ -1,3 +1,4 @@
+import { stampDeveloperEdits } from '../browser/hookOrdering';
 import { assertDeveloperSources } from "../browser/hookValidation";
 import { app } from 'electron';
 import fs from 'fs';
@@ -162,6 +163,7 @@ export function updateSiteSettings(
 ) {
   if (profile.startsWith('private:')) {
     const previous = getSiteSettings(profile, origin);
+    if (patch.developer) patch = { ...patch, developer: stampDeveloperEdits(previous.developer, patch.developer) };
     privateSites.set(keyFor(profile, origin), normalize({ ...previous, ...patch }));
     changes.emit('change', profile, origin);
     return;
@@ -171,6 +173,7 @@ export function updateSiteSettings(
   const key = keyFor(profile, origin);
   const previous = sites[key];
   if (patch.developer) assertDeveloperSources(patch.developer);
+  if (patch.developer) patch = { ...patch, developer: stampDeveloperEdits(previous?.developer, patch.developer) };
   const revisions = [...(previous?.hookRevisions || [])];
   if (
     patch.developer &&

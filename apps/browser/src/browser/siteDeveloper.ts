@@ -17,6 +17,7 @@ export interface HookNotificationPermission {
 }
 
 export interface SiteHook {
+  updatedAt?: number;
   actions?: HookAction[];
   publication?: {
     id: string;
@@ -38,6 +39,7 @@ export interface SiteHook {
 }
 
 export interface SiteDeveloperConfig {
+  updatedAt?: number;
   actions?: HookAction[];
   name?: string;
   defaultEnabled?: boolean;
@@ -84,6 +86,7 @@ export function validDeveloperConfig(
   const config = value as SiteDeveloperConfig;
   return (
     typeof config.enabled === 'boolean' &&
+    (config.updatedAt === undefined || (Number.isSafeInteger(config.updatedAt) && config.updatedAt >= 0)) &&
     (config.actions === undefined || validHookActions(config.actions)) &&
     (config.name === undefined ||
       (typeof config.name === 'string' && config.name.length <= 120)) &&
@@ -98,6 +101,7 @@ export function validDeveloperConfig(
           (hook) =>
             hook &&
             (hook.actions === undefined || validHookActions(hook.actions)) &&
+            (hook.updatedAt === undefined || (Number.isSafeInteger(hook.updatedAt) && hook.updatedAt >= 0)) &&
             typeof hook.id === 'string' &&
             hook.id.length > 0 &&
             hook.id.length <= 100 &&

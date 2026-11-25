@@ -493,8 +493,8 @@ it('opens the shared native window, binds saves to its hook and reuses an open e
     action: 'global-save',
     allGroups: false,
     config: {
-      ...config,
-      hooks: config.hooks.map((hook) =>
+      ...state.global,
+      hooks: state.global.hooks.map((hook: (typeof config.hooks)[number]) =>
         hook.id === 'window-hook' ? { ...hook, css: 'p{color:blue}' } : hook
       ),
     },
@@ -690,4 +690,25 @@ it('routes global quick-run only through the registered owner and exact availabl
   await expect(handler(event, { action:'global-run',id:'missing',hookId:'global:all:reader' })).rejects.toThrow('destination');
   await expect(handler(event, { action:'global-run',id:'tab',hookId:'site-hook' })).rejects.toThrow('unavailable');
   expect(runHook).toHaveBeenCalledTimes(1);
+});
+
+it('resolves picker quick-run against the owner’s live focused tab rather than a saved tab ID', async () => {
+  const second = { ...targets[0], id: 'second', url: 'https://second.example.com/' };
+  let focused: string | undefined = targets[0].id;
+  const runHook = jest.fn();
+  registerHookMarketplace(mockHost as any, () => [...targets, second], { runHook, currentTabId: () => focused });
+  await handler(event, { action: 'global-run', id: '@current-page', hookId: 'global:all:reader', allGroups: true });
+  expect(runHook).toHaveBeenLastCalledWith(targets[0], 'global:all:reader');
+  focused = second.id;
+  await handler(event, { action: 'global-run', id: '@current-page', hookId: 'global:all:reader', allGroups: true });
+  expect(runHook).toHaveBeenLastCalledWith(second, 'global:all:reader');
+  focused = 'locked-or-removed';
+  await expect(handler(event, { action: 'global-run', id: '@current-page', hookId: 'global:all:reader', allGroups: true })).rejects.toThrow('Open an unlocked website');
+  focused = undefined;
+  await expect(handler(event, { action: 'state', id: '@current-page', allGroups: true })).rejects.toThrow('Open an unlocked website');
+  expect(runHook).toHaveBeenCalledTimes(2);
+});
+it('does not substitute the all-groups placeholder when the current page is unavailable', async () => {
+  registerHookMarketplace(mockHost as any, () => [], { currentTabId: () => 'closed' });
+  await expect(handler(event, { action: 'state', id: '@current-page', allGroups: true })).rejects.toThrow('Open an unlocked website');
 });

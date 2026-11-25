@@ -38,6 +38,8 @@ export class SidebarPanelRegistry {
   activeSession?: Session;
   activeGroup?: string;
   private activeId?: string;
+  private history: string[] = [];
+  private historyIndex = -1;
   private preferredGroup?: string;
   targetGroup?: string;
   private targets: SidebarPanelTarget[] = [];
@@ -58,6 +60,8 @@ export class SidebarPanelRegistry {
         .filter(({ provider }) => provider.available?.() !== false)
         .map(({ provider }) => ({ ...provider.info, canManage: !!provider.manage })),
       activeId: this.activeId,
+      canGoBack: this.historyTarget(-1) !== undefined,
+      canGoForward: this.historyTarget(1) !== undefined,
       openRequest: this.request,
       floating: Boolean(this.floating),
       targets: this.targets,
@@ -65,6 +69,30 @@ export class SidebarPanelRegistry {
       snapshot: this.snapshot?.id === this.activeId && !this.floating ? this.snapshot : undefined,
       ...(this.error && { error: this.error }),
     };
+  }
+  private remember(id: string) {
+    if (this.history[this.historyIndex] === id) return;
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    this.history.push(id);
+    if (this.history.length > 50) this.history.shift();
+    this.historyIndex = this.history.length - 1;
+  }
+  private historyTarget(direction: -1 | 1) {
+    if (!this.activeId && direction === 1) return undefined;
+    const start = this.historyIndex + (!this.activeId && direction === -1 ? 0 : direction);
+    for (let index = start; index >= 0 && index < this.history.length; index += direction) {
+      const entry = this.entries.get(this.history[index]);
+      if (entry && entry.provider.available?.() !== false) return index;
+    }
+    return undefined;
+  }
+  navigate(direction: -1 | 1) {
+    const index = this.historyTarget(direction);
+    if (index === undefined) return;
+    const previous = this.historyIndex;
+    this.historyIndex = index;
+    try { this.activate(this.history[index], true, undefined, false); }
+    catch (error) { this.historyIndex = previous; throw error; }
   }
   async manage(id: string) {
     const entry = this.entries.get(id);
@@ -121,11 +149,11 @@ export class SidebarPanelRegistry {
             provider.available?.() !== false,
         );
       this.activeId = next ? next.provider.info.id : undefined;
-      if (next) next.provider.opened?.();
+      if (next) { this.remember(next.provider.info.id); next.provider.opened?.(); }
     }
     this.publish();
   }
-  activate(id: string, reveal = true, hookGroupId?: string) {
+  activate(id: string, reveal = true, hookGroupId?: string, recordHistory = true) {
     const entry = this.entries.get(id);
     const hookReveal = Boolean(hookGroupId && entry?.provider.info.kind === 'hook' &&
       entry.provider.groupId === hookGroupId);
@@ -148,6 +176,7 @@ export class SidebarPanelRegistry {
       old?.provider.closed?.();
     }
     this.activeId = id;
+    if (recordHistory) this.remember(id);
     this.preferredGroup = entry.provider.groupId;
     this.error = undefined;
     if (reveal) this.request += 1;
@@ -439,6 +468,7 @@ export function registerSidebarPanelWindow(window: BrowserWindow) {
       if (request.action === 'activate' && typeof request.id === 'string')
         host.activate(request.id, request.reveal !== false);
       else if (request.action === 'manage' && typeof request.id === 'string') return host.manage(request.id).then(() => host.state());
+      else if (request.action === 'back' || request.action === 'forward') host.navigate(request.action === 'back' ? -1 : 1);
       else if (request.action === 'close') host.close();
       else if (
         request.action === 'target' &&

@@ -1,3 +1,5 @@
+import { sortHooksForDisplay } from '../../browser/hookOrdering';
+import { copyHookToGlobal } from '../../utils/copyHookToGlobal';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertDialog,
@@ -24,9 +26,13 @@ import {
 export function SiteGlobalHookList({
   url,
   disabled,
+  onCopyLocal,
+  localCopyDisabled = false,
 }: {
   url?: string;
   disabled: boolean;
+  onCopyLocal?: (hook: GlobalHook) => void;
+  localCopyDisabled?: boolean;
 }) {
   const [scopes, setScopes] = useState<
     Array<{ allGroups: boolean; state: HookMarketplaceState }>
@@ -86,9 +92,11 @@ export function SiteGlobalHookList({
     };
     void refresh();
     window.addEventListener('focus', refresh);
+    window.addEventListener('kudium-hooks-changed', refresh);
     return () => {
       live = false;
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('kudium-hooks-changed', refresh);
     };
   }, [url]);
   const save = async (
@@ -164,7 +172,7 @@ export function SiteGlobalHookList({
           </PreferenceHint>
         </div>
       )}
-      {matching.map(({ allGroups, state, hook, excluded, wildcardExcluded }) => (
+      {sortHooksForDisplay(matching, item => item.hook, item => item.state.global.enabled && item.hook.enabled && !item.excluded).map(({ allGroups, state, hook, excluded, wildcardExcluded }) => (
         <div className="site-hook-list-row" key={`${allGroups}:${hook.id}`}>
           <button
             type="button"
@@ -236,6 +244,15 @@ export function SiteGlobalHookList({
                 </IconButton>
               </DropdownMenu.Trigger>
               <DropdownMenu.Content>
+                <DropdownMenu.Item disabled={busy} onSelect={() => {
+                  if (saving.current) return;
+                  saving.current = true; setBusy(true); setError('');
+                  void copyHookToGlobal(hook, allGroups, true).then(state => {
+                    setScopes(previous => previous.map(item => item.allGroups === allGroups ? { ...item, state } : item));
+                  }).catch(reason => setError(String(reason).replace(/^Error: /, ''))).finally(() => { saving.current = false; setBusy(false); });
+                }}>Duplicate hook</DropdownMenu.Item>
+                {onCopyLocal && <DropdownMenu.Item disabled={localCopyDisabled} onSelect={() => onCopyLocal(hook)}>Copy to local hooks</DropdownMenu.Item>}
+
                   {hook.installed && (
                     <DropdownMenu.Item
                       onSelect={() =>

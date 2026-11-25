@@ -278,3 +278,16 @@ activates the provider or creates its view. Hook providers open their original
 site/global editor and source scope; extension providers reuse `extensionMenu`
 with their own profile. Do not infer ownership by parsing renderer panel labels
 or maintain another extension management path.
+
+## Panel selection history
+
+The shared panel header has Previous panel and Next panel controls. Both are
+hidden when no history is available. Once either direction is available, the pair
+stays together with the unavailable direction disabled to keep picker sizing
+stable during navigation. The native
+registry retains up to 50 panel selections per window, including hook reveals.
+Navigation reuses existing views and does not change the website or tab group.
+Removed and unavailable providers are skipped. Choosing a new panel after going
+back discards the forward branch. History survives closing/reopening the sidebar
+for the current browser session; it does not retain old versions of a provider's
+updated document.

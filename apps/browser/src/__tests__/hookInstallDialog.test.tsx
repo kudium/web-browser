@@ -242,9 +242,12 @@ it('offers a reviewed update to an existing hook instead of requiring another co
 it('offers opt-in Auto mode when installing an All groups hook', async () => {
   render(<Theme><HookMarketplaceDialog /></Theme>);
   act(() => window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { url: preview.source, allGroups: true } })));
-  const auto = await screen.findByRole('checkbox', { name: 'Auto · enable separately on each website' });
+  const auto = await screen.findByRole('radio', { name: 'Only where I enable it (Auto)' });
   expect(auto).not.toBeChecked();
+  expect(screen.getByRole('radio', { name: 'On matching websites' })).toBeChecked();
   fireEvent.click(auto);
+  expect(auto).toBeChecked();
+  expect(screen.getByRole('radio', { name: 'On matching websites' })).not.toBeChecked();
   await waitFor(() => expect(screen.getByRole('button', { name: 'Install hook' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Install hook' }));
   await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'install', global: true, allGroups: true, autoMode: true })));

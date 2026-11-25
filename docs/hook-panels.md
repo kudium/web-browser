@@ -172,12 +172,14 @@ and chosen heading restore after navigation or restart when the hook runs again.
 The panel picker has **Active** and **Global hooks** views. Active lists existing
 output; Global hooks lists installed hooks matching the current webpage. Clicking
 an enabled lifecycle hook runs it in that page; action-only hooks remain context
-menu actions. Off/disabled hooks explain their status and retain Manage, opening
+menu actions. A website-disabled hook offers **Enable here and run**, which saves
+the current website choice and runs immediately. Globally disabled hooks and
+wildcard-excluded websites retain Manage, opening
 the exact global editor and its original scope. Global execution reuses the normal reviewed
 runtime and never runs a hook in a different panel-pinned group.
 
-Installation offers **Auto · enable separately on each website** for All groups
-hooks. Auto starts with an empty website allowlist. Hook Developer’s Global hooks
+Installation offers **On matching websites** (enabled immediately) or
+**Only where I enable it (Auto)** for All groups hooks. Auto starts with an empty website allowlist. Hook Developer’s Global hooks
 switch immediately adds/removes the current website. Global master switches
 still override website choices. Existing installations retain their behavior;
 updates preserve Auto mode and the allowed/excluded websites. Auto can also be

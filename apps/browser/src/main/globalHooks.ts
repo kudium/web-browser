@@ -1,3 +1,4 @@
+import { stampHookEdits } from '../browser/hookOrdering';
 import { hookSourceValidator } from "../browser/hookValidation";
 import { app } from 'electron';
 import fs from 'fs';
@@ -138,7 +139,7 @@ export function saveGlobalHooks(
   if (globalHookHash(getGlobalHooks(profile)) !== expectedHash)
     throw new Error('Global hooks changed. Reload before saving.');
   config.hooks.forEach(hook => hookSourceValidator.assert(hook));
-  const next = { ...profiles, [profile]: config };
+  const next = { ...profiles, [profile]: { ...config, hooks: stampHookEdits(getGlobalHooks(profile).hooks, config.hooks) } };
   persistProfiles(next);
   events.emit('change', profile);
 }
@@ -148,6 +149,29 @@ export function onGlobalHooksChanged(callback: (profile: string) => void) {
     events.removeListener('change', callback);
   };
 }
+/** An explicit picker click enables only this website, using the normal saved scope. */
+export function enableGlobalHookForRun(profile: string, url: string, hookId: string) {
+  const target = new URL(url);
+  if (!['http:', 'https:'].includes(target.protocol)) throw new Error('Open a website before running a hook.');
+  const allGroups = hookId.startsWith('global:all:');
+  if (!hookId.startsWith('global:')) throw new Error('Invalid global hook.');
+  const scope = allGroups ? ALL_GROUPS_HOOK_SCOPE : profile;
+  const id = hookId.slice(allGroups ? 'global:all:'.length : 'global:'.length);
+  const config = getGlobalHooks(scope);
+  const hook = config.hooks.find(item => item.id === id);
+  if (!hook) throw new Error('This global hook is no longer installed.');
+  if (!config.enabled || !hook.enabled) throw new Error('This hook is disabled globally. Enable it in global hook settings first.');
+  if (!hookMatchesPath(hook.path, url) || !hookMatchesWebsite(hook, url)) throw new Error('This hook does not match the current page.');
+  if (![hook.before, hook.after, hook.css].some(code => code.trim())) throw new Error('This hook has no JavaScript or CSS to run.');
+  if (globalHookEnabledOnWebsite(hook, url)) return;
+  if (hookWebsiteExclusions(hook.exclusions, url).some(rule => rule.startsWith('*.'))) throw new Error('This website is excluded by a wildcard rule. Change that rule in global hook settings first.');
+  saveGlobalHooks(scope, { ...config, hooks: config.hooks.map(item => item.id !== id ? item : {
+    ...item,
+    exclusions: item.exclusions.filter(rule => rule !== target.hostname),
+    ...(item.autoMode ? { enabledSites: [...new Set([...(item.enabledSites || []), target.hostname])] } : {}),
+  }) }, globalHookHash(config));
+}
+
 /**
  * Used for execution and every privileged output check, never as the editor
  * draft.

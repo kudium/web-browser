@@ -21,6 +21,31 @@ state and exclusions. A previously disabled global master switch stays disabled.
 Exploring the marketplace closes the installer; a retained native editor is hidden
 so a returning install link can open visibly in the browser or Preferences.
 
+## Hook list order
+
+The Developer page lists active hooks first, then the most recently edited hooks
+within each section. The default hook follows this same order; it is not pinned. Opening the editor
+without a specific hook target selects the first sorted hook. Explicit links
+and subsequent manual selections are preserved. Global activity follows the current website's Auto settings,
+exclusions and global switches. Saved code, name and rule changes update the edit
+time; saving an untouched hook preserves it. The selected editor stays open when
+its list position changes. Older hooks without an edit time keep their relative
+order until edited.
+
+## Duplicate and copy hooks
+
+Local hook options include **Duplicate hook** and **Copy to global hooks**. Global
+hook options include **Duplicate hook** and **Copy to local hooks**. Local copies
+save immediately with the current validated draft and open in the editor. Copying
+from local to global adds the copy to All groups; duplicating a global hook keeps
+its original scope and Auto/website settings. Global master disable remains in
+effect.
+
+Copies get independent hook and action IDs and are enabled by default. Code,
+page rules and actions are preserved, but marketplace update links and publication
+identity are removed. Editing, deleting or updating the original cannot overwrite
+the copy. Existing limits of 20 hooks per destination still apply.
+
 ## Global hooks and website exceptions
 
 In a website’s Developer hook list, the switch beside a global hook enables or

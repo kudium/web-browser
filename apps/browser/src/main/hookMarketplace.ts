@@ -22,6 +22,7 @@ import type { SiteHook } from '../browser/siteDeveloper';
 import { getBrowserPreferences, showBrowserPreferences } from './preferences';
 import { getSiteSettings, updateSiteSettings } from './siteSettings';
 import { getGlobalHooks, globalHookHash, saveGlobalHooks } from './globalHooks';
+import { CURRENT_HOOK_PAGE } from '../browser/hookMarketplace';
 import {
   fetchHookPackage,
   hookPackageHash,
@@ -39,6 +40,7 @@ const hosts = new WeakMap<
   WebContents,
   {
     destinations: () => HookDestination[];
+    currentTabId?: () => string | undefined;
     installInPreferences?: boolean;
     openSiteEditor?: (target: HookDestination, hookId: string) => void;
     runHook?: (target: HookDestination, hookId: string) => void;
@@ -249,6 +251,7 @@ export function registerHookMarketplace(
   host: BrowserWindow,
   destinations: () => HookDestination[],
   options: {
+    currentTabId?: () => string | undefined;
     installInPreferences?: boolean;
     openSiteEditor?: (target: HookDestination, hookId: string) => void;
     runHook?: (target: HookDestination, hookId: string) => void;
@@ -291,9 +294,12 @@ export function registerHookMarketplace(
     }
     const registry = hosts.get(sender);
     if (!registry) throw new Error('Untrusted hook marketplace request.');
-    const target = registry.destinations().find((item) => item.id === id);
+    const targetId = id === CURRENT_HOOK_PAGE ? registry.currentTabId?.() : id;
+    const target = registry.destinations().find((item) => item.id === targetId);
     if (!target)
-      throw new Error('Choose an unlocked website tab as the destination.');
+      throw new Error(id === CURRENT_HOOK_PAGE
+        ? 'Open an unlocked website tab to run a hook.'
+        : 'Choose an unlocked website tab as the destination.');
     return target;
   };
   const preview = async (sender: WebContents, url: string) => {
@@ -441,6 +447,7 @@ export function registerHookMarketplace(
       const target = editorBinding
         ? editorBinding.target
         : globalOnly &&
+            !('id' in input && input.id === CURRENT_HOOK_PAGE) &&
             hosts.has(event.sender) &&
             (!available.length ||
               ('id' in input && input.id === ALL_GROUPS_HOOK_SCOPE))

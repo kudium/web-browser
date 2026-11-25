@@ -252,6 +252,15 @@ app
       views.get('two'),
       'Switching panels must not require a close/reopen',
     );
+    await window.webContents.executeJavaScript(`document.querySelector('[aria-label="Previous panel"]').click()`);
+    await pause(100);
+    assert.equal(host.state().activeId, 'one', 'Back returns to the previous panel');
+    assert.equal(views.get('one'), retainedView, 'Back retains the same native view');
+    assert.equal(await retainedView.webContents.executeJavaScript(`document.querySelector('#draft').value`), 'retained draft', 'Back retains panel input');
+    await window.webContents.executeJavaScript(`document.querySelector('[aria-label="Next panel"]').click()`);
+    await pause(100);
+    assert.equal(host.state().activeId, 'two', 'Forward restores the next panel');
+    console.log('PASS panel header history: retained native view and draft, back/forward');
     await choose('Panel tab group', 'Work');
     await pause(80);
     assert.equal(target, 'work');

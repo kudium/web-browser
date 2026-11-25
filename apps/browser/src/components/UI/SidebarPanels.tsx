@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useEffect, useState } from 'react';
 import {
   X,
+  ChevronLeft,
+  ChevronRight,
   SquareStack,
   LocateFixed,
   CircleAlert,
@@ -16,12 +18,14 @@ import { EmptyState } from './EmptyState';
 import { useAppList } from '../../utils/hooks/useAppList';
 import {
   globalHookEnabledOnWebsite,
+  CURRENT_HOOK_PAGE,
   type GlobalHook,
   type HookMarketplaceState,
 } from '../../browser/hookMarketplace';
 import {
   hookMatchesPath,
   hookMatchesWebsite,
+  hookWebsiteExclusions,
 } from '../../browser/siteDeveloper';
 import { HookIcon } from './HookIcon';
 
@@ -43,6 +47,7 @@ export function SidebarPanels({
       allGroups: boolean;
       enabled: boolean;
       masterEnabled: boolean;
+      wildcardExcluded: boolean;
     }>
   >([]);
   const [hookError, setHookError] = useState('');
@@ -65,7 +70,7 @@ export function SidebarPanels({
             allGroups,
             state: (await window.electron.hookMarketplace.request({
               action: 'state',
-              id: currentPage.id,
+              id: CURRENT_HOOK_PAGE,
               allGroups,
             })) as HookMarketplaceState,
           })),
@@ -83,6 +88,7 @@ export function SidebarPanels({
                 hook,
                 allGroups,
                 masterEnabled: hookState.global.enabled && hook.enabled,
+                wildcardExcluded: hookWebsiteExclusions(hook.exclusions, hookState.destination.url).some(rule => rule.startsWith('*.')),
                 enabled:
                   hookState.global.enabled &&
                   hook.enabled &&
@@ -188,6 +194,22 @@ export function SidebarPanels({
       aria-label="Sidebar panels"
     >
       <AssistantPageHeader edgeToEdge>
+        {(state.canGoBack || state.canGoForward) && (
+          <>
+        <ChromeIconButton
+          icon={ChevronLeft}
+          label="Previous panel"
+          disabled={!state.canGoBack}
+          onClick={() => { void browser.sidebarPanels({ action: 'back' }).catch(() => {}); }}
+        />
+        <ChromeIconButton
+          icon={ChevronRight}
+          label="Next panel"
+          disabled={!state.canGoForward}
+          onClick={() => { void browser.sidebarPanels({ action: 'forward' }).catch(() => {}); }}
+        />
+          </>
+        )}
         <GroupPicker
           label="Sidebar panel"
           unselectedLabel={
@@ -229,17 +251,21 @@ export function SidebarPanels({
                     ),
                 }))
               : globalChoices.map(
-                  ({ hook, allGroups, enabled, masterEnabled }) => ({
+                  ({ hook, allGroups, enabled, masterEnabled, wildcardExcluded }) => ({
                     id: `global-choice:${allGroups ? 'all:' : ''}${hook.id}`,
                     name: hook.name,
-                    detail: enabled
+                    detail: ![hook.before, hook.after, hook.css].some(source => source.trim())
+                      ? 'Context-menu actions · Manage to use'
+                      : enabled
                       ? 'Run on this page'
                       : !masterEnabled
                         ? 'Disabled globally · Manage to enable'
-                        : 'Off on this website · Manage to enable',
+                        : wildcardExcluded
+                          ? 'Excluded by a website rule · Manage to change'
+                          : 'Enable here and run',
                     canManage: true,
                     disabled:
-                      !enabled ||
+                      !masterEnabled || wildcardExcluded ||
                       ![hook.before, hook.after, hook.css].some((source) =>
                         source.trim(),
                       ),
@@ -251,7 +277,7 @@ export function SidebarPanels({
             if (pickerTab === 'global' && currentPage) {
               const choice = globalChoices.find(item => `global-choice:${item.allGroups ? 'all:' : ''}${item.hook.id}` === panel.id);
               if (!choice) return;
-              void window.electron.hookMarketplace.request({ action:'global-editor-open', id:currentPage.id, hookId:choice.hook.id, allGroups:choice.allGroups }).then(() => setHookError('')).catch(error => setHookError(String(error)));
+              void window.electron.hookMarketplace.request({ action:'global-editor-open', id:CURRENT_HOOK_PAGE, hookId:choice.hook.id, allGroups:choice.allGroups }).then(() => setHookError('')).catch(error => setHookError(String(error)));
             } else
               void browser
                 .sidebarPanels({ action: 'manage', id: panel.id })
@@ -271,7 +297,7 @@ export function SidebarPanels({
                 void window.electron.hookMarketplace
                   .request({
                     action: 'global-run',
-                    id: currentPage.id,
+                    id: CURRENT_HOOK_PAGE,
                     hookId: `global:${choice.allGroups ? 'all:' : ''}${choice.hook.id}`,
                     allGroups: choice.allGroups,
                   })
