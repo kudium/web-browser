@@ -1,5 +1,15 @@
 export const whatsNew = [
   {
+    version: '1.0.24', date: '2026-11-25', title: 'Global hooks, a cleaner workspace, and clearer update feedback',
+    highlights: [
+      ['Run global hooks from your panel', 'Find global hooks in the panel picker, run them on the current page, or open their settings. Auto mode lets each website opt in; global disable still applies everywhere. Installed hooks can update in place, and installation remembers your selected group.'],
+      ['More room for your work', 'Global and website hook editors share compact footer controls. Enable and Auto changes save immediately. Hooks can retain panel state locally and connect panel inputs and navigation to the page.'],
+      ['Organize and save energy', 'Unload a group, other groups, or every group in a space; folders collapse and the toast reports how many tabs were unloaded. Drag footer space icons to reorder spaces and customize sidebar text size and backgrounds.'],
+      ['A welcoming start page', 'The local welcome guide includes Dock and OS setup actions, with a cleaner footer and compact feature recommendations. Preview your Start page in Preferences, or choose a blank page or custom URL.'],
+      ['Know when your update is restarting', 'Restarting for an update immediately shows progress and prevents duplicate clicks. If installation fails, the browser restores a retry action.'],
+    ],
+  },
+  {
     version: '1.0.23', date: '2026-11-25', title: 'Panels that stay visible and easier hook discovery',
     highlights: [
       ['Keep your panel in view', 'Dialogs preserve a picture of the panel underneath and restore the same live content when closed. Unrelated popups and resizing leave the panel visible. Switching groups follows your selected tab without letting a pinned panel take over navigation.'],
