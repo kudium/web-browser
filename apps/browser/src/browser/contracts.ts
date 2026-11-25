@@ -148,6 +148,7 @@ export interface BrowserCommand {
   developer?: SiteDeveloperConfig;
   run?: boolean;
   prompt?: string;
+  extensionId?: string;
   grantId?: string;
   hookId?: string;
   mutationId?: string;

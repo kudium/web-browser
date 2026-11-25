@@ -297,6 +297,6 @@ export function showHookPanel(binding: Binding, input: unknown) {
   });
   if (e.view && !e.view.webContents.isDestroyed())
     e.view.webContents.send('hook-panel-update', hookPanelPresentation(output));
-  if (output.reveal) sidebarPanelsFor(binding.owner).activate(id);
+  if (output.reveal) sidebarPanelsFor(binding.owner).activate(id, true, binding.groupId);
   return { id: output.id };
 }

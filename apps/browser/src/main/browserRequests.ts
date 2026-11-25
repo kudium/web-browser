@@ -161,6 +161,7 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
       (typeof value.hookId === 'string' && typeof value.url === 'string')) &&
     (value.action !== 'ask-hook-ai' || text(value.prompt, 30000)) &&
     optionalText(value.permission) &&
+    (value.extensionId === undefined || text(value.extensionId, 100)) &&
     (value.grantId === undefined || text(value.grantId, 100)) &&
     (value.hookId === undefined || text(value.hookId, 100)) &&
     (!['activate-hook-notification', 'revoke-hook-notification'].includes(

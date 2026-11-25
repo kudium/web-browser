@@ -43,15 +43,24 @@ export function HorizontalTabList({
       );
     };
     measure();
-    const observer = new ResizeObserver(measure);
+    let frame = 0;
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        measure();
+      });
+    };
+    const observer = new ResizeObserver(schedule);
     observer.observe(element);
     element
       .querySelectorAll('.horizontal-tab')
       .forEach((tab) => observer.observe(tab));
-    element.addEventListener('scroll', measure);
+    element.addEventListener('scroll', schedule);
     return () => {
       observer.disconnect();
-      element.removeEventListener('scroll', measure);
+      element.removeEventListener('scroll', schedule);
+      if (frame) cancelAnimationFrame(frame);
     };
   }, [tabs, mode]);
   return (

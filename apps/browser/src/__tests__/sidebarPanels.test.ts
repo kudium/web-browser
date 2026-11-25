@@ -74,6 +74,33 @@ test('reselecting a panel immediately reuses its last viewport without losing na
   expect(host.state().openRequest).toBe(2);
 });
 
+test('revealing a hook returns to Auto and lets navigation leave its group', () => {
+  const { host, createView } = fixture();
+  const target = jest.fn(id => host.setSession(undefined, id || 'work'));
+  host.setTargets([{ id: 'other', title: 'Other', profileId: 'other-profile' }], target);
+  host.setTarget('other');
+  host.register({
+    info: { id: 'url-result', title: 'URL breakdown', kind: 'hook' },
+    groupId: 'work', contentKey: 'v1', createView,
+    available: () => (host.targetGroup || host.activeGroup) === 'work',
+  });
+  expect(() => host.activate('url-result')).toThrow(/unavailable/);
+  host.activate('url-result', true, 'work');
+  expect(host.state().targetGroup).toBeUndefined();
+  expect(target).toHaveBeenLastCalledWith(undefined);
+  expect(host.state().activeId).toBe('url-result');
+  expect(host.state().openRequest).toBe(1);
+  host.layout('url-result', { x: 600, y: 50, width: 400, height: 650 });
+  expect(createView).toHaveBeenCalledTimes(1);
+  host.setSession(undefined, 'other');
+  expect(host.state().activeId).toBeUndefined();
+  host.activate('url-result', true, 'work');
+  expect(host.activeGroup).toBe('other');
+  expect(host.state().openRequest).toBe(1);
+  expect(host.state().targetGroup).toBeUndefined();
+  expect(() => host.activate('unknown', true, 'work')).toThrow(/unavailable/);
+});
+
 test('restoring selection does not take over another sidebar page', () => {
   const { host, createView } = fixture();
   host.register({
@@ -251,4 +278,26 @@ test('main-window overlays do not blank an undocked panel, including on resize',
   host.setSuspended(false);
   expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
   host.dispose();
+});
+
+
+test('a pinned panel never overrides a foreground group change', () => {
+  const { host } = fixture();
+  const target = jest.fn();
+  host.setTargets([
+    { id: 'personal', title: 'Personal', profileId: 'shared' },
+    { id: 'work', title: 'Work', profileId: 'shared' },
+  ], target);
+  host.followFocusedGroup('personal');
+  host.setTarget('work');
+  host.followFocusedGroup('personal');
+  expect(host.targetGroup).toBe('work');
+  host.followFocusedGroup('work');
+  expect(host.targetGroup).toBe('work');
+  host.followFocusedGroup('personal');
+  expect(host.targetGroup).toBeUndefined();
+  expect(target).toHaveBeenLastCalledWith(undefined);
+  target.mockClear();
+  host.followFocusedGroup('personal');
+  expect(target).not.toHaveBeenCalled();
 });

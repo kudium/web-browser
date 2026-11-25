@@ -3,9 +3,11 @@ import type { BrowserState } from './contracts';
 
 // Electron's action renderer is contained here, away from workspace components.
 export function ExtensionActions({
+  onExtensionMenu,
   context,
   order,
 }: {
+  onExtensionMenu?: (id: string) => void;
   context: BrowserState['extensionContext'];
   order: string[] | null;
 }) {
@@ -15,6 +17,16 @@ export function ExtensionActions({
   useEffect(() => {
     const root = element.current?.shadowRoot;
     if (!root) return undefined;
+    const contextMenu = (event: Event) => {
+      if (!onExtensionMenu || !(event.target instanceof Element)) return;
+      const action = event.target.closest<HTMLElement>('.action');
+      if (!action) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onExtensionMenu(action.id);
+    };
+    root.addEventListener('contextmenu', contextMenu, true);
+
     const update = () => {
       const actions = [...root.querySelectorAll<HTMLElement>('.action')];
       actions.forEach((action) => {
@@ -41,8 +53,8 @@ export function ExtensionActions({
     update();
     const observer = new MutationObserver(update);
     observer.observe(root, { childList: true });
-    return () => observer.disconnect();
-  }, [context?.profile, order]);
+    return () => { observer.disconnect(); root.removeEventListener('contextmenu', contextMenu, true); };
+  }, [context?.profile, order, onExtensionMenu]);
   if (!context) return null;
   // The dependency subscribes on connect, but does not resubscribe when its
   // partition attribute changes. Recreate it to release the old profile observer.

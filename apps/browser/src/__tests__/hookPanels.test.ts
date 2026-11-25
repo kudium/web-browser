@@ -95,6 +95,12 @@ it('renders structured output as presentation and keeps custom HTML isolated', (
   expect(doc).toContain('kudiumHookPanel');
   expect(doc).toContain('<\\/script>');
 });
+it('keeps ordinary text readable and announces error status as an alert', () => {
+  expect(hookPanelPresentation({id:'text',title:'Text',content:{type:'text',text:'Hello\n<unsafe>'}}).renderedHTML)
+    .toBe('<div class="panel-text">Hello\n&lt;unsafe&gt;</div>');
+  expect(hookPanelPresentation({id:'status',title:'Status',content:{type:'status',state:'error',text:'Try again'}}).renderedHTML)
+    .toContain('role="alert"');
+});
 it('validates every built-in example using the same wrapper as saving and execution', () => {
   for (const sample of hookExamples) {
     expect(

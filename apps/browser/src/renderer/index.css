@@ -2,7 +2,7 @@
 :root { --assistant-page-header-height:36px; }
 
 * { box-sizing: border-box; }
-html, body, #root { margin: 0; height: 100%; overflow: hidden; }
+html, body, #root { margin: 0; height: 100%; overflow: clip; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 button, input { font: inherit; }
 button { cursor: pointer; }
@@ -159,7 +159,8 @@ button:disabled { cursor: default; }
 .session-tab-strip { display: flex; align-items: center; gap: 6px; height: 40px; min-width: 0; padding: 4px 6px; box-sizing: border-box; -webkit-app-region: drag; }
 .session-tab-strip button { -webkit-app-region: no-drag; }
 .session-tab-strip > .chrome-icon-button { align-self: center; }
-.horizontal-tabs { display: flex; align-items: center; gap: 3px; overflow-x: auto; flex: 1 1 auto; width: max-content; min-width: 0; height: 100%; scrollbar-width: none; overflow-anchor:none; overscroll-behavior-x: contain; -webkit-app-region: no-drag; }
+.horizontal-tabs { display: flex; align-items: center; gap: 3px; overflow-x: auto; flex: 1 1 auto; width: max-content; min-width: 0; height: 100%; scrollbar-width: none; overflow-anchor:none; overscroll-behavior-x: contain; -webkit-app-region: drag; }
+.horizontal-tab { -webkit-app-region: no-drag; }
 .horizontal-tabs[data-overflow="dropdown"] { overflow: clip; scroll-behavior:auto; }
 .horizontal-tabs::-webkit-scrollbar { display: none; }
 .horizontal-tabs[data-overflow="scroll"] { --tab-fade-left: 0px; --tab-fade-right: 0px; mask-image: linear-gradient(to right, transparent, #000 var(--tab-fade-left), #000 calc(100% - var(--tab-fade-right)), transparent); }
@@ -1159,6 +1160,8 @@ browser-action-list::part(action):focus-visible {
 .extension-toolbar browser-action-list { min-width:0; max-width:100%; flex:0 1 auto; overflow-x:auto; overflow-y:hidden; --browser-action-hover-bg:var(--gray-a4); }
 .browser-address-header { padding:4px 0; min-width:0; flex-shrink:0; -webkit-app-region:drag; }
 .address-bar[data-placement='header'] { flex-direction:row; align-items:center; }
+.address-bar[data-placement='header'] { -webkit-app-region:drag; }
+.address-bar[data-placement='header'] :is(input, button, [role='button'], [contenteditable='true']) { -webkit-app-region:no-drag; }
 .address-bar[data-placement='header'] .address-bar-input { flex:1; }
 .address-bar[data-placement='header'] .location-label { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
 .address-bar[data-placement='header'] .address-bar-extensions { flex:0 1 auto; max-width:35%; padding:0 0 0 6px; margin-left:6px; border-top:0; border-left:1px solid var(--gray-a5); }

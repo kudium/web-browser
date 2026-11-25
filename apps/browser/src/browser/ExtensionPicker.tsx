@@ -6,12 +6,14 @@ import type { PreferenceInfo } from './preferences';
 
 // Use the engine's buttons to preserve icons, badges and popup anchors.
 export function ExtensionPicker({
+  onExtensionMenu,
   context,
   order,
   close,
   manage,
   store,
 }: {
+  onExtensionMenu?: (id: string) => void;
   context: BrowserState['extensionContext'];
   order: string[] | null;
   close: () => void;
@@ -44,6 +46,16 @@ export function ExtensionPicker({
   useEffect(() => {
     const root = element.current?.shadowRoot;
     if (!root) return undefined;
+    const contextMenu = (event: Event) => {
+      if (!onExtensionMenu || !(event.target instanceof Element)) return;
+      const action = event.target.closest<HTMLElement>('.action');
+      if (!action) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onExtensionMenu(action.id);
+    };
+    root.addEventListener('contextmenu', contextMenu, true);
+
     const style = document.createElement('style');
     style.textContent = `
       :host { display: block; width: 100%; }
@@ -86,6 +98,7 @@ export function ExtensionPicker({
           };
           label.oncontextmenu = (event) => {
             event.preventDefault();
+            if(onExtensionMenu){onExtensionMenu(action.id);return;}
             action.dispatchEvent(
               new MouseEvent('contextmenu', { bubbles: true })
             );
@@ -177,10 +190,11 @@ export function ExtensionPicker({
     });
     return () => {
       observer.disconnect();
+      root.removeEventListener('contextmenu', contextMenu, true);
       root.removeEventListener('click', activate);
       style.remove();
     };
-  }, [context?.profile, catalog, order, query, busy, close]);
+  }, [context?.profile, catalog, order, query, busy, close, onExtensionMenu]);
   return (
     <div className="extension-picker">
       <TextField.Root

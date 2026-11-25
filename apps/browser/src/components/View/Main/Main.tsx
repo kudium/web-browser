@@ -378,10 +378,20 @@ export function Main() {
     const element = body.current;
     if (!element) return undefined;
     const measure = () => setBodyWidth(element.getBoundingClientRect().width);
-    const observer = new ResizeObserver(measure);
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        measure();
+      });
+    });
     observer.observe(element);
     measure();
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
   const { appList, lastIndex } = useAppList();
   const aiWorkingTabs = appList.filter(
@@ -1288,7 +1298,7 @@ export function Main() {
         .querySelector<HTMLButtonElement>(
           '.horizontal-tab.active .horizontal-tab-select'
         )
-        ?.focus();
+        ?.focus({ preventScroll: true });
     });
   }, []);
   const selectGroup = useCallback(
@@ -2041,7 +2051,7 @@ export function Main() {
             .querySelector<HTMLButtonElement>(
               '.horizontal-tab.active .horizontal-tab-select'
             )
-            ?.focus();
+            ?.focus({ preventScroll: true });
         });
     }
   };
@@ -3322,6 +3332,7 @@ export function Main() {
       }}
       extensions={
         <ExtensionToolbar
+          onExtensionMenu={(extensionId) => browser.command({id: selected?.id || '', action: 'extensions', extensionId})}
           context={state?.extensionContext}
           order={extensionToolbarOrder}
           showPinned={showExtensionIcons}
@@ -3697,6 +3708,7 @@ export function Main() {
           }
         />
         <HorizontalTabList
+          key={groupKey(paneSelected)}
           mode={tabOverflowMode}
           tabs={paneTabs.map((item) => ({
             id: item.id,

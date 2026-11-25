@@ -12,6 +12,7 @@ export function ExtensionToolbar({
   open,
   onOpenChange,
   onClose,
+  onExtensionMenu,
   onManage,
   onStore,
 }: {
@@ -21,6 +22,7 @@ export function ExtensionToolbar({
   open: boolean;
   onOpenChange: (nextOpen: boolean) => void;
   onClose: () => void;
+  onExtensionMenu?: (id: string) => void;
   onManage: () => void;
   onStore: () => void;
 }) {
@@ -30,7 +32,7 @@ export function ExtensionToolbar({
       role="group"
       aria-label="Address bar extensions"
     >
-      {showPinned && <ExtensionActions context={context} order={order} />}
+      {showPinned && <ExtensionActions context={context} order={order} onExtensionMenu={onExtensionMenu} />}
       <Popover.Root open={open} onOpenChange={onOpenChange}>
         <Popover.Trigger>
           <ChromeIconButton
@@ -47,6 +49,7 @@ export function ExtensionToolbar({
           collisionPadding={8}
         >
           <ExtensionPicker
+            onExtensionMenu={onExtensionMenu}
             context={context}
             order={order}
             close={onClose}

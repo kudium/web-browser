@@ -109,6 +109,11 @@ export function marketplaceStore(db: Database) {
     return row;
   };
   return {
+    async imageReferenced(key: string, viewer?: string, onlyPublic = false) {
+      const conditions = [sql`${hookListings.images} @> ${JSON.stringify([key])}::jsonb`];
+      if(onlyPublic) conditions.push(viewer ? or(eq(hookListings.status,'approved'),eq(hookListings.authorId,viewer))! : eq(hookListings.status,'approved'));
+      return (await db.select({id:hookListings.id}).from(hookListings).where(and(...conditions)).limit(1)).length>0;
+    },
     async publisher(userId: string) {
       const [user] = await db.select({ username: authUser.username }).from(authUser).where(eq(authUser.id, userId));
       if (!user) throw new HTTPException(404, { message: 'publisher_not_found' });
@@ -258,7 +263,8 @@ export function marketplaceStore(db: Database) {
       input: unknown,
       id?: string,
       expected?: number,
-      username?: string
+      username?: string,
+      images?: string[]
     ) {
       const pkg = validatedPackage(input);
       const hookId = id || randomUUID();
@@ -291,6 +297,7 @@ export function marketplaceStore(db: Database) {
               version,
               status,
               updatedAt: new Date(),
+              ...(images === undefined ? {} : {images}),
             })
             .where(eq(hookListings.id, id));
           await tx.delete(hookTargets).where(eq(hookTargets.hookId, id));
@@ -299,6 +306,7 @@ export function marketplaceStore(db: Database) {
             .insert(hookListings)
             .values({
               id: hookId,
+              images: images || [],
               authorId: userId,
               name: pkg.name,
               description: pkg.description,

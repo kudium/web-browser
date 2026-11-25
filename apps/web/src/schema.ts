@@ -4,6 +4,7 @@ import type { Envelope, ReleaseManifest } from './validation';
 import type { HookPackage } from '../../../packages/hooks/package';
 export const hookListings = pgTable('hook_listings', {
   id: text('id').primaryKey(), authorId: text('author_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
+  images: jsonb('images').$type<string[]>().notNull().default([]),
   name: text('name').notNull(), description: text('description').notNull(), applicability: text('applicability').notNull(),
   status: text('status').$type<'pending' | 'approved' | 'rejected'>().notNull().default('approved'), statusReason: text('status_reason'),
   version: integer('version').notNull().default(1), likes: integer('likes').notNull().default(0),

@@ -1663,7 +1663,7 @@ export function registerElectronBrowser(
       const item = configurations.get(request.id);
       if (item) setActiveExtensionProfile(window, loginProfileKey(item));
       Menu.buildFromTemplate(
-        extensionMenu(window, views.get(request.id)?.webContents)
+        extensionMenu(window, views.get(request.id)?.webContents, request.extensionId)
       ).popup({ window });
       return;
     }
@@ -2647,6 +2647,8 @@ export function registerElectronBrowser(
     if (windows) windows.setLayout(source, layout);
     else applyLayout(layout);
     const panelHost = sidebarPanelHostFor(source);
+    const focusedApp = configurations.get(layout.focusedId || '');
+    panelHost?.followFocusedGroup(focusedApp && groupKey(focusedApp));
     const groupTargets = new Map<string, IApp>();
     for (const app of configurations.values()) if (!app.archived && !isGroupLocked(app) && !removals.blocks(app) && hostFor(app.id) === source) {
       const key = groupKey(app);

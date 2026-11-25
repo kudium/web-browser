@@ -25,6 +25,10 @@ context.panel.onAction('refresh', async payload => {
 Register handlers before revealing output if the action is immediately usable.
 `show` and `update` take the same complete payload. IDs are local to the hook/page
 instance; `reveal` defaults to false. `close(id)` removes that provider.
+With `reveal: true`, the panel picker returns to Auto and opens output belonging
+to the current group. Background pages can publish output without selecting a
+tab or pinning a group. The group must remain available and the hook must still
+be authorized.
 Structured output supports `text`, `markdown`, `json`, `table` and `status`.
 Markdown uses the installed Markdown parser, rejects raw HTML and unsafe links,
 and never fetches images. Tables have matching column/cell counts; statuses are
@@ -110,3 +114,35 @@ await context.panel.show({
 ```
 
 Custom panel CSS can use `var(--kudium-primary)`, `var(--kudium-frame)` and `var(--kudium-primary-contrast)`; these update automatically. Links and gallery icons inherit neutral content text by default, following the light/dark appearance. Use `a { color: var(--kudium-primary); }` only when a custom design explicitly needs the primary color. Custom JavaScript can subscribe with `kudiumHookPanel.onThemeChanged(colors => { /* redraw with colors.primary */ })`, which returns an unsubscribe function. Reuse the browser theme resolver and its change subscription; do not introduce a separate panel palette or theme store.
+
+
+### Shared form styles (development build)
+
+Custom HTML can opt into the browser's compact controls without copying CSS:
+
+```html
+<div class="kudium-form">
+  <label class="kudium-field">
+    Search
+    <input type="search" placeholder="Enter a keyword">
+  </label>
+  <label class="kudium-field">
+    Format
+    <select><option>Summary</option><option>Details</option></select>
+  </label>
+  <label class="kudium-field">
+    Notes
+    <textarea rows="3" placeholder="Optional notes"></textarea>
+  </label>
+  <p class="kudium-hint">Only data provided by your hook is available.</p>
+  <button type="button" class="kudium-button kudium-button-primary">Refresh</button>
+</div>
+```
+
+`kudium-form` adds compact spacing and styles text inputs, dropdowns and textareas.
+`kudium-field` groups a visible label with its control; `kudium-hint` styles helper
+text. `kudium-button` supplies a neutral action; add `kudium-button-primary` for
+the main action. Controls support keyboard focus, disabled states and
+`aria-invalid="true"`. Connect validation text with `aria-describedby`. These
+classes are optional; custom CSS is applied afterward and can override them.
+Buttons still need the existing action bridge or custom event handlers.

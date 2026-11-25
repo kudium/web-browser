@@ -286,6 +286,40 @@
   }
   const publish = document.querySelector("[data-hook-publish]");
   if (publish) {
+    let screenshotKeys = JSON.parse(publish.dataset.images || '[]');
+    let uploading = false;
+    const uploadInput = publish.querySelector('[data-hook-images]');
+    const previews = publish.querySelector('[data-image-previews]');
+    const uploadFeedback = publish.querySelector('[data-image-feedback]');
+    const renderImages = () => {
+      previews.replaceChildren();
+      screenshotKeys.forEach((key,index) => {
+        const card = document.createElement('div');
+        const image = document.createElement('img');image.src='/hook-images/'+key+'/thumb.webp';image.alt='Screenshot '+(index+1);
+        const remove = document.createElement('button');remove.type='button';remove.textContent='Remove';remove.setAttribute('aria-label','Remove screenshot '+(index+1));
+        remove.onclick=()=>{if(uploading)return;screenshotKeys=screenshotKeys.filter(k=>k!==key);renderImages();};
+        card.append(image,remove);previews.append(card);
+      });
+    };
+    renderImages();
+    uploadInput.addEventListener('change',async()=>{
+      if(uploading)return;
+      const files=[...uploadInput.files];
+      if(screenshotKeys.length+files.length>3){uploadFeedback.textContent='Choose at most 3 screenshots.';uploadInput.value='';return;}
+      uploading=true;uploadInput.disabled=true;publish.querySelectorAll('button[type=submit]').forEach(b=>b.disabled=true);
+      try{
+        for(const file of files){
+          if(file.size>5*1024*1024)throw new Error('Each screenshot must be 5 MB or smaller.');
+          uploadFeedback.textContent='Compressing and uploading screenshot…';
+          const body=new FormData();body.append('image',file);
+          const response=await fetch('/api/hooks/images',{method:'POST',body});const result=await response.json();
+          if(!response.ok)throw new Error(result.error || 'Screenshot upload failed.');
+          screenshotKeys.push(result.key);renderImages();
+        }
+        uploadFeedback.textContent='Screenshots ready.';
+      }catch(error){uploadFeedback.textContent=error.message;}
+      finally{uploading=false;uploadInput.disabled=false;uploadInput.value='';publish.querySelectorAll('button[type=submit]').forEach(b=>b.disabled=false);}
+    });
     const targets = publish.elements.namedItem("sites");
     const applicability = publish.elements.namedItem("applicability");
     const updateTargets = () => {
@@ -331,6 +365,7 @@
 
     publish.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if(uploading)return;
       const data = Object.fromEntries(new FormData(publish));
       const pkg = {
         schemaVersion: actionList.children.length ? 2 : 1,
@@ -361,6 +396,7 @@
       try {
         const result = await api("/api/hooks/publish", "POST", {
           package: pkg,
+          images: screenshotKeys,
           username: data.username,
           ...(publish.dataset.id
             ? {

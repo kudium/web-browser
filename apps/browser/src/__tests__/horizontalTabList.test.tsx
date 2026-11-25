@@ -60,7 +60,7 @@ it('lists clipped tabs and selects the chosen overflow tab', async () => {
   await waitFor(() => expect(select).toHaveBeenCalledWith('b'));
 });
 
-it('keeps the dropdown hidden in scroll mode', () => {
+it('keeps the dropdown hidden in scroll mode', async () => {
   const { container } = render(
     <HorizontalTabList mode="scroll" tabs={tabs} onSelect={() => {}}>
       <div className="horizontal-tab" />
@@ -77,6 +77,6 @@ it('keeps the dropdown hidden in scroll mode', () => {
   nodes[0].setAttribute('data-left', '-100');
   nodes[1].setAttribute('data-left', '0');
   fireEvent.scroll(strip);
-  expect(strip.getAttribute('data-fade-left')).toBe('true');
+  await waitFor(() => expect(strip.getAttribute('data-fade-left')).toBe('true'));
   expect(strip.getAttribute('data-fade-right')).toBe('false');
 });

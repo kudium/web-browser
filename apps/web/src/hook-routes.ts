@@ -1,157 +1,209 @@
-import { Hono } from 'hono';
-import { bodyLimit } from 'hono/body-limit';
-import { HTTPException } from 'hono/http-exception';
-import { z } from 'zod';
-import type { Auth } from './auth';
-import type { Database } from './db';
-import { marketplaceStore, hookQuery } from './hook-marketplace';
-import { hookIndexPage, hookDetailPage, hookPublishPage } from './hook-pages';
+import {
+  hookImageStore,
+  imageRoot,
+  imageKeyPattern,
+  imageOwner,
+} from "./hook-images";
+import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
+import { z } from "zod";
+import type { Auth } from "./auth";
+import type { Database } from "./db";
+import { marketplaceStore, hookQuery } from "./hook-marketplace";
+import { hookIndexPage, hookDetailPage, hookPublishPage } from "./hook-pages";
 export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
-  const app = new Hono<{ Variables: { user: string; admin: boolean; styleNonce: string } }>();
+  const app = new Hono<{
+    Variables: { user: string; admin: boolean; styleNonce: string };
+  }>();
   const store = marketplaceStore(db);
+  const images = hookImageStore(imageRoot());
   const session = async (headers: Headers) =>
     auth?.api.getSession({ headers, query: { disableCookieCache: true } });
   const admins = new Set(adminIds);
   const buckets = new Map<string, { count: number; until: number }>();
-  app.use('*', async (c, next) => {
-    c.header('Cache-Control', 'no-store');
+  app.use("*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
     await next();
   });
-  for (const asset of ['hooks.css', 'hooks.js'])
+  for (const asset of ["hooks.css", "hooks.js"])
     app.get(`/assets/${asset}`, async (c) => {
       c.header(
-        'Content-Type',
-        asset.endsWith('.css')
-          ? 'text/css; charset=utf-8'
-          : 'text/javascript; charset=utf-8'
+        "Content-Type",
+        asset.endsWith(".css")
+          ? "text/css; charset=utf-8"
+          : "text/javascript; charset=utf-8",
       );
       return c.body(
-        await Bun.file(new URL(`../public/${asset}`, import.meta.url)).text()
+        await Bun.file(new URL(`../public/${asset}`, import.meta.url)).text(),
       );
     });
   let editorBundle: Promise<string> | undefined;
-  app.get('/assets/hook-editor.js', async c => {
-    editorBundle ??= Bun.build({ entrypoints: [new URL('../public/hook-editor.ts', import.meta.url).pathname], target: 'browser', minify: true }).then(async result => {
-      if (!result.success) throw new Error('Hook editor build failed');
-      return result.outputs[0].text();
-    }).catch(error => { editorBundle = undefined; throw error; });
-    c.header('Content-Type', 'text/javascript; charset=utf-8');
+  app.get("/assets/hook-editor.js", async (c) => {
+    editorBundle ??= Bun.build({
+      entrypoints: [
+        new URL("../public/hook-editor.ts", import.meta.url).pathname,
+      ],
+      target: "browser",
+      minify: true,
+    })
+      .then(async (result) => {
+        if (!result.success) throw new Error("Hook editor build failed");
+        return result.outputs[0].text();
+      })
+      .catch((error) => {
+        editorBundle = undefined;
+        throw error;
+      });
+    c.header("Content-Type", "text/javascript; charset=utf-8");
     return c.body(await editorBundle);
   });
-  app.get('/hooks', async (c) =>
+  app.get("/hook-images/:owner/:id/:size", async (c) => {
+    const key = c.req.param("owner") + "/" + c.req.param("id");
+    if (!imageKeyPattern.test(key))
+      throw new HTTPException(404, { message: "image_not_found" });
+    const publicImage = await store.imageReferenced(key, undefined, true);
+    if (!publicImage) {
+      const viewer = await session(c.req.raw.headers);
+      if (!viewer || imageOwner(viewer.user.id) !== c.req.param("owner"))
+        throw new HTTPException(404, { message: "image_not_found" });
+    }
+    c.header("Content-Type", "image/webp");
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header("Content-Security-Policy", "default-src 'none'; sandbox");
+    c.header("Cross-Origin-Resource-Policy", "same-origin");
+    c.header(
+      "Cache-Control",
+      publicImage ? "public, max-age=86400" : "private, no-store",
+    );
+    return c.body(await images.read(key, c.req.param("size")));
+  });
+  app.get("/hooks", async (c) =>
     c.html(
       hookIndexPage(
-        await store.list(hookQuery(c.req.query()), c.req.query('cursor')),
-        hookQuery(c.req.query())
-      )
-    )
+        await store.list(hookQuery(c.req.query()), c.req.query("cursor")),
+        hookQuery(c.req.query()),
+      ),
+    ),
   );
-  for (const route of ['/account/hooks', '/hooks/admin'])
+  for (const route of ["/account/hooks", "/hooks/admin"])
     app.get(route, async (c) => {
       const viewer = await session(c.req.raw.headers);
       if (!viewer)
         return c.redirect(`/sign-in?next=${encodeURIComponent(route)}`);
-      const admin = route.endsWith('/admin');
+      const admin = route.endsWith("/admin");
       if (admin && !admins.has(viewer.user.id))
-        throw new HTTPException(403, { message: 'admin_required' });
+        throw new HTTPException(403, { message: "admin_required" });
       const q = hookQuery(c.req.query());
       return c.html(
         hookIndexPage(
           await store.list(
             q,
-            c.req.query('cursor'),
+            c.req.query("cursor"),
             admin ? undefined : viewer.user.id,
-            admin
+            admin,
           ),
           q,
           !admin,
-          admin
-        )
+          admin,
+        ),
       );
     });
-  app.get('/hooks/new', async (c) => {
+  app.get("/hooks/new", async (c) => {
     const viewer = await session(c.req.raw.headers);
     return viewer
-      ? c.html(hookPublishPage(undefined, c.get('styleNonce'), (await store.publisher(viewer.user.id)).username))
-      : c.redirect('/sign-in?next=%2Fhooks%2Fnew');
+      ? c.html(
+          hookPublishPage(
+            undefined,
+            c.get("styleNonce"),
+            (await store.publisher(viewer.user.id)).username,
+          ),
+        )
+      : c.redirect("/sign-in?next=%2Fhooks%2Fnew");
   });
-  app.get('/hooks/:id/edit', async (c) => {
+  app.get("/hooks/:id/edit", async (c) => {
     const viewer = await session(c.req.raw.headers);
     if (!viewer)
       return c.redirect(`/sign-in?next=${encodeURIComponent(c.req.path)}`);
-    const detail = await store.detail(c.req.param('id'), viewer.user.id);
+    const detail = await store.detail(c.req.param("id"), viewer.user.id);
     if (detail.hook.authorId !== viewer.user.id)
-      throw new HTTPException(403, { message: 'owner_required' });
-    return c.html(hookPublishPage(detail, c.get('styleNonce'), detail.author.username));
+      throw new HTTPException(403, { message: "owner_required" });
+    return c.html(
+      hookPublishPage(detail, c.get("styleNonce"), detail.author.username),
+    );
   });
-  app.get('/hooks/:id', async (c) => {
+  app.get("/hooks/:id", async (c) => {
     const viewer = await session(c.req.raw.headers);
     const admin = !!viewer && admins.has(viewer.user.id);
     return c.html(
       hookDetailPage(
-        await store.detail(c.req.param('id'), viewer?.user.id, admin),
+        await store.detail(c.req.param("id"), viewer?.user.id, admin),
         viewer?.user.id,
-        admin
-      )
+        admin,
+      ),
     );
   });
-  app.get('/v1/hooks', async (c) =>
-    c.json(await store.list(hookQuery(c.req.query()), c.req.query('cursor')))
+  app.get("/v1/hooks", async (c) =>
+    c.json(await store.list(hookQuery(c.req.query()), c.req.query("cursor"))),
   );
-  app.get('/v1/hooks/:id', async (c) => {
+  app.get("/v1/hooks/:id", async (c) => {
     const viewer = await session(c.req.raw.headers);
     return c.json(
       await store.detail(
-        c.req.param('id'),
+        c.req.param("id"),
         viewer?.user.id,
-        !!viewer && admins.has(viewer.user.id)
-      )
+        !!viewer && admins.has(viewer.user.id),
+      ),
     );
   });
-  app.get('/v1/hooks/:id/package', async (c) =>
-    c.json(await store.package(c.req.param('id')))
+  app.get("/v1/hooks/:id/package", async (c) =>
+    c.json(await store.package(c.req.param("id"))),
   );
-  app.get('/v1/hooks/:id/versions/:version/package', async (c) => {
-    const version = Number(c.req.param('version'));
+  app.get("/v1/hooks/:id/versions/:version/package", async (c) => {
+    const version = Number(c.req.param("version"));
     if (!Number.isSafeInteger(version) || version < 1)
-      throw new HTTPException(400, { message: 'invalid_version' });
-    return c.json(await store.package(c.req.param('id'), version));
+      throw new HTTPException(400, { message: "invalid_version" });
+    return c.json(await store.package(c.req.param("id"), version));
   });
-  app.get('/v1/hooks/:id/comments', async (c) => {
+  app.get("/v1/hooks/:id/comments", async (c) => {
     const viewer = await session(c.req.raw.headers);
     return c.json(
       await store.comments(
-        c.req.param('id'),
-        c.req.query('cursor'),
+        c.req.param("id"),
+        c.req.query("cursor"),
         viewer?.user.id,
-        !!viewer && admins.has(viewer.user.id)
-      )
+        !!viewer && admins.has(viewer.user.id),
+      ),
     );
   });
-  app.use(
-    '/api/hooks/*',
+  app.use("/api/hooks/*", (c, next) =>
     bodyLimit({
-      maxSize: 256 * 1024,
-      onError: (c) => c.json({ error: 'body_too_large' }, 413),
-    })
+      maxSize:
+        c.req.path === "/api/hooks/images" ? 6 * 1024 * 1024 : 256 * 1024,
+      onError: (context) => context.json({ error: "body_too_large" }, 413),
+    })(c, next),
   );
-  app.use('/api/hooks/*', async (c, next) => {
-    if (!auth) throw new HTTPException(401, { message: 'sign_in_required' });
-    const bearer = c.req.header('Authorization');
+  app.use("/api/hooks/*", async (c, next) => {
+    if (!auth) throw new HTTPException(401, { message: "sign_in_required" });
+    const bearer = c.req.header("Authorization");
     if (
-      c.req.method !== 'GET' &&
+      c.req.method !== "GET" &&
       !bearer &&
-      c.req.header('Origin') !== new URL(String(auth.options.baseURL)).origin
+      c.req.header("Origin") !== new URL(String(auth.options.baseURL)).origin
     )
-      throw new HTTPException(403, { message: 'untrusted_origin' });
+      throw new HTTPException(403, { message: "untrusted_origin" });
     const headers = bearer
       ? new Headers({ Authorization: bearer })
       : c.req.raw.headers;
     const viewer = await session(headers);
-    if (!viewer) throw new HTTPException(401, { message: 'sign_in_required' });
-    if (c.req.method !== 'GET') {
-      if (!c.req.header('Content-Type')?.startsWith('application/json'))
-        throw new HTTPException(415, { message: 'json_required' });
+    if (!viewer) throw new HTTPException(401, { message: "sign_in_required" });
+    if (c.req.method !== "GET") {
+      if (
+        !(c.req.path === "/api/hooks/images"
+          ? c.req.header("Content-Type")?.startsWith("multipart/form-data")
+          : c.req.header("Content-Type")?.startsWith("application/json"))
+      )
+        throw new HTTPException(415, { message: "json_required" });
       const now = Date.now();
       for (const [key, value] of buckets)
         if (value.until <= now) buckets.delete(key);
@@ -162,10 +214,10 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
       bucket.count += 1;
       buckets.set(viewer.user.id, bucket);
       if (bucket.count > 30)
-        throw new HTTPException(429, { message: 'too_many_requests' });
+        throw new HTTPException(429, { message: "too_many_requests" });
     }
-    c.set('user', viewer.user.id);
-    c.set('admin', admins.has(viewer.user.id));
+    c.set("user", viewer.user.id);
+    c.set("admin", admins.has(viewer.user.id));
     await next();
   });
   const input = async <T>(c: any, schema: z.ZodType<T>): Promise<T> => {
@@ -173,77 +225,101 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
     try {
       body = await c.req.json();
     } catch {
-      throw new HTTPException(400, { message: 'invalid_json' });
+      throw new HTTPException(400, { message: "invalid_json" });
     }
     const result = schema.safeParse(body);
     if (!result.success)
-      throw new HTTPException(400, { message: 'invalid_request' });
+      throw new HTTPException(400, { message: "invalid_request" });
     return result.data;
   };
-  app.post('/api/hooks/publisher', async c => {
-    const data = await input(c, z.object({ username: z.string().max(100) }).strict());
-    return c.json(await store.updatePublisherUsername(c.get('user'), data.username));
+  app.post("/api/hooks/publisher", async (c) => {
+    const data = await input(
+      c,
+      z.object({ username: z.string().max(100) }).strict(),
+    );
+    return c.json(
+      await store.updatePublisherUsername(c.get("user"), data.username),
+    );
   });
-  app.post('/api/hooks/publish', async (c) => {
+  app.post("/api/hooks/images", async (c) => {
+    const data = await c.req.formData();
+    const file = data.get("image");
+    if (!(file instanceof File))
+      throw new HTTPException(400, { message: "Choose an image file." });
+    if (file.size > 5 * 1024 * 1024)
+      throw new HTTPException(413, { message: "image_too_large" });
+    return c.json(
+      await images.upload(c.get("user"), Buffer.from(await file.arrayBuffer())),
+      201,
+    );
+  });
+  app.post("/api/hooks/publish", async (c) => {
     const data = await input(
       c,
       z
         .object({
           package: z.unknown(),
+          images: z.array(z.string().regex(imageKeyPattern)).max(3).optional(),
           username: z.string().max(30).optional(),
           id: z.string().max(100).optional(),
           expectedVersion: z.number().int().positive().optional(),
         })
-        .strict()
+        .strict(),
     );
+    if (data.images) {
+      if (new Set(data.images).size !== data.images.length)
+        throw new HTTPException(400, { message: "Duplicate screenshots." });
+      for (const key of data.images) await images.owned(c.get("user"), key);
+    }
     return c.json(
       await store.publish(
-        c.get('user'),
+        c.get("user"),
         data.package,
         data.id,
         data.expectedVersion,
-        data.username
+        data.username,
+        data.images,
       ),
-      201
+      201,
     );
   });
-  app.put('/api/hooks/:id/like', async (c) => {
+  app.put("/api/hooks/:id/like", async (c) => {
     const data = await input(c, z.object({ liked: z.boolean() }).strict());
     return c.json(
-      await store.like(c.req.param('id'), c.get('user'), data.liked)
+      await store.like(c.req.param("id"), c.get("user"), data.liked),
     );
   });
   const comment = z
     .object({ body: z.string().trim().min(1).max(2000) })
     .strict();
-  app.post('/api/hooks/:id/comments', async (c) => {
+  app.post("/api/hooks/:id/comments", async (c) => {
     const data = await input(c, comment);
     return c.json(
-      await store.comment(c.req.param('id'), c.get('user'), data.body),
-      201
+      await store.comment(c.req.param("id"), c.get("user"), data.body),
+      201,
     );
   });
-  app.patch('/api/hooks/:id/comments/:comment', async (c) => {
+  app.patch("/api/hooks/:id/comments/:comment", async (c) => {
     const data = await input(c, comment);
     await store.editComment(
-      c.req.param('id'),
-      c.req.param('comment'),
-      c.get('user'),
-      data.body
+      c.req.param("id"),
+      c.req.param("comment"),
+      c.get("user"),
+      data.body,
     );
     return c.json({ ok: true });
   });
-  app.delete('/api/hooks/:id/comments/:comment', async (c) => {
+  app.delete("/api/hooks/:id/comments/:comment", async (c) => {
     await store.editComment(
-      c.req.param('id'),
-      c.req.param('comment'),
-      c.get('user'),
+      c.req.param("id"),
+      c.req.param("comment"),
+      c.get("user"),
       undefined,
-      c.get('admin')
+      c.get("admin"),
     );
     return c.json({ ok: true });
   });
-  app.post('/api/hooks/:id/report', async (c) => {
+  app.post("/api/hooks/:id/report", async (c) => {
     const data = await input(
       c,
       z
@@ -251,46 +327,46 @@ export function hookRoutes(db: Database, auth?: Auth, adminIds: string[] = []) {
           reason: z.string().trim().min(1).max(2000),
           commentId: z.string().max(100).optional(),
         })
-        .strict()
+        .strict(),
     );
     await store.report(
-      c.req.param('id'),
-      c.get('user'),
+      c.req.param("id"),
+      c.get("user"),
       data.reason,
-      data.commentId
+      data.commentId,
     );
     return c.json({ ok: true });
   });
-  app.use('/api/hooks/admin/*', async (c, next) => {
-    if (!c.get('admin'))
-      throw new HTTPException(403, { message: 'admin_required' });
+  app.use("/api/hooks/admin/*", async (c, next) => {
+    if (!c.get("admin"))
+      throw new HTTPException(403, { message: "admin_required" });
     await next();
   });
-  app.get('/api/hooks/admin/reports', async (c) =>
-    c.json({ items: await store.reports() })
+  app.get("/api/hooks/admin/reports", async (c) =>
+    c.json({ items: await store.reports() }),
   );
-  app.post('/api/hooks/admin/reports/:id/resolve', async (c) => {
+  app.post("/api/hooks/admin/reports/:id/resolve", async (c) => {
     await input(c, z.object({}).strict());
-    await store.resolveReport(c.req.param('id'), c.get('user'));
+    await store.resolveReport(c.req.param("id"), c.get("user"));
     return c.json({ ok: true });
   });
-  app.patch('/api/hooks/admin/:id', async (c) => {
+  app.patch("/api/hooks/admin/:id", async (c) => {
     const data = await input(
       c,
       z
         .object({
-          status: z.enum(['approved', 'pending', 'rejected']),
+          status: z.enum(["approved", "pending", "rejected"]),
           reason: z.string().trim().max(2000),
         })
-        .strict()
+        .strict(),
     );
-    if (data.status === 'rejected' && !data.reason)
-      throw new HTTPException(400, { message: 'rejection_reason_required' });
+    if (data.status === "rejected" && !data.reason)
+      throw new HTTPException(400, { message: "rejection_reason_required" });
     await store.moderate(
-      c.req.param('id'),
-      c.get('user'),
+      c.req.param("id"),
+      c.get("user"),
       data.status,
-      data.reason
+      data.reason,
     );
     return c.json({ ok: true });
   });

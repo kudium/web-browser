@@ -52,7 +52,7 @@ fs.writeFileSync(path.join(runtimeDir,'dialogs.js'),"module.exports={...require(
 require('esbuild').buildSync({entryPoints:['src/main/privateSessions.ts'],bundle:true,platform:'node',outfile:path.join(runtimeDir,'privateSessions.js')});
 require('esbuild').buildSync({entryPoints:['src/main/downloads.ts'],bundle:true,platform:'node',external:['electron','./preferences','./privateSessions'],outfile:path.join(runtimeDir,'downloads.js')});
 require('esbuild').buildSync({entryPoints:['src/main/websitePermissions.ts'],bundle:true,platform:'node',external:['electron','./preferences','./dialogs','./siteSettings'],outfile:path.join(runtimeDir,'websitePermissions.js')});
-fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};export * from ${JSON.stringify(path.resolve('src/main/privateBrowsing'))};export {registerTaskManagerWindow} from ${JSON.stringify(path.resolve('src/main/taskManager'))};export {safeStorage as fixtureSecureStorage} from ${JSON.stringify(path.resolve('src/main/localStorage'))};`);
+fs.writeFileSync(path.join(runtimeDir,'browser-entry.ts'),`export * from ${JSON.stringify(path.resolve('src/main/electronBrowser'))};export * from ${JSON.stringify(path.resolve('src/main/groupLocks'))};export * from ${JSON.stringify(path.resolve('src/main/browserWindows'))};export * from ${JSON.stringify(path.resolve('src/main/privateBrowsing'))};export {registerTaskManagerWindow} from ${JSON.stringify(path.resolve('src/main/taskManager'))};export {registerSidebarPanelWindow,sidebarPanelsFor} from ${JSON.stringify(path.resolve('src/main/sidebarPanels'))};export {showHookPanel} from ${JSON.stringify(path.resolve('src/main/hookPanels'))};export {safeStorage as fixtureSecureStorage} from ${JSON.stringify(path.resolve('src/main/localStorage'))};`);
 require('esbuild').buildSync({entryPoints:[path.join(runtimeDir,'browser-entry.ts')],bundle:true,platform:'node',external:['electron','./extensions','./preferences','./downloads','./dialogs','./siteSettings','./history','./privateSessions',require.resolve('node-pty')],alias:{'node-pty':require.resolve('node-pty')},outfile:path.join(runtimeDir,'electronBrowser.js')});
 require('fs').copyFileSync(require.resolve('electron-chrome-extensions/preload'),path.join(runtimeDir,'chrome-extension-api.preload.js'));
 require('fs').copyFileSync(require.resolve('electron-chrome-web-store/preload'),path.join(runtimeDir,'chrome-web-store.preload.js'));
@@ -248,6 +248,7 @@ app
         const api = require(path.join(runtimeDir, 'electronBrowser.js'));
         const coordinator = api.getBrowserWindows() || api.registerBrowserWindows(() => create('main-secondary', 1160, 900));
         coordinator.register(win);
+        if(process.argv.includes('--folder-group-switch-only'))api.registerSidebarPanelWindow(win);
         registerBrowser(win);
       }
       if (view === 'task-manager') { win.setParentWindow(windows.main); require(path.join(runtimeDir,'electronBrowser.js')).registerTaskManagerWindow(win); }
@@ -1222,7 +1223,8 @@ app
         pinned: true,
       },
     ];
-    if (process.argv.includes('--group-close-only')) tabs[2].sessionProfileId = 'personal';
+    if (process.argv.includes('--folder-group-switch-only')) tabs.forEach(tab => { if (!tab.favorite) tab.groupDisplay = 'folder'; });
+    if (process.argv.includes('--group-close-only') || (process.argv.includes('--folder-group-switch-only') && process.argv.includes('--shared-profile'))) tabs[2].sessionProfileId = 'personal';
     await evaluate(
       main,
       `localStorage.setItem('user_apps',${JSON.stringify(
@@ -1260,6 +1262,45 @@ app
     const initialViews = main.contentView.children.filter(view => view instanceof WebContentsView && view.webContents.session !== main.webContents.session);
     assert.equal(initialViews.length, 1, 'Startup should only create the selected page: '+JSON.stringify(initialViews.map(view=>({id:view.webContents.id,url:view.webContents.getURL(),visible:view.getVisible()}))));
     assert(initialViews[0].webContents.getURL().endsWith('/home'));
+    if(process.argv.includes('--folder-group-switch-only')) {
+      main.show();main.focus();
+      await evaluate(main, `window.resizeLoopErrors=[];window.addEventListener('error',e=>{if(e.message.includes('ResizeObserver'))window.resizeLoopErrors.push(e.message)});undefined`);
+      const click=async selector=>{
+        const point=await evaluate(main, `(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('Missing '+${JSON.stringify(selector)});e.scrollIntoView({block:'nearest'});const r=e.getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`);
+        main.webContents.sendInputEvent({type:'mouseDown',button:'left',clickCount:1,...point});
+        main.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,...point});
+        await wait(200);
+      };
+      await click('.sidebar-app[aria-label="Facebook · Personal"]');
+      await click('.sidebar-app[aria-label="Facebook · Work"]');
+      const panelApi=require(path.join(runtimeDir,'electronBrowser.js'));
+      panelApi.showHookPanel({source:initialViews[0].webContents,owner:main,groupId:'personal',sourceId:'personal-home',token:'fixture',hookId:'fixture',hookName:'URL breaker',authorized:()=>true},{id:'url',title:'URL breakdown',reveal:true,content:{type:'table',columns:['Part','Value'],rows:[['URL',url+'/home']]}});
+      await wait(300);
+      assert(await evaluate(main,`!!document.querySelector('.sidebar-feature-content')`),'Hook panel must be open during navigation test');
+      for(const width of [760,1160]){
+        main.setSize(width,850);await wait(150);
+        for(const id of ['work-home','personal-messages','work-home','personal-home']){
+          const tab=tabs.find(tab=>tab.id===id);
+          const registry=panelApi.sidebarPanelsFor(main);
+          const beforeGroup=registry.activeGroup;
+          registry.setTarget(beforeGroup);
+          await click('.sidebar-group-tab-select[title="'+tab.url+'"]');
+          const result=await evaluate(main, `({ids:[...document.querySelectorAll('.horizontal-tabs [role=tab]')].map(e=>e.id),selected:document.querySelector('.horizontal-tabs [aria-selected=true]')?.id,rootX:document.getElementById('root').scrollLeft,rootY:document.getElementById('root').scrollTop})`);
+          const expected=tabs.filter(t=>t.sessionId===tab.sessionId).map(t=>'page-tab-'+t.id);
+          assert.deepEqual(result.ids,expected,'Folder switch strip mismatch: '+JSON.stringify(result));
+          assert.equal(result.selected,'page-tab-'+id);
+          if(beforeGroup!==tab.sessionId)assert.equal(registry.targetGroup,undefined,'Pinned panel must return to Auto on a group switch');
+          assert.equal(result.rootX,0);assert.equal(result.rootY,0);
+          for(let attempt=0;attempt<40&&!main.contentView.children.some(v=>v instanceof WebContentsView&&v.webContents.session!==main.webContents.session&&v.getVisible()&&tabs.some(t=>t.url===v.webContents.getURL()));attempt++)await wait(50);
+          const visible=main.contentView.children.filter(v=>v instanceof WebContentsView&&v.webContents.session!==main.webContents.session&&v.getVisible()&&tabs.some(t=>t.url===v.webContents.getURL()));
+          assert.equal(visible.length,1);
+          assert.equal(visible[0].webContents.getURL(),tab.url);
+        }
+      }
+      assert.deepEqual(await evaluate(main,'window.resizeLoopErrors'),[],'ResizeObserver loop during group switch');
+      console.log('PASS actual browser: native folder-tab clicks switch group strip, selected tab and website at 760/1160px without root scrolling.');
+      Object.values(windows).forEach(win=>win.destroy());server.close();app.quit();return;
+    }
     if(process.argv.includes('--developer-sidebar-only')) {
       require('esbuild').buildSync({entryPoints:['src/main/shellContextMenu.ts'],bundle:true,platform:'node',external:['electron'],outfile:path.join(runtimeDir,'shellContextMenu.js')});
       const {shellContextMenu}=require(path.join(runtimeDir,'shellContextMenu.js'));

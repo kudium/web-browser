@@ -1024,12 +1024,13 @@ export function extensionCatalog() {
 
 export function extensionMenu(
   owner: BrowserWindow,
-  contents?: WebContents
+  contents?: WebContents,
+  extensionId?: string
 ): MenuItemConstructorOptions[] {
   const current =
     getExtensionProfile(active.get(owner.id) || '') ||
     getExtensionProfiles().find((profile) => profile.owner === owner);
-  const items = read();
+  const items = read().filter(item => !extensionId || item.id === extensionId);
   const setPolicy = (id: string, patch: Partial<InstalledExtension>) =>
     change(async () => {
       save(
@@ -1051,7 +1052,7 @@ export function extensionMenu(
       profiles.get(store.profileId)?.owner === owner &&
       storeExtensionId(contents.getURL())
   );
-  return [
+  const menu: MenuItemConstructorOptions[] = [
     ...(canInstall
       ? [
           {
@@ -1143,9 +1144,7 @@ export function extensionMenu(
                 }),
             })),
           {
-            label: 'Enabled',
-            type: 'checkbox',
-            checked: item.enabled,
+            label: item.enabled ? 'Disable extension' : 'Enable extension',
             click: () => setPolicy(item.id, { enabled: !item.enabled }),
           },
           {
@@ -1209,4 +1208,7 @@ export function extensionMenu(
       ? []
       : [{ label: 'No extensions installed', enabled: false }]),
   ];
+  return extensionId
+    ? (menu.find(entry => entry.label === items[0]?.name)?.submenu as MenuItemConstructorOptions[] || [])
+    : menu;
 }

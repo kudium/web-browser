@@ -60,6 +60,21 @@ export const hookPanelGuide: Tutorial = {
         .map((e) => ({ title: e.name, code: e.source })),
     },
     {
+      id: "panel-controls",
+      title: "Shared form controls (development build)",
+      paragraphs: [
+        "Custom HTML can opt into compact shared controls using kudium-form on its container and kudium-field on labels. Text inputs, dropdowns and textareas then use subtle fills, keyboard focus and disabled states. Existing custom designs keep their own styles.",
+        "Use kudium-button for neutral actions and add kudium-button-primary for the main action. kudium-hint styles helper text. Use aria-invalid and aria-describedby for accessible validation. Your custom CSS can override these defaults; action handlers still use the existing panel bridge.",
+      ],
+      examples: [{ title: "Compact custom form", code: `<div class="kudium-form">
+  <label class="kudium-field">Search<input type="search" placeholder="Enter a keyword"></label>
+  <label class="kudium-field">Format<select><option>Summary</option><option>Details</option></select></label>
+  <label class="kudium-field">Notes<textarea rows="3"></textarea></label>
+  <p class="kudium-hint">Choose an output format.</p>
+  <button type="button" class="kudium-button kudium-button-primary">Refresh</button>
+</div>` }],
+    },
+    {
       id: "theme",
       title: "Theme API and neutral defaults",
       paragraphs: [

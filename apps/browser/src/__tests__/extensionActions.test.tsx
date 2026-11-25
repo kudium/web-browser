@@ -94,3 +94,16 @@ it('updates pinned icons live, keeps DOM focus order aligned and applies policy 
     )
   ).toBe(true);
 });
+
+it('opens the browser management menu for the exact right-clicked extension', () => {
+  const menu = jest.fn();
+  const {container,unmount} = render(<ExtensionActions context={{profile:'menu',tab:'1'}} order={null} onExtensionMenu={menu} />);
+  const action=container.firstElementChild!.shadowRoot!.querySelector<HTMLElement>('#b')!;
+  const event=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});
+  action.dispatchEvent(event);
+  expect(menu).toHaveBeenCalledWith('b');
+  expect(event.defaultPrevented).toBe(true);
+  unmount();
+  action.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true}));
+  expect(menu).toHaveBeenCalledTimes(1);
+});

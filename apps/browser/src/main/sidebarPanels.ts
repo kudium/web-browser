@@ -34,6 +34,7 @@ export class SidebarPanelRegistry {
   targetGroup?: string;
   private targets: SidebarPanelTarget[] = [];
   private onTarget?: (id?: string) => void;
+  private focusedGroup?: string;
   private lastBounds?: SidebarPanelBounds;
   private request = 0;
   private error?: string;
@@ -105,8 +106,16 @@ export class SidebarPanelRegistry {
     }
     this.publish();
   }
-  activate(id: string, reveal = true) {
+  activate(id: string, reveal = true, hookGroupId?: string) {
     const entry = this.entries.get(id);
+    const hookReveal = Boolean(hookGroupId && entry?.provider.info.kind === 'hook' &&
+      entry.provider.groupId === hookGroupId);
+    if (hookReveal && this.targetGroup) {
+      // Revealing page output must follow navigation, never pin or select a tab.
+      this.setTarget(undefined);
+    }
+    // Keep background results registered without stealing the foreground tab.
+    if (hookReveal && entry?.provider.available?.() === false) return;
     if (!entry || entry.provider.available?.() === false)
       throw new Error('Sidebar panel is unavailable in this tab.');
     if (this.error && entry.view) {
@@ -171,6 +180,12 @@ export class SidebarPanelRegistry {
     this.targetGroup = groupId;
     this.onTarget?.(groupId);
     this.refresh();
+  }
+  followFocusedGroup(groupId?: string) {
+    const changed = this.focusedGroup !== undefined && this.focusedGroup !== groupId;
+    this.focusedGroup = groupId;
+    if (changed && this.targetGroup && this.targetGroup !== groupId)
+      this.setTarget(undefined);
   }
   layout(id: string, bounds: SidebarPanelBounds | null) {
     const entry = this.entries.get(id);
