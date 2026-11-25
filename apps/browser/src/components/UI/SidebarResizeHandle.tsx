@@ -29,11 +29,24 @@ export function SidebarResizeHandle({
   onResizingChange: (resizing: boolean) => void;
 }) {
   const drag = useRef<{ pointer: number; x: number; width: number } | undefined>(undefined);
+  const frame = useRef(0);
+  const pendingWidth = useRef<number | undefined>(undefined);
   const removeDragListeners = useRef<() => void | undefined>(undefined);
-  useEffect(() => () => removeDragListeners.current?.(), []);
+  useEffect(() => () => { cancelAnimationFrame(frame.current); removeDragListeners.current?.(); }, []);
   const change = (value: number) =>
     onChange(Math.round(Math.max(minWidth, Math.min(maxWidth, value))));
+  const flush = () => {
+    cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    if (pendingWidth.current !== undefined) {
+      change(pendingWidth.current);
+      pendingWidth.current = undefined;
+    }
+  };
   const finish = () => {
+    cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    pendingWidth.current = undefined;
     removeDragListeners.current?.();
     removeDragListeners.current = undefined;
     if (drag.current) {
@@ -72,15 +85,16 @@ export function SidebarResizeHandle({
         // Suspending a native WebContentsView can release DOM capture. Track
         // this drag at window level until its matching release/cancellation.
         const move = (input: PointerEvent) => {
-          if (drag.current?.pointer === input.pointerId)
-            change(
-              drag.current.width +
-                (input.clientX - drag.current.x) * (side === 'right' ? -1 : 1)
-            );
+          if (drag.current?.pointer === input.pointerId) {
+            pendingWidth.current = drag.current.width +
+              (input.clientX - drag.current.x) * (side === 'right' ? -1 : 1);
+            if (!frame.current) frame.current = requestAnimationFrame(flush);
+          }
         };
         const release = (input: PointerEvent) => {
           if (drag.current?.pointer !== input.pointerId) return;
           move(input);
+          flush();
           finish();
         };
         const cancel = () => finish();
@@ -95,23 +109,6 @@ export function SidebarResizeHandle({
           window.removeEventListener('blur', cancel);
         };
         onResizingChange(true);
-      }}
-      onPointerMove={(event) => {
-        if (drag.current?.pointer === event.pointerId)
-          change(
-            drag.current.width +
-              (event.clientX - drag.current.x) * (side === 'right' ? -1 : 1)
-          );
-      }}
-      onPointerUp={(event) => {
-        if (drag.current?.pointer !== event.pointerId) return;
-        change(
-          drag.current.width +
-            (event.clientX - drag.current.x) * (side === 'right' ? -1 : 1)
-        );
-        finish();
-        if (event.currentTarget.hasPointerCapture(event.pointerId))
-          event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onPointerCancel={finish}
       onDoubleClick={() => change(resetWidth)}

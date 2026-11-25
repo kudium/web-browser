@@ -301,3 +301,20 @@ test('a pinned panel never overrides a foreground group change', () => {
   host.followFocusedGroup('personal');
   expect(target).not.toHaveBeenCalled();
 });
+
+test('replaces a shown hook document at its current bounds without a duplicate renderer layout or resize flash', () => {
+  const { host, views, createView } = fixture();
+  const info = { id: 'hook-output', title: 'Output', kind: 'hook' as const };
+  host.register({ info, contentKey: 'first-document', createView });
+  host.activate(info.id);
+  const bounds = { x: 700, y: 100, width: 300, height: 600 };
+  host.layout(info.id, bounds);
+  host.setSuspended(true);
+  host.register({ info, contentKey: 'updated-document', createView });
+  expect(createView).toHaveBeenCalledTimes(2);
+  expect(views[0].webContents.close).toHaveBeenCalled();
+  expect(views[1].setBounds).toHaveBeenLastCalledWith(bounds);
+  expect(views[1].setVisible).toHaveBeenLastCalledWith(false);
+  host.setSuspended(false);
+  expect(views[1].setVisible).toHaveBeenLastCalledWith(true);
+});

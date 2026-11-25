@@ -251,3 +251,9 @@ profile. Keep group storage and navigation in their existing adapters. Custom
 hook documents have a separate minimal sandbox preload, not the trusted app
 preload; bridge calls require the original enabled hook/frame/token and matching
 group. Do not expose privileged shell or extension APIs to custom HTML.
+
+During sidebar resizing, pointer movements coalesce to one width update per
+animation frame and flush the final width on release. Hook-output updates must
+not resend unchanged native bounds. The shared registry restores the current
+slot when an active document changes, respecting suspension, so new HTML output
+cannot depend on redundant renderer layout messages or flash over a resize drag.

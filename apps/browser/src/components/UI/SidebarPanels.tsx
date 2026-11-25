@@ -47,29 +47,23 @@ export function SidebarPanels({
     if (!id) return undefined;
     const element = slot.current;
     let frame = 0;
+    let lastLayout = '';
     const update = () => {
       const rect = element?.getBoundingClientRect();
-      void browser
-        .sidebarPanels({
-          action: 'layout',
-          id,
-          bounds:
-            active &&
-            !pickerOpen &&
-            !state.floating &&
-            rect &&
-            rect.width > 0 &&
-            rect.height > 0
-              ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-              : null,
-        })
-        .catch(() => {});
+      const bounds = active && !pickerOpen && !state.floating && rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null;
+      const signature = JSON.stringify(bounds);
+      if (signature === lastLayout) return;
+      lastLayout = signature;
+      void browser.sidebarPanels({ action: 'layout', id, bounds }).catch(() => {
+        if (lastLayout === signature) lastLayout = '';
+      });
     };
-    layoutUpdate.current = update;
     const schedule = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(update);
     };
+    layoutUpdate.current = schedule;
     // A fixed-width native slot moves while its parent opens; position changes
     // do not trigger ResizeObserver. Reconcile once the shell finishes moving.
     const motionEnd = (event: Event) => {

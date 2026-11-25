@@ -73,6 +73,11 @@ export class SidebarPanelRegistry {
       this.entries.set(provider.info.id, { provider });
     }
     this.refresh();
+    // Replacing an active document must restore its existing native slot even
+    // when the renderer correctly suppresses an unchanged layout message.
+    if (old?.shown && old.provider.contentKey !== provider.contentKey &&
+      this.activeId === provider.info.id && this.lastBounds)
+      this.layout(provider.info.id, this.lastBounds);
   }
   private destroyView(view: WebContentsView) {
     if (this.floating?.view === view) this.dock();

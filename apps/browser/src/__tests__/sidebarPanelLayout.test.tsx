@@ -1,0 +1,27 @@
+import { act, render } from '@testing-library/react';
+import { SidebarPanels } from '../components/UI/SidebarPanels';
+import { browser } from '../browser/client';
+jest.mock('../browser/client', () => ({ browser: { sidebarPanels: jest.fn().mockResolvedValue({}) } }));
+jest.mock('../components/UI/GroupPicker', () => ({ GroupPicker: () => null }));
+jest.mock('../components/UI/AssistantPageHeader', () => ({ AssistantPageHeader: () => null }));
+it('does not resend native bounds for repeated hook-output updates, but sends changed geometry', () => {
+  const callbacks = new Map<number, FrameRequestCallback>(); let next = 0;
+  const request = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(fn => { callbacks.set(++next, fn); return next; });
+  const cancel = jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => { callbacks.delete(id); });
+  const flush = () => act(() => { const pending = [...callbacks.values()]; callbacks.clear(); pending.forEach(fn => fn(16)); });
+  global.ResizeObserver = jest.fn().mockImplementation(() => ({ observe() {}, disconnect() {} }));
+  let width = 300;
+  const rect = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ x: 700, y: 100, width, height: 600 } as DOMRect));
+  const state = { panels: [{ id: 'hook', title: 'Output', kind: 'hook' as const }], activeId: 'hook', openRequest: 1 };
+  const view = render(<SidebarPanels state={state} active onClose={() => {}} />);
+  flush();
+  (browser.sidebarPanels as jest.Mock).mockClear();
+  view.rerender(<SidebarPanels state={{ ...state, panels: [...state.panels] }} active onClose={() => {}} />);
+  flush();
+  expect(browser.sidebarPanels).not.toHaveBeenCalled();
+  width = 360;
+  act(() => window.dispatchEvent(new Event('resize')));
+  flush();
+  expect(browser.sidebarPanels).toHaveBeenCalledWith({ action: 'layout', id: 'hook', bounds: { x: 700, y: 100, width: 360, height: 600 } });
+  view.unmount(); rect.mockRestore(); request.mockRestore(); cancel.mockRestore();
+});
