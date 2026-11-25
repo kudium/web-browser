@@ -54,7 +54,7 @@ export function HookMarketplaceDialog() {
   const [url, setURL] = useState('');
   const [preview, setPreview] = useState<HookImportPreview>();
   const [installation, setInstallation] = useState<{
-    id: string; name: string; global: boolean; scopeEnabled?: boolean; destinationId: string; allGroups: boolean; location: string; updated: boolean;
+    id: string; name: string; global: boolean; enabled?: boolean; scopeEnabled?: boolean; destinationId: string; allGroups: boolean; location: string; updated: boolean;
   }>();
   const [allGroups, setAllGroups] = useState(false);
   const [updates, setUpdates] = useState<HookUpdate[]>([]);
@@ -247,13 +247,13 @@ export function HookMarketplaceDialog() {
       setPreview(loaded);
       setSelectedUpdate(undefined);
     });
-  const saveGlobals = () =>
+  const saveGlobals = (config = state?.global) =>
     run(async () => {
-      if (!state) return;
+      if (!state || !config) return;
       const result = await invoke({
         action: 'global-save',
         id,
-        config: state.global,
+        config,
         expectedHash: state.globalHash,
       });
       setState(result);
@@ -280,20 +280,6 @@ export function HookMarketplaceDialog() {
       });
       setOpen(false);
     });
-  const patchGlobal = (hook: GlobalHook, patch: Partial<GlobalHook>) =>
-    setState((previous) =>
-      previous
-        ? {
-            ...previous,
-            global: {
-              ...previous.global,
-              hooks: previous.global.hooks.map((item) =>
-                item.id === hook.id ? { ...item, ...patch } : item
-              ),
-            },
-          }
-        : previous
-    );
   const install = (replace = false) =>
     run(async () => {
       if (!preview) return;
@@ -529,8 +515,8 @@ export function HookMarketplaceDialog() {
         {installation && (
           <section className="hook-install-success" aria-label="Installation complete">
             <CheckCircle2 size={32} aria-hidden="true" />
-            <p role="status">{installation.updated ? 'Updated successfully.' : 'Installed successfully.'} This hook is disabled.</p>
-            <p>Open Hook Editor to review or customize it. Turn on the hook and save your changes, then reload the website.</p>
+            <p role="status">{installation.updated ? 'Updated successfully.' : 'Installed successfully.'} {installation.enabled === false ? 'This hook remains disabled.' : 'This hook is enabled.'}</p>
+            <p>Open Hook Editor to customize it or run it on the current page. Enabled hooks also run when matching pages load.</p>
             {installation.scopeEnabled === false && <p>Hooks are also off for {installation.location}. Turn them on in the editor to let this hook run.</p>}
             <div className="hook-dialog-actions">
               <Button variant="soft" color="gray" disabled={busy} onClick={() => close(false)}>Done</Button>
@@ -552,6 +538,7 @@ export function HookMarketplaceDialog() {
                 onClick={() =>
                   run(async () => {
                     await invoke({ action: 'browse' });
+                    setOpen(false);
                   })
                 }
                 disabled={busy}
@@ -601,10 +588,7 @@ export function HookMarketplaceDialog() {
                   checked={state.global.enabled}
                   disabled={busy}
                   onCheckedChange={(enabled) =>
-                    setState({
-                      ...state,
-                      global: { ...state.global, enabled },
-                    })
+                    saveGlobals({ ...state.global, enabled })
                   }
                 />
               </div>
@@ -621,9 +605,7 @@ export function HookMarketplaceDialog() {
                         checked={hook.enabled}
                         disabled={busy}
                         onChange={(event) =>
-                          patchGlobal(hook, {
-                            enabled: event.target.checked,
-                          })
+                          saveGlobals({ ...state.global, hooks: state.global.hooks.map(item => item.id === hook.id ? { ...item, enabled: event.target.checked } : item) })
                         }
                       />
                       {hook.name}
@@ -672,7 +654,7 @@ export function HookMarketplaceDialog() {
                 >
                   New global hook
                 </Button>
-                <Button disabled={busy} onClick={saveGlobals}>
+                <Button disabled={busy} onClick={() => saveGlobals()}>
                   Save global settings
                 </Button>
               </div>

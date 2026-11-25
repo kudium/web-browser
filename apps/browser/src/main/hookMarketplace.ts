@@ -209,6 +209,7 @@ export function registerHookMarketplace(
         if (
           ![
             'state',
+            'browse',
             'global-save',
             'global-test-run',
             'global-test-stop',
@@ -280,6 +281,10 @@ export function registerHookMarketplace(
       }
       if (input.action === 'browse') {
         await shell.openExternal('https://browser.kudium.com/hooks');
+        // A retained native editor otherwise covers the main-window installer
+        // when the user returns through a marketplace deep link.
+        if (editorBinding || getSiteDeveloperBinding(event.sender))
+          BrowserWindow.fromWebContents(event.sender)?.hide();
         return null;
       }
       if (input.action === 'preview') return preview(event.sender, input.url);
@@ -493,7 +498,7 @@ export function registerHookMarketplace(
           before: pkg.lifecycle.before,
           after: pkg.lifecycle.after,
           css: pkg.lifecycle.css,
-          enabled: false,
+          enabled: true,
           installed: {
             url: item.source,
             packageId: item.publication?.id,
@@ -517,7 +522,7 @@ export function registerHookMarketplace(
             );
           return hooks.map((h) =>
             h.id === input.replaceId
-              ? { ...h, ...hook, id: h.id, enabled: false }
+              ? { ...h, ...hook, id: h.id, enabled: h.enabled }
               : h
           );
         };
@@ -541,7 +546,11 @@ export function registerHookMarketplace(
             css: '',
           };
           updateSiteSettings(target.profile, origin, {
-            developer: { ...config, hooks: replace(config.hooks || []) },
+            developer: { ...config,
+              enabled: input.replaceId ? config.enabled : true,
+              ...(!input.replaceId && !config.enabled ? { defaultEnabled: false } : {}),
+              hooks: replace((config.hooks || []).map(item => !input.replaceId && !config.enabled ? { ...item, enabled: false } : item)),
+            },
           });
         }
         previews.delete(input.receipt);
@@ -551,6 +560,9 @@ export function registerHookMarketplace(
             id: input.replaceId || hook.id,
             name: hook.name,
             global: input.global,
+            enabled: input.replaceId
+              ? (input.global ? getGlobalHooks(hookScope).hooks : getSiteSettings(target.profile, origin).developer?.hooks)?.find(item => item.id === input.replaceId)?.enabled
+              : true,
             scopeEnabled: input.global
               ? getGlobalHooks(hookScope).enabled
               : getSiteSettings(target.profile, origin).developer?.enabled === true,

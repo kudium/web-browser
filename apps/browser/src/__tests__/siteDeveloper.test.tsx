@@ -771,3 +771,15 @@ it('shows hook output and errors by default, with execution details available on
   expect(screen.getByText('Page load started')).toBeTruthy();
   expect(screen.getByText('Hooks completed')).toBeTruthy();
 });
+
+it('saves hook switches immediately, including the latest draft code', () => {
+  const send = jest.fn();
+  const hook = { id: 'reader', name: 'Reader', path: '/*', enabled: false, before: '', after: 'log("saved")', css: '' };
+  render(<Theme><SiteDeveloperPanel disabled={false} send={send} selectedHookId="reader"
+    developer={{ config: { ...emptyDeveloperConfig, enabled: true, hooks: [hook] }, status: 'waiting', logs: [] }} /></Theme>);
+  fireEvent.change(screen.getByLabelText('After load code'), { target: { value: 'log("latest")' } });
+  fireEvent.click(screen.getByRole('switch', { name: 'Enable Reader' }));
+  expect(send).toHaveBeenLastCalledWith('set-site-developer', { developer: expect.objectContaining({ enabled: true, hooks: [{ ...hook, enabled: true, after: 'log("latest")' }] }) });
+  fireEvent.click(screen.getByRole('switch', { name: 'Enable Reader' }));
+  expect(send.mock.calls.at(-1)?.[1].developer.hooks[0].enabled).toBe(false);
+});

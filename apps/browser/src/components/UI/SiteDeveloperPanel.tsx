@@ -78,6 +78,11 @@ export function SiteDeveloperPanel({
   const saved = developer?.config || emptyDeveloperConfig;
   const serialized = JSON.stringify(saved);
   const [draft, setDraft] = useState(saved);
+  const saveToggle = (next: SiteDeveloperConfig) => {
+    // Use the existing validated save path. Saving a switch also saves the
+    // current draft, so the Run control is ready as soon as state is confirmed.
+    if (send('set-site-developer', { developer: next })) setDraft(next);
+  };
   const [hookId, setHookId] = useState(selectedHookId);
   const [listAction, setListAction] = useState<{
     id: string;
@@ -217,7 +222,7 @@ export function SiteDeveloperPanel({
         aria-labelledby="site-developer-enable-label"
         checked={draft.enabled}
         disabled={disabled}
-        onCheckedChange={(enabled) => setDraft({ ...draft, enabled })}
+        onCheckedChange={(enabled) => saveToggle({ ...draft, enabled })}
       />
       <PreferenceHint label="Hook API & examples">
         <div className="site-hook-help-content">
@@ -410,11 +415,9 @@ export function SiteDeveloperPanel({
                     checked={draft.enabled && draft.defaultEnabled !== false}
                     disabled={disabled}
                     onCheckedChange={(enabled) =>
-                      setDraft((previous) => ({
-                        ...previous,
-                        defaultEnabled: enabled,
+                      saveToggle({ ...draft, defaultEnabled: enabled,
                         ...(enabled ? { enabled: true } : {}),
-                      }))
+                      })
                     }
                   />
                   <DropdownMenu.Root>
@@ -481,12 +484,12 @@ export function SiteDeveloperPanel({
                       checked={hook.enabled}
                       disabled={disabled}
                       onCheckedChange={(enabled) =>
-                        setDraft((previous) => ({
-                          ...previous,
-                          hooks: previous.hooks?.map((item) =>
+                        saveToggle({ ...draft,
+                          ...(enabled ? { enabled: true } : {}),
+                          hooks: draft.hooks?.map((item) =>
                             item.id === hook.id ? { ...item, enabled } : item
                           ),
-                        }))
+                        })
                       }
                     />
                     <DropdownMenu.Root>

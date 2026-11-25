@@ -58,7 +58,7 @@ const mockSender = {
   mainFrame: {},
   send: jest.fn(),
 };
-const mockHost = { webContents: mockSender, isDestroyed: () => false, show: jest.fn(), focus: jest.fn() };
+const mockHost = { webContents: mockSender, isDestroyed: () => false, show: jest.fn(), focus: jest.fn(), hide: jest.fn() };
 const mockWindows: any[] = [];
 const mockEditorContents = {
   once: jest.fn(),
@@ -179,7 +179,7 @@ it('imports a disabled hook with a fresh local ID while preserving existing hook
   expect(config.before).toBe('log("default code")');
   expect(config.hooks).toHaveLength(2);
   expect(config.hooks?.[0].enabled).toBe(true);
-  expect(config.hooks?.[1].enabled).toBe(false);
+  expect(config.hooks?.[1].enabled).toBe(true);
   expect(config.hooks?.[1].installed?.contentHash).toBe(hookPackageHash(pkg));
   await expect(
     handler(event, {
@@ -190,7 +190,7 @@ it('imports a disabled hook with a fresh local ID while preserving existing hook
     })
   ).rejects.toThrow('expired');
 });
-it('rejects site mismatches and installs individual global hooks disabled', async () => {
+it('rejects site mismatches and installs individual global hooks enabled', async () => {
   (fetchHookPackage as jest.Mock).mockResolvedValueOnce({
     source: 'https://example.org/package',
     package: {
@@ -224,7 +224,7 @@ it('rejects site mismatches and installs individual global hooks disabled', asyn
   });
   const global = getGlobalHooks('profile-one');
   expect(global.enabled).toBe(true);
-  expect(global.hooks[0].enabled).toBe(false);
+  expect(global.hooks[0].enabled).toBe(true);
   expect(global.hooks[0].exclusions).toEqual([]);
 });
 it('tracks local edits and applies reviewed updates with optimistic checks and preserved exclusions', async () => {
@@ -243,6 +243,7 @@ it('tracks local edits and applies reviewed updates with optimistic checks and p
   global.hooks[0] = {
     ...hook,
     css: 'p { color: red; }',
+    enabled: false,
     exclusions: ['private.example.com'],
   };
   saveGlobalHooks(
@@ -299,7 +300,7 @@ it('delivers queued installs only after a trusted main-frame ready handshake', (
   );
 });
 
-it('installs disabled All groups hooks with the master switch on and keeps group settings separate', async () => {
+it('installs enabled All groups hooks with the master switch on and keeps group settings separate', async () => {
   const preview = await handler(event, {
     action: 'preview',
     url: 'https://example.org/package',
@@ -322,7 +323,7 @@ it('installs disabled All groups hooks with the master switch on and keeps group
   });
   expect(result.siteHooks).toEqual([]);
   expect(result.global.enabled).toBe(true);
-  expect(result.global.hooks.find((hook: any) => hook.installed)?.enabled).toBe(false);
+  expect(result.global.hooks.find((hook: any) => hook.installed)?.enabled).toBe(true);
   expect(getGlobalHooks('profile-one').hooks).toEqual([]);
   const all = getGlobalHooks(ALL_GROUPS_HOOK_SCOPE);
   const updated = await handler(event, {
@@ -581,7 +582,7 @@ it('publishes the saved test URL and retains it when installing the package', as
     receipt: preview.receipt,
   });
   expect(installed.global.hooks[1].testUrl).toBe(hook.testUrl);
-  expect(installed.global.hooks[1].enabled).toBe(false);
+  expect(installed.global.hooks[1].enabled).toBe(true);
 });
 
 it('retains publication identity and publishes an edited hook as the next version', async () => {
@@ -613,7 +614,7 @@ it('publishes and installs actions-only packages without transferring grants', a
   const preview = await handler(event,{action:'preview',url:'https://example.com/action-package'});
   const installed = await handler(event,{action:'install',id:'tab',allGroups:true,global:true,receipt:preview.receipt});
   expect(installed.global.hooks[1].actions).toEqual([action]);
-  expect(installed.global.hooks[1].enabled).toBe(false);
+  expect(installed.global.hooks[1].enabled).toBe(true);
 });
 
 it('presents external installs inside visible Preferences above their owning browser', () => {
@@ -648,7 +649,7 @@ it('returns the installed identity and opens only a saved site hook in its trust
   const result = await handler(event, { action: 'install', id: 'tab', receipt: preview.receipt, global: false });
   expect(result.installedHook).toMatchObject({ name: pkg.name, global: false });
   const installed = result.siteHooks.find((hook: any) => hook.id === result.installedHook.id);
-  expect(installed.enabled).toBe(false);
+  expect(installed.enabled).toBe(true);
   await handler(event, { action: 'site-editor-open', id: 'tab', hookId: installed.id });
   expect(openSiteEditor).toHaveBeenCalledWith(targets[0], installed.id);
   openSiteEditor.mockClear();
@@ -671,4 +672,10 @@ it('routes in-browser deep links to the trusted installer', () => {
 it('allows only trusted hosts to request the install dialog', async () => {
   await handler(event, { action: 'open-install', url: 'kudium://install-hook?url=https%3A%2F%2Fexample.org%2Fpackage' });
   await expect(handler({ ...event, senderFrame: {} }, { action: 'open-install', url: 'kudium://install-hook' })).rejects.toThrow('Untrusted');
+});
+
+it('hides the retained native editor when opening the marketplace so returning installs are visible', async () => {
+  await handler(event, { action: 'global-editor-open', id: ALL_GROUPS_HOOK_SCOPE, allGroups: true });
+  await handler({ sender: mockEditorContents, senderFrame: mockEditorContents.mainFrame }, { action: 'browse' });
+  expect(mockHost.hide).toHaveBeenCalled();
 });

@@ -86,7 +86,7 @@ export type HookMarketplaceRequest = ScopedHookMarketplaceRequest & {
   allGroups?: boolean;
 };
 export interface HookMarketplaceState {
-  installedHook?: { id: string; name: string; global: boolean; scopeEnabled?: boolean };
+  installedHook?: { id: string; name: string; global: boolean; enabled?: boolean; scopeEnabled?: boolean };
   material?: { translucentChrome: boolean; translucentAI: boolean };
   editorHook?: GlobalHook;
   destination: HookDestination;

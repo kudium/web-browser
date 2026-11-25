@@ -103,7 +103,7 @@ it('keeps technical metadata collapsed and confirms installation before opening 
   ).not.toHaveAttribute('open');
   fireEvent.click(screen.getByRole('button', { name: 'Install hook' }));
   expect(
-    await screen.findByText('Installed successfully. This hook is disabled.')
+    await screen.findByText('Installed successfully. This hook is enabled.')
   ).toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: 'Install hook' })
@@ -111,7 +111,7 @@ it('keeps technical metadata collapsed and confirms installation before opening 
   expect(
     screen.queryByPlaceholderText('Paste a hook link…')
   ).not.toBeInTheDocument();
-  expect(screen.getByText(/Turn on the hook and save/)).toBeInTheDocument();
+  expect(screen.getByText(/Enabled hooks also run/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Open Hook Editor' }));
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith({
@@ -142,7 +142,7 @@ it('opens the installed website hook and keeps success visible if opening the ed
     hookId: 'installed-id',
   });
   expect(
-    screen.getByText('Installed successfully. This hook is disabled.')
+    screen.getByText('Installed successfully. This hook is enabled.')
   ).toBeInTheDocument();
 });
 it('accepts external install links in Preferences and does not show success when installation fails', async () => {
@@ -175,4 +175,30 @@ it('explains when the destination master switch also needs enabling', async () =
     : state);
   fireEvent.click(screen.getByRole('button', { name: 'Install hook' }));
   expect(await screen.findByText(/Hooks are also off for All groups/)).toBeInTheDocument();
+});
+
+it('closes the explore dialog and shows a returning deep-link install in the same host', async () => {
+  render(<Theme><HookMarketplaceDialog /></Theme>);
+  act(() => window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { mode: 'import', allGroups: true } })));
+  const explore = await screen.findByRole('button', { name: /Explore the marketplace/ });
+  await waitFor(() => expect(explore).toBeEnabled());
+  fireEvent.click(explore);
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'browse' }));
+  act(() => installListener(preview.source));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Install hook' })).toBeEnabled());
+});
+
+it('saves global enable switches immediately without a Save click', async () => {
+  const hook = { id: 'reader', name: 'Reader', enabled: false, path: '/*', before: '', after: '', css: '', exclusions: [] };
+  request.mockImplementation(async input => {
+    if (input.action === 'destinations') return [target];
+    if (input.action === 'state') return { ...state, global: { enabled: true, hooks: [hook] } };
+    if (input.action === 'global-save') return { ...state, global: input.config };
+    return null;
+  });
+  render(<Theme><HookMarketplaceDialog /></Theme>);
+  act(() => window.dispatchEvent(new CustomEvent(OPEN_HOOK_MARKETPLACE, { detail: { mode: 'global', allGroups: true } })));
+  fireEvent.click(await screen.findByRole('checkbox', { name: 'Reader' }));
+  await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'global-save', config: { enabled: true, hooks: [{ ...hook, enabled: true }] } })));
 });

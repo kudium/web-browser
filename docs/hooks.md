@@ -13,6 +13,14 @@ same-document navigation, including back/forward and SPA routes.
 Before load runs only on a new document; its DOM may not exist yet. Route changes
 clean up previous work, reapply matching CSS, and rerun matching after-load code.
 
+Hook enable/disable switches save immediately; website editor switches also save
+the current validated draft. There is no separate Save step for a switch. Use
+Play to run an enabled hook on the current page without reloading. New marketplace
+installs are enabled by default. Updating preserves the installed hook’s enabled
+state and exclusions. A previously disabled global master switch stays disabled.
+Exploring the marketplace closes the installer; a retained native editor is hidden
+so a returning install link can open visibly in the browser or Preferences.
+
 ## Global hooks and website exceptions
 
 In a website’s Developer hook list, the switch beside a global hook enables or
