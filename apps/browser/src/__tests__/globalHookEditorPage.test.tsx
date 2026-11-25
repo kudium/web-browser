@@ -186,5 +186,6 @@ it('creates and saves an actions-only hook using the shared editor', async () =>
   fireEvent.click(await screen.findByRole('menuitem', {name:'Generate password'}));
   fireEvent.click(screen.getByRole('button', {name:'Save hook'}));
   await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action:'global-save', config:expect.objectContaining({hooks:[expect.objectContaining({actions:[expect.objectContaining({name:'Generate password',contexts:['password']})],before:'',after:'',css:''})]}) })));
-  await waitFor(() => expect(screen.getByRole('button', {name:'Publish'})).toBeEnabled());
+  fireEvent.keyDown(screen.getByRole('button',{name:'Hook footer options'}),{key:'ArrowDown'});
+  expect(await screen.findByRole('menuitem',{name:'Publish'})).toBeEnabled();
 });

@@ -81,3 +81,13 @@ test('website colors override the space only when enabled and valid', () => {
       ?.useWebsiteColors
   ).toBe(false);
 });
+
+test('reorders saved spaces without changing their data or active selection', () => {
+  SpaceManager.set([{...space,id:'default'}, {...space,id:'work',name:'Work'}, {...space,id:'reading',name:'Reading'}]);
+  SpaceManager.select('work');
+  SpaceManager.reorder('work','reading');
+  expect(SpaceManager.getAll().map(item=>item.id)).toEqual(['default','reading','work']);
+  expect(SpaceManager.activeId()).toBe('work');
+  SpaceManager.reorder('missing','default');
+  expect(SpaceManager.getAll().map(item=>item.id)).toEqual(['default','reading','work']);
+});

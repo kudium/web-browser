@@ -8,6 +8,10 @@ import { SearchEngine, defaultSearchEngines } from './searchEngines';
 /** Shared, engine-neutral preferences. Add controls to the registry below. */
 export interface BrowserPreferences {
   setupCompleted: boolean;
+  startPage: 'kudium' | 'blank' | 'custom';
+  startPageURL: string;
+  spaceFontSize: number;
+  spaceBackground: boolean;
   linkRoutingRules: LinkRoutingRule[];
   systemSpaceRetentionDays: number;
   advanced: AdvancedPreferences;
@@ -59,6 +63,10 @@ export interface BrowserPreferences {
 }
 export const defaultPreferences: BrowserPreferences = {
   setupCompleted: false,
+  startPage:'kudium',
+  startPageURL:'',
+  spaceFontSize:13,
+  spaceBackground:true,
   linkRoutingRules: [],
   systemSpaceRetentionDays: 14,
   advanced: defaultAdvanced,
@@ -113,12 +121,16 @@ export interface PreferenceControl {
   section: string;
   title: string;
   description: string;
-  kind: 'select' | 'toggle' | 'number';
+  kind: 'select' | 'toggle' | 'number' | 'text';
   min?: number;
   max?: number;
   options?: { label: string; value: string | number }[];
 }
 export const preferenceControls: PreferenceControl[] = [
+  {key:'startPage',section:'appearance',title:'Start page',description:'Shown when no group is active, including after unloading all groups.',kind:'select',options:[{label:'Kudium',value:'kudium'},{label:'Blank',value:'blank'},{label:'Custom website',value:'custom'}]},
+  {key:'startPageURL',section:'appearance',title:'Custom start page URL',description:'An HTTP or HTTPS address. Used when Start page is set to Custom website.',kind:'text'},
+  {key:'spaceFontSize',section:'appearance',title:'Space text size',description:'Size of group names and tabs in the space sidebar.',kind:'number',min:11,max:20},
+  {key:'spaceBackground',section:'appearance',title:'Space container background',description:'Show the background behind space content. Turn off for a lighter sidebar.',kind:'toggle'},
   {
     key: 'automaticPictureInPicture', section: 'websites',
     title: 'Automatic picture in picture',

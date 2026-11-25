@@ -35,6 +35,7 @@ it('introduces more features gradually and preserves legacy dismissals', () => {
   expect(screen.getAllByRole('article')).toHaveLength(1);
   act(() => jest.advanceTimersByTime(86400000));
   expect(screen.getAllByRole('article')).toHaveLength(3);
+  fireEvent.click(screen.getByRole('button',{name:'Show recommendation: Move faster with shortcuts'}));
   expect(screen.getByText('Explore shortcuts')).toBeInTheDocument();
   expect(screen.queryByText('Explore performance')).not.toBeInTheDocument();
 });
@@ -43,4 +44,13 @@ it('keeps a recommendation visible if the marketplace cannot open', () => {
   fireEvent.click(screen.getByText('Explore hooks'));
   expect(screen.getByRole('alert')).toHaveTextContent('Select an unlocked tab');
   expect(screen.getByText('Explore hooks')).toBeInTheDocument();
+});
+
+it('keeps up to three recommendations visible but expands only the selected card', () => {
+  render(<BrowserRecommendations onMarketplace={() => true} />);
+  expect(screen.getAllByRole('article')).toHaveLength(3);
+  expect(screen.queryByText('Import browsing data')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Show recommendation: Bring your browser with you'}));
+  expect(screen.getByText('Import browsing data')).toBeInTheDocument();
+  expect(screen.queryByText('Explore hooks')).not.toBeInTheDocument();
 });

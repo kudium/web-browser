@@ -2,6 +2,7 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
 import { GlobalHookEditorPage } from '../components/View/GlobalHookEditorPage';
+beforeAll(() => { global.ResizeObserver = jest.fn(() => ({observe:jest.fn(),unobserve:jest.fn(),disconnect:jest.fn()})) as any; });
 jest.mock('../components/UI/HookEditor', () => ({ HookEditor: () => null }));
 jest.mock('../components/UI/HookMarketplaceDialog', () => ({ OPEN_HOOK_MARKETPLACE: 'marketplace' }));
 it('saves visible switches immediately while preserving unsaved edits and links to Hooks preferences', async () => {
@@ -21,8 +22,8 @@ it('saves visible switches immediately while preserving unsaved edits and links 
   expect(screen.getByLabelText('Name')).toHaveValue('Unfinished name');
   fireEvent.click(screen.getByRole('switch',{name:'Auto'}));
   await waitFor(()=>expect(request).toHaveBeenCalledWith(expect.objectContaining({action:'global-save',config:expect.objectContaining({hooks:[expect.objectContaining({autoMode:true,enabled:false,enabledSites:[]})]})})));
-  const library = screen.getByRole('button',{name:'View all global hooks'});
-  await waitFor(()=>expect(library).not.toBeDisabled());
-  fireEvent.click(library);
+  await waitFor(()=>expect(screen.getByRole('switch',{name:'Auto'})).not.toBeDisabled());
+  fireEvent.keyDown(screen.getByRole('button',{name:'Hook footer options'}),{key:'ArrowDown'});
+  fireEvent.click(await screen.findByRole('menuitem',{name:'View all global hooks'}));
   expect(request).toHaveBeenCalledWith({action:'global-preferences'});
 });

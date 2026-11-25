@@ -183,4 +183,4 @@ still override website choices. Existing installations retain their behavior;
 updates preserve Auto mode and the allowed/excluded websites. Auto can also be
 changed in the global editor, with an Enabled websites list.
 
-The global hook editor keeps **Enabled globally** and **Auto** visible above the code editor. Both switches save immediately without saving unfinished code or name edits. Global disable takes precedence over individual website settings; Auto starts off for websites until enabled individually. **View all global hooks** opens Preferences → Hooks.
+The global hook editor keeps **Enabled globally** and **Auto** in the editor header. Both switches save immediately without saving unfinished code or name edits. Global disable takes precedence over individual website settings; Auto starts off for websites until enabled individually. The shared footer options menu contains Publish, Check for updates, and **View all global hooks**, which opens Preferences → Hooks.

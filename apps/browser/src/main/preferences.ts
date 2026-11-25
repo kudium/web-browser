@@ -195,6 +195,15 @@ export function validatePreferences(
       validated.searchEngine = value;
       return;
     }
+    if (key === 'startPageURL') {
+      if (typeof value !== 'string' || value.length > 2048) throw new Error('Invalid start page URL.');
+      if (value) {
+        const url = new URL(value);
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Use an HTTP or HTTPS start page URL.');
+        validated.startPageURL = url.href;
+      } else validated.startPageURL = '';
+      return;
+    }
     const control = preferenceControls.find((item) => item.key === key);
     if (control?.kind === 'toggle' && typeof value === 'boolean')
       Object.assign(validated, { [key]: value });

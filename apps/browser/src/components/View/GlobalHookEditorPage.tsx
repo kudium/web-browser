@@ -5,12 +5,13 @@ import { FormTextField } from '../UI/FormTextField';
 import {
   EditorWindowHeader,
   EditorWindowFooter,
+  HookFooterOptions,
 } from '../UI/EditorWindowChrome';
 import { HookWebsiteField } from '../UI/HookWebsiteField';
 /* Native form controls are associated by nesting. */
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useEffect, useState } from 'react';
-import { Button, IconButton, Switch } from '@radix-ui/themes';
+import { Button, IconButton, Switch, DropdownMenu } from '@radix-ui/themes';
 import { Maximize2 } from 'lucide-react';
 import { HookTestWebsiteField } from '../UI/HookTestWebsiteField';
 import { HookEditor } from '../UI/HookEditor';
@@ -149,6 +150,10 @@ export function GlobalHookEditorPage() {
         title="Hook Editor"
         subtitle={<span className="global-hook-editor-kind">Global</span>}
       >
+        {draft && <div className="global-hook-editor-controls">
+          <label title="Disable this hook on every website"><Switch aria-label="Enabled globally" checked={draft.enabled !== false} disabled={busy} onCheckedChange={enabled => { void save({ enabled }); }} /> Enabled</label>
+          <label title="Off by default; enable separately in each website’s hook settings"><Switch aria-label="Auto" checked={!!draft.autoMode} disabled={busy} onCheckedChange={autoMode => { void save({ autoMode, enabledSites: draft.enabledSites || [] }); }} /> Auto</label>
+        </div>}
         <IconButton
           variant="ghost"
           color="gray"
@@ -181,14 +186,6 @@ export function GlobalHookEditorPage() {
               }
             />
           </div>
-          <div className="global-hook-editor-controls">
-            <label><Switch checked={draft.enabled !== false} disabled={busy} onCheckedChange={enabled => { void save({ enabled }); }} /> Enabled globally</label>
-            <label><Switch checked={!!draft.autoMode} disabled={busy} onCheckedChange={autoMode => { void save({ autoMode, enabledSites: draft.enabledSites || [] }); }} /> Auto</label>
-            <Button variant="ghost" color="gray" disabled={busy} onClick={() => {
-              window.electron.hookMarketplace.request({ action: 'global-preferences' }).catch(reason => setError(String(reason)));
-            }}>View all global hooks</Button>
-          </div>
-          <p className="global-hook-editor-mode-hint">{draft.enabled === false ? 'Disabled on every website. Enable globally to use this hook.' : draft.autoMode ? 'Off on websites by default. Enable it for individual websites in their hook settings.' : 'Runs on matching websites unless disabled for that website.'}</p>
           <FormDisclosure
             title="Where it runs"
             summary={[
@@ -330,51 +327,6 @@ export function GlobalHookEditorPage() {
           Close
         </Button>
         <Button
-          variant="soft"
-          color="gray"
-          disabled={
-            busy ||
-            !draft ||
-            dirty ||
-            (![draft.before, draft.after, draft.css].some((source) =>
-              source.trim(),
-            ) && !draft.actions?.some((action) => action.source.trim()))
-          }
-          title={dirty ? 'Save changes before publishing' : undefined}
-          onClick={() =>
-            window.dispatchEvent(
-              new CustomEvent(OPEN_HOOK_MARKETPLACE, {
-                detail: {
-                  mode: 'publish',
-                  hookId: `global:${draft!.id}`,
-                  allGroups: true,
-                },
-              }),
-            )
-          }
-        >
-          {draft?.publication ? 'Republish' : 'Publish'}
-        </Button>
-        {draft?.installed && (
-          <Button
-            variant="soft"
-            disabled={busy || dirty}
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent(OPEN_HOOK_MARKETPLACE, {
-                  detail: {
-                    mode: 'updates',
-                    hookId: `global:${draft.id}`,
-                    allGroups: true,
-                  },
-                }),
-              )
-            }
-          >
-            Check for updates
-          </Button>
-        )}
-        <Button
           disabled={
             busy ||
             !draft ||
@@ -391,6 +343,51 @@ export function GlobalHookEditorPage() {
         >
           Save hook
         </Button>
+        <HookFooterOptions>
+          <DropdownMenu.Item onSelect={() => { window.electron.hookMarketplace.request({ action:'global-preferences' }).catch(reason => setError(String(reason))); }}>View all global hooks</DropdownMenu.Item>
+        <DropdownMenu.Item
+          disabled={
+            busy ||
+            !draft ||
+            dirty ||
+            (![draft.before, draft.after, draft.css].some((source) =>
+              source.trim(),
+            ) && !draft.actions?.some((action) => action.source.trim()))
+          }
+          title={dirty ? 'Save changes before publishing' : undefined}
+          onSelect={() =>
+            window.dispatchEvent(
+              new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                detail: {
+                  mode: 'publish',
+                  hookId: `global:${draft!.id}`,
+                  allGroups: true,
+                },
+              }),
+            )
+          }
+        >
+          {draft?.publication ? 'Republish' : 'Publish'}
+        </DropdownMenu.Item>
+        {draft?.installed && (
+          <DropdownMenu.Item
+              disabled={busy || dirty}
+            onSelect={() =>
+              window.dispatchEvent(
+                new CustomEvent(OPEN_HOOK_MARKETPLACE, {
+                  detail: {
+                    mode: 'updates',
+                    hookId: `global:${draft.id}`,
+                    allGroups: true,
+                  },
+                }),
+              )
+            }
+          >
+            Check for updates
+          </DropdownMenu.Item>
+        )}
+        </HookFooterOptions>
       </EditorWindowFooter>
     </main>
   );

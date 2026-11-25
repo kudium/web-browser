@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserWelcome } from '../components/UI/BrowserWelcome';
 import { browser } from '../browser/client';
 jest.mock('../browser/client', () => ({
-  browser: { preferences: jest.fn(), preferenceAction: jest.fn() },
+  browser: { preferences: jest.fn(), preferenceAction: jest.fn(), onPreferences: jest.fn(() => () => {}) },
 }));
 beforeEach(() => {
   jest.clearAllMocks();
@@ -47,7 +47,7 @@ it('starts browsing without changing optional settings', async () => {
     await screen.findByRole('button', { name: 'Start browsing' })
   );
   await waitFor(() =>
-    expect(screen.getByTitle('About Kudium Browser')).toBeInTheDocument()
+    expect(screen.getByTitle('Start page website')).toBeInTheDocument()
   );
   expect(browser.preferenceAction).toHaveBeenCalledTimes(1);
 });
@@ -69,5 +69,24 @@ it('remembers completed onboarding', async () => {
     setupCompleted: true,
   });
   render(<BrowserWelcome />);
-  expect(await screen.findByTitle('About Kudium Browser')).toBeInTheDocument();
+  expect(await screen.findByTitle('Start page website')).toBeInTheDocument();
+});
+
+it('shows a blank start page with browser shortcuts after setup', async () => {
+  (browser.preferences as jest.Mock).mockResolvedValue({setupCompleted:true,startPage:'blank'});
+  render(<BrowserWelcome />);
+  expect(await screen.findByText('Open a tab or enter an address to start browsing.')).toBeInTheDocument();
+  expect(screen.queryByTitle('Start page website')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Manage global hooks'}));
+  expect(browser.preferences).toHaveBeenCalledWith('open',{section:'hooks'});
+});
+it('uses a custom HTTP(S) start page and rejects privileged URLs even in saved data', async () => {
+  (browser.preferences as jest.Mock).mockResolvedValue({setupCompleted:true,startPage:'custom',startPageURL:'https://example.com/start'});
+  const view = render(<BrowserWelcome preview />);
+  expect(await screen.findByTitle('Start page website')).toHaveAttribute('src','https://example.com/start');
+  expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  view.unmount();
+  (browser.preferences as jest.Mock).mockResolvedValue({setupCompleted:true,startPage:'custom',startPageURL:'javascript:alert(1)'});
+  render(<BrowserWelcome />);
+  expect(await screen.findByTitle('Start page website')).not.toHaveAttribute('src','javascript:alert(1)');
 });

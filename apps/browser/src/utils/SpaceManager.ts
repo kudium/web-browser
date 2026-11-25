@@ -201,6 +201,15 @@ export const SpaceManager = {
     writeSavedList(SPACE_KEY, spaces);
     eventBus.dispatch(EVENT_KEY.SPACE_UPDATE);
   },
+  reorder(id: string, targetId: string) {
+    const spaces = SpaceManager.getAll();
+    const from = spaces.findIndex(space => space.id === id);
+    const to = spaces.findIndex(space => space.id === targetId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [moved] = spaces.splice(from, 1);
+    spaces.splice(to, 0, moved);
+    SpaceManager.set(spaces);
+  },
   add(name: string, color: SpaceColor, icon: SpaceIconName = 'layers') {
     const space = {
       id: crypto.randomUUID(),

@@ -1575,6 +1575,11 @@ app
       // Identify fixture tabs by ID: loaded titles and group labels can change.
       main.webContents.send('browser-tab-request',{action:'select',id});
       await wait(300);
+      if (process.argv.includes('--group-close-only')) {
+        const targetURL=tabs.find(tab=>tab.id===id).url;
+        for(let attempt=0;attempt<30 && !main.contentView.children.some(view=>view instanceof WebContentsView && view.webContents.getURL()===targetURL);attempt++) { await wait(100); }
+        assert(main.contentView.children.some(view=>view instanceof WebContentsView && view.webContents.getURL()===targetURL),'Fixture tab must finish loading: '+id);
+      }
     }
     await evaluate(main, `document.getElementById('page-tab-personal-home').click();undefined`);
     await wait(300);
@@ -1985,6 +1990,7 @@ app
       assert(await evaluate(main, `document.querySelector('.sidebar-app-row .sidebar-app-close').title==='Unload group'`));
       menuClose.click();nativeContextMenu.closePopup(main);
       await wait(400);
+      for (let attempt=0;attempt<20 && personalContents.some(contents=>!contents.isDestroyed());attempt++) await wait(100);
       assert(personalContents.every(contents=>contents.isDestroyed()), 'Group views must unload');
       assert((await evaluate(main, `JSON.parse(localStorage.getItem('user_apps'))`)).filter(tab=>tab.sessionId==='personal').every(tab=>tab.sessionChromeCollapsed===true),'Unloading collapses all folder tabs');
       assert(otherViews.every(view=>!view.webContents.isDestroyed()), 'Other groups must stay loaded');
@@ -2043,6 +2049,10 @@ app
       const unloadSpace=nativeContextMenu.items.find(item=>item.label==='Unload all groups in this space');assert(unloadSpace,'Space menu offers unload all');
       unloadSpace.click();nativeContextMenu.closePopup(main);await wait(600);
       assert(main.contentView.children.filter(view=>view instanceof WebContentsView&&view.webContents.session!==main.webContents.session).length===0,'Space groups unload');
+      await evaluate(main, `const transfer = new DataTransfer();const from=document.querySelector('[data-footer-space="work"]');const to=document.querySelector('[data-footer-space="default"]');from.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:transfer}));to.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:transfer}));to.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer}));undefined`);await wait(200);
+      assert.deepEqual(await evaluate(main, `JSON.parse(localStorage.getItem('kudiumbrowser-spaces')).map(space=>space.id)`),['work','default'],'Footer drag persists space order');
+      assert.equal(await evaluate(main, `localStorage.getItem('kudiumbrowser-active-space') || 'default'`),'default','Reordering keeps the current space');
+      assert(await evaluate(main, `!!document.querySelector('.browser-start-page, .browser-onboarding')`),'Unloading all groups shows the configured start page');
       console.log('PASS: group menu and button unload views, preserve metadata and cookies, restore tabs lazily, protect cancelled unsaved changes, keep other groups resident');
       Object.values(windows).forEach(win=>win.close());server.close();app.quit();return;
     }

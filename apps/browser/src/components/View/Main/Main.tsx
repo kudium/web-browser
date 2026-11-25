@@ -409,6 +409,10 @@ export function Main() {
   useEffect(() => {
     setGroupSearch({ spaceId: active.id, value: null });
   }, [active.id]);
+  const [spaceFontSize, setSpaceFontSize] = useState(13);
+  const [spaceBackground, setSpaceBackground] = useState(true);
+  const spaceDrag = useRef<string | undefined>(undefined);
+  const [spaceDrop, setSpaceDrop] = useState<string>();
   const [translucentChrome, setTranslucentChrome] = useState(true);
   const [translucentAI, setTranslucentAI] = useState(false);
   const [showExtensionIcons, setShowExtensionIcons] = useState(true);
@@ -1480,6 +1484,8 @@ export function Main() {
       searchEngines: unknown;
       smartTabLabels: boolean;
       translucentChrome?: boolean;
+      spaceFontSize?: number;
+      spaceBackground?: boolean;
       translucentAI?: boolean;
       showExtensionIcons?: boolean;
       tabOverflowMode?: 'dropdown' | 'scroll';
@@ -1511,6 +1517,8 @@ export function Main() {
         preferences.addressBarExtensionsExpanded !== false
       );
       setExtensionToolbarOrder(preferences.extensionToolbarOrder ?? null);
+      setSpaceFontSize(preferences.spaceFontSize || 13);
+      setSpaceBackground(preferences.spaceBackground !== false);
       setTranslucentChrome(preferences.translucentChrome !== false);
       setTranslucentAI(preferences.translucentAI === true);
       setSmartLabelsEnabled(preferences.smartTabLabels !== false);
@@ -3965,9 +3973,11 @@ export function Main() {
       data-website-space={active.useWebsiteColors || undefined}
       data-glass={translucentChrome}
       data-ai-glass={translucentAI}
+      data-space-background={spaceBackground}
       data-private={windowWorkspace.state()?.private || undefined}
       style={
         {
+          '--space-font-size': `${spaceFontSize}px`,
           '--sidebar-width': `${sidebarWidth}px`,
           '--ai-sidebar-width': `${effectiveAIWidth}px`,
           ...appThemeStyle(theme),
@@ -4852,7 +4862,7 @@ export function Main() {
                 collisionPadding={8}
                 className="sidebar-tooltip"
                 key={space.id}
-                content={space.name}
+                content={`${space.name} · Drag to reorder`}
               >
                 <button
                   type="button"
@@ -4864,6 +4874,24 @@ export function Main() {
                       ? { color: space.customColor }
                       : undefined
                   }
+                  draggable
+                  data-space-drop={spaceDrop === space.id || undefined}
+                  onDragStart={event => { event.stopPropagation(); spaceDrag.current = space.id; event.dataTransfer.setData('application/x-kudium-space', space.id); event.dataTransfer.effectAllowed = 'move'; }}
+                  onDragOver={event => { if (!spaceDrag.current || spaceDrag.current === space.id) return; event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; setSpaceDrop(space.id); }}
+                  onDrop={event => {
+                    if (!spaceDrag.current) return;
+                    event.preventDefault(); event.stopPropagation();
+                    SpaceManager.reorder(spaceDrag.current, space.id);
+                    spaceDrag.current = undefined; setSpaceDrop(undefined);
+                  }}
+                  onDragEnd={() => { spaceDrag.current = undefined; setSpaceDrop(undefined); }}
+                  onKeyDown={event => {
+                    if (!event.altKey || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+                    event.preventDefault();
+                    const index = spaces.findIndex(item => item.id === space.id);
+                    const target = spaces[index + (event.key === 'ArrowLeft' ? -1 : 1)];
+                    if (target) SpaceManager.reorder(space.id, target.id);
+                  }}
                   data-footer-space={space.id}
                   aria-label={`Switch to ${space.name}`}
                   aria-pressed={sidebarPage === space.id}

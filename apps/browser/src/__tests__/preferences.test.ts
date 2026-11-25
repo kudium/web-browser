@@ -641,3 +641,9 @@ it('offers low battery alerts by default and persists opting out',()=>{
   expect(getBrowserPreferences().lowBatteryAlerts).toBe(false);
   updateBrowserPreferences({lowBatteryAlerts:true});
 });
+
+it('validates start pages and space appearance without allowing privileged navigation', () => {
+  expect(validatePreferences({startPage:'custom',startPageURL:'https://example.com',spaceFontSize:18,spaceBackground:false})).toEqual(expect.objectContaining({startPageURL:'https://example.com/',spaceFontSize:18,spaceBackground:false}));
+  for (const startPageURL of ['javascript:alert(1)','file:///etc/passwd','https://user:password@example.com']) expect(()=>validatePreferences({startPageURL})).toThrow();
+  expect(()=>validatePreferences({spaceFontSize:99})).toThrow();
+});

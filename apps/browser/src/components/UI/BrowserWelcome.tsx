@@ -6,9 +6,13 @@ import { PreferenceAction, PreferenceInfo } from '../../browser/preferences';
 
 export function BrowserWelcome({
   privateMode = false,
+  preview = false,
 }: {
   privateMode?: boolean;
+  preview?: boolean;
 }) {
+  const [startPage, setStartPage] = useState<'kudium' | 'blank' | 'custom'>('kudium');
+  const [startPageURL, setStartPageURL] = useState('');
   const [ready, setReady] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [info, setInfo] = useState<PreferenceInfo>();
@@ -25,7 +29,9 @@ export function BrowserWelcome({
     Promise.all([browser.preferences('get'), browser.preferenceAction('info')])
       .then(([preferences, details]) => {
         if (!active) return;
-        setCompleted(preferences.setupCompleted);
+        setCompleted(preview || preferences.setupCompleted);
+        setStartPage(preferences.startPage || 'kudium');
+        setStartPageURL(preferences.startPageURL || '');
         setInfo(details as PreferenceInfo);
         setReady(true);
       })
@@ -35,7 +41,11 @@ export function BrowserWelcome({
     return () => {
       active = false;
     };
-  }, [privateMode]);
+  }, [privateMode, preview]);
+  useEffect(() => browser.onPreferences(preferences => {
+    setStartPage(preferences.startPage || 'kudium');
+    setStartPageURL(preferences.startPageURL || '');
+  }), []);
 
   async function finish() {
     setBusy(true);
@@ -195,13 +205,17 @@ export function BrowserWelcome({
     process.env.NODE_ENV === 'production'
       ? 'https://browser.kudium.com'
       : 'http://localhost:3000';
-  return (
-    <iframe
-      className="browser-showcase"
-      title="About Kudium Browser"
-      src={url}
-      sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-      referrerPolicy="no-referrer"
-    />
-  );
+  const customURL = (() => {
+    try { const parsed = new URL(startPageURL); return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password ? parsed.href : ''; } catch { return ''; }
+  })();
+  return <section className="browser-start-page" aria-label="Start page">
+    {startPage === 'blank' ? <div className="browser-start-blank"><img src={kudiumLogo} alt="Kudium" /><p>Open a tab or enter an address to start browsing.</p></div> :
+      <iframe className="browser-showcase" title="Start page website" src={startPage === 'custom' && customURL ? customURL : url}
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />}
+    {!preview && <nav className="browser-start-actions" aria-label="Browser shortcuts">
+      <button type="button" onClick={() => { void browser.preferences('open', {section:'hooks'}); }}>Manage global hooks</button>
+      <button type="button" onClick={() => { void browser.preferences('open', {section:'appearance'}); }}>Customize start page</button>
+      <button type="button" onClick={() => { void browser.preferences('open', {section:'import'}); }}>Import browsing data</button>
+    </nav>}
+  </section>;
 }

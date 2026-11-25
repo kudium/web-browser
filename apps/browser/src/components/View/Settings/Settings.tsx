@@ -1,3 +1,4 @@
+import { BrowserWelcome } from '../../UI/BrowserWelcome';
 import { AddressBarSetting } from '../../UI/AddressBarSetting';
 import { HookIcon } from '../../UI/HookIcon';
 import { useEffect, useState } from 'react';
@@ -227,6 +228,7 @@ export function Settings() {
   const [personalDataScope, setPersonalDataScope] = useState(() =>
     new URLSearchParams(window.location.hash.split('?')[1] || '').get('scope') || 'browser');
   const [query, setQuery] = useState('');
+  const [startPreviewOpen, setStartPreviewOpen] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState(() => {
     const requested = window.location.hash.slice(1).split('?')[0];
     return ['apps', 'spaces', 'archive'].includes(requested)
@@ -575,6 +577,9 @@ export function Settings() {
                         }
                       />
                     )}
+                    {control.kind === 'text' && (
+                      <TextField.Root key={String(preferences[control.key])} type="url" aria-label={control.title} defaultValue={String(preferences[control.key] || '')} disabled={!ready || busy} onBlur={event => { if (event.target.value !== preferences[control.key]) void save({ [control.key]: event.target.value.trim() }); }} />
+                    )}
                     {control.kind === 'number' && (
                       <TextField.Root
                         key={String(preferences[control.key])}
@@ -585,7 +590,7 @@ export function Settings() {
                         defaultValue={String(preferences[control.key])}
                         aria-label={control.title}
                         disabled={
-                          !ready || busy || !preferences.discardInactiveTabs
+                          !ready || busy || (control.key === 'discardAfterMinutes' && !preferences.discardInactiveTabs)
                         }
                         onBlur={(event) => {
                           const value = Number(event.target.value);
@@ -596,7 +601,7 @@ export function Settings() {
                             value > (control.max || 1440)
                           ) {
                             setError(
-                              `Enter a whole number between ${control.min} and ${control.max} minutes.`
+                              `Enter a whole number between ${control.min} and ${control.max}.`
                             );
                             event.target.value = String(
                               preferences[control.key]
@@ -639,6 +644,7 @@ export function Settings() {
                               {option.label}
                             </Select.Item>
                           ))}
+              {item.id === 'appearance' && !filter && <details className="start-page-preview" onToggle={event => setStartPreviewOpen(event.currentTarget.open)}><summary>Preview start page</summary><div>{startPreviewOpen && <BrowserWelcome preview />}</div></details>}
                         </Select.Content>
                       </Select.Root>
                     )}

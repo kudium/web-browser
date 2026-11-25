@@ -1,7 +1,7 @@
 import { assertDeveloperSources } from "../../browser/hookValidation";
 import { SiteGlobalHookList } from './SiteGlobalHookList';
 import { FormTextField } from './FormTextField';
-import { EditorWindowFooter } from './EditorWindowChrome';
+import { EditorWindowFooter, HookFooterOptions } from './EditorWindowChrome';
 /* Function components use parameter defaults for optional props. */
 /* eslint-disable react/require-default-props */
 /* Native controls are associated through htmlFor and unique IDs. */
@@ -880,13 +880,7 @@ export function SiteDeveloperPanel({
           <RotateCw size={14} />
           {dirty ? 'Save & Run' : 'Run'}
         </Button>
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger>
-            <IconButton size="2" variant="soft" color="gray" aria-label="Hook footer options" title="More options">
-              <MoreHorizontal size={16} />
-            </IconButton>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content align="end">
+        <HookFooterOptions>
             <DropdownMenu.Item
               disabled={disabled || !validDeveloperConfig(draft)}
               onSelect={() => send('set-site-developer', { developer: draft, reloadAfterSave: true })}
@@ -913,8 +907,7 @@ export function SiteDeveloperPanel({
             >
               Publish
             </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
+        </HookFooterOptions>
       </EditorWindowFooter>
       <AlertDialog.Root
         open={!!listAction}
