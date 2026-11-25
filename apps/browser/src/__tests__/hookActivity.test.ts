@@ -107,7 +107,8 @@ it('attributes runtime errors to the exact custom hook', () => {
         hookName: 'Price watcher',
       }),
     }),
-    false
+    false,
+    { silent: true }
   );
 });
 

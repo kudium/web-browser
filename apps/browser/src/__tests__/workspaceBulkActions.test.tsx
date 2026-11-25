@@ -4,10 +4,10 @@ import { Theme } from '@radix-ui/themes';
 import { BulkActions } from '../components/View/Settings/tabs/BulkActions';
 import { preferenceSections } from '../components/View/Settings/Settings';
 
-it('prioritizes search and sync and consolidates workspace management', () => {
+it('prioritizes search and hooks and consolidates workspace management', () => {
   expect(preferenceSections.slice(0, 2).map((item) => item.id)).toEqual([
     'search',
-    'sync',
+    'hooks',
   ]);
   expect(preferenceSections.find((item) => item.id === 'apps')?.title).toBe(
     'Workspace'
