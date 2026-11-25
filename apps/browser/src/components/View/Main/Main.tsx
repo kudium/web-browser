@@ -1,3 +1,4 @@
+import { COLLECTION_DRAG_MIME, reorderCollections } from '../../../utils/collectionOrder';
 import { revealHorizontalTab } from '../../../utils/horizontalTabScroll';
 import { openActivityDestination, type BrowserActivity } from '../../../browser/activity';
 import { focusColorStyle, itemFocusColor } from '../../../utils/focusColor';
@@ -606,6 +607,8 @@ export function Main() {
     id: string;
     axis: 'vertical' | 'horizontal';
   }>();
+  const [collectionDrag, setCollectionDrag] = useState<{ id: string; spaceId: string }>();
+  const [collectionDrop, setCollectionDrop] = useState<{ id: string; after: boolean }>();
   const [dropTarget, setDropTarget] = useState<string>();
   const [moveMessage, setMoveMessage] = useState('');
   const [closedGroupUndo, setClosedGroupUndo] = useState<{
@@ -1441,7 +1444,7 @@ export function Main() {
     !!favoriteRename ||
     sidebarResizing ||
     aiResizing ||
-    !!dragged;
+    !!dragged || !!collectionDrag;
   const pageSuspended = overlayOpen || nativeOverlayOpen;
   const panelSuspended = overlayOpen || panelOverlayOpen;
   const state = selected && states[selected.id];
@@ -4278,7 +4281,18 @@ export function Main() {
                         <div
                           key={folder.id}
                           className="tab-folder"
+                          data-collection-dragging={collectionDrag?.id === folder.id || undefined}
+                          data-collection-drop={collectionDrop?.id === folder.id ? (collectionDrop.after ? 'after' : 'before') : undefined}
                           onDragOver={(event) => {
+                            if (collectionDrag?.spaceId === active.id) {
+                              event.preventDefault(); event.stopPropagation();
+                              event.dataTransfer.dropEffect = 'move';
+                              if (collectionDrag.id === folder.id) { setCollectionDrop(undefined); return; }
+                              const bounds = event.currentTarget.querySelector('.folder-header')!.getBoundingClientRect();
+                              const after = event.clientY > bounds.top + bounds.height / 2;
+                              setCollectionDrop(previous => previous?.id === folder.id && previous.after === after ? previous : { id: folder.id, after });
+                              return;
+                            }
                             if (dragged?.axis === 'vertical') {
                               event.preventDefault();
                               setDropTarget(folder.id);
@@ -4290,6 +4304,17 @@ export function Main() {
                           onDrop={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
+                            if (collectionDrag) {
+                              const value = event.dataTransfer.getData(COLLECTION_DRAG_MIME);
+                              const current = SpaceManager.getAll().find(space => space.id === active.id);
+                              if (current && collectionDrag.spaceId === active.id && value === `${active.id}:${collectionDrag.id}`) {
+                                const bounds = event.currentTarget.querySelector('.folder-header')!.getBoundingClientRect();
+                                const folders = reorderCollections(current.folders, collectionDrag.id, folder.id, event.clientY > bounds.top + bounds.height / 2);
+                                if (folders !== current.folders) SpaceManager.update(active.id, { folders });
+                              }
+                              setCollectionDrag(undefined); setCollectionDrop(undefined);
+                              return;
+                            }
                             const apps = AppManager.getAll();
                             const source = apps.find(
                               (item) => item.id === dragged?.id
@@ -4317,6 +4342,16 @@ export function Main() {
                             <ContextMenu.Trigger>
                               <div
                                 className="folder-header"
+                                draggable={!filteringGroups}
+                                onDragStart={(event) => {
+                                  if (filteringGroups || dragged) { event.preventDefault(); return; }
+                                  event.stopPropagation(); preview.close();
+                                  event.dataTransfer.effectAllowed = 'move';
+                                  event.dataTransfer.setData(COLLECTION_DRAG_MIME, `${active.id}:${folder.id}`);
+                                  setCollectionDrag({ id: folder.id, spaceId: active.id });
+                                  setCollectionDrop(undefined);
+                                }}
+                                onDragEnd={() => { setCollectionDrag(undefined); setCollectionDrop(undefined); }}
                                 style={focusColorStyle(folder.focusColor)}
                                 data-background-color={!!focusColorStyle(folder.focusColor) || undefined}
                                 data-focused={!filteringGroups && focusedCollectionId === folder.id || undefined}
@@ -4326,7 +4361,7 @@ export function Main() {
                                     collapsedFolders.includes(folder.id) &&
                                     (previewIndex.folders.get(folder.id)
                                       ?.length || 0) > 0 &&
-                                    !dragged &&
+                                    !dragged && !collectionDrag &&
                                     !menuOpen
                                   )
                                     preview.open({

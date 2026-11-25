@@ -5544,3 +5544,10 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .recommendations-heading button:focus-visible { outline:2px solid var(--accent-9); outline-offset:2px; }
 .browser-recommendations > p { font-size:11px; color:var(--gray-11); padding:0 7px; }
 .compact-sidebar .browser-recommendations { display:none; }
+
+.tab-folder[data-collection-drop] { position:relative; }
+.tab-folder[data-collection-drop]::before { content:''; position:absolute; left:8px; right:8px; height:2px; border-radius:2px; background:var(--accent-9); pointer-events:none; z-index:2; }
+.tab-folder[data-collection-drop='before']::before { top:-2px; }
+.tab-folder[data-collection-drop='after']::before { bottom:-2px; }
+.tab-folder[data-collection-dragging] { opacity:.55; }
+.folder-header[draggable=true] { cursor:grab; }
