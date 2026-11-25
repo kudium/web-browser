@@ -6,7 +6,7 @@ jest.mock('../browser/client', () => ({ browser: { preferences: (...args: unknow
 jest.mock('../components/UI/AccountSyncSuggestion', () => ({ useSyncSuggestionEligibility: () => true }));
 beforeEach(() => { localStorage.clear(); preferences.mockReset().mockResolvedValue(undefined); jest.useFakeTimers(); jest.setSystemTime(new Date('2026-11-25T12:00:00Z')); });
 afterEach(() => jest.useRealTimers());
-it('shows three initial recommendations and opens the marketplace in the caller’s current tab', async () => {
+it('shows three initial recommendations and invokes the marketplace opener', async () => {
   const onMarketplace = jest.fn(() => true);
   render(<BrowserRecommendations onMarketplace={onMarketplace} />);
   expect(screen.getAllByRole('article')).toHaveLength(3);
@@ -38,7 +38,7 @@ it('introduces more features gradually and preserves legacy dismissals', () => {
   expect(screen.getByText('Explore shortcuts')).toBeInTheDocument();
   expect(screen.queryByText('Explore performance')).not.toBeInTheDocument();
 });
-it('keeps a recommendation visible if the current tab cannot navigate', () => {
+it('keeps a recommendation visible if the marketplace cannot open', () => {
   render(<BrowserRecommendations onMarketplace={() => false} />);
   fireEvent.click(screen.getByText('Explore hooks'));
   expect(screen.getByRole('alert')).toHaveTextContent('Select an unlocked tab');

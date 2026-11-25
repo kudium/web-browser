@@ -1417,14 +1417,14 @@ export function Main() {
     window.addEventListener(OPEN_TERMINAL_LINK, open);
     return () => window.removeEventListener(OPEN_TERMINAL_LINK, open);
   }, [active.id, select]);
-  const openWhatsNew = (url: string) => {
-    if (!selected || lockedGroup(selected)) return false;
+  const openDiscoveryLink = (url: string) => {
+    if (selected && lockedGroup(selected)) return false;
     const item = commandDestination(
       [],
       selected,
       url,
       false,
-      selected.spaceId || active.id
+      selected?.spaceId || active.id
     ).app;
     if (!item) return false;
     AppManager.add(item);
@@ -4758,12 +4758,8 @@ export function Main() {
           )}
         </SidebarPager>
         <AccountSyncPublisher tabs={appList} states={states} />
-        {!windowWorkspace.state()?.private && <BrowserRecommendations onMarketplace={() => {
-          if (!selected || lockedGroup(selected)) return false;
-          command('navigate', 'https://browser.kudium.com/hooks');
-          return true;
-        }} />}
-        <AppUpdateBanner compact={compact} onWhatsNew={openWhatsNew} />
+        {!windowWorkspace.state()?.private && <BrowserRecommendations onMarketplace={() => openDiscoveryLink('https://browser.kudium.com/hooks')} />}
+        <AppUpdateBanner compact={compact} onWhatsNew={openDiscoveryLink} />
         <SidebarMediaWidget
           selectedId={selected?.id}
           tabs={appList.filter((tab) => !tab.archived && !lockedGroup(tab))}
@@ -4919,7 +4915,7 @@ export function Main() {
             </ContextMenu.Root>
           </div>
           {sidebarHidden && (
-            <AppUpdateBanner compact onWhatsNew={openWhatsNew} />
+            <AppUpdateBanner compact onWhatsNew={openDiscoveryLink} />
           )}
           {selected && showHorizontalTabs && (
             <div
