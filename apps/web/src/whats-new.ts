@@ -1,5 +1,15 @@
 export const whatsNew = [
   {
+    version: '1.0.23', date: '2026-11-25', title: 'Panels that stay visible and easier hook discovery',
+    highlights: [
+      ['Keep your panel in view', 'Dialogs preserve a picture of the panel underneath and restore the same live content when closed. Unrelated popups and resizing leave the panel visible. Switching groups follows your selected tab without letting a pinned panel take over navigation.'],
+      ['Make hooks work your way', 'New hooks are enabled by default and switches save immediately. Global hooks can be disabled for individual websites; global disable and removal still apply throughout their scope. Hook editors include hover-to-copy controls.'],
+      ['Discover more without losing your place', 'Up to three sidebar recommendations introduce useful browser features. Explore hooks opens a new tab, while Later hides recommendations for three days. Drag collections within a space to save their order.'],
+      ['See hooks before installing', 'Marketplace images use compact thumbnails and a picture viewer. Returning from the marketplace reveals the hook installer, and failed hooks report their errors without automatic alert sounds.'],
+      ['Clearer account screens', 'Updated sign-in and recovery pages make errors and email verification confirmation easier to see.'],
+    ],
+  },
+  {
     version: '1.0.22', date: '2026-11-24', title: 'Dependable panels, compact alerts, and more useful hooks',
     highlights: [
       ['Panels keep your work', 'Sidebar pages retain their content through popups and reopening, while hidden panels pause unnecessary work. Project-file dragging and browser controls are more dependable.'],
