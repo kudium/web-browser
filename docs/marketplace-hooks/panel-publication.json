@@ -2,8 +2,13 @@
   {
     "source": "listen-article.json",
     "url": "https://browser.kudium.com/hooks/9594f984-2792-4e3e-ab02-489943094819",
-    "version": 1,
-    "contentHash": "4b55f9362846393c3383e89d111ba36da1d1f24f5a9be3d622af43600f49ec4c"
+    "version": 2,
+    "contentHash": "93e8d114ca6ef1f523c5c06da47d84801575a6df265689bcc71535148de80780",
+    "screenshots": [
+      "listen-article-overview.webp",
+      "listen-article-settings.webp",
+      "listen-article-transcript.webp"
+    ]
   },
   {
     "source": "pr-navigator.json",

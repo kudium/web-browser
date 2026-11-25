@@ -61,10 +61,10 @@ before DOM navigation, credential-bearing/non-HTTP links are excluded, and speec
 uses localService voices. Custom panels retain the production restrictive CSP,
 isolated session and declared-action bridge. No API keys or new browser grants.
 
-## Listening player redesign (local, pending publication)
+## Listening player redesign (published version 2)
 
 The local listening package uses compact SVG playback controls, system typography,
-a slim progress control, and expandable voice settings and transcript. Its local
-source differs from the last published version recorded in `panel-publication.json`.
-Import `listen-article.json` to use or publish the redesign. Native QA checks both
+a slim progress control, and expandable voice settings and transcript. The public package matches the local source recorded in `panel-publication.json`.
+The marketplace gallery shows actual playback, expanded voice settings and the
+follow-along transcript. WebP masters and image hashes are in the capture manifest. Native QA checks both
 collapsed and expanded layouts at 280/368/640px and captures the transcript state.

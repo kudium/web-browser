@@ -39,6 +39,7 @@ app.whenReady().then(async()=>{
   await until(()=>currentView.webContents.executeJavaScript('document.getElementById("voice").options.length>0'),'local voices');
   for(const width of [280,368,640]){currentView.setBounds({x:860,y:0,width,height:800});await currentView.webContents.executeJavaScript('document.querySelectorAll("details").forEach(node=>node.open=true)');await pause(100);assert(await currentView.webContents.executeJavaScript('document.documentElement.scrollWidth<=innerWidth+1'),'expanded player overflow at '+width);}
   currentView.setBounds({x:860,y:0,width:368,height:800});await currentView.webContents.executeJavaScript('document.querySelectorAll("details").forEach(node=>node.open=false)');
+  await currentView.webContents.executeJavaScript('document.querySelector(".voice-settings").open=true');await capture('listen-article','settings');await currentView.webContents.executeJavaScript('document.querySelector(".voice-settings").open=false');
   await capture('listen-article','player');await click(currentView,'play');await until(()=>currentView.webContents.executeJavaScript('speechSynthesis.speaking && document.getElementById("play").textContent === "Pause"'),'speech playback');
   await click(currentView,'play');await until(()=>currentView.webContents.executeJavaScript('speechSynthesis.paused && document.getElementById("play").textContent === "Resume"'),'pause');
   await click(currentView,'play');await until(()=>currentView.webContents.executeJavaScript('!speechSynthesis.paused'),'resume');

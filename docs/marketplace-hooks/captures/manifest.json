@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-25T16:37:02.716Z",
+  "capturedAt": "2026-11-25T16:46:29.739Z",
   "native": true,
   "pages": [
     {
@@ -15,7 +15,33 @@
     {
       "id": "pr-navigator",
       "url": "https://github.com/microsoft/TypeScript/pull/65667/files",
-      "title": "Add tests for path edge cases in resolution, emit, and builds by magurotuna · Pull Request #65667 · microsoft/TypeScript · GitHub"
+      "title": "Add tests for path edge cases in resolution, emit, and builds by magurotuna \u00b7 Pull Request #65667 \u00b7 microsoft/TypeScript \u00b7 GitHub"
     }
-  ]
+  ],
+  "listeningGallery": {
+    "packageSHA256": "86cbb7bd0a9302c038105eb959b539d492c65cb103c2610530556f01d2f7f276",
+    "assets": [
+      {
+        "file": "listen-article-overview.webp",
+        "width": 1600,
+        "height": 1036,
+        "bytes": 125888,
+        "sha256": "e7478fa43cecb2d88313ae3c92eeb45f60e4581c35bf77d12c6951c62505b7aa"
+      },
+      {
+        "file": "listen-article-settings.webp",
+        "width": 736,
+        "height": 1600,
+        "bytes": 22074,
+        "sha256": "a1343d6ead8e3c21ca549ca46d8db9993c2eb00ed3cfddf8ee07a1ab3650b448"
+      },
+      {
+        "file": "listen-article-transcript.webp",
+        "width": 736,
+        "height": 1600,
+        "bytes": 70686,
+        "sha256": "2c966bba6f3aec0dd7a8cb5c7036da79bf8888bbf55d797c8315ffc137beeb91"
+      }
+    ]
+  }
 }
