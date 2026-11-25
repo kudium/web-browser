@@ -32,14 +32,18 @@ export function useAppUpdates() {
     };
   }, []);
   const run = async (action: AppUpdateAction) => {
-    if (busy) return;
+    if (busy || state.status === 'restarting') return;
     setBusy(true);
     setError('');
     const startingRevision = revision.current;
+    if (action === 'install' && state.status === 'ready') {
+      setState(current => ({ ...current, status: 'restarting', message: undefined }));
+    }
     try {
       const next = await browser.appUpdates(action);
       if (revision.current === startingRevision) setState(next);
     } catch {
+      setState(current => current.status === 'restarting' ? { ...current, status: 'ready' } : current);
       setError('Unable to complete the update. Please try again.');
     } finally {
       setBusy(false);

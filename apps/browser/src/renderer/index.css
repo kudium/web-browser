@@ -5614,3 +5614,10 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .browser-welcome-shortcuts button:hover { background:var(--gray-a4); color:var(--gray-12); }
 .browser-welcome-shortcuts button:focus-visible { outline:2px solid var(--accent-8); outline-offset:1px; }
 .browser-onboarding-footer { gap:12px; padding-top:18px; }
+
+.app-update-copy { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.app-update-spinner { flex-shrink:0; animation:app-update-spin 1s linear infinite; }
+@keyframes app-update-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .app-update-spinner { animation:none; } }
+
+.app-update-sr { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }

@@ -7,6 +7,7 @@ export interface AppUpdateState {
     | 'available'
     | 'downloading'
     | 'ready'
+    | 'restarting'
     | 'error';
   currentVersion: string;
   version?: string;

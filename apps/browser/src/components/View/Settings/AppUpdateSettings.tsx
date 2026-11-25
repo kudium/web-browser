@@ -4,12 +4,13 @@ import { useAppUpdates } from '../../../utils/useAppUpdates';
 
 export function AppUpdateSettings() {
   const { state, busy, error, run } = useAppUpdates();
+  const restarting = state.status === 'restarting';
   const ready = state.status === 'ready';
   const available = state.status === 'available';
   const working =
-    busy || state.status === 'checking' || state.status === 'downloading';
+    busy || restarting || state.status === 'checking' || state.status === 'downloading';
   const label =
-    state.status === 'checking'
+    restarting ? 'Applying the update and restarting Kudium…' : state.status === 'checking'
       ? 'Checking for updates…'
       : state.status === 'downloading'
         ? `Downloading update${
@@ -50,8 +51,8 @@ export function AppUpdateSettings() {
             void run(ready ? 'install' : available ? 'download' : 'check')
           }
         >
-          <RefreshCw size={16} aria-hidden="true" />
-          {ready
+          <RefreshCw size={16} className={restarting ? "app-update-spinner" : undefined} aria-hidden="true" />
+          {restarting ? 'Restarting…' : ready
             ? 'Restart to update'
             : available
               ? 'Download update'

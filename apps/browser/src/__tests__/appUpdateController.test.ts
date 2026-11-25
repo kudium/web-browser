@@ -162,3 +162,18 @@ it.each(['event', 'throw'])('explains a full disk during installation via %s and
   controller.install();
   expect(driver.quitAndInstall).toHaveBeenCalledTimes(2);
 });
+
+it('publishes restarting before handing off installation and ignores duplicate installs and checks', async () => {
+  const {driver,controller,publish}=fixture(false);
+  driver.emit('update-available',{version:'1.0.2'});
+  driver.emit('update-downloaded',{version:'1.0.2'});
+  driver.quitAndInstall.mockImplementation(()=>expect(publish).toHaveBeenLastCalledWith(expect.objectContaining({status:'restarting'})));
+  expect(controller.install().status).toBe('restarting');
+  controller.install();
+  await controller.check();
+  driver.emit('update-not-available');
+  driver.emit('update-available',{version:'1.0.3'});
+  expect(controller.get()).toMatchObject({status:'restarting',version:'1.0.2'});
+  expect(driver.quitAndInstall).toHaveBeenCalledTimes(1);
+  expect(driver.checkForUpdates).not.toHaveBeenCalled();
+});

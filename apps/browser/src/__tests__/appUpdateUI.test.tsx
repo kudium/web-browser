@@ -79,9 +79,7 @@ it('ignores stale initial status after a pushed update and surfaces action error
   await act(async () => resolve({ status: 'idle', currentVersion: '1.0.1' }));
   (browser.appUpdates as jest.Mock).mockRejectedValueOnce(new Error('offline'));
   fireEvent.click(screen.getByRole('button', { name: /Restart to update/ }));
-  expect(await screen.findByRole('status')).toHaveTextContent(
-    'Unable to complete',
-  );
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Unable to complete'));
 });
 it('provides a manual check in Preferences', async () => {
   (browser.appUpdates as jest.Mock).mockResolvedValue({
@@ -131,3 +129,27 @@ it.each(['unavailable', 'error'] as const)(
     }
   },
 );
+
+it('shows restart feedback immediately while installation is pending and keeps it after the response', async () => {
+  (browser.appUpdates as jest.Mock).mockResolvedValueOnce({status:'ready',currentVersion:'1.0.1',version:'1.0.2'});
+  let finish!: (state: AppUpdateState) => void;
+  (browser.appUpdates as jest.Mock).mockImplementationOnce(()=>new Promise<AppUpdateState>(resolve=>{finish=resolve;}));
+  render(<AppUpdateBanner />);
+  fireEvent.click(await screen.findByRole('button',{name:'Update ready. Restart to update'}));
+  expect(screen.getByRole('button',{name:/Restarting browser/})).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent('Restarting browser…');
+  await act(async()=>finish({status:'restarting',currentVersion:'1.0.1',version:'1.0.2'}));
+  expect(screen.getByRole('button',{name:/Restarting browser/})).toBeDisabled();
+});
+it('shows restart progress in Preferences and restores the restart action on failure', async () => {
+  (browser.appUpdates as jest.Mock).mockResolvedValueOnce({status:'ready',currentVersion:'1.0.1',version:'1.0.2'});
+  let fail!: (error: Error) => void;
+  (browser.appUpdates as jest.Mock).mockImplementationOnce(()=>new Promise((_,reject)=>{fail=reject;}));
+  render(<Theme><AppUpdateSettings /></Theme>);
+  fireEvent.click(await screen.findByRole('button',{name:'Restart to update'}));
+  expect(screen.getByRole('button',{name:'Restarting…'})).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent('Applying the update and restarting Kudium…');
+  await act(async()=>fail(new Error('installation failed')));
+  expect(screen.getByRole('button',{name:'Restart to update'})).toBeEnabled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Unable to complete');
+});

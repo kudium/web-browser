@@ -34,7 +34,7 @@ export class AppUpdateController {
     driver.autoDownload = false;
     this.applyPreferences();
     driver.on('update-available', (info: { version: string }) => {
-      if (this.state.status === 'ready' || this.state.status === 'downloading')
+      if (this.installing || this.state.status === 'ready' || this.state.status === 'downloading')
         return;
       this.set({
         status: 'available',
@@ -44,7 +44,7 @@ export class AppUpdateController {
       if (this.preferences().automaticallyDownloadUpdates) this.download();
     });
     driver.on('update-not-available', () => {
-      if (['ready', 'downloading', 'available'].includes(this.state.status))
+      if (this.installing || ['ready', 'downloading', 'available'].includes(this.state.status))
         return;
       this.set({ status: 'idle', version: undefined, message: undefined });
     });
@@ -91,7 +91,7 @@ export class AppUpdateController {
     this.installing = false;
     // Keep a downloaded update usable, and a known update available to retry.
     let status: AppUpdateState['status'] = 'error';
-    if (this.state.status === 'ready') status = 'ready';
+    if (this.state.status === 'ready' || this.state.status === 'restarting') status = 'ready';
     else if (this.state.version) status = 'available';
     this.set({
       status,
@@ -117,7 +117,7 @@ export class AppUpdateController {
 
   check(): Promise<AppUpdateState> {
     if (this.checking) return this.checking;
-    if (this.downloading || this.state.status === 'ready')
+    if (this.installing || this.downloading || this.state.status === 'ready')
       return Promise.resolve(this.get());
     if (!this.state.version)
       this.set({ status: 'checking', message: undefined });
@@ -159,11 +159,12 @@ export class AppUpdateController {
   }
 
   install(restart = true) {
+    if (this.installing) return this.get();
     if (this.state.status !== 'ready')
       throw new Error('Download the update before installing it.');
-    if (this.installing) return this.get();
     this.installing = true;
     this.driver.autoRunAppAfterInstall = restart;
+    if (restart) this.set({ status: 'restarting', message: undefined });
     try {
       this.driver.quitAndInstall();
     } catch (error) {
