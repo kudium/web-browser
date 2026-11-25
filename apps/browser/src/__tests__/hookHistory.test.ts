@@ -26,7 +26,12 @@ it('keeps successful source across a broken save and restart, with bounded histo
       after: "log('working')",
     };
     saveSiteHooks('profile', 'https://example.com', working, () => {});
-    markHooksWorking('profile', 'https://example.com', working, '');
+    markHooksWorking(
+      'profile',
+      'https://example.com',
+      getSiteSettings('profile', 'https://example.com').developer!,
+      ''
+    );
     saveSiteHooks(
       'profile',
       'https://example.com',
