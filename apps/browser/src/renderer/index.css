@@ -5608,7 +5608,9 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 
 .recommendation-stack .recommendation-card:not([data-front]) { box-shadow:0 2px 6px var(--black-a2); }
 
-.browser-welcome-shortcuts { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 16px; margin-top:16px; }
-.browser-welcome-shortcuts button { padding:5px 0; border:0; background:transparent; color:var(--accent-11); font-size:12px; cursor:pointer; }
-.browser-welcome-shortcuts button:hover { text-decoration:underline; }
-.browser-welcome-shortcuts button:focus-visible { outline:2px solid var(--accent-8); outline-offset:3px; border-radius:3px; }
+/* One compact shortcut treatment on the welcome guide and custom start pages. */
+.browser-welcome-shortcuts { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:2px; margin:0; padding:3px; max-width:100%; border-radius:10px; background:var(--gray-a2); }
+.browser-welcome-shortcuts button { padding:8px 12px; border:0; border-radius:7px; background:transparent; color:var(--gray-11); font-size:12px; line-height:16px; cursor:pointer; }
+.browser-welcome-shortcuts button:hover { background:var(--gray-a4); color:var(--gray-12); }
+.browser-welcome-shortcuts button:focus-visible { outline:2px solid var(--accent-8); outline-offset:1px; }
+.browser-onboarding-footer { gap:12px; padding-top:18px; }

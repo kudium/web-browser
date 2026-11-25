@@ -4,6 +4,16 @@ import kudiumLogo from '../../../assets/app-icon.png';
 import { browser } from '../../browser/client';
 import { PreferenceAction, PreferenceInfo } from '../../browser/preferences';
 
+function WelcomeShortcuts({ floating = false }: { floating?: boolean }) {
+  return <nav className={`browser-welcome-shortcuts${floating ? ' browser-start-actions' : ''}`} aria-label="Browser shortcuts">
+    {([
+      { label:'Global hooks', name:'Manage global hooks', section:'hooks' },
+      { label:'Customize', name:'Customize start page', section:'appearance' },
+      { label:'Import', name:'Import browsing data', section:'import' },
+    ] as const).map(item => <button key={item.section} type="button" aria-label={item.name} title={item.name} onClick={() => { void browser.preferences('open', {section:item.section}); }}>{item.label}</button>)}
+  </nav>;
+}
+
 export function BrowserWelcome({
   privateMode = false,
   preview = false,
@@ -144,8 +154,8 @@ export function BrowserWelcome({
         <div className="browser-onboarding-card">
           <div className="browser-onboarding-content">
             <img className="browser-onboarding-logo" src={kudiumLogo} alt="" />
-            <h1>Welcome to Kudium.</h1>
-            <p>{completed ? "Make yourself at home. Your browser, your way." : "A few finishing touches. Choose what works for you."}</p>
+            <h1>More than a browser.</h1>
+            <p>Kudium brings your tabs, tools, and ideas together in one workspace.</p>
           </div>
           <div className="browser-onboarding-options">
             {options.map((option) => {
@@ -198,12 +208,8 @@ export function BrowserWelcome({
             >
               {busy ? 'One moment…' : 'Start browsing'}
             </button>}
-            {!preview && <nav className="browser-welcome-shortcuts" aria-label="Browser shortcuts">
-              <button type="button" onClick={() => { void browser.preferences('open', {section:'hooks'}); }}>Manage global hooks</button>
-              <button type="button" onClick={() => { void browser.preferences('open', {section:'appearance'}); }}>Customize start page</button>
-              <button type="button" onClick={() => { void browser.preferences('open', {section:'import'}); }}>Import browsing data</button>
-            </nav>}
-            <p>You can change these settings later in Preferences.</p>
+            {!preview && <WelcomeShortcuts />}
+            {!completed && !preview && <p>You can change these settings later in Preferences.</p>}
           </footer>
         </div>
       </section>
@@ -213,10 +219,6 @@ export function BrowserWelcome({
     {startPage === 'blank' ? <div className="browser-start-blank"><img src={kudiumLogo} alt="Kudium" /><p>Open a tab or enter an address to start browsing.</p></div> :
       <iframe className="browser-showcase" title="Start page website" src={customURL}
         sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />}
-    {!preview && <nav className="browser-start-actions" aria-label="Browser shortcuts">
-      <button type="button" onClick={() => { void browser.preferences('open', {section:'hooks'}); }}>Manage global hooks</button>
-      <button type="button" onClick={() => { void browser.preferences('open', {section:'appearance'}); }}>Customize start page</button>
-      <button type="button" onClick={() => { void browser.preferences('open', {section:'import'}); }}>Import browsing data</button>
-    </nav>}
+    {!preview && <WelcomeShortcuts floating />}
   </section>;
 }
