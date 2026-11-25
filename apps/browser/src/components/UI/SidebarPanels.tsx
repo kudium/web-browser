@@ -70,6 +70,14 @@ export function SidebarPanels({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(update);
     };
+    // A fixed-width native slot moves while its parent opens; position changes
+    // do not trigger ResizeObserver. Reconcile once the shell finishes moving.
+    const motionEnd = (event: Event) => {
+      if (event.target instanceof Element && element && event.target.contains(element)) schedule();
+    };
+    document.addEventListener('transitionend', motionEnd);
+    document.addEventListener('transitioncancel', motionEnd);
+    document.addEventListener('animationend', motionEnd);
     const observer = new ResizeObserver(schedule);
     if (element) observer.observe(element);
     window.addEventListener('resize', schedule);
@@ -79,6 +87,9 @@ export function SidebarPanels({
       layoutUpdate.current = undefined;
       cancelAnimationFrame(frame);
       observer.disconnect();
+      document.removeEventListener('transitionend', motionEnd);
+      document.removeEventListener('transitioncancel', motionEnd);
+      document.removeEventListener('animationend', motionEnd);
       window.removeEventListener('resize', schedule);
       document.removeEventListener('scroll', schedule, true);
       void browser

@@ -1275,7 +1275,13 @@ app
       await click('.sidebar-app[aria-label="Facebook · Work"]');
       const panelApi=require(path.join(runtimeDir,'electronBrowser.js'));
       panelApi.showHookPanel({source:initialViews[0].webContents,owner:main,groupId:'personal',sourceId:'personal-home',token:'fixture',hookId:'fixture',hookName:'URL breaker',authorized:()=>true},{id:'url',title:'URL breakdown',reveal:true,content:{type:'table',columns:['Part','Value'],rows:[['URL',url+'/home']]}});
-      await wait(300);
+      await wait(650);
+      const panelRect=await evaluate(main,`(()=>{const r=document.querySelector('.sidebar-feature-content').getBoundingClientRect();return{x:Math.round(r.x),y:Math.round(r.y),width:Math.floor(r.right)-Math.round(r.x),height:Math.floor(r.bottom)-Math.round(r.y)}})()`);
+      const nativePanel=main.contentView.children.find(v=>v instanceof WebContentsView&&v.webContents.getURL().startsWith('data:text/html'));
+      assert(nativePanel,'Native hook panel must exist');
+      const nativeBounds=nativePanel.getBounds();
+      assert.equal(nativeBounds.x,panelRect.x,'Native panel must follow the completed shell opening transition');
+      assert.equal(nativeBounds.width,panelRect.width,'Native panel must use the full slot width');
       assert(await evaluate(main,`!!document.querySelector('.sidebar-feature-content')`),'Hook panel must be open during navigation test');
       for(const width of [760,1160]){
         main.setSize(width,850);await wait(150);

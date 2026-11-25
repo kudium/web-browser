@@ -1,0 +1,23 @@
+import {act,render} from '@testing-library/react';
+import {SidebarPanels} from '../components/UI/SidebarPanels';
+import {browser} from '../browser/client';
+jest.mock('../browser/client',()=>({browser:{sidebarPanels:jest.fn().mockResolvedValue({})}}));
+jest.mock('../components/UI/GroupPicker',()=>({GroupPicker:()=>null}));
+jest.mock('../components/UI/AssistantPageHeader',()=>({AssistantPageHeader:({children}:any)=><header>{children}</header>}));
+test('native layout follows ancestor motion without observing unrelated animations',()=>{
+ jest.useFakeTimers();
+ const previousObserver=global.ResizeObserver;
+ global.ResizeObserver=class {observe(){}unobserve(){}disconnect(){}} as any;
+ let x=1100;
+ const rect=jest.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(()=>({x,y:70,width:368,height:650,left:x,right:x+368,top:70,bottom:720,toJSON(){}}));
+ const {container,unmount}=render(<div className="moving-shell"><SidebarPanels state={{panels:[{id:'hook',title:'Hook',kind:'hook'}],activeId:'hook',openRequest:1}} active onClose={()=>{}}/></div>);
+ const api=browser.sidebarPanels as jest.Mock;api.mockClear();x=784;
+ act(()=>{document.body.dispatchEvent(new Event('transitionend',{bubbles:true}));jest.runOnlyPendingTimers();});
+ expect(api).toHaveBeenLastCalledWith({action:'layout',id:'hook',bounds:{x:784,y:70,width:368,height:650}});
+ api.mockClear();
+ act(()=>{container.querySelector('header')!.dispatchEvent(new Event('animationend',{bubbles:true}));jest.runOnlyPendingTimers();});
+ expect(api).not.toHaveBeenCalled();
+ unmount();api.mockClear();
+ act(()=>{document.body.dispatchEvent(new Event('transitionend',{bubbles:true}));jest.runOnlyPendingTimers();});
+ expect(api).not.toHaveBeenCalled();rect.mockRestore();global.ResizeObserver=previousObserver;jest.useRealTimers();
+});
