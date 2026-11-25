@@ -1,0 +1,2 @@
+DROP INDEX "hook_public_cursor";--> statement-breakpoint
+CREATE INDEX "hook_public_updated_cursor" ON "hook_listings" USING btree ("updated_at" DESC NULLS FIRST,"id" DESC NULLS FIRST) WHERE "hook_listings"."status" = 'approved';

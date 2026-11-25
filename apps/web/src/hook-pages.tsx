@@ -266,11 +266,11 @@ export function hookIndexPage(
               active={(query.sort || "newest") === sort}
               title={
                 sort === "trending"
-                  ? "Most liked, with newest first for ties"
-                  : "Most recently published"
+                  ? "Most liked, with recently updated first for ties"
+                  : "Most recently updated"
               }
             >
-              {sort === "trending" ? "Trending" : "Newest"}
+              {sort === "trending" ? "Trending" : "Recently updated"}
             </TabNav.Link>
           ))}
         </TabNav.Root>

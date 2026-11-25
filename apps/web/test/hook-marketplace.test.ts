@@ -427,6 +427,16 @@ describe.skipIf(!url)(
         false,
       );
     });
+    test("recently updated hooks rise above newer publications", async () => {
+      const older = await store.publish(bob, sample("Updated ordering older"));
+      const newer = await store.publish(bob, sample("Updated ordering newer"));
+      await db.update(hookListings).set({ publishedAt: new Date("2026-11-01"), updatedAt: new Date("2026-11-01") }).where(eq(hookListings.id, older.id));
+      await db.update(hookListings).set({ publishedAt: new Date("2026-11-02"), updatedAt: new Date("2026-11-02") }).where(eq(hookListings.id, newer.id));
+      const query = hookQuery({ q: "Updated ordering" });
+      expect((await store.list(query)).items.map(row => row.hook.id)).toEqual([newer.id, older.id]);
+      await store.publish(bob, sample("Updated ordering older"), older.id, 1);
+      expect((await store.list(query)).items.map(row => row.hook.id)).toEqual([older.id, newer.id]);
+    });
     test("cursor pagination retains timestamp ties, applies site/name filters and excludes new publications", async () => {
       const ids: string[] = [];
       for (let i = 0; i < 53; i += 1)
@@ -435,7 +445,7 @@ describe.skipIf(!url)(
         );
       await db
         .update(hookListings)
-        .set({ publishedAt: new Date("2026-11-01T10:00:00.123Z") })
+        .set({ updatedAt: new Date("2026-11-01T10:00:00.123Z") })
         .where(inArray(hookListings.id, ids));
       const q = hookQuery({
         q: "Pagination reader",
@@ -485,10 +495,10 @@ describe.skipIf(!url)(
         await tx.execute(sql`SET LOCAL enable_indexscan=on`);
         const cursor = JSON.stringify(
           await tx.execute(
-            sql`EXPLAIN SELECT id FROM hook_listings WHERE status='approved' ORDER BY published_at DESC,id DESC LIMIT 24`,
+            sql`EXPLAIN SELECT id FROM hook_listings WHERE status='approved' ORDER BY updated_at DESC,id DESC LIMIT 24`,
           ),
         );
-        expect(cursor).toContain("hook_public_cursor");
+        expect(cursor).toContain("hook_public_updated_cursor");
         expect(cursor).not.toContain("Sort");
         const targets = JSON.stringify(
           await tx.execute(

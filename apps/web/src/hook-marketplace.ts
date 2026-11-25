@@ -138,10 +138,10 @@ export function marketplaceStore(db: Database) {
       owner?: string,
       admin = false
     ) {
-      const scope = { ...query, owner: owner || '', admin };
+      const scope = { ...query, owner: owner || '', admin, ordering: 'updated-v1' };
       const after = cursor ? decodeHookCursor(cursor, scope) : undefined;
       const boundary = after?.boundary || new Date().toISOString();
-      const conditions = [sql`${hookListings.publishedAt} <= ${boundary}`];
+      const conditions = [sql`${hookListings.updatedAt} <= ${boundary}`];
       if (owner) conditions.push(eq(hookListings.authorId, owner));
       else if (!admin)
         conditions.push(sql`${hookListings.status} = 'approved'`);
@@ -160,8 +160,8 @@ export function marketplaceStore(db: Database) {
       const trending = query.sort === 'trending';
       if (after) {
         const older = or(
-          lt(hookListings.publishedAt, new Date(after.time)),
-          and(eq(hookListings.publishedAt, new Date(after.time)), lt(hookListings.id, after.id))
+          lt(hookListings.updatedAt, new Date(after.time)),
+          and(eq(hookListings.updatedAt, new Date(after.time)), lt(hookListings.id, after.id))
         )!;
         if (trending && after.score === undefined)
           throw new HTTPException(400, { message: 'invalid_cursor' });
@@ -185,7 +185,7 @@ export function marketplaceStore(db: Database) {
           )
         )
         .where(and(...conditions))
-        .orderBy(...(trending ? [desc(hookListings.likes)] : []), desc(hookListings.publishedAt), desc(hookListings.id))
+        .orderBy(...(trending ? [desc(hookListings.likes)] : []), desc(hookListings.updatedAt), desc(hookListings.id))
         .limit(25);
       const items = rows.slice(0, 24);
       const last = items.at(-1);
@@ -196,7 +196,7 @@ export function marketplaceStore(db: Database) {
             ? encodeHookCursor(
                 scope,
                 boundary,
-                last.hook.publishedAt.toISOString(),
+                last.hook.updatedAt.toISOString(),
                 last.hook.id,
                 trending ? last.hook.likes : undefined
               )

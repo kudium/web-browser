@@ -9,7 +9,7 @@ export const hookListings = pgTable('hook_listings', {
   status: text('status').$type<'pending' | 'approved' | 'rejected'>().notNull().default('approved'), statusReason: text('status_reason'),
   version: integer('version').notNull().default(1), likes: integer('likes').notNull().default(0),
   publishedAt: timestamp('published_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
-}, t => [index('hook_author').on(t.authorId), index('hook_public_cursor').on(t.publishedAt.desc().nullsFirst(), t.id.desc().nullsFirst()).where(sql`${t.status} = 'approved'`), index('hook_name_search').using('gin', sql`${t.name} gin_trgm_ops`).where(sql`${t.status} = 'approved'`)]);
+}, t => [index('hook_author').on(t.authorId), index('hook_public_updated_cursor').on(t.updatedAt.desc().nullsFirst(), t.id.desc().nullsFirst()).where(sql`${t.status} = 'approved'`), index('hook_name_search').using('gin', sql`${t.name} gin_trgm_ops`).where(sql`${t.status} = 'approved'`)]);
 export const hookVersions = pgTable('hook_versions', {
   hookId: text('hook_id').notNull().references(() => hookListings.id, { onDelete: 'cascade' }), version: integer('version').notNull(),
   status: text('status').$type<'pending' | 'approved' | 'rejected'>().notNull().default('approved'),

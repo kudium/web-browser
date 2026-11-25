@@ -92,6 +92,13 @@
       "when": 1795563727991,
       "tag": "0012_hook_screenshots",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795627290355,
+      "tag": "0013_chemical_scourge",
+      "breakpoints": true
     }
   ]
 }
