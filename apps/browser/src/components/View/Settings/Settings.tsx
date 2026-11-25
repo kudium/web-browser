@@ -191,6 +191,7 @@ const sections = [
 ];
 const sectionOrder = [
   'search',
+  'hooks',
   'sync',
   'import',
   'appearance',
@@ -202,7 +203,6 @@ const sectionOrder = [
   'downloads',
   'privacy',
   'extensions',
-  'hooks',
   'languages',
   'performance',
   'websites',

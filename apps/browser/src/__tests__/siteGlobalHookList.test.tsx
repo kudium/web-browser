@@ -39,7 +39,20 @@ it('keeps excluded hooks visible but cannot override a global disable or a wildc
   (window as any).electron = { hookMarketplace: { request } };
   render(<Theme><SiteGlobalHookList url="https://example.com/" disabled={false} /></Theme>);
   expect(await screen.findByText('Reader')).toBeInTheDocument();
-  expect(screen.getByRole('switch', { name: 'Enable Reader on this website' })).toBeDisabled();
+  expect(screen.getByRole('switch', { name: 'Enable Reader on this website' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('switch', { name: 'Enable Reader on this website' }));
+  expect(await screen.findByText(/This hook is disabled globally/)).toBeInTheDocument();
+  expect(request.mock.calls.some(([input]) => input.action === 'global-save')).toBe(false);
   expect(screen.getByRole('switch', { name: 'Enable Wildcard on this website' })).toBeDisabled();
   expect(screen.getByText('Disabled everywhere')).toBeInTheDocument();
+});
+
+it('explains a disabled global master switch without saving a website override', async () => {
+  const hook = { id: 'reader', name: 'Reader', enabled: true, path: '/*', exclusions: [], before: '', after: '', css: '' };
+  const request = jest.fn(async (input) => ({ global: { enabled: false, hooks: input.allGroups ? [hook] : [] }, globalHash: 'hash' }));
+  (window as any).electron = { hookMarketplace: { request } };
+  render(<Theme><SiteGlobalHookList url="https://example.com/" disabled={false} /></Theme>);
+  fireEvent.click(await screen.findByRole('switch', { name: 'Enable Reader on this website' }));
+  expect(await screen.findByText(/Global hooks are disabled. Enable them in Preferences/)).toBeInTheDocument();
+  expect(request.mock.calls.some(([input]) => input.action === 'global-save')).toBe(false);
 });

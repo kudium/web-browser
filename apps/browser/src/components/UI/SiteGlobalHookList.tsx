@@ -4,6 +4,7 @@ import {
   Button,
   DropdownMenu,
   IconButton,
+  Popover,
   Switch,
 } from '@radix-ui/themes';
 import { MoreHorizontal } from 'lucide-react';
@@ -33,11 +34,13 @@ export function SiteGlobalHookList({
   const saving = useRef(false);
   const [busy, setBusy] = useState(false);
   const [opening, setOpening] = useState('');
+  const [blockedTip, setBlockedTip] = useState('');
   const [deletion, setDeletion] = useState<{
     allGroups: boolean;
     hook: GlobalHook;
   }>();
   useEffect(() => {
+    setBlockedTip('');
     let live = true;
     let refreshing = false;
     const refresh = async () => {
@@ -190,18 +193,31 @@ export function SiteGlobalHookList({
             <span className="site-hook-list-status">
               {!state.global.enabled || !hook.enabled ? 'Disabled everywhere' : excluded ? 'Disabled here' : 'Active'}
             </span>
+            <Popover.Root open={blockedTip === `${allGroups}:${hook.id}`} onOpenChange={(open) => { if (!open) setBlockedTip(''); }}>
+            <Popover.Trigger>
             <Switch
               size="1"
               aria-label={`Enable ${hook.name} on this website`}
               checked={state.global.enabled && hook.enabled && !excluded}
-              disabled={disabled || busy || !state.global.enabled || !hook.enabled || wildcardExcluded}
+              disabled={disabled || busy || (wildcardExcluded && state.global.enabled && hook.enabled)}
               onCheckedChange={(enabled) => {
+                if (!state.global.enabled || !hook.enabled) {
+                  setBlockedTip(`${allGroups}:${hook.id}`);
+                  return;
+                }
                 const host = new URL(url!).hostname;
                 void save(allGroups, hook, { exclusions: enabled
                   ? hook.exclusions.filter(rule => rule !== host)
                   : [...new Set([...hook.exclusions, host])] });
               }}
             />
+            </Popover.Trigger>
+            <Popover.Content maxWidth="300px" className="preference-hint-content">
+              <p>{!state.global.enabled
+                ? 'Global hooks are disabled. Enable them in Preferences → Hooks first, then enable this hook for the website.'
+                : 'This hook is disabled globally. Choose Enable everywhere in its options first, then enable it for this website.'}</p>
+            </Popover.Content>
+            </Popover.Root>
             <DropdownMenu.Root>
               <DropdownMenu.Trigger>
                 <IconButton
