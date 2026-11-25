@@ -5529,3 +5529,5 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .hook-copy-host > .hook-copy-button:focus-visible { outline:2px solid var(--accent-9); outline-offset:2px; }
 @media (hover:none) { .hook-copy-host > .hook-copy-button { opacity:1; } }
 @media (prefers-reduced-motion:reduce) { .hook-copy-host > .hook-copy-button { transition:none; } }
+
+.site-global-hook-heading { display:flex; align-items:center; gap:6px; }

@@ -7,6 +7,7 @@ import {
   Switch,
 } from '@radix-ui/themes';
 import { MoreHorizontal } from 'lucide-react';
+import { PreferenceHint } from './PreferenceHint';
 import type {
   GlobalHook,
   HookMarketplaceState,
@@ -149,7 +150,12 @@ export function SiteGlobalHookList({
   return (
     <>
       {matching.length > 0 && (
-        <span className="site-hook-list-section">Global hooks</span>
+        <div className="site-hook-list-section site-global-hook-heading">
+          <span>Global hooks</span>
+          <PreferenceHint label="global hooks">
+            <p>Switches apply only to this website. Global disable and delete apply everywhere in the hook’s scope.</p>
+          </PreferenceHint>
+        </div>
       )}
       {matching.map(({ allGroups, state, hook, excluded, wildcardExcluded }) => (
         <div className="site-hook-list-row" key={`${allGroups}:${hook.id}`}>
@@ -239,7 +245,6 @@ export function SiteGlobalHookList({
       {matching.some((item) => item.wildcardExcluded) && (
         <small className="site-hook-list-note">This website is covered by a domain exclusion. Use Edit / Rename to manage excluded websites.</small>
       )}
-      {matching.length > 0 && <small className="site-hook-list-note">Switches apply only to this website. Global disable and delete apply everywhere in the hook’s scope.</small>}
       {matching.some((item) => !item.state.global.enabled) && (
         <small className="site-hook-list-note">
           Global hooks are paused in Preferences.
