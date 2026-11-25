@@ -291,3 +291,17 @@ Removed and unavailable providers are skipped. Choosing a new panel after going
 back discards the forward branch. History survives closing/reopening the sidebar
 for the current browser session; it does not retain old versions of a provider's
 updated document.
+
+## Shared bottom docking
+
+The workspace panel container supports right and bottom placement for Chat, Notes,
+Activity, Tasks, Developer and native panels. `PanelDockButton` shares
+`usePanelDock`; placement and bottom height are saved locally. Changing placement
+keeps every existing `SidebarPanelHost` portal and native provider mounted. The
+existing `SidebarResizeHandle` supports horizontal and vertical movement. The
+viewport and native-panel bounds observers remain the only layout reporters.
+
+Page Developer Tools registers as a native feature provider when Dock in panel is
+selected. The existing registry owns its picker, resize bounds, suspension,
+retention and pop-out behavior. Its Manage control opens the native DevTools dock
+menu. Closing the inspected tab removes its provider.

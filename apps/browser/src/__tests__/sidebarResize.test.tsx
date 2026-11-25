@@ -58,3 +58,14 @@ it('coalesces drag bursts to one update per frame and flushes the final pointer 
   expect(callbacks.size).toBe(0);
   view.unmount(); request.mockRestore(); cancel.mockRestore();
 });
+
+it('resizes bottom-docked tools with the vertical keyboard splitter', () => {
+  const change=jest.fn();
+  render(<SidebarResizeHandle width={240} side="right" axis="vertical" label="Resize Developer Tools" minWidth={120} maxWidth={450} onChange={change} onResizingChange={jest.fn()}/>);
+  const handle=screen.getByRole('separator',{name:'Resize Developer Tools'});
+  expect(handle).toHaveAttribute('aria-orientation','horizontal');
+  fireEvent.keyDown(handle,{key:'ArrowUp'});
+  expect(change).toHaveBeenLastCalledWith(250);
+  fireEvent.keyDown(handle,{key:'ArrowDown'});
+  expect(change).toHaveBeenLastCalledWith(230);
+});

@@ -1,3 +1,4 @@
+import { PanelDockButton } from './PanelDockButton';
 /* eslint-disable react/require-default-props */
 import { ReactNode, useContext } from 'react';
 import { ArrowUpRight, SquareArrowDownLeft } from 'lucide-react';
@@ -22,6 +23,7 @@ export function AssistantPageHeader({
   return (
     <div className={`assistant-page-header${edgeToEdge ? ' assistant-page-header-edge' : ''} ${className}`} hidden={hidden}>
       <div className="assistant-page-header-actions">{children}</div>
+      {placement && !floating && <PanelDockButton />}
       {placement && (
         <ChromeIconButton
           label={floating ? `Dock ${title} back` : `Undock ${title}`}

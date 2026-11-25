@@ -13,6 +13,9 @@ export function savedSidebarWidth() {
 }
 export function SidebarResizeHandle({
   width,
+  axis = 'horizontal',
+  label,
+  className = '',
   onChange,
   onResizingChange,
   side = 'left',
@@ -21,6 +24,9 @@ export function SidebarResizeHandle({
   resetWidth = defaultSidebarWidth,
 }: {
   width: number;
+  axis?: 'horizontal' | 'vertical';
+  label?: string;
+  className?: string;
   side?: 'left' | 'right';
   minWidth?: number;
   maxWidth?: number;
@@ -61,20 +67,20 @@ export function SidebarResizeHandle({
       role="separator"
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
-      aria-label={side === 'right' ? 'Resize AI sidebar' : 'Resize sidebar'}
-      aria-orientation="vertical"
+      aria-label={label || (side === 'right' ? 'Resize AI sidebar' : 'Resize sidebar')}
+      aria-orientation={axis === 'vertical' ? 'horizontal' : 'vertical'}
       aria-valuemin={minWidth}
       aria-valuemax={maxWidth}
       aria-valuenow={Math.min(width, maxWidth)}
       className={`sidebar-resize-handle ${
-        side === 'right' ? 'ai-resize-handle' : ''
+        (side === 'right' ? 'ai-resize-handle' : '') + ' ' + className
       }`}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         event.preventDefault();
         drag.current = {
           pointer: event.pointerId,
-          x: event.clientX,
+          x: axis === 'vertical' ? event.clientY : event.clientX,
           width:
             side === 'right'
               ? width
@@ -87,7 +93,7 @@ export function SidebarResizeHandle({
         const move = (input: PointerEvent) => {
           if (drag.current?.pointer === input.pointerId) {
             pendingWidth.current = drag.current.width +
-              (input.clientX - drag.current.x) * (side === 'right' ? -1 : 1);
+              ((axis === 'vertical' ? input.clientY : input.clientX) - drag.current.x) * (side === 'right' ? -1 : 1);
             if (!frame.current) frame.current = requestAnimationFrame(flush);
           }
         };
@@ -114,11 +120,11 @@ export function SidebarResizeHandle({
       onDoubleClick={() => change(resetWidth)}
       onKeyDown={(event) => {
         const step = event.shiftKey ? 30 : 10;
-        if (event.key === 'ArrowLeft') {
+        if (event.key === (axis === 'vertical' ? 'ArrowUp' : 'ArrowLeft')) {
           event.preventDefault();
           change(width + (side === 'right' ? step : -step));
         }
-        if (event.key === 'ArrowRight') {
+        if (event.key === (axis === 'vertical' ? 'ArrowDown' : 'ArrowRight')) {
           event.preventDefault();
           change(width + (side === 'right' ? -step : step));
         }

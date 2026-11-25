@@ -64,6 +64,8 @@ export interface BrowserState {
   id: string;
   url: string;
   title: string;
+  devToolsFraction?: number;
+  devToolsDock?: 'right' | 'bottom' | 'window' | 'panel';
   themeColor?: string;
   icon?: string;
   muted?: boolean;
@@ -104,6 +106,7 @@ export interface BrowserLayout {
   }[];
 }
 export interface BrowserCommand {
+  devToolsFraction?: number;
   id: string;
   action:
     | 'extension-group-result'
@@ -119,6 +122,14 @@ export interface BrowserCommand {
     | 'settings'
     | 'extensions'
     | 'menu'
+    | 'page-devtools-panel'
+  | 'page-devtools-right'
+    | 'page-devtools-bottom'
+    | 'page-devtools-window'
+    | 'page-devtools-menu'
+    | 'page-devtools-resize'
+    | 'page-devtools-close'
+    | 'page-devtools'
     | 'print'
     | 'copy-clean-link'
     | 'zoom-in'
@@ -175,6 +186,11 @@ export type BrowserShortcut =
   | 'assistant'
   | 'ai-tasks'
   | 'developer'
+  | 'page-devtools-panel'
+  | 'page-devtools-right'
+  | 'page-devtools-bottom'
+  | 'page-devtools-window'
+  | 'page-devtools-close'
   | 'site-settings';
 
 export type SpaceWheelEvent =

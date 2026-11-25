@@ -120,6 +120,14 @@ const commands = new Set<BrowserCommand['action']>([
   'settings',
   'extensions',
   'menu',
+  'page-devtools-panel',
+  'page-devtools-right',
+  'page-devtools-bottom',
+  'page-devtools-window',
+  'page-devtools-menu',
+  'page-devtools-resize',
+  'page-devtools-close',
+  'page-devtools',
   'print',
   'copy-clean-link',
   'zoom-in',
@@ -154,6 +162,7 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
     text(value.id) &&
     typeof value.action === 'string' &&
     commands.has(value.action as BrowserCommand['action']) &&
+    (value.action !== 'page-devtools-resize' || (typeof value.devToolsFraction === 'number' && Number.isFinite(value.devToolsFraction) && value.devToolsFraction >= .2 && value.devToolsFraction <= .75)) &&
     (value.action !== 'extension-group-result' || (text(value.mutationId, 100) && optionalText(value.error))) &&
     (value.url === undefined || text(value.url, 65536)) &&
     (value.action !== 'set-site-developer' ||

@@ -1,3 +1,4 @@
+import { PanelDockButton } from './PanelDockButton';
 import { useLayoutEffect, useRef, useEffect, useState } from 'react';
 import {
   X,
@@ -341,6 +342,7 @@ export function SidebarPanels({
               .catch(() => {});
           }}
         />
+        {!state.floating && <PanelDockButton />}
         <ChromeIconButton
           icon={state.floating ? SquareArrowDownLeft : ArrowUpRight}
           label={state.floating ? 'Dock panel back' : 'Undock panel'}

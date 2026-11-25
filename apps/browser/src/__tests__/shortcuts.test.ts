@@ -173,3 +173,12 @@ it('round trips complete portable snapshots and rejects damaged or conflicting i
     'Mod+Shift+BracketLeft',
   ]);
 });
+
+it('opens page DevTools with Chrome-style shortcuts and restores them for older settings', () => {
+  expect(matchShortcut({ key: 'i', code: 'KeyI', meta: true, alt: true }, defaultShortcuts, true)).toBe('page-devtools');
+  expect(matchShortcut({ key: 'I', code: 'KeyI', control: true, shift: true }, defaultShortcuts, false)).toBe('page-devtools');
+  expect(matchShortcut({ key: 'i', code: 'KeyI', meta: true }, defaultShortcuts, true)).toBe('ai-sidebar');
+  const older = { ...defaultShortcuts } as Partial<typeof defaultShortcuts>;
+  delete older['page-devtools'];
+  expect(restoreShortcuts(older)['page-devtools']).toEqual(defaultShortcuts['page-devtools']);
+});

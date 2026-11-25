@@ -1,3 +1,4 @@
+import { matchNavigationTabs } from '../../utils/navigationSuggestions';
 import { Dialog, Kbd, TextField, Text } from '@radix-ui/themes';
 import {
   Globe2,
@@ -56,6 +57,7 @@ export function CommandPalette({
   select,
   groupSource,
   initialGroup = undefined,
+  initialQuery = '',
   newSpace,
 }: {
   open: boolean;
@@ -65,9 +67,11 @@ export function CommandPalette({
   groupSource: IApp | undefined;
   // eslint-disable-next-line react/require-default-props -- Defaults to undefined for ordinary command-bar entry.
   initialGroup?: IApp;
+  initialQuery?: string;
   newSpace: () => void;
 }) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
+  useEffect(() => { if (open && initialQuery) { setQuery(initialQuery); setActiveResult(0); } }, [open, initialQuery]);
   const [tagScope, setTagScope] = useState<string | null>(null);
   const [groupScope, setGroupScope] = useState<IApp | null>(null);
   const sourceGroup = groupScope || groupSource;
@@ -214,17 +218,7 @@ export function CommandPalette({
   const term = query.trim().toLowerCase();
   const matching = useMemo(() => {
     const scopedApps = groupScope ? groupTabs(apps, groupScope) : apps;
-    return scopedApps
-      .filter((app) => !tagScope || app.tags?.includes(tagScope))
-      .filter(
-        (app) =>
-          !app.archived &&
-          !lockedGroup(app, access) &&
-          `${app.customName || app.name} ${app.url}`
-            .toLowerCase()
-            .includes(term)
-      )
-      .slice(0, 6);
+    return matchNavigationTabs(scopedApps.filter(app => (!tagScope || app.tags?.includes(tagScope)) && !lockedGroup(app, access)), term);
   }, [apps, groupScope, tagScope, term, access]);
   const commands: CommandResult[] = [
     {

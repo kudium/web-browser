@@ -36,7 +36,8 @@ export function showBrowserContextMenu(
   openTab: (url: string, newSession?: boolean) => void,
   extensions: MenuItem[] = [],
   pictureInPicture: (() => void) | undefined = undefined,
-  hookActions: MenuItemConstructorOptions[] = []
+  hookActions: MenuItemConstructorOptions[] = [],
+  inspect: (() => void) | undefined = undefined
 ) {
   const items: (MenuItemConstructorOptions | MenuItem)[] = [];
   const group = (entries: (MenuItemConstructorOptions | MenuItem)[]) => {
@@ -260,7 +261,7 @@ export function showBrowserContextMenu(
   group([
     {
       label: nativeMenuLabels.inspect,
-      click: () => contents.inspectElement(params.x, params.y),
+      click: () => inspect ? inspect() : contents.inspectElement(params.x, params.y),
     },
   ]);
   if (process.platform === 'darwin') {

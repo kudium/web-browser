@@ -62,7 +62,8 @@ export function AppUpdateSettings() {
         </Button>
         <Button
           size="2"
-          variant={state.status === 'unavailable' ? 'solid' : 'outline'}
+          variant={state.status === 'unavailable' ? 'solid' : 'soft'}
+          color="gray"
           asChild
         >
           <a
@@ -74,7 +75,7 @@ export function AppUpdateSettings() {
             Download manually
           </a>
         </Button>
-        <Button size="2" variant="outline" asChild>
+        <Button size="2" variant="soft" color="gray" asChild>
           <a
             href="https://browser.kudium.com/whats-new"
             target="_blank"

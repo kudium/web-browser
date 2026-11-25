@@ -29,6 +29,7 @@ export const shortcutActions = [
     title: 'Refresh (Ignore Cache)',
     keys: ['Mod+Shift+KeyR'],
   },
+  { id: 'page-devtools', title: 'Inspect page with Developer Tools', keys: ['Mod+Alt+KeyI', 'Mod+Shift+KeyI'] },
   { id: 'print', title: 'Print page', keys: ['Mod+KeyP'] },
   { id: 'copy-clean-link', title: 'Copy clean link', keys: ['Mod+Shift+KeyC'] },
   { id: 'find', title: 'Find in page', keys: ['Mod+KeyF'] },

@@ -1,3 +1,4 @@
+import { PageDevTools } from './pageDevTools';
 import { showAppToast } from './appToast';
 import { registerEnergySaver } from './energySaver';
 import { NativeTooltip } from './nativeTooltip';
@@ -211,6 +212,22 @@ export function registerElectronBrowser(
   >();
   const websiteTabRecovery = new WebsiteTabRecovery();
   const configurations = new Map<string, IApp>();
+  const pageDevTools = new PageDevTools(contents => {
+    const found = [...views].find(([, view]) => view.webContents === contents);
+    if (found && !contents.isDestroyed()) publish(found[0], found[1]);
+  }, (contents, view) => {
+    const found=[...views].find(([,tab])=>tab.webContents===contents);
+    if(!found) throw new Error('Website tab is unavailable.');
+    const owner=hostFor(found[0]), host=sidebarPanelHostFor(owner);
+    if(!host) throw new Error('Panel host is unavailable.');
+    const id=`page-devtools-${contents.id}`;
+    host.register({info:{id,title:'Developer Tools',detail:contents.getTitle() || contents.getURL(),kind:'feature'},contentKey:String(contents.id),
+      available:()=>!contents.isDestroyed() && !!configurations.get(found[0]) && !isGroupLocked(configurations.get(found[0])!),
+      createView:()=>view, manage:()=>showPageDevToolsMenu(contents,owner)});
+    host.activate(id,true);
+    return ()=>host.remove(id);
+  });
+  window.once('closed', () => pageDevTools.dispose());
   const savedDeveloperErrors = new Map<
     string,
     { time: number; message: string }
@@ -281,6 +298,11 @@ export function registerElectronBrowser(
         return;
       }
       if (action && contents !== window.webContents) {
+        if (action === 'page-devtools') {
+          event.preventDefault();
+          pageDevTools.toggle(contents);
+          return;
+        }
         if (action === 'copy-clean-link') {
           event.preventDefault();
           if (validURL(contents.getURL())) clipboard.writeText(cleanLink(contents.getURL()));
@@ -397,6 +419,8 @@ export function registerElectronBrowser(
     const profile = loginProfileKey(configurations.get(id) || ({} as IApp));
     const state: BrowserState = {
       id,
+      devToolsDock: pageDevTools.mode(contents),
+      devToolsFraction: pageDevTools.fraction(contents),
       siteSettings: origin
         ? {
             origin,
@@ -1126,7 +1150,8 @@ export function registerElectronBrowser(
                     scope: personalDataScope(current),
                   }
                 : undefined;
-            })]
+            })],
+            () => { void pageDevTools.open(contents, pageDevTools.mode(contents) || 'right').then(() => { if (!contents.isDestroyed()) contents.inspectElement(params.x, params.y); }).catch(error => console.warn('Could not inspect page', error)); }
           );
         });
         const permissionProfile = profileId;
@@ -1377,6 +1402,7 @@ export function registerElectronBrowser(
       const slot = layout.visible.find((entry) => entry.id === item.id);
       if (slot || focusedId === item.id) hiddenSince.delete(item.id);
       else if (!hiddenSince.has(item.id)) hiddenSince.set(item.id, Date.now());
+      if (!slot || suspended) pageDevTools.hide(view.webContents);
       view.setVisible(
         Boolean(slot) &&
           !suspended &&
@@ -1407,12 +1433,12 @@ export function registerElectronBrowser(
         slot &&
         [slot.x, slot.y, slot.width, slot.height].every(Number.isFinite)
       ) {
-        view.setBounds({
+        view.setBounds(pageDevTools.layout(view.webContents, hostFor(item.id), {
           x: Math.max(0, Math.round(slot.x)),
           y: Math.max(0, Math.round(slot.y)),
           width: Math.max(0, Math.round(slot.width)),
           height: Math.max(0, Math.round(slot.height)),
-        });
+        }, !suspended && !failures.has(item.id) && loaded.has(item.id)));
       }
       publish(item.id, view);
     });
@@ -1593,6 +1619,14 @@ export function registerElectronBrowser(
     },
   });
   const rootWindow = window;
+  const showPageDevToolsMenu = (contents: WebContents, window: BrowserWindow) => {
+        Menu.buildFromTemplate((['right', 'bottom', 'panel', 'window'] as const).map(mode => ({
+          label: mode === 'window' ? 'Separate window' : mode === 'panel' ? 'Dock in panel' : `Dock ${mode}`,
+          type: 'radio' as const,
+          checked: pageDevTools.mode(contents) === mode,
+          click: () => { void pageDevTools.open(contents, mode).catch(error => console.warn('Could not dock Developer Tools', error)); },
+        }))).popup({ window });
+  };
   const command = (event: IpcMainEvent, incoming: BrowserCommand) => {
     if (
       privateMode &&
@@ -2248,6 +2282,24 @@ export function registerElectronBrowser(
           },
         ]).popup({ window });
         break;
+      case 'page-devtools-menu':
+        showPageDevToolsMenu(contents,window);
+        break;
+      case 'page-devtools-panel':
+      case 'page-devtools-right':
+      case 'page-devtools-bottom':
+      case 'page-devtools-window':
+        void pageDevTools.open(contents, request.action.replace('page-devtools-', '') as 'right' | 'bottom' | 'panel' | 'window').catch(error => console.warn('Could not open page Developer Tools', error));
+        break;
+      case 'page-devtools-resize':
+        pageDevTools.resize(contents, request.devToolsFraction!);
+        break;
+      case 'page-devtools-close':
+        pageDevTools.close(contents);
+        break;
+      case 'page-devtools':
+        pageDevTools.toggle(contents);
+        break;
       case 'print':
         contents.print();
         break;
@@ -2311,7 +2363,7 @@ export function registerElectronBrowser(
       const permissions = lastStates.get(id)?.siteSettings?.permissions || {};
       return !!item && !activeGroups().has(key(item)) && !visible.has(id) && !windows?.visibleElsewhere(window, id) &&
         !isGroupLocked(item) && !edited.has(id) && !playingMedia.has(id) && !pictureInPicture.get(id)?.state.active &&
-        !contents.isDestroyed() && !contents.isLoading() && !contents.isCurrentlyAudible() && !contents.isDevToolsOpened() &&
+        !contents.isDestroyed() && !contents.isLoading() && !contents.isCurrentlyAudible() && !contents.isDevToolsOpened() && !pageDevTools.mode(contents) &&
         !hasActiveDownloads(contents.session) && !['media', 'camera', 'microphone', 'display-capture'].some(permission => permissions[permission] === 'allow');
     };
     try {
@@ -2383,7 +2435,7 @@ export function registerElectronBrowser(
         !contents.isLoading() &&
         !contents.isCurrentlyAudible() &&
         !hasActiveDownloads(contents.session) &&
-        !contents.isDevToolsOpened()
+        !contents.isDevToolsOpened() && !pageDevTools.mode(contents)
       );
     });
     if (!candidate) {
@@ -2434,7 +2486,7 @@ export function registerElectronBrowser(
           hiddenSince.get(id) !== candidateHiddenSince ||
           Date.now() - (candidateHiddenSince || 0) <
             getBrowserPreferences().discardAfterMinutes * 60000 ||
-          contents.isDevToolsOpened()
+          (contents.isDevToolsOpened() || !!pageDevTools.mode(contents))
         ) {
           hiddenSince.set(id, Date.now());
           return undefined;

@@ -1,3 +1,5 @@
+import { usePanelDock } from '../../../utils/hooks/usePanelDock';
+import { PageDevToolsFrame } from '../../UI/PageDevToolsFrame';
 import { COLLECTION_DRAG_MIME, reorderCollections } from '../../../utils/collectionOrder';
 import { revealHorizontalTab } from '../../../utils/horizontalTabScroll';
 import { openActivityDestination, type BrowserActivity } from '../../../browser/activity';
@@ -359,6 +361,16 @@ export function Main() {
       token: (previous?.token || 0) + 1,
     }));
   };
+  const { position: panelDock } = usePanelDock();
+  const [panelHeight, setPanelHeight] = useState(() => {
+    try {
+      const value = Number(localStorage.getItem('kudium-panel-height'));
+      return Number.isFinite(value) && value >= 180 ? Math.min(value, 600) : 320;
+    } catch { return 320; }
+  });
+  const [bodyHeight, setBodyHeight] = useState(700);
+  const panelMaxHeight = Math.max(180, Math.floor(bodyHeight * .65));
+  const effectivePanelHeight = Math.min(panelHeight, panelMaxHeight);
   const [aiWidth, setAIWidth] = useState(() => {
     const saved = Number(
       localStorage.getItem('kudiumbrowser-ai-sidebar-width')
@@ -371,13 +383,20 @@ export function Main() {
   const aiMaxWidth = Math.max(240, Math.min(1200, Math.floor(bodyWidth - 248)));
   const effectiveAIWidth = Math.min(aiWidth, aiMaxWidth);
   useEffect(() => {
-    if (!aiResizing)
+    if (aiResizing) return;
+    try {
       localStorage.setItem('kudiumbrowser-ai-sidebar-width', String(aiWidth));
-  }, [aiWidth, aiResizing]);
+      localStorage.setItem('kudium-panel-height', String(panelHeight));
+    } catch { /* Docking remains available when storage is unavailable. */ }
+  }, [aiWidth, panelHeight, aiResizing]);
   useLayoutEffect(() => {
     const element = body.current;
     if (!element) return undefined;
-    const measure = () => setBodyWidth(element.getBoundingClientRect().width);
+    const measure = () => {
+      const bounds = element.getBoundingClientRect();
+      setBodyWidth(bounds.width);
+      setBodyHeight(bounds.height);
+    };
     let frame = 0;
     const observer = new ResizeObserver(() => {
       if (frame) return;
@@ -444,6 +463,7 @@ export function Main() {
   const [recoveryDismissed, setRecoveryDismissed] = useState(false);
   const [recoveryCopyStatus, setRecoveryCopyStatus] =
     useState('Copy recovery data');
+  const [paletteQuery, setPaletteQuery] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteGroup, setPaletteGroup] = useState<IApp>();
   useEffect(() => {
@@ -1649,6 +1669,12 @@ export function Main() {
             'forward',
             'reload',
             'reload-ignore-cache',
+            'page-devtools-panel',
+            'page-devtools-right',
+            'page-devtools-bottom',
+            'page-devtools-window',
+            'page-devtools-close',
+            'page-devtools',
             'print',
             'copy-clean-link',
             'zoom-in',
@@ -1663,6 +1689,12 @@ export function Main() {
               | 'forward'
               | 'reload'
               | 'reload-ignore-cache'
+              | 'page-devtools-panel'
+              | 'page-devtools-right'
+              | 'page-devtools-bottom'
+              | 'page-devtools-window'
+              | 'page-devtools-close'
+              | 'page-devtools'
               | 'print'
               | 'copy-clean-link'
               | 'zoom-in'
@@ -1810,6 +1842,7 @@ export function Main() {
   }, [
     appList,
     selected?.id,
+    appList.map(tab=>`${states[tab.id]?.devToolsDock || ''}:${states[tab.id]?.devToolsFraction || .4}`).join('|'),
     split,
     pageSuspended,
     panelSuspended,
@@ -3223,8 +3256,39 @@ export function Main() {
       />
     </>
   );
+  const navigateAddress = (value: string) => {
+    try {
+        const url = resolveAddress(value);
+        if (new URL(url).protocol === 'kudium:') {
+          window.electron.hookMarketplace
+            .request({ action: 'open-install', url })
+            .catch((error) => setMoveMessage(String(error)));
+        } else if (selected) command('navigate', url);
+        else {
+          const item: IApp = {
+            id: crypto.randomUUID(),
+            name: new URL(url).hostname,
+            url,
+            icon: '',
+            spaceId: active.id,
+          };
+          AppManager.add(item);
+          select(item);
+        }
+        setEditingAddress(false);
+    } catch (error) { setMoveMessage(String(error)); }
+  };
   const renderAddressBar = () => (
     <AddressBar
+      suggestionTabs={windowWorkspace.state()?.private ? [] : appList.filter(tab => !lockedGroup(tab, groupAccess))}
+      hiddenHistoryProfiles={new Set(appList.filter(tab => lockedGroup(tab, groupAccess)).map(loginProfileKey))}
+      privateMode={!!windowWorkspace.state()?.private}
+      onSuggestionTab={tab => { select(tab); setEditingAddress(false); }}
+      onSuggestionNavigate={navigateAddress}
+      onEditValue={setAddress}
+      onChat={text => { setAIPane('assistant'); setAIMounted(true); setAIOpen(true); setAIPromptRequest(previous=>({text,token:(previous?.token||0)+1})); }}
+      onNewGroup={value => { try { const destination=commandDestination(AppManager.getAll().filter(tab=>!lockedGroup(tab)), selected, resolveAddress(value), true, active.id); if(destination.app){AppManager.add(destination.app);select(destination.app);}setEditingAddress(false); } catch(error){setMoveMessage(String(error));} }}
+      onMoreActions={text=>{setPaletteQuery(text);setPaletteOpen(true);}}
       placement={addressBarPlacement}
       themeColor={state?.themeColor}
       mediaControl={
@@ -3323,24 +3387,7 @@ export function Main() {
       onSiteSettings={() => setSiteSettingsOpen(true)}
       onSubmit={(event) => {
         event.preventDefault();
-        const url = resolveAddress(address);
-        if (new URL(url).protocol === 'kudium:') {
-          window.electron.hookMarketplace
-            .request({ action: 'open-install', url })
-            .catch((error) => setMoveMessage(String(error)));
-        } else if (selected) command('navigate', url);
-        else {
-          const item: IApp = {
-            id: crypto.randomUUID(),
-            name: new URL(url).hostname,
-            url,
-            icon: '',
-            spaceId: active.id,
-          };
-          AppManager.add(item);
-          select(item);
-        }
-        setEditingAddress(false);
+        navigateAddress(address);
       }}
       inputProps={{
         value: editingAddress
@@ -3974,12 +4021,14 @@ export function Main() {
       data-glass={translucentChrome}
       data-ai-glass={translucentAI}
       data-space-background={spaceBackground}
+      data-panel-dock={panelDock}
       data-private={windowWorkspace.state()?.private || undefined}
       style={
         {
           '--space-font-size': `${spaceFontSize}px`,
           '--sidebar-width': `${sidebarWidth}px`,
           '--ai-sidebar-width': `${effectiveAIWidth}px`,
+          '--panel-bottom-height': `${effectivePanelHeight}px`,
           ...appThemeStyle(theme),
         } as CSSProperties
       }
@@ -5097,6 +5146,11 @@ export function Main() {
             className="browser-viewport"
             data-split-dragging={!!dragged || undefined}
           >
+            {(split ? [split.left, split.right] : [selected?.id]).filter(Boolean).map((id, index) => {
+              const dock = states[id!]?.devToolsDock;
+              if (!dock || dock === 'window' || dock === 'panel') return null;
+              return <PageDevToolsFrame key={`devtools-${id}`} mode={dock} fraction={states[id!]?.devToolsFraction || .4} style={{left:split && index ? 'calc(50% + 1px)' : 0,width:split?'calc(50% - 1px)':'100%'}} menu={()=>browser.command({id:id!,action:'page-devtools-menu'})} close={()=>browser.command({id:id!,action:'page-devtools-close'})} resize={fraction=>browser.command({id:id!,action:'page-devtools-resize',devToolsFraction:fraction})}/>;
+            })}
             {!split && selected && !lockedGroup(selected) && (
               <PageStatus
                 state={state}
@@ -5252,11 +5306,13 @@ export function Main() {
             >
               <SidebarResizeHandle
                 side="right"
-                width={effectiveAIWidth}
-                minWidth={240}
-                maxWidth={aiMaxWidth}
-                resetWidth={368}
-                onChange={setAIWidth}
+                axis={panelDock==='bottom'?'vertical':'horizontal'}
+                label="Resize panel"
+                width={panelDock==='bottom'?effectivePanelHeight:effectiveAIWidth}
+                minWidth={panelDock==='bottom'?180:240}
+                maxWidth={panelDock==='bottom'?panelMaxHeight:aiMaxWidth}
+                resetWidth={panelDock==='bottom'?320:368}
+                onChange={panelDock==='bottom'?setPanelHeight:setAIWidth}
                 onResizingChange={setAIResizing}
               />
               <AISidebar
@@ -5351,9 +5407,10 @@ export function Main() {
         open={paletteOpen}
         onOpenChange={(open) => {
           setPaletteOpen(open);
-          if (!open) setPaletteGroup(undefined);
+          if (!open) { setPaletteGroup(undefined); setPaletteQuery(''); }
         }}
         initialGroup={paletteGroup}
+        initialQuery={paletteQuery}
         apps={appList.filter((item) => !lockedGroup(item))}
         select={select}
         groupSource={

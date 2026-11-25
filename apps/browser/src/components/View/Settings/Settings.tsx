@@ -4,6 +4,7 @@ import { HookIcon } from '../../UI/HookIcon';
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Dialog,
   Switch,
   Select,
   Tabs,
@@ -544,6 +545,7 @@ export function Settings() {
                 .filter(
                   (control) =>
                     control.section === item.id &&
+                    (control.key !== 'startPageURL' || preferences.startPage === 'custom' || !!filter) &&
                     !['personalDataAutofill', 'personalDataAutofillOnFocus'].includes(control.key) &&
                     item.id !== 'ai' &&
                     (!filter ||
@@ -578,11 +580,12 @@ export function Settings() {
                       />
                     )}
                     {control.kind === 'text' && (
-                      <TextField.Root key={String(preferences[control.key])} type="url" aria-label={control.title} defaultValue={String(preferences[control.key] || '')} disabled={!ready || busy} onBlur={event => { if (event.target.value !== preferences[control.key]) void save({ [control.key]: event.target.value.trim() }); }} />
+                      <TextField.Root className="preference-url-input" placeholder="https://example.com" key={String(preferences[control.key])} type="url" aria-label={control.title} defaultValue={String(preferences[control.key] || '')} disabled={!ready || busy} onBlur={event => { if (event.target.value !== preferences[control.key]) void save({ [control.key]: event.target.value.trim() }); }} />
                     )}
                     {control.kind === 'number' && (
                       <TextField.Root
                         key={String(preferences[control.key])}
+                        className="preference-number-input"
                         type="number"
                         min={control.min}
                         max={control.max}
@@ -644,12 +647,27 @@ export function Settings() {
                               {option.label}
                             </Select.Item>
                           ))}
-              {item.id === 'appearance' && !filter && <details className="start-page-preview" onToggle={event => setStartPreviewOpen(event.currentTarget.open)}><summary>Preview start page</summary><div>{startPreviewOpen && <BrowserWelcome preview />}</div></details>}
                         </Select.Content>
                       </Select.Root>
                     )}
                   </div>
                 ))}
+              {item.id === 'appearance' && !filter && (
+                <div className="preference-row start-page-preview-row">
+                  <div className="preference-label"><strong>Start page preview</strong></div>
+                  <Dialog.Root open={startPreviewOpen} onOpenChange={setStartPreviewOpen}>
+                    <Dialog.Trigger><Button variant="soft" color="gray">Preview</Button></Dialog.Trigger>
+                    <Dialog.Content className="start-page-preview-dialog" maxWidth="880px">
+                      <div className="start-page-preview-heading">
+                        <Dialog.Title>Start page preview</Dialog.Title>
+                        <Dialog.Close><Button variant="soft" color="gray">Close</Button></Dialog.Close>
+                      </div>
+                      <Dialog.Description size="2">Your start page with the current appearance settings.</Dialog.Description>
+                      <div className="start-page-preview-frame">{startPreviewOpen && <BrowserWelcome preview />}</div>
+                    </Dialog.Content>
+                  </Dialog.Root>
+                </div>
+              )}
               {item.id === 'sync' && (
                 <SyncSettings
                   settings={preferences.cloudSync}

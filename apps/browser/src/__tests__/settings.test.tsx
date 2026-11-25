@@ -283,3 +283,18 @@ it('shows fourteen-day system-space retention in searchable privacy settings', a
   await waitFor(() => expect(control).toBeEnabled());
   expect(control).toHaveTextContent('14 days');
 });
+
+it('opens the start-page preview separately from the appearance selectors', async () => {
+  (browser.preferences as jest.Mock).mockResolvedValue(defaultPreferences);
+  (browser.preferenceAction as jest.Mock).mockResolvedValue({ profiles: [], languages: ['en-US'], versions: {} });
+  render(<Theme><Settings /></Theme>);
+  await screen.findByText('Saved automatically');
+  fireEvent.mouseDown(screen.getByRole('tab', { name: /Appearance/ }), { button: 0, ctrlKey: false });
+  const preview = screen.getByRole('button', { name: 'Preview' });
+  expect(preview.closest('[role="listbox"]')).toBeNull();
+  expect(screen.queryByRole('dialog')).toBeNull();
+  fireEvent.click(preview);
+  expect(await screen.findByRole('dialog', { name: 'Start page preview' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
