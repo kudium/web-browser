@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-25T16:51:11.691Z",
+  "capturedAt": "2026-11-25T17:00:58.861Z",
   "native": true,
   "pages": [
     {
@@ -16,6 +16,16 @@
       "id": "pr-navigator",
       "url": "https://github.com/microsoft/TypeScript/pull/65667/files",
       "title": "Add tests for path edge cases in resolution, emit, and builds by magurotuna \u00b7 Pull Request #65667 \u00b7 microsoft/TypeScript \u00b7 GitHub"
+    },
+    {
+      "id": "page-media",
+      "url": "https://commons.wikimedia.org/wiki/Grand_Canyon",
+      "title": "Grand Canyon - Wikimedia Commons"
+    },
+    {
+      "id": "page-media",
+      "url": "https://www.w3schools.com/html/html5_video.asp",
+      "title": "HTML Video"
     }
   ],
   "listeningGallery": {
@@ -25,8 +35,8 @@
         "file": "listen-article-overview.webp",
         "width": 1600,
         "height": 1036,
-        "bytes": 125940,
-        "sha256": "2196d2d3fd16d0542c97aae88b1d98327a7d1632294787ceae3d67175249834f"
+        "bytes": 127268,
+        "sha256": "9899fa743840ef701ae7049b849a49b30718494655cb06a809a5845c9aceedd9"
       },
       {
         "file": "listen-article-settings.webp",
@@ -51,15 +61,15 @@
         "file": "pr-navigator-overview.webp",
         "width": 1600,
         "height": 1036,
-        "bytes": 109684,
-        "sha256": "52d4ddbaf66e7a0991148798194870418743e4a669e607af8969c77505c501a3"
+        "bytes": 110012,
+        "sha256": "62e4ffe447f1e6b83ebf191a19c17ce353f33f4c522559237a2ad68023634cf6"
       },
       {
         "file": "pr-navigator-checked.webp",
         "width": 736,
         "height": 1600,
-        "bytes": 56480,
-        "sha256": "9d1ac07c729bfb1fa455b34d2b765421f736dfb272c111fae61e075b452756e0"
+        "bytes": 55692,
+        "sha256": "9f04d4e5f587a68ec6f0635c19160d1bcaa0eb27da10e5730864be76cb6b1f21"
       }
     ]
   },
@@ -86,6 +96,32 @@
         "height": 1600,
         "bytes": 51650,
         "sha256": "079c9081341b3f5dfd61865016aebcb7f43af3d24a7cbee6fa4dd9d1ed5359ac"
+      }
+    ]
+  },
+  "page-mediaGallery": {
+    "packageSHA256": "31a619d7cc170b09927d2981b250c3d27d92c0d6f70803126c93d59f8f89018c",
+    "assets": [
+      {
+        "file": "page-media-overview.webp",
+        "width": 1600,
+        "height": 1036,
+        "bytes": 168230,
+        "sha256": "5d2d931ed76747370351a1475a187d34c1db39bc3509c5daebdd8da88758e801"
+      },
+      {
+        "file": "page-media-gallery.webp",
+        "width": 736,
+        "height": 1600,
+        "bytes": 122124,
+        "sha256": "f5a0f11082a43ede6c2cbe6efebb961ca87c98bdbd906912904b0f32aa275b18"
+      },
+      {
+        "file": "page-media-video.webp",
+        "width": 736,
+        "height": 1600,
+        "bytes": 15010,
+        "sha256": "2eb66f805d42fe028f26af464b7963c7fe45d321730929a532a5f5c177449ecb"
       }
     ]
   }

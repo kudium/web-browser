@@ -3,8 +3,8 @@ from pathlib import Path
 from PIL import Image
 
 root = Path(__file__).resolve().parents[2] / 'docs/marketplace-hooks/captures'
-for name, state in [('listen-article', 'playing'), ('pr-navigator', 'checked'), ('page-explorer', 'sources')]:
-    page = Image.open(root / f'{name}-page.png').convert('RGB')
+for name, state in [('listen-article', 'playing'), ('pr-navigator', 'checked'), ('page-explorer', 'sources'), ('page-media', 'gallery')]:
+    page = Image.open(root / (f'{name}-image-page.png' if name == 'page-media' else f'{name}-page.png')).convert('RGB')
     panel = Image.open(root / f'{name}-{state}.png').convert('RGB')
     canvas = Image.new('RGB', (page.width + panel.width + 16, max(page.height, panel.height)), '#202020')
     canvas.paste(page, (0, 0))
@@ -17,7 +17,8 @@ import json
 manifest = json.loads((root / 'manifest.json').read_text())
 for name, states in [('listen-article', ['overview', 'settings', 'transcript']),
                      ('pr-navigator', ['overview', 'checked']),
-                     ('page-explorer', ['overview', 'outline', 'sources'])]:
+                     ('page-explorer', ['overview', 'outline', 'sources']),
+                     ('page-media', ['overview', 'gallery', 'video'])]:
     assets = []
     for state in states:
         source = root / f'{name}-{state}.png'

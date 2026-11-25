@@ -77,3 +77,18 @@ tooltips. The explorer uses a segmented outline/source switcher. Additional cont
 is expandable. Native QA verifies file search, unchecked filtering and external
 source filtering, plus source-list layouts at 280/368/640px. Refreshed gallery WebP
 files and hashes are recorded together in the capture manifest.
+
+## Page media gallery redesign (published version 5)
+
+[Page media gallery](https://browser.kudium.com/hooks/51e0f62e-77d2-43c6-8d30-c423f595641c)
+uses a responsive two/three-column image grid, compact media filters, SVG icons,
+quiet captions and pagination. Images prefer their declared source URL and fall
+back to a bounded page thumbnail; larger loaded media comes first. No playback
+or file downloads start automatically. Image retrieval retains the shared panel
+allowlist; only declared image URLs can load, with no script/frame/fetch grants.
+
+Native QA uses the public Grand Canyon page on Wikimedia Commons and W3Schools
+HTML Video page. It verifies image loading, image/audio/video filters, previous
+and next page actions, and 280/368/640px layouts. The photo gallery screenshots
+show real output beside the actual source page. The gallery runs after page load
+and reveals its panel, preserving the original hook behavior.

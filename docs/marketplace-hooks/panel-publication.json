@@ -30,5 +30,15 @@
       "page-explorer-outline.webp",
       "page-explorer-sources.webp"
     ]
+  },
+  {
+    "source": "page-media.json",
+    "url": "https://browser.kudium.com/hooks/51e0f62e-77d2-43c6-8d30-c423f595641c",
+    "version": 5,
+    "contentHash": "26c3be4f875d94f8c3538719a24472f2d160802bab74fbae1ff8808b942276b4",
+    "screenshots": [
+      "page-media-overview.webp",
+      "page-media-gallery.webp"
+    ]
   }
 ]
