@@ -261,6 +261,7 @@ it('keeps hook editing explicit, preserves unsaved code while switching stages, 
   const content = (current: BrowserState) => (
     <Theme>
       <SiteDeveloperPanel
+        origin="https://example.com"
         developer={current.siteSettings?.developer}
         disabled={false}
         send={(action, patch) =>
@@ -321,9 +322,8 @@ it('keeps hook editing explicit, preserves unsaved code while switching stages, 
   expect(command).toHaveBeenLastCalledWith({
     id: 'page',
     url: 'https://example.com',
-    action: 'set-site-developer',
-    developer: saved,
-    run: true,
+    action: 'run-site-hook',
+    hookId: '',
   });
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
@@ -782,4 +782,16 @@ it('saves hook switches immediately, including the latest draft code', () => {
   expect(send).toHaveBeenLastCalledWith('set-site-developer', { developer: expect.objectContaining({ enabled: true, hooks: [{ ...hook, enabled: true, after: 'log("latest")' }] }) });
   fireEvent.click(screen.getByRole('switch', { name: 'Enable Reader' }));
   expect(send.mock.calls.at(-1)?.[1].developer.hooks[0].enabled).toBe(false);
+});
+
+it('footer runs the selected saved hook even while another hook is running, and saves edits before rerunning it', () => {
+  const send = jest.fn();
+  const hook = { id: 'reader', name: 'Reader', enabled: true, path: '/*', before: '', after: "log('reader')", css: '' };
+  render(<Theme><SiteDeveloperPanel disabled={false} send={send} origin="https://example.com/article" selectedHookId="reader"
+    developer={{ config: { ...emptyDeveloperConfig, enabled: true, hooks: [hook] }, status: 'running', hookStatuses: { other: 'running', reader: 'success' }, logs: [] }} /></Theme>);
+  fireEvent.click(screen.getByRole('button', { name: /^Run$/ }));
+  expect(send).toHaveBeenLastCalledWith('run-site-hook', { hookId: 'reader', url: 'https://example.com' });
+  fireEvent.change(screen.getByRole('textbox', { name: 'After load code' }), { target: { value: "log('updated reader')" } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save & Run' }));
+  expect(send).toHaveBeenLastCalledWith('set-site-developer', expect.objectContaining({ run: true, hookId: 'reader', developer: expect.objectContaining({ hooks: [expect.objectContaining({ after: "log('updated reader')" })] }) }));
 });

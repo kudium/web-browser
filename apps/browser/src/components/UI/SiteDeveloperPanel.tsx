@@ -875,7 +875,7 @@ export function SiteDeveloperPanel({
           disabled={
             disabled ||
             !validDeveloperConfig(draft) ||
-            developer?.status === 'running'
+            developer?.hookStatuses?.[selectedHook?.id || ''] === 'running'
           }
           onClick={() => {
             try { assertDeveloperSources(draft); } catch (error) { setSaveError((error as Error).message); return; }
@@ -892,7 +892,11 @@ export function SiteDeveloperPanel({
               });
               return;
             }
-            send('set-site-developer', { developer: draft, run: true });
+            if (dirty) {
+              send('set-site-developer', { developer: draft, run: true, hookId: selectedHook?.id || '' });
+            } else {
+              send('run-site-hook', { hookId: selectedHook?.id || '', url: new URL(origin).origin });
+            }
           }}
         >
           <RotateCw size={14} />
@@ -1015,6 +1019,7 @@ export function SiteDeveloperPanel({
                   send('set-site-developer', {
                     developer: config,
                     run: enablePrompt.run,
+                    ...(enablePrompt.run ? { hookId: enablePrompt.hookId } : {}),
                   });
                   setEnablePrompt(undefined);
                 }}

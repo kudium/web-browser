@@ -18,7 +18,6 @@ import {
 } from '../browser/hookPanels';
 import { getHookTheme } from './hookTheme';
 import { onAppThemeChanged } from './appTheme';
-import { manageInstalledPanelHook } from './hookMarketplace';
 import { sidebarPanelsFor } from './sidebarPanels';
 import { attachPanelContextMenu } from './shellContextMenu';
 import { openWindowLink } from './windowNavigation';
@@ -205,7 +204,7 @@ export function showHookPanel(binding: Binding, input: unknown) {
       kind: 'hook',
       key: `hook:${binding.groupId}:${binding.sourceId || binding.source.id}:${binding.hookId}:${output.id}`,
     },
-    manage: binding.sourceId ? () => { manageInstalledPanelHook(binding.owner, binding.sourceId!, binding.hookId); } : undefined,
+    manage: binding.sourceId ? () => import('./hookMarketplace').then(({ manageInstalledPanelHook }) => manageInstalledPanelHook(binding.owner, binding.sourceId!, binding.hookId)) : undefined,
     groupId: binding.groupId,
     contentKey: key,
     available: () => available(e),
