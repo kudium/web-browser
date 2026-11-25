@@ -1,6 +1,18 @@
-<main><header><div><span class="eyebrow">Listen · local voices</span><h1 id="title">Listen to this page</h1><p id="meta" class="muted"></p></div><span class="pill">Free · on device</span></header>
-<section class="card"><div class="grid"><label>Voice<select id="voice" aria-label="Voice"></select></label><label>Speed<select id="speed" aria-label="Playback speed"><option value="0.75">0.75× · relaxed</option><option value="1" selected>1× · normal</option><option value="1.25">1.25× · brisk</option><option value="1.5">1.5× · fast</option><option value="2">2× · very fast</option></select></label></div>
-<div class="row" style="margin:16px 0"><button id="previous" aria-label="Previous paragraph">←</button><button id="play" class="primary grow">Play</button><button id="next" aria-label="Next paragraph">→</button><button id="stop">Stop</button></div>
-<label>Reading progress<input id="progress" type="range" min="0" max="0" value="0" aria-label="Reading progress"></label><p id="status" class="muted" role="status" aria-live="polite">Choose a voice, then press Play.</p></section>
-<p id="error" class="error" role="alert"></p><div class="row"><button id="refresh">Refresh / use selected text</button><a id="source" class="muted">Original page ↗</a></div>
-<p class="muted" id="limit"></p><h2 style="margin-top:20px">Follow along</h2><div id="transcript" class="list"></div><p class="muted">Uses voices installed on your Mac. No account or cloud upload. Select text on the page, then refresh to listen to just that passage.</p></main>
+<main class="listen-player">
+<header><div><span class="eyebrow">Listen to this page</span><h1 id="title">Listen to this page</h1><p id="meta" class="muted"></p></div></header>
+<section class="player" aria-label="Audio player">
+<div class="playback">
+<button id="previous" class="icon-button" aria-label="Previous paragraph" title="Previous paragraph"><svg viewBox="0 0 24 24"><path d="M5 5v14M19 5l-10 7 10 7z"/></svg></button>
+<button id="play" class="play-button" aria-label="Play"><svg viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z"/></svg><span class="sr-only">Play</span></button>
+<button id="next" class="icon-button" aria-label="Next paragraph" title="Next paragraph"><svg viewBox="0 0 24 24"><path d="M19 5v14M5 5l10 7-10 7z"/></svg></button>
+</div>
+<input id="progress" type="range" min="0" max="0" value="0" aria-label="Reading progress">
+<div class="progress-footer"><p id="status" class="muted" role="status" aria-live="polite">Ready to listen</p><button id="stop" class="text-button">Stop</button></div>
+</section>
+<p id="error" class="error" role="alert"></p>
+<details class="voice-settings"><summary>Voice &amp; speed<svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></summary><div class="grid"><label>Voice<select id="voice" aria-label="Voice"></select></label><label>Speed<select id="speed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div></details>
+<details class="transcript-section"><summary>Transcript<svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></summary><div id="transcript" class="list"></div></details>
+<p class="muted" id="limit"></p>
+<footer><button id="refresh" class="text-button" title="Select text on the page, then refresh to listen to that passage"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2 5"/></svg>Refresh text</button><a id="source" class="muted" title="Open original page">Original page<svg viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></svg></a></footer>
+<p class="local-note">On-device voices · No cloud upload</p>
+</main>

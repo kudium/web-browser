@@ -12,7 +12,9 @@ function voiceList() {
   else controls();
 }
 function controls() {
-  el('play').textContent = playing ? (paused ? 'Resume' : 'Pause') : 'Play';
+  const label = playing ? (paused ? 'Resume' : 'Pause') : 'Play';
+  el('play').setAttribute('aria-label', label);
+  el('play').innerHTML = '<svg viewBox="0 0 24 24"><path d="' + (playing && !paused ? 'M6 5h4v14H6zM14 5h4v14h-4z' : 'm9 5 11 7-11 7z') + '"/></svg><span class="sr-only">' + label + '</span>';
   el('progress').value = speechIndex;
   const paragraph = speechChunks[speechIndex]?.paragraph || 0;
   [...el('transcript').children].forEach((node,index) => { node.style.background = index === paragraph ? 'color-mix(in srgb,var(--kudium-primary) 16%,Canvas)' : ''; node.setAttribute('aria-current', String(index === paragraph)); });

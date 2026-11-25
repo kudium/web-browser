@@ -60,3 +60,11 @@ Security: extracted text is rendered through textContent, indices are validated
 before DOM navigation, credential-bearing/non-HTTP links are excluded, and speech
 uses localService voices. Custom panels retain the production restrictive CSP,
 isolated session and declared-action bridge. No API keys or new browser grants.
+
+## Listening player redesign (local, pending publication)
+
+The local listening package uses compact SVG playback controls, system typography,
+a slim progress control, and expandable voice settings and transcript. Its local
+source differs from the last published version recorded in `panel-publication.json`.
+Import `listen-article.json` to use or publish the redesign. Native QA checks both
+collapsed and expanded layouts at 280/368/640px and captures the transcript state.
