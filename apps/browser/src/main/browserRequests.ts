@@ -136,6 +136,8 @@ const commands = new Set<BrowserCommand['action']>([
   'set-permission',
   'reset-permissions',
   'close-group',
+  'unload-other-groups',
+  'unload-space-groups',
   'unload-tab',
   'open-site-developer',
   'toggle-site-hook',

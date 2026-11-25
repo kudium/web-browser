@@ -5557,3 +5557,8 @@ html[data-input-modality="pointer"] .radix-themes .browser-onboarding .browser-o
 .group-picker-option-row:hover>button[role=option]>svg:last-child,.group-picker-option-row:focus-within>button[role=option]>svg:last-child{opacity:0}
 
 .panel-picker-tabs{display:flex;gap:4px;margin-bottom:10px}.panel-picker-tabs button{flex:1;border:0;border-radius:6px;padding:7px 8px;background:transparent;color:var(--gray-11);font:inherit;font-size:12px;cursor:pointer}.panel-picker-tabs button[aria-pressed=true]{background:var(--gray-a4);color:var(--gray-12)}.group-picker-option-row>button[role=option]:disabled{opacity:.55;cursor:default}
+
+.global-hook-editor-controls { display:flex; align-items:center; flex-wrap:wrap; gap:16px; }
+.global-hook-editor-controls label { display:flex; align-items:center; gap:8px; font-size:13px; }
+.global-hook-editor-controls > button { margin-left:auto; }
+.global-hook-editor-mode-hint { margin:0; color:var(--gray-11); font-size:12px; line-height:1.5; }

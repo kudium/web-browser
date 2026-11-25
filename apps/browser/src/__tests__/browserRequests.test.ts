@@ -37,6 +37,8 @@ it('rejects malformed command fields instead of passing them to native APIs', ()
   expect(isBrowserCommand({ id: '', action: 'extensions' })).toBe(true);
   expect(isBrowserCommand({ id: '', action: 'focus-chrome' })).toBe(true);
   expect(isBrowserCommand({ id: 'one', action: 'close-group' })).toBe(true);
+  expect(isBrowserCommand({ id: 'one', action: 'unload-other-groups' })).toBe(true);
+  expect(isBrowserCommand({ id: 'one', action: 'unload-space-groups' })).toBe(true);
   expect(
     isBrowserCommand({
       id: 'one',

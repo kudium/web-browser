@@ -1190,6 +1190,7 @@ export function Main() {
             : [...previous, target.id]
       );
     }
+    if (choice === 'unload-space') unloadSpaceGroups(target.id);
     if (choice === 'new-group') openNewGroup(target.id);
     if (choice === 'new-tab') setPaletteOpen(true);
     if (choice === 'sort')
@@ -1242,6 +1243,7 @@ export function Main() {
       { id: 'import-group', label: 'Import Group…' },
       { id: 'folder', label: 'New Collection' },
       { id: 'sort', label: 'Sort Groups by Name' },
+      { id:'unload-space', label:'Unload all groups in this space' },
       {
         id: 'archive',
         label: 'Archive Unpinned Groups',
@@ -1836,10 +1838,35 @@ export function Main() {
         )
       )
         setSplit(null);
+      AppManager.set(AppManager.getAll().map(tab => aiGroupId(tab) === aiGroupId(item) ? { ...tab, sessionChromeCollapsed: true } : tab));
       browser.command({ id: item.id, action: 'close-group' });
     },
     [closeGroupPreview, split, appList]
   );
+  const unloadSpaceGroups = (spaceId: string) => {
+    const targets = AppManager.getAll().filter(tab => !tab.archived && (tab.spaceId || 'default') === spaceId);
+    if (!targets.length) return;
+    const groups = new Set(targets.map(aiGroupId));
+    closeGroupPreview();
+    tabSwitcherRef.current.remove(targets.map(tab => tab.id));
+    setClosedGroups(previous => new Set([...previous, ...groups]));
+    if (split && [split.left, split.right].some(id => targets.some(tab => tab.id === id))) setSplit(null);
+    AppManager.set(AppManager.getAll().map(tab => groups.has(aiGroupId(tab)) ? { ...tab, sessionChromeCollapsed:true } : tab));
+    browser.command({ id:targets[0].id, action:'unload-space-groups' });
+  };
+  const unloadOtherGroups = (item: IApp) => {
+    const keptGroup = aiGroupId(item);
+    const others = AppManager.getAll().filter(tab => !tab.archived && aiGroupId(tab) !== keptGroup);
+    const groups = new Set(others.map(aiGroupId));
+    if (!groups.size) return;
+    closeGroupPreview();
+    tabSwitcherRef.current.remove(others.map(tab => tab.id));
+    setClosedGroups(previous => new Set([...previous, ...groups]));
+    if (split && [split.left, split.right].some(id => others.some(tab => tab.id === id))) setSplit(null);
+    AppManager.set(AppManager.getAll().map(tab => groups.has(aiGroupId(tab)) ? { ...tab, sessionChromeCollapsed: true } : tab));
+    if (!selected || groups.has(aiGroupId(selected))) select(item);
+    browser.command({ id: item.id, action: 'unload-other-groups' });
+  };
   useEffect(
     () =>
       browser.onTabRequest(async (request) => {
@@ -2553,6 +2580,9 @@ export function Main() {
             </ContextMenu.Item>
             <ContextMenu.Item onSelect={() => closeGroup(item)}>
               {nativeMenuLabels.closeGroup}
+            </ContextMenu.Item>
+            <ContextMenu.Item onSelect={() => unloadOtherGroups(item)}>
+              Unload other groups
             </ContextMenu.Item>
             <ContextMenu.Separator />
             <ContextMenu.Sub>

@@ -89,7 +89,8 @@ type ScopedHookMarketplaceRequest =
     }
   | { action: 'updates'; id?: string; hookId?: string }
   | { action: 'account-status' }
-  | { action: 'account-preferences' };
+  | { action: 'account-preferences' }
+  | { action: 'global-preferences' };
 export type HookMarketplaceRequest = ScopedHookMarketplaceRequest & {
   allGroups?: boolean;
 };

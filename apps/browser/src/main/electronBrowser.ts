@@ -1,3 +1,4 @@
+import { showAppToast } from './appToast';
 import { registerEnergySaver } from './energySaver';
 import { NativeTooltip } from './nativeTooltip';
 import { createSidebarMediaSession } from './sidebarMediaSession';
@@ -1448,12 +1449,12 @@ export function registerElectronBrowser(
     view: WebContentsView,
     scroll: { x: number; y: number },
     manual = false,
-    force = false
+    force = false,
+    completed?: (unloaded: boolean) => void
   ) => {
     const contents = view.webContents;
     const item = configurations.get(id);
-    if (!item || contents.isDestroyed() || retiringTabs.has(contents.id))
-      return;
+    if (!item || contents.isDestroyed() || retiringTabs.has(contents.id)) { completed?.(false); return; }
     const state = lastStates.get(id);
     sleeping.set(id, {
       history: {
@@ -1465,6 +1466,7 @@ export function registerElectronBrowser(
     retiringTabs.add(contents.id);
     let unloaded: () => void;
     const cancel = () => {
+      completed?.(false);
       sleeping.delete(id);
       hiddenSince.set(id, Date.now());
       retiringTabs.delete(contents.id);
@@ -1500,6 +1502,7 @@ export function registerElectronBrowser(
         .catch(cancel);
     };
     unloaded = () => {
+      completed?.(true);
       contents.removeListener('will-prevent-unload', prevented);
       retiringTabs.delete(contents.id);
       if (views.get(id) !== view) return;
@@ -1634,7 +1637,7 @@ export function registerElectronBrowser(
       request.action !== 'close-group'
     )
       return;
-    if (targetGroup && isGroupLocked(targetGroup)) return;
+    if (targetGroup && isGroupLocked(targetGroup) && request.action !== 'unload-space-groups') return;
     if (request.action === 'unload-tab') {
       const item = configurations.get(request.id);
       const view = views.get(request.id);
@@ -1643,20 +1646,27 @@ export function registerElectronBrowser(
       else resetUnloadedHistory(request.id, item, lastStates.get(request.id));
       return;
     }
-    if (request.action === 'close-group') {
+    if (request.action === 'close-group' || request.action === 'unload-other-groups' || request.action === 'unload-space-groups') {
       const source = configurations.get(request.id);
       if (!source) return;
+      const spaceGroups = request.action === 'unload-space-groups';
+      const collapseIds: string[] = [];
+      const otherGroups = request.action === 'unload-other-groups';
+      const pending: Promise<boolean>[] = [];
       configurations.forEach((item, id) => {
-        if (
-          groupKey(item) !== groupKey(source) ||
-          (item.spaceId || 'default') !== (source.spaceId || 'default')
-        )
-          return;
+        const sameGroup = groupKey(item) === groupKey(source) && (item.spaceId || 'default') === (source.spaceId || 'default');
+        if (item.archived || (spaceGroups ? (item.spaceId || 'default') !== (source.spaceId || 'default') : otherGroups ? sameGroup : !sameGroup)) return;
+        collapseIds.push(id);
         const view = views.get(id);
         if (windows?.visibleElsewhere(window, id)) return;
-        if (view) unloadTab(id, view, { x: 0, y: 0 }, true);
+        if (view) pending.push(new Promise(resolve => unloadTab(id, view, { x: 0, y: 0 }, true, false, resolve)));
         else resetUnloadedHistory(id, item, lastStates.get(id));
       });
+      void Promise.all(pending).then(results => {
+        const total = results.filter(Boolean).length;
+        if (!window.isDestroyed()) window.webContents.send('browser-tab-request', { action:'collapse-groups', ids:collapseIds });
+        return showAppToast(window, { id: 'groups-unloaded', title: !total ? 'No tabs unloaded' : spaceGroups ? 'Space groups unloaded' : otherGroups ? 'Other groups unloaded' : 'Group unloaded', message: `${total} ${total === 1 ? 'tab' : 'tabs'} unloaded.`, type:'info' });
+      }).catch(() => {});
       return;
     }
     if (request.action === 'extensions') {

@@ -1982,16 +1982,17 @@ app
       await wait(100);
       const menuClose = nativeContextMenu.items.find(item=>item.label==='Unload Group');
       assert(menuClose, 'Group menu must offer Unload Group');
-      assert(await evaluate(main, `document.querySelector('.sidebar-app-row .sidebar-app-close').title==='Unload group · Keep tabs saved'`));
+      assert(await evaluate(main, `document.querySelector('.sidebar-app-row .sidebar-app-close').title==='Unload group'`));
       menuClose.click();nativeContextMenu.closePopup(main);
       await wait(400);
       assert(personalContents.every(contents=>contents.isDestroyed()), 'Group views must unload');
+      assert((await evaluate(main, `JSON.parse(localStorage.getItem('user_apps'))`)).filter(tab=>tab.sessionId==='personal').every(tab=>tab.sessionChromeCollapsed===true),'Unloading collapses all folder tabs');
       assert(otherViews.every(view=>!view.webContents.isDestroyed()), 'Other groups must stay loaded');
       const after = await evaluate(main, `JSON.parse(localStorage.getItem('user_apps'))`);
       assert.deepEqual(after.map(tab=>[tab.id,tab.sessionId,tab.url,tab.archived]),before.map(tab=>[tab.id,tab.sessionId,tab.url,tab.archived]));
       assert(await evaluate(main, `!!document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]')`), 'Closed group stays in sidebar');
       fs.writeFileSync(path.join(out,'group-closed.png'),(await main.capturePage()).toPNG());
-      await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').click();undefined`);
+      await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').click();undefined`);await wait(100);await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').closest('.sidebar-app-row').parentElement.querySelector('.sidebar-group-tab-select').click();undefined`);
       await wait(500);
       const awake = main.contentView.children.filter(view=>view instanceof WebContentsView&&/\/(home|messages)$/.test(view.webContents.getURL()));
       assert.equal(awake.length,1,'Reopening loads only the selected tab');
@@ -2012,11 +2013,11 @@ app
         await evaluate(main, `document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}));undefined`);await wait(100);
         nativeContextMenu.items.find(item=>item.label==='Unload Group').click();nativeContextMenu.closePopup(main);await wait(250);
       }
-      assert(await evaluate(main, `!!document.querySelector('.welcome-state')`),'Closing last group must leave a resting browser');
+      assert(await evaluate(main, `!!document.querySelector('.browser-showcase, .browser-onboarding')`),'Closing last group must leave a resting browser');
       assert.equal(main.contentView.children.filter(view=>view instanceof WebContentsView&&view.webContents.session!==main.webContents.session).length,0,'All closed groups must stay unloaded');
       assert.equal(await evaluate(main, `JSON.parse(localStorage.getItem('user_apps')).filter(tab=>!tab.archived).length`),4);
       fs.writeFileSync(path.join(out,'all-groups-closed.png'),(await main.capturePage()).toPNG());
-      await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').click();undefined`);await wait(400);
+      await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').click();undefined`);await wait(100);await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').closest('.sidebar-app-row').parentElement.querySelector('.sidebar-group-tab-select').click();undefined`);await wait(400);
       for (const appearance of ['light','dark']) {
         await evaluate(main, `localStorage.setItem('kudiumbrowser-appearance',${JSON.stringify(appearance)});undefined`);
         main.reload();await wait(1000);
@@ -2028,6 +2029,20 @@ app
           nativeContextMenu.closePopup(main);
         }
       }
+      await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Work"]').click();document.querySelector('.sidebar-app[aria-label="Facebook · Work"]').closest('.sidebar-app-row').parentElement.querySelector('.sidebar-group-tab-select').click();undefined`);await wait(300);
+      const keptViews=main.contentView.children.filter(view=>view instanceof WebContentsView&&/\/(home|messages)$/.test(view.webContents.getURL()));
+      const discardedOthers=main.contentView.children.filter(view=>view instanceof WebContentsView&&view.webContents.session!==main.webContents.session&&!keptViews.includes(view));
+      await evaluate(main, `document.querySelector('.sidebar-app[aria-label="Facebook · Personal"]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}));undefined`);await wait(100);
+      const discardedContents=discardedOthers.map(view=>view.webContents);
+      const unloadOthers=nativeContextMenu.items.find(item=>item.label==='Unload other groups');assert(unloadOthers,'Group menu must offer Unload other groups');
+      unloadOthers.click();nativeContextMenu.closePopup(main);await wait(700);
+      assert(discardedContents.every(contents=>contents.isDestroyed()),'Other groups unload');
+      assert(keptViews.every(view=>!view.webContents.isDestroyed()),'Clicked group remains loaded');
+      assert((await evaluate(main, `JSON.parse(localStorage.getItem('user_apps'))`)).filter(tab=>tab.sessionId!=='personal').every(tab=>tab.sessionChromeCollapsed===true),'Other folders collapse');
+      await evaluate(main, `document.querySelector('.space-title-menu').click();undefined`);await wait(100);
+      const unloadSpace=nativeContextMenu.items.find(item=>item.label==='Unload all groups in this space');assert(unloadSpace,'Space menu offers unload all');
+      unloadSpace.click();nativeContextMenu.closePopup(main);await wait(600);
+      assert(main.contentView.children.filter(view=>view instanceof WebContentsView&&view.webContents.session!==main.webContents.session).length===0,'Space groups unload');
       console.log('PASS: group menu and button unload views, preserve metadata and cookies, restore tabs lazily, protect cancelled unsaved changes, keep other groups resident');
       Object.values(windows).forEach(win=>win.close());server.close();app.quit();return;
     }

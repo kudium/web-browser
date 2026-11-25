@@ -379,6 +379,8 @@ it('publishes only saved default code with a public name and exposes a bounded a
   });
   await handler(event, { action: 'account-preferences' });
   expect(showBrowserPreferences).toHaveBeenCalledWith(mockHost, 'sync');
+  await handler(event, { action: 'global-preferences' });
+  expect(showBrowserPreferences).toHaveBeenCalledWith(mockHost, 'hooks');
   await expect(
     handler(
       { sender: { id: 888, mainFrame: {} }, senderFrame: {} },

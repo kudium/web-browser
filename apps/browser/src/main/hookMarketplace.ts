@@ -337,6 +337,7 @@ export function registerHookMarketplace(
             'destinations',
             'account-status',
             'account-preferences',
+            'global-preferences',
             'publish',
             'preview',
             'updates',
@@ -423,10 +424,10 @@ export function registerHookMarketplace(
       if (input.action === 'preview') return preview(event.sender, input.url);
       if (input.action === 'account-status')
         return accountStatus?.() || { signedIn: false };
-      if (input.action === 'account-preferences') {
+      if (input.action === 'account-preferences' || input.action === 'global-preferences') {
         const owner = BrowserWindow.fromWebContents(event.sender);
         if (!owner) throw new Error('The hook window is unavailable.');
-        showBrowserPreferences(owner, 'sync');
+        showBrowserPreferences(owner, input.action === 'global-preferences' ? 'hooks' : 'sync');
         return null;
       }
 

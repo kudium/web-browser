@@ -249,13 +249,9 @@ export function SidebarPanels({
           }
           onManage={(panel) => {
             if (pickerTab === 'global' && currentPage) {
-              void window.electron.hookMarketplace
-                .request({
-                  action: 'site-editor-open',
-                  id: currentPage.id,
-                  hookId: '',
-                })
-                .catch((error) => setHookError(String(error)));
+              const choice = globalChoices.find(item => `global-choice:${item.allGroups ? 'all:' : ''}${item.hook.id}` === panel.id);
+              if (!choice) return;
+              void window.electron.hookMarketplace.request({ action:'global-editor-open', id:currentPage.id, hookId:choice.hook.id, allGroups:choice.allGroups }).then(() => setHookError('')).catch(error => setHookError(String(error)));
             } else
               void browser
                 .sidebarPanels({ action: 'manage', id: panel.id })

@@ -10,7 +10,7 @@ import { HookWebsiteField } from '../UI/HookWebsiteField';
 /* Native form controls are associated by nesting. */
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useEffect, useState } from 'react';
-import { Button, IconButton } from '@radix-ui/themes';
+import { Button, IconButton, Switch } from '@radix-ui/themes';
 import { Maximize2 } from 'lucide-react';
 import { HookTestWebsiteField } from '../UI/HookTestWebsiteField';
 import { HookEditor } from '../UI/HookEditor';
@@ -83,15 +83,19 @@ export function GlobalHookEditorPage() {
     !!draft &&
     JSON.stringify(draft) !==
       JSON.stringify(state?.global.hooks.find((hook) => hook.id === draft.id));
-  const save = async () => {
+  const save = async (settings?: Partial<GlobalHook>) => {
     if (!state || !draft) return;
     setBusy(true);
     setError('');
     try {
+      const source = settings
+        ? state.global.hooks.find(item => item.id === draft.id) || draft
+        : draft;
       const hook = {
-        ...draft,
-        sites: draft.sites?.filter((site) => site.host),
-        exclusions: draft.exclusions.filter(Boolean),
+        ...source,
+        ...settings,
+        sites: source.sites?.filter((site) => site.host),
+        exclusions: source.exclusions.filter(Boolean),
       };
       hookSourceValidator.assert(hook);
       const exists = state.global.hooks.some((item) => item.id === hook.id);
@@ -108,7 +112,7 @@ export function GlobalHookEditorPage() {
         expectedHash: state.globalHash,
       });
       setState(result);
-      setDraft(result.editorHook);
+      setDraft(settings ? { ...draft, ...settings } : result.editorHook);
     } catch (reason) {
       setError(String(reason).replace(/^Error: /, ''));
     } finally {
@@ -177,6 +181,14 @@ export function GlobalHookEditorPage() {
               }
             />
           </div>
+          <div className="global-hook-editor-controls">
+            <label><Switch checked={draft.enabled !== false} disabled={busy} onCheckedChange={enabled => { void save({ enabled }); }} /> Enabled globally</label>
+            <label><Switch checked={!!draft.autoMode} disabled={busy} onCheckedChange={autoMode => { void save({ autoMode, enabledSites: draft.enabledSites || [] }); }} /> Auto</label>
+            <Button variant="ghost" color="gray" disabled={busy} onClick={() => {
+              window.electron.hookMarketplace.request({ action: 'global-preferences' }).catch(reason => setError(String(reason)));
+            }}>View all global hooks</Button>
+          </div>
+          <p className="global-hook-editor-mode-hint">{draft.enabled === false ? 'Disabled on every website. Enable globally to use this hook.' : draft.autoMode ? 'Off on websites by default. Enable it for individual websites in their hook settings.' : 'Runs on matching websites unless disabled for that website.'}</p>
           <FormDisclosure
             title="Where it runs"
             summary={[
@@ -209,7 +221,6 @@ export function GlobalHookEditorPage() {
                 disabled={busy}
                 onChange={(sites) => setDraft({ ...draft, sites })}
               />
-              <label><input type="checkbox" checked={!!draft.autoMode} disabled={busy} onChange={event => setDraft({ ...draft, autoMode: event.target.checked, enabledSites: draft.enabledSites || [] })} /> Auto · enable separately per website</label>
               {draft.autoMode && <FormTextField label="Enabled websites" value={(draft.enabledSites || []).join(', ')} disabled={busy} placeholder="example.com" onChange={event => setDraft({ ...draft, enabledSites: event.target.value.split(',').map(host => host.trim().toLowerCase()).filter(Boolean) })} />}
               <FormTextField
                 label="Excluded domains"
