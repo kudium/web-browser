@@ -1,6 +1,7 @@
 /** @jest-environment node */
 import { EventEmitter } from 'events';
 import { dialog } from 'electron';
+import { showBrowserDialog } from '../main/dialogs';
 import { hookActionMenu } from '../main/hookActions';
 import { runActionSandbox } from '../main/hookActionSandbox';
 import {
@@ -23,6 +24,7 @@ import {
 import { parseHookPackage } from '../../../../packages/hooks/package';
 import { emptyDeveloperConfig } from '../browser/siteDeveloper';
 jest.mock('electron', () => ({ dialog: { showMessageBox: jest.fn() } }));
+jest.mock('../main/dialogs', () => ({ showBrowserDialog: jest.fn(async () => ({response:0})) }));
 jest.mock('../main/browserInput', () => ({ requestBrowserInput: jest.fn() }));
 jest.mock('../main/hookActionPersonalData', () => ({
   fillActionPersonalData: jest.fn(),
@@ -604,4 +606,11 @@ test('groups small menus beneath one heading per hook without repeated subtitles
   expect(submenu.filter((item) => item.enabled === false)).toHaveLength(2);
   expect(submenu.every((item) => !item.sublabel)).toBe(true);
   expect(runActionSandbox).not.toHaveBeenCalled();
+});
+
+test('action failures show the browser error dialog without a native alert', async () => {
+  (runActionSandbox as jest.Mock).mockRejectedValueOnce(new Error('Fixture failed'));
+  await click(menu());
+  expect(showBrowserDialog).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({message:'Hook action could not run',detail:expect.stringContaining('Fixture failed'),buttons:['Close']}));
+  expect(dialog.showMessageBox).not.toHaveBeenCalled();
 });

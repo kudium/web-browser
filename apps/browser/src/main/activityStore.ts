@@ -9,7 +9,7 @@ export class ActivityStore {
 
   constructor(
     private persistence: {
-      created?: (entry: BrowserActivity) => void;
+      created?: (entry: BrowserActivity, delivery: { silent?: boolean }) => void;
       load: () => BrowserActivity[];
       save: (entries: BrowserActivity[]) => void;
     },
@@ -28,7 +28,8 @@ export class ActivityStore {
   create(
     input: ActivityInput,
     context: Pick<BrowserActivity, 'source' | 'scope' | 'groupId' | 'trigger'>,
-    asRead = false
+    asRead = false,
+    delivery: { silent?: boolean } = {}
   ) {
     const activity: BrowserActivity = {
       ...validateActivity(input),
@@ -41,7 +42,7 @@ export class ActivityStore {
     this.persistence.save(next);
     this.entries = next;
     try {
-      this.persistence.created?.(activity);
+      this.persistence.created?.(activity, delivery);
     } catch {
       /* Notification failures must not undo a saved activity. */
     }

@@ -122,7 +122,8 @@ test('notifies only after a new activity is saved, never on reads or deletions',
   const entry = store.create({ title: 'Saved' }, { source: 'ai' });
   expect(created).toHaveBeenCalledTimes(1);
   expect(created).toHaveBeenCalledWith(
-    expect.objectContaining({ id: entry.id, asRead: false })
+    expect.objectContaining({ id: entry.id, asRead: false }),
+    {}
   );
   store.read(entry.id);
   store.delete(entry.id);

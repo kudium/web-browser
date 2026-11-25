@@ -945,7 +945,8 @@ export function registerDeveloperPage(
                     (kind === 'error' ? 'Default hook' : 'Page hooks'),
                 },
               },
-              kind === 'success'
+              kind === 'success',
+              { silent: kind === 'error' }
             );
           } catch {
             /* Hook status remains visible if activity storage is unavailable. */

@@ -2,6 +2,8 @@
 import {ipcMain} from 'electron';
 import {browserActivity,registerActivity} from '../main/activity';
 import {showAppToast,dismissAppToast} from '../main/appToast';
+import {playActivitySound} from '../main/activitySound';
+let mockSound=false;
 let mockEnabled=true;
 let mockLocked=false;
 let mockPreferenceChange:()=>void;
@@ -11,7 +13,7 @@ const mockOwner={webContents:mockContents,isDestroyed:()=>false,isVisible:()=>tr
 jest.mock('electron',()=>({app:{getPath:()=>'/tmp'},ipcMain:{handle:jest.fn()},BrowserWindow:{getAllWindows:()=>[mockOwner]},Notification:{isSupported:()=>false}}));
 jest.mock('fs',()=>({existsSync:()=>false,writeFileSync:jest.fn(),renameSync:jest.fn(),unlinkSync:jest.fn()}));
 jest.mock('../main/localStorage',()=>({safeStorage:{encryptString:(value:string)=>Buffer.from(value)}}));
-jest.mock('../main/preferences',()=>({getBrowserPreferences:()=>({activityToasts:mockEnabled}),onBrowserPreferencesChanged:(listener:()=>void)=>{mockPreferenceChange=listener}}));
+jest.mock('../main/preferences',()=>({getBrowserPreferences:()=>({activityToasts:mockEnabled,activitySound:mockSound,activitySoundName:'chime'}),onBrowserPreferencesChanged:(listener:()=>void)=>{mockPreferenceChange=listener}}));
 jest.mock('../main/groupLocks',()=>({getGroupLocks:()=>({locked:()=>mockLocked,subscribe:(listener:()=>void)=>{mockLockChange=listener}})}));
 jest.mock('../main/appToast',()=>({showAppToast:jest.fn(async()=>{}),dismissAppToast:jest.fn()}));
 jest.mock('../main/activitySound',()=>({playActivitySound:jest.fn()}));
@@ -23,7 +25,7 @@ beforeAll(()=>{
   handler({sender:mockContents,senderFrame:mockContents.mainFrame},{action:'list'});
 });
 beforeEach(()=>{
-  mockEnabled=true;mockLocked=false;
+  mockEnabled=true;mockLocked=false;mockSound=false;
   browserActivity().delete(browserActivity().list().map(entry=>entry.id));
   jest.clearAllMocks();
 });
@@ -63,4 +65,15 @@ it('syncs external reads/deletions and removes disabled or locked toasts without
   mockLocked=false;const disabled=create();mockEnabled=false;mockPreferenceChange();
   expect(dismissAppToast).toHaveBeenCalledWith('activity-'+disabled.id);
   expect(browserActivity().list().find(entry=>entry.id===disabled.id)?.asRead).toBe(false);
+});
+
+it('silent hook failures remain unread and visible without playing a sound',()=>{
+  mockSound=true;
+  const entry=browserActivity().create({title:'Page hook failed',message:'Test failure'},{source:'hook'},false,{silent:true});
+  expect(playActivitySound).not.toHaveBeenCalled();
+  expect(showAppToast).toHaveBeenCalled();
+  expect(browserActivity().list().find(item=>item.id===entry.id)?.asRead).toBe(false);
+  expect(browserActivity().list()[0]).not.toHaveProperty('silent');
+  browserActivity().create({title:'Requested notification'},{source:'hook'});
+  expect(playActivitySound).toHaveBeenCalledWith('chime');
 });

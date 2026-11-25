@@ -26,6 +26,7 @@ import { saveNoteWithActivity } from './noteActivity';
 import { requestBrowserInput } from './browserInput';
 import { fillActionPersonalData } from './hookActionPersonalData';
 import { saveActionForm } from './hookActionSaveForm';
+import { showBrowserDialog } from './dialogs';
 
 const ACTION_WORLD = 1109;
 const running = new Set<number>();
@@ -404,11 +405,12 @@ export function hookActionMenu(
     click: () => {
       void invoke(hook, action).catch((error) => {
         if (!window.isDestroyed())
-          void dialog.showMessageBox(window, {
-            type: 'error',
+          void showBrowserDialog(window, {
             message: 'Hook action could not run',
             detail: String(error).slice(0, 2000),
-          });
+            buttons: ['Close'],
+            cancelId: 0,
+          }).catch(() => { /* The owner may close while the error is displayed. */ });
       });
     },
   });

@@ -59,7 +59,7 @@ export function browserActivity() {
   if (!store) {
     const file = path.join(app.getPath('userData'), 'activity.bin');
     store = new ActivityStore({
-      created: (entry) => {
+      created: (entry, delivery) => {
         if (
           entry.asRead ||
           (entry.groupId && getGroupLocks().locked(entry.groupId))
@@ -68,7 +68,7 @@ export function browserActivity() {
         const preferences = getBrowserPreferences();
         if (preferences.activityToasts) activityToast(entry);
         const now = Date.now();
-        if (preferences.activitySound && now - lastSound >= 1500) {
+        if (!delivery.silent && preferences.activitySound && now - lastSound >= 1500) {
           lastSound = now;
           playActivitySound(preferences.activitySoundName);
         }
