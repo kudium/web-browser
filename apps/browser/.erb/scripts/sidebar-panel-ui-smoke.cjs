@@ -20,6 +20,7 @@ const {
   registerSidebarPanelWindow,
   sidebarPanelsFor,
 } = require('../../src/main/sidebarPanels.ts');
+const {capturePagePNG}=require('../../src/main/aiScreenshot.ts');
 const {showHookPanel,removeHookPanels,respondHookPanel}=require('../../src/main/hookPanels.ts');
 const {protectWindowNavigation} = require('../../src/main/windowNavigation.ts');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-panel-ui-'));
@@ -122,6 +123,9 @@ app
       },
     );
     await window.loadFile(path.join(root, 'index.html'));
+    // Chromium's compositor cannot reliably capture a never-shown native view.
+    // Exercise the visible browser surface users actually interact with.
+    window.showInactive();
     const choose = async (label, name) => {
       await window.webContents.executeJavaScript(
         `document.querySelector('[aria-label="${label}"]').click()`,
@@ -179,7 +183,7 @@ app
     assert.equal(views.get('one').getVisible(), false,
       'Shared overlay handling must hide the native panel beneath Browser options');
     assert(await window.webContents.executeJavaScript(`(()=>{const image=document.querySelector('.sidebar-panel-snapshot');return !!image && image.complete && image.naturalWidth>0;})()`),
-      'An overlapping popup must leave a decoded panel image visible beneath it');
+      'An overlapping popup must leave a decoded panel image visible beneath it: ' + JSON.stringify({snapshot: host.state().snapshot ? {length: host.state().snapshot.image.length, prefix: host.state().snapshot.image.slice(0,30)} : null, dom: await window.webContents.executeJavaScript(`(()=>{const image=document.querySelector('.sidebar-panel-snapshot');return image?{complete:image.complete,width:image.naturalWidth}:null})()`)}));
     await window.webContents.executeJavaScript(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`);
     for (let i = 0; i < 50 && !views.get('one').getVisible(); i++) await pause(50);
     assert.equal(views.get('one').getVisible(), true,
@@ -317,7 +321,7 @@ app
     assert(sampleView,'The shared custom HTML example must render');
     window.showInactive();
     await pause(200);
-    fs.writeFileSync(path.join(os.tmpdir(),'kudium-hook-panel-qa.png'),(await sampleView.webContents.capturePage()).toPNG());
+    fs.writeFileSync(path.join(os.tmpdir(),'kudium-hook-panel-qa.png'),Buffer.from(await capturePagePNG(sampleView.webContents,new AbortController().signal),'base64'));
     window.hide();
     removeHookPanels(window.webContents);
     for(const channel of ['personal-data-autofill-position','personal-data-autofill-enabled','personal-data-autofill-focus'])ipcMain.handle(channel,()=>false);
@@ -390,7 +394,7 @@ app
       }
       if(sample.id==='panel-media') {
         window.showInactive(); await pause(200);
-        fs.writeFileSync(path.join(os.tmpdir(),'kudium-media-gallery-qa.png'),(await exampleView.webContents.capturePage()).toPNG());
+        fs.writeFileSync(path.join(os.tmpdir(),'kudium-media-gallery-qa.png'),Buffer.from(await capturePagePNG(exampleView.webContents,new AbortController().signal),'base64'));
         window.hide();
         for(let i=0;i<30;i++) {
           if(await exampleView.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#gallery img')).some(img=>img.src.startsWith('http:')&&img.naturalWidth>0)`))break;

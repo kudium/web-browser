@@ -6,6 +6,8 @@ import { EventEmitter } from 'events';
 import type { BrowserWindow, WebContentsView } from 'electron';
 
 const mockHandle = jest.fn();
+const mockCaptureFallback = jest.fn().mockResolvedValue('fallback');
+jest.mock('../main/aiScreenshot', () => ({ capturePagePNG: (...args: unknown[]) => mockCaptureFallback(...args) }));
 jest.mock('electron', () => ({
   ipcMain: { handle: (...args: unknown[]) => mockHandle(...args) },
   BrowserWindow: jest.fn(),
@@ -133,6 +135,7 @@ test('feature panels share a stable view, resize safely and hide behind workspac
     height: 600,
   });
   host.setSuspended(true);
+  expect(views[0].webContents.capturePage).toHaveBeenLastCalledWith(undefined, { stayHidden: true, stayAwake: true });
   expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(host.state().snapshot?.image).toBe('data:image/png;base64,fixture');
@@ -351,3 +354,19 @@ test.each(['dismiss', 'switch', 'dispose'])(
     if (action === 'switch') expect(views[1].setVisible).toHaveBeenLastCalledWith(false);
   },
 );
+
+
+test('compositor capture failures use the shared fallback without losing panel state', async () => {
+  const { host, views, createView } = fixture();
+  host.register({ info: { id: 'one', title: 'One', kind: 'hook' }, contentKey: 'one', createView });
+  host.activate('one');
+  host.layout('one', { x: 600, y: 100, width: 400, height: 600 });
+  views[0].webContents.capturePage.mockRejectedValueOnce(new Error('UnknownVizError'));
+  host.setSuspended(true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(mockCaptureFallback).toHaveBeenCalledWith(views[0].webContents, expect.any(AbortSignal));
+  expect(host.state().snapshot?.image).toBe('data:image/png;base64,fallback');
+  host.setSuspended(false);
+  expect(host.state().snapshot).toBeUndefined();
+  expect(views[0].setVisible).toHaveBeenLastCalledWith(true);
+});

@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, WebContentsView } from 'electron';
 import type { Session } from 'electron';
+import { capturePagePNG } from './aiScreenshot';
 import { presentSnapshots } from './snapshotPresentation';
 import type { BrowserSnapshot } from '../browser/contracts';
 import { clipSidebarPanelBounds } from '../browser/sidebarPanels';
@@ -31,6 +32,7 @@ export class SidebarPanelRegistry {
   private suspended = false;
   private snapshot?: BrowserSnapshot;
   private preparingView?: WebContentsView;
+  private captureController?: AbortController;
   private suspensionRevision = 0;
   activeSession?: Session;
   activeGroup?: string;
@@ -160,6 +162,7 @@ export class SidebarPanelRegistry {
   setSuspended(value: boolean) {
     if (this.suspended === value) return;
     this.suspended = value;
+    this.captureController?.abort();
     const revision = ++this.suspensionRevision;
     this.preparingView = undefined;
     const entry = this.entries.get(this.activeId || '');
@@ -168,9 +171,14 @@ export class SidebarPanelRegistry {
       // Native views sit above HTML dialogs. Paint a captured replacement before
       // hiding the live view, preserving its document and scroll/draft state.
       this.preparingView = view;
-      void view.webContents.capturePage().then(async image => {
+      const controller = new AbortController();
+      this.captureController = controller;
+      void view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true })
+        .then(image => { if (image.isEmpty?.()) throw new Error('Panel display surface is unavailable.'); return image.toDataURL(); })
+        .catch(async () => `data:image/png;base64,${await capturePagePNG(view.webContents, controller.signal)}`)
+        .then(async image => {
         if (revision !== this.suspensionRevision || this.floating || entry.view !== view || this.activeId !== entry.provider.info.id) return;
-        await presentSnapshots(this.window, [{ id: entry.provider.info.id, ...this.lastBounds!, image: image.toDataURL() }], {
+        await presentSnapshots(this.window, [{ id: entry.provider.info.id, ...this.lastBounds!, image }], {
           selector: '.sidebar-panel-snapshot',
           publish: frames => { this.snapshot = frames[0]; this.publish(); },
         });
@@ -287,6 +295,7 @@ export class SidebarPanelRegistry {
       this.floating.window.focus();
       return;
     }
+    this.captureController?.abort();
     ++this.suspensionRevision;
     this.preparingView = undefined;
     this.snapshot = undefined;
@@ -384,6 +393,7 @@ export class SidebarPanelRegistry {
     this.publish();
   }
   dispose() {
+    this.captureController?.abort();
     ++this.suspensionRevision;
     this.preparingView = undefined;
     this.snapshot = undefined;

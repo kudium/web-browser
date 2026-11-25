@@ -1,5 +1,6 @@
+- Keep panel content visible beneath dialogs with retained snapshots; unrelated popups and resizing leave the live panel visible.
 - Drag collection headers within a space to reorder them. The order saves immediately without moving groups or changing their login sessions.
-- A compact Discover Kudium sidebar stack introduces up to three recommendations at a time. Explore hooks in the current tab, discover browser tools gradually, or choose Later to hide recommendations for three days.
+- A compact Discover Kudium sidebar stack introduces up to three recommendations at a time. Explore hooks in a new tab, discover browser tools gradually, or choose Later to hide recommendations for three days.
 - New hook installs are enabled by default. Hook switches save immediately, global hooks can be disabled for individual websites, and website switches explain when a global disable prevents activation.
 - Clearer account screens and email verification confirmation, plus hover-to-copy controls in browser and web hook editors.
 - Marketplace screenshots appear as thumbnails with an image viewer. Hook failures stay visible without automatic alert sounds, and returning marketplace installers are no longer hidden behind an editor.
