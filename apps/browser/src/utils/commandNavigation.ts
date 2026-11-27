@@ -35,6 +35,8 @@ export function commandDestination(
       sessionIconEmoji: shared ? source?.sessionIconEmoji : undefined,
       sessionIconImage: shared ? source?.sessionIconImage : undefined,
       sessionHomeURL: shared ? source?.sessionHomeURL : undefined,
+      browserEmail: shared ? source?.browserEmail : undefined,
+      browserEmails: shared ? source?.browserEmails : undefined,
       sessionName: shared
         ? source?.sessionName || source?.name
         : newGroupName(apps, new URL(url).hostname),

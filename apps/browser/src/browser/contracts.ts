@@ -65,6 +65,7 @@ export interface BrowserState {
   url: string;
   title: string;
   devToolsFraction?: number;
+  translation?: { source: string; sourceName: string; targetName: string; target?: string; targets?: {code:string; name:string}[]; needed: boolean; translated: boolean; translating: boolean; always: boolean; phase?: 'downloading'; error?: string };
   devToolsDock?: 'right' | 'bottom' | 'window' | 'panel';
   themeColor?: string;
   icon?: string;
@@ -106,6 +107,7 @@ export interface BrowserLayout {
   }[];
 }
 export interface BrowserCommand {
+  translationTarget?: string;
   devToolsFraction?: number;
   id: string;
   action:
@@ -122,6 +124,10 @@ export interface BrowserCommand {
     | 'settings'
     | 'extensions'
     | 'menu'
+    | 'page-translate'
+    | 'page-translation-original'
+    | 'page-translation-always'
+    | 'page-translation-target'
     | 'page-devtools-panel'
   | 'page-devtools-right'
     | 'page-devtools-bottom'

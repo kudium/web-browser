@@ -1,8 +1,21 @@
 import { BrowserWindow, screen } from 'electron';
 import { onWindowClosed } from './windowLifecycle';
 import type { NativeTooltipRequest } from '../browser/nativeUi';
+import { usesNativeGlass } from './nativeGlass';
 
-const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'"><style>html,body{margin:0;background:transparent;overflow:hidden}body{width:320px;padding:6px;box-sizing:border-box;font:12px/18px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}#hint{display:inline-block;box-sizing:border-box;max-width:288px;overflow-wrap:anywhere;padding:6px 10px;border:1px solid #0002;border-radius:7px;background:#f7f7f7;color:#202124;box-shadow:0 2px 5px #0003}body.dark #hint{background:#303033;color:#f5f5f5;border-color:#ffffff20}</style><div id="hint"></div>`;
+const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'"><style>
+html,body{margin:0;background:transparent;overflow:hidden;border-radius:10px}
+body{width:320px;padding:6px;box-sizing:border-box;font:12px/18px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#hint{display:inline-block;box-sizing:border-box;max-width:288px;overflow-wrap:anywhere;padding:6px 10px;border:1px solid #0002;border-radius:7px;background:#f7f7f7;color:#202124;box-shadow:0 2px 5px #0003}
+body.dark #hint{background:#303033;color:#f5f5f5;border-color:#ffffff20}
+body.footer{padding:0;border-radius:4px}
+body.footer #hint{display:block;width:max-content;font-size:11px;line-height:16px;padding:2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px;background:#dce6f0;color:#394c62;border-color:#607b9926;box-shadow:none}
+body.dark.footer #hint{background:#c8d6e5;color:#293f58;border-color:#607b9926}
+/* One translucent surface; no separate native material around the URL. */
+body.glass #hint{background:#dce6f0f0}
+body.dark.glass #hint{background:#c8d6e5f0}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){body.glass #hint{background:#dce6f0;color:#293f58}body.dark.glass #hint{background:#c8d6e5;color:#20344d}}
+</style><div id="hint"></div>`;
 
 export function validateTooltip(value: NativeTooltipRequest, labelLimit = 300) {
   if (!value || typeof value.id !== 'string' || value.id.length > 100)
@@ -33,6 +46,7 @@ export class NativeTooltip {
   private id?: string;
 
   private version = 0;
+
 
   constructor(private owner: BrowserWindow) {
     ['blur', 'move', 'resize', 'hide', 'minimize'].forEach((event) => {
@@ -67,6 +81,7 @@ export class NativeTooltip {
         show: false,
         frame: false,
         transparent: true,
+        backgroundColor: '#00000000',
         focusable: false,
         resizable: false,
         movable: false,
@@ -97,12 +112,13 @@ export class NativeTooltip {
       this.owner.isDestroyed()
     )
       return;
+    const glass = !!footer && usesNativeGlass();
     const size = await hint.webContents.executeJavaScript(
-      `(()=>{document.body.style.width=${JSON.stringify(`${footer ? Math.max(40, Math.min(900, footer.width)) : 320}px`)};document.body.className=${JSON.stringify(
-        request.dark ? 'dark' : ''
+      `(()=>{document.body.style.width=${JSON.stringify(`${footer ? Math.max(40, Math.min(480, footer.width)) : 320}px`)};document.body.className=${JSON.stringify(
+        [request.dark && 'dark', footer && 'footer', glass && 'glass'].filter(Boolean).join(' ')
       )};const e=document.getElementById('hint');e.style.maxWidth=${JSON.stringify(footer ? '100%' : '288px')};e.textContent=${JSON.stringify(
         request.label
-      )};const r=e.getBoundingClientRect();const size={width:Math.ceil(r.width)+12,height:Math.ceil(r.height)+12};document.body.style.width='100%';return size})()`
+      )};const r=e.getBoundingClientRect();const inset=${footer ? 0 : 12};const size={width:Math.ceil(r.width)+inset,height:Math.ceil(r.height)+inset};document.body.style.width='100%';return size})()`
     );
     if (
       version !== this.version ||

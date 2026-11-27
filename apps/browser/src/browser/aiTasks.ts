@@ -28,10 +28,13 @@ export interface SavedAITask {
   runs: AITaskRun[];
   /** Instructions derived from private AI context retain the review floor. */
   privateData?: boolean;
+  /** A run_script source that runs deterministically with no model; instructions are the fallback. */
+  script?: string;
 }
 export interface AITaskInput {
   name: string;
   instructions: string;
+  script?: string;
   groupId?: string | null;
   schedule: AITaskSchedule;
 }
@@ -65,6 +68,7 @@ export function taskInputFromTool(args: Record<string, unknown>): AITaskInput {
   return {
     name: args.name as string,
     instructions: args.instructions as string,
+    ...(args.script !== undefined ? { script: args.script as string } : {}),
     schedule,
   };
 }

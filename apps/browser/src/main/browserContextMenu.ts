@@ -20,11 +20,12 @@ import {
 /** Keep form workflows together while allowing more providers to be added. */
 export function fillFormMenu(
   loginActions: MenuItemConstructorOptions[],
-  withAI: () => void
+  withAI: () => void,
+  personalDataActions: MenuItemConstructorOptions[] = []
 ): MenuItemConstructorOptions {
   return {
-    label: 'Fill form',
-    submenu: [{ label: 'With AI', click: withAI }, ...loginActions],
+    label: 'Form',
+    submenu: [{ label: 'Fill with AI', click: withAI }, ...personalDataActions, ...loginActions],
   };
 }
 
@@ -37,7 +38,9 @@ export function showBrowserContextMenu(
   extensions: MenuItem[] = [],
   pictureInPicture: (() => void) | undefined = undefined,
   hookActions: MenuItemConstructorOptions[] = [],
-  inspect: (() => void) | undefined = undefined
+  inspect: (() => void) | undefined = undefined,
+  addSelection?: (kind: 'note' | 'today' | 'append', text: string) => void,
+  appendKind?: 'note' | 'todo'
 ) {
   const items: (MenuItemConstructorOptions | MenuItem)[] = [];
   const group = (entries: (MenuItemConstructorOptions | MenuItem)[]) => {
@@ -71,6 +74,66 @@ export function showBrowserContextMenu(
       enabled: false,
     },
   ];
+  // Keep the explicit form fallback ahead of page and editing commands.
+  const formActions = hookActions.filter(action => action.label === 'Form');
+  const translationActions = hookActions.filter(action => action.label?.startsWith('Translate to ') || action.label === 'Show original language');
+  group(formActions);
+  const selection = params.selectionText.trim();
+  const link = canOpen(params.linkURL) ? params.linkURL : '';
+  const selectedContent = selection
+    ? selection + (link && !selection.includes(link) ? `\n${link}` : '')
+    : link;
+  if (!params.isEditable && selectedContent && addSelection) {
+    const text = selectedContent;
+    items.push({ label: 'Add to', submenu: [
+      {label:'New note', enabled:text.length <= 30000, click:() => addSelection('note', text)},
+      {label: 'Today’s to-do', enabled:text.length <= 30000, click:() => addSelection('today', text)},
+      ...(appendKind ? [{label:appendKind === 'todo' ? 'Append to current to-do list' : 'Append to current note',enabled:text.length<=30000,click:()=>addSelection('append',text)}] : []),
+    ] });
+  }
+  if (params.selectionText) {
+    const preferences = getBrowserPreferences();
+    const engines = validateSearchEngines(
+      preferences.searchEngines || defaultSearchEngines
+    );
+    const engine =
+      engines.find((entry) => entry.id === preferences.searchEngine) ||
+      engines[0];
+    items.push(
+      ...(process.platform === 'darwin'
+        ? [
+            {
+              label: 'Look Up',
+              click: () => contents.showDefinitionForSelection(),
+            },
+          ]
+        : []),
+      {
+        label: 'Search With',
+        submenu: [
+          {
+            label: 'Kudium AI',
+            enabled: params.selectionText.trim().length <= 30000,
+            click: () => {
+              if (!window.isDestroyed())
+                window.webContents.send(
+                  'browser-ai-selection',
+                  params.selectionText.trim()
+                );
+            },
+          },
+          { type: 'separator' },
+          ...[engine, ...engines.filter((entry) => entry.id !== engine.id)].map(
+            (entry) => ({
+              label: entry.name,
+              click: () =>
+                openTab(searchUrl(entry, params.selectionText.trim())),
+            })
+          ),
+        ],
+      },
+    );
+  }
   if (params.linkURL) {
     group([
       ...openingActions('link', params.linkURL),
@@ -164,52 +227,8 @@ export function showBrowserContextMenu(
         click: () => contents.selectAll(),
       },
     ]);
-  } else if (params.selectionText) {
-    group([{ label: 'Copy', click: () => contents.copy() }]);
   }
-  if (params.selectionText) {
-    const preferences = getBrowserPreferences();
-    const engines = validateSearchEngines(
-      preferences.searchEngines || defaultSearchEngines
-    );
-    const engine =
-      engines.find((entry) => entry.id === preferences.searchEngine) ||
-      engines[0];
-    group([
-      ...(process.platform === 'darwin'
-        ? [
-            {
-              label: 'Look Up',
-              click: () => contents.showDefinitionForSelection(),
-            },
-          ]
-        : []),
-      {
-        label: 'Search With',
-        submenu: [
-          {
-            label: 'Kudium AI',
-            enabled: params.selectionText.trim().length <= 30000,
-            click: () => {
-              if (!window.isDestroyed())
-                window.webContents.send(
-                  'browser-ai-selection',
-                  params.selectionText.trim()
-                );
-            },
-          },
-          { type: 'separator' },
-          ...[engine, ...engines.filter((entry) => entry.id !== engine.id)].map(
-            (entry) => ({
-              label: entry.name,
-              click: () =>
-                openTab(searchUrl(entry, params.selectionText.trim())),
-            })
-          ),
-        ],
-      },
-    ]);
-  }
+
   if (
     !params.isEditable &&
     !params.selectionText &&
@@ -231,6 +250,7 @@ export function showBrowserContextMenu(
     ]);
   }
   group([
+    ...(!params.isEditable && params.selectionText ? [{ label: 'Copy', click: () => contents.copy() }] : []),
     {
       label: nativeMenuLabels.savePageAs,
       click: async () => {
@@ -256,8 +276,9 @@ export function showBrowserContextMenu(
     { label: nativeMenuLabels.print, click: () => contents.print() },
     { label: 'Copy Clean Page Link', enabled: canOpen(contents.getURL()),
       click: () => clipboard.writeText(cleanLink(contents.getURL())) },
+    ...translationActions,
   ]);
-  items.push(...hookActions, ...extensions);
+  items.push(...hookActions.filter(action => !formActions.includes(action) && !translationActions.includes(action)), ...extensions);
   group([
     {
       label: nativeMenuLabels.inspect,

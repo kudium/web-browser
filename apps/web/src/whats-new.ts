@@ -1,5 +1,15 @@
 export const whatsNew = [
   {
+    version: '1.0.27', date: '2026-11-27', title: 'Email identities, Today todos, and better AI workflows',
+    highlights: [
+      ['Email accounts and aliases', 'Connect multiple inboxes and forwarding-alias accounts, or associate a signed-in browser inbox with a group. The assistant can reuse aliases, fill sign-up forms, and read matching verification messages from a configured inbox.'],
+      ['Today todos', 'Organize tasks in shared or group todo lists, choose dates, reorder Today, and work through the sidebar suggestion queue. Ask the assistant to add tasks to Today using the same encrypted task storage.'],
+      ['Offline page translation', 'Translate supported languages with downloaded local language packs. Restore the original page and choose translation preferences for websites.'],
+      ['More capable AI workflows', 'Improved tool discovery, bounded page observations, reusable browser flows, and local model controls help the assistant carry out requested work.'],
+      ['Quieter browser controls', 'Lazy context menus, retained panel and editor state, more reliable tab and group movement, and compact single-line link previews improve everyday browsing.'],
+    ],
+  },
+  {
     version: '1.0.26', date: '2026-11-25', title: 'Flexible panels and smarter address suggestions',
     highlights: [
       ['Dock panels your way', 'Move AI, Developer, hooks and other panels to the right or bottom using the compact header control. Resize the dock without losing panel content; placement and dimensions are remembered.'],

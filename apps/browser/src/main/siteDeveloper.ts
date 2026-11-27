@@ -1,3 +1,6 @@
+import { upsertSuggestion, dismissSuggestion, removeSuggestions, suggestionResult } from './hookSuggestions';
+import { addTodo } from './todos';
+import { installPageTranslation } from '../browser/pageTranslation';
 import { getHookPower, getHookAppearance, getHookLocale, onHookOSChange } from './hookOS';
 import { getBatteryStatus } from './lowBattery';
 import { showAppToast } from './appToast';
@@ -41,6 +44,7 @@ import {
 export const developerPreloadSource = String.raw`
 const { ipcRenderer, webFrame } = require('electron');
 if (window === window.top) {
+  (${installPageTranslation.toString()})(ipcRenderer);
   (${installPersonalDataAutofill.toString()})(ipcRenderer, (${createPersonalDataMatching.toString()})().score);
   let generation = 0;
   let rerun;
@@ -185,6 +189,37 @@ if (window === window.top) {
       });
       const activity = Object.freeze({create: input => output('activity', input)});
       const notes = Object.freeze({create: input => output('note', input)});
+      const todos = Object.freeze({create: input => output('todo-create', input)});
+      const suggestionActions = new Map();
+      const suggestionListener = async (_event, request) => {
+        if (!alive() || request?.token !== token || request.hookId !== (hook.id || '')) return;
+        let error;
+        try {
+          const handler = suggestionActions.get(request.actionId);
+          if (!handler) throw new Error('This suggestion action is no longer registered.');
+          await handler();
+        } catch (failure) { error = String(failure?.message || failure).slice(0,300); }
+        if (alive()) output('suggestion-result',{requestId:request.requestId,error}).catch(report);
+      };
+      ipcRenderer.on('site-developer-suggestion-action', suggestionListener);
+      onCleanup(() => {
+        suggestionActions.clear();
+        ipcRenderer.removeListener('site-developer-suggestion-action',suggestionListener);
+        ipcRenderer.invoke('site-developer-output',{token,kind:'suggestion-dispose',hookId:hook.id}).catch(()=>{});
+      });
+      const suggestions = Object.freeze({
+        upsert: input => {
+          if (!suggestionActions.has(input?.actionId)) return Promise.reject(new Error('Register suggestions.onAction before submitting a suggestion.'));
+          return output('suggestion',input);
+        },
+        remove: key => output('suggestion-remove',key),
+        onAction: (id,handler) => {
+          if(typeof id !== 'string' || typeof handler !== 'function')throw new Error('Provide an action id and handler.');
+          suggestionActions.set(id,handler);
+          const cleanup=()=>{if(suggestionActions.get(id)===handler)suggestionActions.delete(id)};
+          onCleanup(cleanup);return cleanup;
+        }
+      });
       const panel = Object.freeze({
         show: input => {hasPanel=true;return output('panel', input)}, update: input => {hasPanel=true;return output('panel', input)},
         close: id => output('panel-close', id),
@@ -200,7 +235,7 @@ if (window === window.top) {
           onCleanup(remove);return remove;
         }
       });
-      const context = Object.freeze({url: location.href, document, notify, activity, notes, panel, toast, os,
+      const context = Object.freeze({url: location.href, document, notify, activity, notes, todos, suggestions, panel, toast, os,
         get theme() { return liveTheme; },
         runId: token + ':' + (hook.id || 'default') + ':' + phase,
         signal: controller.signal, onCleanup,
@@ -381,6 +416,7 @@ export function resetDeveloperState(contents: WebContents, origin: string) {
   if (!page) return;
   page.osSubscriptions?.forEach(stop=>stop());page.osSubscriptions?.clear();
   removeHookPanels(contents);
+  removeSuggestions(contents);
   contents.send('site-developer-stop');
   page.token = undefined;
   page.states.delete(origin);
@@ -435,7 +471,7 @@ export function registerDeveloperPage(
   };
   const existing = pages.get(contents);
   if (existing) {
-    if (owner && existing.owner !== owner) removeHookPanels(contents);
+    if (owner && existing.owner !== owner) {removeHookPanels(contents);removeSuggestions(contents);}
     existing.publish = publishState;
     existing.scope = scope;
     existing.previewConfig = previewConfig;
@@ -457,10 +493,11 @@ export function registerDeveloperPage(
   contents.once('destroyed', () => {
     pages.get(contents)?.stopTheme?.();
     removeHookPanels(contents);
+    removeSuggestions(contents);
     pages.delete(contents);
   });
   contents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => {
-    if (mainFrame) removeHookPanels(contents);
+    if (mainFrame) {removeHookPanels(contents);removeSuggestions(contents);}
   });
   contents.on('did-navigate-in-page', (_event, _url, isMainFrame) => {
     if (isMainFrame) contents.send('site-developer-route');
@@ -547,6 +584,8 @@ export function registerDeveloperPage(
           );
     if (data.hookId !== undefined && !hook)
       throw new Error('Hook is no longer enabled.');
+    if (data.kind === 'suggestion-result') return suggestionResult(event.sender,data.token,hook?.id || '',data.input);
+    if (data.kind === 'suggestion-dispose') return removeSuggestions(event.sender,hook?.id || '');
     if (['panel-state-load', 'panel-state-save', 'panel-state-clear'].includes(String(data.kind))) {
       if (page.previewConfig) throw new Error('Persistent panel state is unavailable in isolated previews.');
       const now = Date.now();
@@ -654,6 +693,26 @@ export function registerDeveloperPage(
           event.sender.send('site-developer-toast-action',{token,hookId:hook?.id || '',action:input.action!.id});
         }} : undefined,
       }).then(() => ({shown:true}));
+    }
+    if (['suggestion','suggestion-remove'].includes(String(data.kind))) {
+      if (page.previewConfig) throw new Error('Suggestions are unavailable in isolated previews.');
+      const owner = page.owner || BrowserWindow.fromWebContents(event.sender);
+      if (!owner) throw new Error('Browser window unavailable.');
+      const token = page.token!;
+      const binding = {source:event.sender,owner,token,hookId:hook?.id || '',hookName:hook?.name || 'Default hook',groupId:identity.groupId,authorized:()=> {
+        if(event.sender.isDestroyed())return false;
+        const latest=pageConfig(page,event.sender.getURL());
+        return page.token===token && page.scope()?.groupId===identity.groupId && siteOrigin(event.sender.getURL())===origin && !getGroupLocks().locked(identity.groupId) && !!latest.enabled && (!hook || !!latest.hooks?.some(item=>item.id===hook.id && item.enabled)) && hookScriptHash(latest)===page.scriptHash;
+      }};
+      page.outputs!.push(now);
+      return data.kind === 'suggestion' ? upsertSuggestion(binding,data.input) : dismissSuggestion(binding,data.input);
+    }
+    if (data.kind === 'todo-create') {
+      if(page.previewConfig)throw new Error('Saved tasks are unavailable in isolated previews.');
+      const input=data.input as {key?:unknown;title?:unknown;today?:unknown};
+      if(!input || Object.keys(input).some(key=>!['key','title','today'].includes(key)) || typeof input.key!=='string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(input.key) || typeof input.title!=='string' || (input.today!==undefined && typeof input.today!=='boolean'))throw new Error('Provide a task key, title and optional today flag.');
+      page.outputs!.push(now);
+      return addTodo(input.title,input.today===true,identity.scope,undefined,JSON.stringify([page.profile,origin,hook?.id || '',input.key]),hook?.name || 'Page hook');
     }
     if (data.kind === 'activity') {
       const input = validateActivity(data.input);
@@ -794,6 +853,7 @@ export function registerDeveloperPage(
       return;
     }
     removeHookPanels(event.sender);
+    removeSuggestions(event.sender);
     page.token = randomUUID();
     page.scriptHash = hookScriptHash(config);
     page.origin = origin;

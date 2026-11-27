@@ -62,10 +62,19 @@ export function validateAITask(input: AITaskInput): AITaskInput {
       !/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time))
   )
     throw new Error('Choose a daily time in HH:mm format.');
+  if (
+    input.script !== undefined &&
+    (typeof input.script !== 'string' ||
+      !input.script.trim() ||
+      input.script.length > 64 * 1024 ||
+      input.script.includes('\0'))
+  )
+    throw new Error('script must be a run_script source under 64 KB.');
   return {
     ...(input.groupId !== undefined ? { groupId: input.groupId } : {}),
     name: input.name.trim(),
     instructions: input.instructions.trim(),
+    ...(input.script !== undefined ? { script: input.script } : {}),
     schedule: { ...schedule },
   };
 }
@@ -189,7 +198,7 @@ export class AITaskManager {
       task: SavedAITask,
       scheduled: boolean
     ) => Promise<AITaskOutcome>,
-    private available: (resuming?: boolean, scheduled?: boolean) => boolean,
+    private available: (resuming?: boolean, scheduled?: boolean, task?: SavedAITask) => boolean,
     private changed: () => void,
     private now = Date.now
   ) {
@@ -272,7 +281,7 @@ export class AITaskManager {
     scheduled: boolean | undefined = false,
     resume: (() => Promise<AITaskOutcome>) | undefined = undefined
   ) {
-    if (this.disposed || this.activeId || !this.available(!!resume, scheduled))
+    if (this.disposed || this.activeId || !this.available(!!resume, scheduled, this.tasks.find((task) => task.id === id)))
       throw new Error(
         'Browser AI is unavailable or waiting for human control.'
       );
@@ -341,13 +350,16 @@ export class AITaskManager {
   }
 
   async tick() {
-    if (this.disposed || this.activeId || !this.available()) return;
+    if (this.disposed || this.activeId) return;
+    // A scripted task may run while the window is hidden; availability is
+    // decided per task so an instruction-driven task still waits for focus.
     const due = this.tasks
       .filter(
         (task) =>
           task.enabled &&
           task.nextRunAt !== undefined &&
-          task.nextRunAt <= this.now()
+          task.nextRunAt <= this.now() &&
+          this.available(false, true, task)
       )
       .sort((a, b) => a.nextRunAt! - b.nextRunAt!)[0];
     if (due) await this.run(due.id, true);

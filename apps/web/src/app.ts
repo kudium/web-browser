@@ -22,7 +22,10 @@ import { whatsNewPage } from './pages';
 import { privacyPage } from './privacy';
 import { managedSync, managedKeyRecord } from './managed-sync';
 import { analyticsConsentRequired } from './analytics-policy';
-export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey, hookAdminIds }: { hookAdminIds?: string[]; syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[] }) {
+import { createRelay } from './relay/routes';
+import { MemoryRelayStore } from './relay/store';
+import { RelayService } from './relay/service';
+export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigins, publishing, syncMasterKey, hookAdminIds, relay }: { hookAdminIds?: string[]; syncMasterKey?: Buffer; publishing?: PublishingConfig; db: Database; auth?: Auth; authenticate?: Authenticate; assetOrigins: string[]; relay?: { host?: string } }) {
   const app = new Hono<{ Bindings: { remoteAddress?: string }; Variables: { account: string; styleNonce: string } }>();
   const store = syncStore(db);
   const managed = syncMasterKey ? managedSync(store, syncMasterKey) : undefined;
@@ -56,6 +59,9 @@ export function createApp({ db, auth, authenticate: testAuthenticate, assetOrigi
   app.notFound(c => c.json({ error: 'not_found' }, 404));
   if (publishing) app.route('/', releasePublishing(publishing, manifests => registerReleases(db, manifests)));
   app.route('/', hookRoutes(db, auth, hookAdminIds));
+  // MCP relay for cloud assistants: device sockets, OAuth 2.1 and forwarded /mcp (see relay/routes.ts).
+  const relayStore = new MemoryRelayStore();
+  app.route('/', createRelay({ store: relayStore, service: new RelayService(relayStore), authenticate, relayHost: relay?.host }));
   app.get('/health', c => c.json({ status: 'ok' }));
   app.get('/ready', async c => { try { await db.execute(sql`select 1`); return c.json({ status: 'ready', sync: authenticate ? 'configured' : 'unconfigured' }); } catch { return c.json({ status: 'unavailable' }, 503); } });
   app.get('/', c => c.html(homepage()));

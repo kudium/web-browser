@@ -7,7 +7,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { Theme } from '@radix-ui/themes';
-import { NotesPage } from '../components/UI/NotesPage';
+import { NotesPage as ActualNotesPage } from '../components/UI/NotesPage';
+const NotesPage = (props: React.ComponentProps<typeof ActualNotesPage>) => <ActualNotesPage initialView="library" {...props} />;
 import { browser } from '../browser/client';
 import type { VaultItem } from '../browser/passwordManager';
 
@@ -33,6 +34,7 @@ let request: jest.Mock;
 let lock: () => void;
 let changed: () => void;
 beforeEach(() => {
+  jest.mocked(browser.nativeMenu).mockReset().mockResolvedValue('note');
   Object.assign(Range.prototype, {
     getClientRects: () => [],
     getBoundingClientRect: () => ({
@@ -45,6 +47,7 @@ beforeEach(() => {
     }),
   });
   request = jest.fn(async (input) => {
+    if (input.action === 'todos') return [];
     if (input.action === 'notes')
       return [{ ...note, notes: undefined, fieldCount: 0 }];
     if (input.action === 'edit') return note;
@@ -83,8 +86,8 @@ test('loads titles without opening contents, then formats and saves the selected
     name: 'Note content',
   })) as HTMLTextAreaElement;
   expect(
-    screen.queryByRole('button', { name: 'Filter notes by group' })
-  ).not.toBeInTheDocument();
+    screen.getByRole('button', { name: 'Filter notes by group' })
+  ).toBeInTheDocument();
   expect(request).toHaveBeenCalledWith({
     action: 'edit',
     id: 'n',
@@ -344,7 +347,7 @@ test('shows the selected group on an empty page and lets users change the note f
     screen.queryByRole('button', { name: 'Plan' }),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: 'Create note' }),
+    screen.getByRole('button', { name: 'New note' }),
   ).toBeInTheDocument();
   const filter = screen.getByRole('button', { name: 'Filter notes by group' });
   expect(filter).toHaveTextContent('Other group');
@@ -397,11 +400,10 @@ test('deletes another row without opening it or clearing the active draft', asyn
   await openPlan();
   fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete Other' }));
-  expect(screen.getByRole('dialog')).toHaveTextContent('Other');
-  fireEvent.click(screen.getByRole('button', { name: 'Delete note' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith({
-      action: 'delete',
+      action: 'noteDelete',
       id: 'second',
       scope: undefined,
     }),
@@ -431,13 +433,13 @@ test('retains keyboard reorder after reopening', async () => {
   renderNotes();
   await screen.findByRole('button', { name: 'Other' });
   expect(
-    document.querySelector('.notes-history-row > button'),
+    document.querySelector('.notes-history-row:not(.notes-today-row) > button'),
   ).toHaveTextContent('Other');
   localStorage.removeItem('kudiumbrowser-ai-page-noteOrder');
 });
 
 test('offers native row context actions and starts renaming the correct note', async () => {
-  (browser.nativeMenu as jest.Mock).mockResolvedValueOnce('1');
+  (browser.nativeMenu as jest.Mock).mockImplementationOnce(async (items) => items.find((item: {label:string}) => item.label === 'Rename note')?.id);
   renderNotes();
   fireEvent.contextMenu(await screen.findByRole('button', { name: 'Plan' }));
   await screen.findByRole('textbox', { name: 'Note name' });
@@ -585,6 +587,9 @@ test('creates new notes in the currently selected group', async () => {
     </Theme>,
   );
   fireEvent.click(screen.getByRole('button', { name: 'New note' }));
+  const title = await screen.findByRole('textbox', {name:'Note title'});
+  expect(request).not.toHaveBeenCalledWith(expect.objectContaining({action:'save'}));
+  fireEvent.change(title,{target:{value:'A real note'}});
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -652,4 +657,111 @@ test('refreshes note titles on changes without recurring idle requests', async (
   } finally {
     jest.useRealTimers();
   }
+});
+
+
+test('creates a structured todo note and exposes the permanent Today view', async () => {
+  render(<Theme><NotesPage /></Theme>);
+  fireEvent.click(screen.getByRole('button', { name: 'New to-do' }));
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'New task' })).toBeInTheDocument());
+  expect(request).not.toHaveBeenCalledWith(expect.objectContaining({action:'save'}));
+  if (!screen.queryByRole('button', { name: 'Today todo' })) fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Today todo' }));
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'New task for Today' })).toBeInTheDocument());
+});
+
+test('Today retains access to the notes sidebar and opens saved notes', async () => {
+  render(<Theme><NotesPage /></Theme>);
+  if (!screen.queryByRole('button', { name: 'Today todo' })) fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Today todo' }));
+  await screen.findByRole('textbox', { name: 'New task for Today' });
+  fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
+  expect(await screen.findByRole('button', { name: 'Pin note history' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Plan' }));
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue('Plan'));
+  expect(screen.queryByRole('button', { name: 'Today' })).not.toBeInTheDocument();
+});
+
+test('Today is pinned first in the note list and opens the shared daily checklist', async () => {
+  render(<Theme><NotesPage /></Theme>);
+  const today = await screen.findByRole('button', { name: 'Today todo' });
+  expect(today.closest('.ai-chat-history-list')?.firstElementChild?.contains(today)).toBe(true);
+  fireEvent.click(today);
+  await screen.findByRole('textbox', { name: 'New task for Today' });
+  expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ action:'save' }));
+  fireEvent.click(screen.getByRole('button', {name:'Note history'}));
+  expect(await screen.findByRole('button', {name:'Today todo'})).toHaveAttribute('aria-pressed','true');
+  expect(screen.getByRole('textbox',{name:'New task for Today'}).closest('.notes-editor')).not.toHaveAttribute('hidden');
+});
+
+test('Today remains available in an empty note library', async () => {
+  request.mockImplementation(async (input) => input.action === 'notes' || input.action === 'todos' ? [] : {});
+  render(<Theme><NotesPage /></Theme>);
+  fireEvent.click(await screen.findByRole('button',{name:'Today todo'}));
+  expect(await screen.findByRole('textbox',{name:'New task for Today'})).toBeInTheDocument();
+});
+
+test('pins and unpins notes persistently and lets Today be unpinned', async () => {
+  localStorage.removeItem('kudiumbrowser-ai-page-notePins');
+  localStorage.removeItem('kudiumbrowser-ai-page-todayPinned');
+  twoNotes();
+  const view = renderNotes();
+  const choose = (label: string) => jest.mocked(browser.nativeMenu).mockImplementationOnce(async (items) => items.find((item) => item.label === label)?.id ?? null);
+  choose('Pin note');
+  fireEvent.contextMenu(await screen.findByRole('button', { name: 'Other' }));
+  await waitFor(() => expect(JSON.parse(localStorage.getItem('kudiumbrowser-ai-page-notePins')!)).toEqual(['second']));
+  expect(document.querySelector('.notes-history-row:not(.notes-today-row) > button')).toHaveTextContent('Other');
+  view.unmount();
+  const reopened = renderNotes();
+  await screen.findByText('Other');
+  choose('Unpin note');
+  fireEvent.contextMenu(screen.getByText('Other').closest('button')!);
+  await waitFor(() => expect(JSON.parse(localStorage.getItem('kudiumbrowser-ai-page-notePins')!)).toEqual([]));
+  choose('Unpin note');
+  fireEvent.contextMenu(screen.getByRole('button', {name:'Today todo'}));
+  await waitFor(() => expect(localStorage.getItem('kudiumbrowser-ai-page-todayPinned')).toBe('false'));
+  choose('Pin note');
+  fireEvent.contextMenu(screen.getByRole('button', {name:'Today todo'}));
+  await waitFor(() => expect(localStorage.getItem('kudiumbrowser-ai-page-todayPinned')).toBe('true'));
+  reopened.unmount();
+  localStorage.removeItem('kudiumbrowser-ai-page-notePins');
+  localStorage.removeItem('kudiumbrowser-ai-page-todayPinned');
+});
+
+test('normal Notes opening defaults to Today and restores the last viewed note',async()=>{
+  localStorage.removeItem('kudiumbrowser-notes-last-view:all');
+  const view=render(<Theme><ActualNotesPage /></Theme>);
+  expect(await screen.findByRole('textbox',{name:'New task for Today'})).toBeInTheDocument();
+  view.unmount();
+  localStorage.setItem('kudiumbrowser-notes-last-view:all','n');
+  const restored=render(<Theme><ActualNotesPage /></Theme>);
+  expect(await screen.findByRole('textbox',{name:'Note title'})).toHaveValue('Plan');
+  restored.unmount();
+  localStorage.removeItem('kudiumbrowser-notes-last-view:all');
+});
+
+test('offers separate one-click note and to-do creation controls',async()=>{
+  render(<Theme><ActualNotesPage /></Theme>);
+  expect(screen.getByRole('button',{name:'New note'})).toBeInTheDocument();
+  const todo=screen.getByRole('button',{name:'New to-do'});
+  jest.mocked(browser.nativeMenu).mockClear();
+  fireEvent.click(todo);
+  await screen.findByRole('textbox',{name:'New task'});
+  expect(browser.nativeMenu).not.toHaveBeenCalled();
+});
+
+test('an external note append refreshes the visible editor through one change listener', async () => {
+  let current={...note};
+  const setActive=jest.fn();
+  window.electron.setActiveNote=setActive;
+  request.mockImplementation(async input=>input.action==='notes' ? [{...current,notes:undefined,fieldCount:0}] : input.action==='edit' ? current : input.action==='todos' ? [] : {});
+  render(<Theme><NotesPage initialView="library" /></Theme>);
+  fireEvent.click(await screen.findByRole('button',{name:'Plan'}));
+  await screen.findByRole('textbox',{name:'Note content'});
+  await waitFor(()=>expect(setActive).toHaveBeenCalledWith({id:'n',scope:undefined,kind:'note'}));
+  const originalEditor=screen.getByRole('textbox',{name:'Note content'});
+  current={...current,notes:'Hello\n\nAppended immediately'};
+  await act(async()=>{changed();});
+  await waitFor(()=>expect(screen.getByRole('textbox',{name:'Note content'})).toHaveTextContent('Appended immediately'));
+  expect(screen.getByRole('textbox',{name:'Note content'})).toBe(originalEditor);
 });

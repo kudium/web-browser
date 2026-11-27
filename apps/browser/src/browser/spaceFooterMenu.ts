@@ -3,7 +3,8 @@ import type { NativeMenuItem } from './nativeUi';
 export function spaceFooterMenu(
   spaces: { id: string; name: string }[],
   currentPage: string,
-  compact: boolean
+  compact: boolean,
+  showSuggestions = true
 ): NativeMenuItem[] {
   return [
     { id: 'new-tab', label: 'New Tab…' },
@@ -35,6 +36,7 @@ export function spaceFooterMenu(
       id: 'sidebar-mode',
       label: compact ? 'Expand Sidebar' : 'Compact Sidebar',
     },
+    { id: 'suggestions-toggle', label: showSuggestions ? 'Hide Suggestions' : 'Show Suggestions' },
     { id: 'sidebar-hide', label: 'Hide Sidebar' },
     { id: 'settings', label: 'Settings…' },
   ];

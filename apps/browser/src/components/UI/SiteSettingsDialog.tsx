@@ -1,11 +1,11 @@
+import { useRef } from 'react';
 import { AddressBarSetting } from './AddressBarSetting';
 import { preferenceControls } from '../../browser/preferences';
 import {
-  Dialog,
+  Popover,
   Button,
   Select,
   Switch,
-  IconButton,
   DropdownMenu,
 } from '@radix-ui/themes';
 import {
@@ -23,13 +23,13 @@ import {
   Music2,
   Settings2,
   Volume2,
-  X,
   RotateCw,
   FileDown,
   ChevronDown,
   Scan,
   Image,
   ScrollText,
+  X,
 } from 'lucide-react';
 import type { BrowserState, BrowserCommand } from '../../browser/contracts';
 
@@ -74,6 +74,7 @@ export function SiteSettingsDialog({
   onSiteAutofillChange?: (enabled: boolean) => void;
   onFullUrlChange?: (enabled: boolean) => void;
 }) {
+  const anchor = useRef({ getBoundingClientRect: () => document.querySelector('.address-site-settings-button')?.getBoundingClientRect() || new DOMRect(16, 16, 0, 0) });
   const site = state?.siteSettings;
   const send = (
     action: BrowserCommand['action'],
@@ -107,30 +108,26 @@ export function SiteSettingsDialog({
     ...extra.map((key) => [key, key.replace(/-/g, ' '), Settings2] as const),
   ];
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content
+    <Popover.Root open={open} onOpenChange={onOpenChange} modal={false}>
+      <Popover.Anchor virtualRef={anchor} />
+      <Popover.Content
         className="site-settings-dialog"
-        maxWidth="460px"
+        side="bottom" align="end" sideOffset={8} collisionPadding={12}
+        aria-labelledby="site-settings-title"
         aria-describedby="site-settings-description"
       >
         <div className="site-settings-heading">
           <div>
-            <Dialog.Title mb="1" size="5" weight="medium">
+            <h2 id="site-settings-title">
               {site ? new URL(site.origin).host : 'Site settings'}
-            </Dialog.Title>
-            <Dialog.Description id="site-settings-description" size="2">
+            </h2>
+            <p id="site-settings-description">
               Site settings
-            </Dialog.Description>
+            </p>
           </div>
-          <Dialog.Close>
-            <IconButton
-              variant="ghost"
-              color="gray"
-              aria-label="Close site settings"
-            >
-              <X size={18} />
-            </IconButton>
-          </Dialog.Close>
+          <button type="button" className="site-settings-close" aria-label="Close site settings" onClick={() => onOpenChange(false)}>
+            <X size={16} />
+          </button>
         </div>
         <section
           className="site-settings-actions"
@@ -138,11 +135,10 @@ export function SiteSettingsDialog({
         >
           <div className="site-hooks-intro">
             <h2 id="site-hooks-intro">Site hooks</h2>
-            <p>Customize with JavaScript and CSS.</p>
           </div>
           <Button
-            size="2"
-            variant="soft"
+            size="1"
+            variant="ghost"
             color="gray"
             disabled={!site}
             onClick={() => {
@@ -160,6 +156,7 @@ export function SiteSettingsDialog({
               <summary>
                 <ConnectionIcon size={18} />
                 {connectionLabel}
+                <ChevronDown className="site-connection-chevron" size={14} aria-hidden="true" />
               </summary>
               <div className="site-connection-content">
                 <p>{connectionDescription}</p>
@@ -169,7 +166,7 @@ export function SiteSettingsDialog({
             {site?.protection && <div className="site-setting-row">
               <span className="site-setting-icon"><ShieldCheck size={18}/></span>
               <span className="site-setting-label">Block ads and trackers
-                <small className="preference-note">{!site.protection.globallyEnabled ? 'Enable blocking in Privacy & security.' : `${site.protection.blocked} requests blocked. ${site.protection.status.available ? 'Matching stays on this device.' : 'Rules are unavailable.'}`}</small>
+                <small className="preference-note">{!site.protection.globallyEnabled ? 'Enable blocking in Privacy & security.' : `${site.protection.blocked} requests blocked${site.protection.status.available ? '' : ' · Rules unavailable'}`}</small>
               </span>
               <Switch aria-label="Block ads and trackers on this site" checked={site.protection.enabled}
                 disabled={!site.protection.globallyEnabled}
@@ -183,6 +180,7 @@ export function SiteSettingsDialog({
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger>
                   <Button
+                    size="1"
                     variant="soft"
                     color="gray"
                     disabled={!state || state.loading || !onCapture}
@@ -209,6 +207,7 @@ export function SiteSettingsDialog({
                 </DropdownMenu.Content>
               </DropdownMenu.Root>
               <Button
+                size="1"
                 variant="soft"
                 color="gray"
                 disabled={!state || state.loading || !onCapture}
@@ -380,8 +379,8 @@ export function SiteSettingsDialog({
             </Button>
           </footer>
         </div>
-      </Dialog.Content>
-    </Dialog.Root>
+      </Popover.Content>
+    </Popover.Root>
   );
 }
 

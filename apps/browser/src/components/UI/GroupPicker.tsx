@@ -1,7 +1,7 @@
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import { Button, Popover, TextField } from '@radix-ui/themes';
-import { Search, ChevronDown, Check, Settings2 } from 'lucide-react';
+import { Search, ChevronDown, Check, Settings2, Play } from 'lucide-react';
 import {
   ReactNode,
   MouseEvent,
@@ -28,6 +28,7 @@ export interface GroupOption {
   group?: IApp;
   leadingIcon?: ReactNode;
   canManage?: boolean;
+  actionLabel?: string;
   disabled?: boolean;
 }
 export function GroupPicker({
@@ -258,11 +259,23 @@ export function GroupPicker({
                 {option.id === value && <Check size={14} />}
               </button>
             );
-            if (!onManage) return choice;
+            if (!onManage && !option.actionLabel) return choice;
             return (
-              <div className="group-picker-option-row" key={option.id}>
+              <div className="group-picker-option-row" data-has-action={option.actionLabel ? true : undefined} key={option.id}>
                 {choice}
-                {option.canManage && (
+                {option.actionLabel && (
+                  <button
+                    type="button"
+                    className="group-picker-manage group-picker-action"
+                    disabled={option.disabled}
+                    aria-label={`${option.actionLabel} ${option.name}`}
+                    title={`${option.actionLabel} on this website`}
+                    onClick={() => choose(option.id)}
+                  >
+                    <Play size={12} aria-hidden="true" />
+                  </button>
+                )}
+                {option.canManage && onManage && (
                   <button
                     type="button"
                     className="group-picker-manage"

@@ -2,7 +2,7 @@ import type { VaultField } from './passwordManager';
 
 /** Runs only in the isolated page preload; no bridge is exposed to the website. */
 export function installPersonalDataAutofill(
-  bridge: { invoke: (channel: string, input?: any) => Promise<any>; on: (channel: string, callback: (_event: unknown, enabled: boolean, focus?: boolean) => void) => void },
+  bridge: { invoke: (channel: string, input?: any) => Promise<any>; on: (channel: string, callback: (_event: unknown, enabled: boolean | { action: 'pick' | 'save' | 'fill' | 'save-form' | 'save-page'; x: number; y: number }, focus?: boolean) => void) => void },
   match: (name: string, aliases: string[], target: any) => number
 ) {
   let enabled = false;
@@ -19,7 +19,7 @@ export function installPersonalDataAutofill(
   let suppressClick = false;
   let loginPrompt = false;
   let authenticating = false;
-  let openCurrent: ((quick?: boolean) => Promise<void>) | null = null;
+  let openCurrent: ((quick?: boolean, preserveFocus?: boolean, manual?: 'pick' | 'save' | 'save-form' | 'save-page') => Promise<void>) | null = null;
   let refreshQuickFill: (() => void) | null = null;
   const actions = new WeakMap<HTMLButtonElement, () => void>();
   const usable = (element: Element | null): element is HTMLInputElement | HTMLTextAreaElement =>
@@ -145,7 +145,7 @@ export function installPersonalDataAutofill(
     returningFocus = document.activeElement !== input ? input : undefined;
     close(); input.focus();
   };
-  const show = (input: HTMLInputElement | HTMLTextAreaElement) => {
+  const show = (input: HTMLInputElement | HTMLTextAreaElement, automatic = true) => {
     close(); suppressClick = false; target = input;
     host = document.createElement('div');
     host.style.cssText = 'position:fixed;z-index:2147483647;width:56px;height:26px';
@@ -173,7 +173,7 @@ export function installPersonalDataAutofill(
     });
     root = host.attachShadow({ mode: 'closed' });
     applyPanelStyles(root);
-    const openPicker = async (quick = false, preserveFocus = false) => {
+    const openPicker = async (quick = false, preserveFocus = false, manual?: 'pick' | 'save' | 'save-form' | 'save-page') => {
       if (!enabled || paused || disposed || !input.isConnected) return;
       const existing = root?.querySelector('.panel');
       if (existing) {
@@ -221,7 +221,7 @@ export function installPersonalDataAutofill(
       dismiss.className = 'close'; dismiss.setAttribute('aria-label', 'Close Personal Data'); dismiss.title = 'Close';
       dismiss.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 4 16 16M20 4 4 20"/></svg>';
       const save = button('Save input for this website', async () => {
-        if (!input.value || save.disabled) return;
+        if ((manual === 'save-page' ? false : manual === 'save-form' ? !input.form : !input.value) || save.disabled) return;
         const info = descriptor(input);
         const name = (input.type === 'password' ? 'Password' : input.autocomplete && !['off', 'on'].includes(input.autocomplete) ? input.autocomplete : info.label || info.name || info.id || input.type).slice(0, 120);
         const aliases = Array.from(new Set([info.name, info.id, info.label].filter(Boolean))).map((alias) => alias.slice(0, 120));
@@ -229,7 +229,14 @@ export function installPersonalDataAutofill(
         save.setAttribute('aria-busy', 'true');
         try {
           const users = input.type === 'password' && input.form ? Array.from(input.form.querySelectorAll<HTMLInputElement>('input')).filter((field) => usable(field) && field.type !== 'password' && (field.type === 'email' || match('username', [], descriptor(field)) > 0 || field.autocomplete === 'email') && field.value) : [];
-          const payload = { name, aliases, value: input.value, secret: input.type === 'password', ...(users.length === 1 ? { username: users[0].value } : {}) };
+          const fieldNames = new Map<string, number>();
+          const fields = (manual === 'save-form' || manual === 'save-page') ? Array.from(manual === 'save-form' && input.form ? input.form.elements : document.querySelectorAll('input,textarea')).filter(usable).filter(control => !!control.value).map(control => {
+            const info = descriptor(control);
+            const base = (control.type === 'password' ? 'Password' : control.type === 'email' ? 'Email' : control.autocomplete && !['off', 'on'].includes(control.autocomplete) ? control.autocomplete : info.label || info.name || info.id || control.type).slice(0, 110);
+            const count = (fieldNames.get(base.toLowerCase()) || 0) + 1; fieldNames.set(base.toLowerCase(), count);
+            return { name: count === 1 ? base : `${base} (${count})`, value: control.value, secret: control.type === 'password', aliases: Array.from(new Set([info.name, info.id, info.label].filter(Boolean))).map(alias => alias.slice(0, 120)) };
+          }) : undefined;
+          const payload = fields ? { fields } : { name, aliases, value: input.value, secret: input.type === 'password', ...(users.length === 1 ? { username: users[0].value } : {}) };
           let result = await bridge.invoke('personal-data-autofill-save-field', payload);
           if (generation !== current) return;
           if (result?.needsUpdate) {
@@ -248,14 +255,14 @@ export function installPersonalDataAutofill(
           const confirmation = document.createElement('div'); confirmation.className = 'saved-confirmation';
           confirmation.setAttribute('role', 'status');
           confirmation.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>';
-          const message = document.createElement('span'); message.textContent = result?.updated ? 'Website data updated.' : 'Input saved for this website.'; confirmation.append(message);
+          const message = document.createElement('span'); message.textContent = result?.updated ? 'Website data updated.' : (manual === 'save-form' || manual === 'save-page') ? 'Form values saved for this website.' : 'Input saved for this website.'; confirmation.append(message);
           const actions = document.createElement('div'); actions.className = 'confirmation-actions';
           const back = button('Back', () => { feedback.remove(); content.hidden = false; save.focus(); });
           actions.append(back); feedback.append(confirmation, actions); panel.append(feedback); back.focus();
         } catch (error) { if (generation === current) { content.hidden = false; content.querySelector('.message-error')?.remove(); content.append(notice(saveError(error), 'error')); } }
-        finally { save.disabled = !input.value; save.removeAttribute('aria-busy'); }
+        finally { save.disabled = (manual === 'save-form' || manual === 'save-page') ? !Array.from(manual === 'save-form' && input.form ? input.form.elements : document.querySelectorAll('input,textarea')).filter(usable).some(control => !!control.value) : !input.value; save.removeAttribute('aria-busy'); }
       });
-      save.className = 'close'; save.setAttribute('aria-label', 'Save input for this website'); save.title = 'Save input for this website'; save.disabled = !input.value;
+      save.className = 'close'; save.setAttribute('aria-label', 'Save input for this website'); save.title = 'Save input for this website'; save.disabled = (manual === 'save-form' || manual === 'save-page') ? !Array.from(manual === 'save-form' && input.form ? input.form.elements : document.querySelectorAll('input,textarea')).filter(usable).some(control => !!control.value) : !input.value;
       save.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8V3"/></svg>';
       const manage = button('Manage Personal Data', async () => {
         try { await bridge.invoke('personal-data-autofill-manage'); if (generation === current) close(); }
@@ -265,6 +272,7 @@ export function installPersonalDataAutofill(
       manage.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3m6 0h9M3 17h9m6 0h3"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg>';
       const headerActions = document.createElement('div'); headerActions.className = 'header-actions'; headerActions.append(save, manage, dismiss);
       header.append(title, headerActions); panel.append(header, content); root?.append(panel);
+      if (manual === 'save' || manual === 'save-form' || manual === 'save-page') { await actions.get(save)?.(); return; }
       const addActions = () => {
         if (input.type === 'password') content.append(button('Generate strong password', () => {
           const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*-_';
@@ -462,6 +470,7 @@ export function installPersonalDataAutofill(
           }
           if (generation === current && search.isConnected) render();
         };
+        if (manual === 'pick' && input.type !== 'password') { await browse(); return; }
         const addBrowse = () => { if (input.type !== 'password') content.append(button('Browse saved data', browse)); };
         if (quick && input.form) {
           const controls = Array.from(input.form.elements).filter(usable);
@@ -608,7 +617,7 @@ export function installPersonalDataAutofill(
       refreshQuickFill();
     }
     (input.closest('dialog,[role=dialog],[aria-modal=true]') || document.documentElement).append(host); position();
-    if (autoOpenOnFocus) void openPicker(false, true);
+    if (automatic && autoOpenOnFocus) void openPicker(false, true);
   };
   let checkingLogin = false;
   let loginSuggested = false;
@@ -764,6 +773,16 @@ export function installPersonalDataAutofill(
   document.addEventListener('keydown', onKey);
   const closeField = () => { if (!loginPrompt) close(); };
   addEventListener('scroll', closeField, true); addEventListener('resize', closeField); addEventListener('pagehide', close);
+  bridge.on('personal-data-autofill-command', (_event, command) => {
+    if (!enabled || disposed || !command || typeof command !== 'object' || !['pick', 'save', 'fill', 'save-form', 'save-page'].includes(command.action)) return;
+    const clicked = document.elementFromPoint(command.x, command.y);
+    const input = usable(clicked) ? clicked : ['fill', 'save-form', 'save-page'].includes(command.action)
+      ? Array.from(document.querySelectorAll('input,textarea')).find(element => usable(element) && (command.action === 'fill' || !!element.value)) : undefined;
+    if (!input || !usable(input)) return;
+    paused = false; // An explicit native-menu action resumes a temporarily hidden picker.
+    show(input, false);
+    void openCurrent?.(command.action === 'fill', false, command.action === 'fill' ? undefined : command.action);
+  });
   bridge.on('personal-data-autofill-enabled', (_event, next, focus) => {
     if (focus !== undefined) autoOpenOnFocus = focus;
     if (!autoOpenOnFocus) {

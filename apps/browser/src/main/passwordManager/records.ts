@@ -7,13 +7,14 @@ import type {
 } from '../../browser/passwordManager';
 
 export function summaryOf(item: VaultItem): VaultSummary {
-  const { password, fields, notes, document, source, ...metadata } = item;
+  const { password, fields, notes, document, source, todo, ...metadata } = item;
   return {
     ...metadata,
     source: source
       ? { label: source.label, capturedAt: source.capturedAt }
       : undefined,
     fieldCount: fields.length,
+    ...(todo ? { noteType: 'todo' as const, ...(todo.inbox ? {todoInbox:true} : {}) } : {}),
   };
 }
 export function effectiveRecords(

@@ -44,6 +44,7 @@ export function formatAIObservation(tool: string, output: unknown): string {
   }
   if (
     (tool === 'list_tabs' && Array.isArray(output)) ||
+    (tool === 'find_tabs' && Array.isArray(output)) ||
     (tool === 'extract_rows' && Array.isArray(data.rows)) ||
     (tool === 'list_tasks' && Array.isArray(output))
   ) {

@@ -16,9 +16,10 @@ export function isAssistantPanelOf(child: WebContents, owner: WebContents) {
 export function externalLinkURL(value: string): string | undefined {
   try {
     const url = new URL(value);
-    if (!['http:', 'https:', 'mailto:'].includes(url.protocol))
+    if (!['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol))
       return undefined;
     if (url.username || url.password) return undefined;
+    if (url.protocol === 'tel:' && (!/^\+?\d{7,15}$/.test(url.pathname) || url.search || url.hash)) return undefined;
     return url.href;
   } catch {
     return undefined;
@@ -74,7 +75,7 @@ export function protectWindowNavigation(
     if (
       assistantPanels &&
       url === 'about:blank' &&
-      (/^kudium-assistant-(assistant|notes|activity|tasks|developer)$/.test(frameName) ||
+      (/^kudium-assistant-(assistant|notes|activity|tasks|developer|email)$/.test(frameName) ||
         /^kudium-sidebar-[a-z][a-z0-9-]{0,63}$/.test(frameName))
     ) {
       return {

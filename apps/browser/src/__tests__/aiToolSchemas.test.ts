@@ -7,9 +7,19 @@ it('advertises only the inputs relevant to each browser operation', () => {
   );
   expect(Object.keys(aiToolParameters('list_tabs').properties)).toEqual([
     'groupId',
+    'encoding',
   ]);
   expect(Object.keys(aiToolParameters('screenshot').properties)).toEqual([
     'tabId',
+    'imageFormat',
+    'scale',
+    'compareTo',
+    'threshold',
+  ]);
+  expect(Object.keys(aiToolParameters('navigate').properties)).toEqual([
+    'tabId',
+    'url',
+    'waitUntil',
   ]);
   expect(aiToolParameters('read_page').properties).not.toHaveProperty('text');
   expect(aiToolParameters('read_page').properties).not.toHaveProperty('paths');
@@ -18,9 +28,8 @@ it('advertises only the inputs relevant to each browser operation', () => {
   );
 });
 it('keeps required values and nested path constraints for executable operations', () => {
+  // elementId/snapshotId may be replaced by a selector, so only values stays required.
   expect(aiToolParameters('select_options').required).toEqual([
-    'elementId',
-    'snapshotId',
     'values',
   ]);
   expect(aiToolParameters('drag_at').properties.path).toMatchObject({

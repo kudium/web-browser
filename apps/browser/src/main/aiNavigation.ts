@@ -26,6 +26,17 @@ const networkURL = (value: string) => {
 };
 
 export const AI_NAVIGATION_TIMEOUT = 30000;
+/** networkidle: this long without a new HTTP request after load. */
+export const AI_NETWORK_IDLE_MS = 500;
+export const AI_NAVIGATION_WAITS = [
+  'commit',
+  'domcontentloaded',
+  'load',
+  'networkidle',
+] as const;
+export type AINavigationWaitUntil = (typeof AI_NAVIGATION_WAITS)[number];
+/** Long-lived connections never settle; dev servers keep one open for reloads. */
+const PERSISTENT_RESOURCE_TYPES = new Set(['webSocket', 'ping']);
 
 export function navigateAIPage(
   contents: WebContents,
@@ -33,15 +44,19 @@ export function navigateAIPage(
   signal: AbortSignal,
   start?: () => void,
   dialogs?: AIDialogLifecycle,
-  review?: AINavigationReview
+  review?: AINavigationReview,
+  waitUntil: AINavigationWaitUntil = 'load'
 ): Promise<{ url: string; title: string }> {
   return new Promise((resolve, reject) => {
     let finished = false;
     let started = false;
     let owned = true;
     let timer: ReturnType<typeof setTimeout>;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    let lastRequestAt = 0;
     let unsubscribe: (() => void) | undefined;
     let removeRule: (() => void) | undefined;
+    let removeObserver: (() => void) | undefined;
     const reviewControl = new AbortController();
     let remaining = AI_NAVIGATION_TIMEOUT;
     let armedAt = 0;
@@ -59,6 +74,8 @@ export function navigateAIPage(
       mainFrame: boolean
     ) => void;
     let complete: () => void;
+    let committed: () => void;
+    let domReady: () => void;
     let loadFailed: (
       _event: unknown,
       code: number,
@@ -74,14 +91,18 @@ export function navigateAIPage(
     const cleanup = () => {
       clearTimeout(timer);
       clearTimeout(reviewTimer);
+      clearTimeout(idleTimer);
       unsubscribe?.();
       reviewControl.abort();
       removeRule?.();
+      removeObserver?.();
       review?.dispose?.();
       signal.removeEventListener('abort', abort);
       contents.removeListener('destroyed', destroyed);
       contents.removeListener('render-process-gone', crashed);
       contents.removeListener('did-start-navigation', navigating);
+      contents.removeListener('did-navigate', committed);
+      contents.removeListener('dom-ready', domReady);
       contents.removeListener('did-finish-load', complete);
       contents.removeListener('did-fail-load', loadFailed);
       contents.removeListener('did-navigate-in-page', inPage);
@@ -101,11 +122,33 @@ export function navigateAIPage(
           'Page renderer exited during navigation. Reload the tab before continuing.'
         )
       );
-    complete = () => {
-      if (finished || (start && !started)) return;
+    const finish = () => {
+      if (finished) return;
       finished = true;
       cleanup();
       resolve({ url: contents.getURL(), title: contents.getTitle() });
+    };
+    // After load, wait for a quiet gap in HTTP traffic; each request restarts it.
+    const settle = () => {
+      if (finished) return;
+      const quietFor = Date.now() - lastRequestAt;
+      if (quietFor >= AI_NETWORK_IDLE_MS) finish();
+      else idleTimer = setTimeout(settle, AI_NETWORK_IDLE_MS - quietFor);
+    };
+    complete = () => {
+      if (finished || (start && !started)) return;
+      if (waitUntil !== 'networkidle') {
+        finish();
+        return;
+      }
+      lastRequestAt = Math.max(lastRequestAt, Date.now());
+      settle();
+    };
+    committed = () => {
+      if (waitUntil === 'commit' && !(start && !started)) finish();
+    };
+    domReady = () => {
+      if (waitUntil === 'domcontentloaded' && !(start && !started)) finish();
     };
     loadFailed = (_event, code, description, _failedURL, mainFrame) => {
       if (mainFrame && started)
@@ -136,6 +179,8 @@ export function navigateAIPage(
     contents.once('destroyed', destroyed);
     contents.once('render-process-gone', crashed);
     contents.on('did-start-navigation', navigating);
+    contents.on('did-navigate', committed);
+    contents.on('dom-ready', domReady);
     if (start) {
       contents.on('did-finish-load', complete);
       contents.on('did-fail-load', loadFailed);
@@ -174,6 +219,17 @@ export function navigateAIPage(
       return;
     }
     try {
+      if (waitUntil === 'networkidle') {
+        const observer: RequestRule = (details) => {
+          if (
+            details.webContentsId === contents.id &&
+            !PERSISTENT_RESOURCE_TYPES.has(details.resourceType)
+          )
+            lastRequestAt = Date.now();
+          return false;
+        };
+        removeObserver = addRequestRule(contents.session, observer);
+      }
       if (review) {
         const approved = networkURL(url);
         let firstRequest = true;

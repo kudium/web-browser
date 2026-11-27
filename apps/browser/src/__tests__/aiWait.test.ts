@@ -11,17 +11,20 @@ function controller() {
   return value;
 }
 afterEach(() => jest.useRealTimers());
-it('validates exactly one condition and bounded timeouts', () => {
+it('validates composable conditions and bounded timeouts', () => {
   expect(aiWaitCondition({ url: 'https://example.com' })).toEqual({
     url: 'https://example.com/',
     timeoutMs: 5000,
+    state: 'visible',
   });
-  [
-    {},
-    { url: 'https://example.com', label: 'Next' },
-    { label: '' },
-    { label: 'Next', timeoutMs: 30001 },
-  ].forEach((args) => expect(() => aiWaitCondition(args)).toThrow());
+  // Conditions compose (all must hold); only an empty or malformed wait fails.
+  expect(aiWaitCondition({ url: 'https://example.com', label: 'Next' })).toMatchObject({
+    url: 'https://example.com/',
+    label: 'Next',
+  });
+  [{}, { label: '' }, { label: 'Next', timeoutMs: 30001 }, { url: 'https://x.test', state: 'hidden' }].forEach(
+    (args) => expect(() => aiWaitCondition(args)).toThrow()
+  );
 });
 it('polls without overlap and returns the observed result', async () => {
   jest.useFakeTimers();

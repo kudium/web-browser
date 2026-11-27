@@ -95,6 +95,8 @@ function GroupEditorContent({
     spaceId: item.spaceId || 'default',
     folderId: item.folderId || '',
     placement: item.favorite ? 'favorite' : defaultPlacement,
+    aiTrusted: item.aiTrusted === true,
+    aiTier: item.aiTier || 'auto',
   });
   const [projectFolder, setProjectFolder] = useState(
     droppedProject?.folder || ''
@@ -557,6 +559,52 @@ function GroupEditorContent({
                   </label>
                 ))}
               </div>
+            </section>
+            <section className="group-trusted">
+              <label className="group-trusted-option" htmlFor={`${nameId}-trusted`}>
+                <input
+                  type="checkbox"
+                  id={`${nameId}-trusted`}
+                  aria-label="Let agents act without asking in this group"
+                  checked={draft.aiTrusted === true}
+                  onChange={(event) => change({ aiTrusted: event.target.checked })}
+                />
+                <span>
+                  <strong>Let agents act without asking in this group</strong>
+                  <Text as="div" size="1" color="gray">
+                    Skips the last confirmations (saved payment cards, uploads from
+                    outside the linked folder, scope changes) for dev groups with
+                    local pages and seed data. Shell commands after reading other
+                    websites still ask.
+                  </Text>
+                </span>
+              </label>
+              <label className="group-tier-option" htmlFor={`${nameId}-tier`}>
+                <span>
+                  <strong>Model tier for this group</strong>
+                  <Text as="div" size="1" color="gray">
+                    Auto routes by request shape; Assist is the on-device model,
+                    Local control a model through Ollama, Cloud your own API key.
+                    {window.electron?.platform !== 'darwin'
+                      ? ' On Windows and Linux there is no on-device Assist tier, so Auto starts at Local control.'
+                      : ''}
+                  </Text>
+                </span>
+                <select
+                  id={`${nameId}-tier`}
+                  value={draft.aiTier || 'auto'}
+                  onChange={(event) =>
+                    change({
+                      aiTier: event.target.value as 'auto' | 'assist' | 'control' | 'cloud',
+                    })
+                  }
+                >
+                  <option value="auto">Auto</option>
+                  <option value="assist">Assist (on-device)</option>
+                  <option value="control">Local control (Ollama)</option>
+                  <option value="cloud">Cloud</option>
+                </select>
+              </label>
             </section>
           </div>
         </details>

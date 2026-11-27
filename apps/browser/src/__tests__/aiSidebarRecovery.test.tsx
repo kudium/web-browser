@@ -787,7 +787,7 @@ it('opens Notes without a tab header and preserves it across page requests', asy
   expect(screen.queryByRole('tablist')).toBeNull();
   expect(view.container.querySelector('.ai-sidebar-header')).toBeNull();
   expect(panel).toContainElement(
-    screen.getByRole('button', { name: 'Create note' })
+    screen.getByRole('button', { name: 'New note' })
   );
   view.rerender(page('assistant', 2));
   expect(panel).not.toBeVisible();
@@ -996,6 +996,7 @@ it('filters popup Notes requests by group and reapplies the filter on repeated r
     </Theme>
   );
   const view = render(page('notes', 1, 'group:work'));
+  fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
   expect(await screen.findByRole('button', { name: 'Work plan' })).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Other plan' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Filter notes by group' }));

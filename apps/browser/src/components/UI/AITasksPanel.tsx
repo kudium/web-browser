@@ -321,7 +321,54 @@ export function AITasksPanel({
           const latest = task.runs[0];
           const paused = latest?.state === 'paused';
           return (
-            <ContextMenu.Root key={task.id}>
+            <ContextMenu.Root key={task.id} menu={() => (
+              <ContextMenu.Content>
+                <ContextMenu.Item
+                  disabled={busy || resumable}
+                  onSelect={() => action(task.id, 'run')}
+                >
+                  Run task
+                </ContextMenu.Item>
+                {paused && resumable && (
+                  <ContextMenu.Item
+                    disabled={busy}
+                    onSelect={() => window.electron.ai.resume().catch(report)}
+                  >
+                    Continue task
+                  </ContextMenu.Item>
+                )}
+                {(latest?.state === 'running' || (paused && resumable)) && (
+                  <ContextMenu.Item
+                    onSelect={() => window.electron.ai.stop().catch(report)}
+                  >
+                    Stop task
+                  </ContextMenu.Item>
+                )}
+                {task.schedule.kind !== 'manual' && (
+                  <ContextMenu.Item onSelect={() => action(task.id, 'toggle')}>
+                    {task.enabled ? 'Disable schedule' : 'Enable schedule'}
+                  </ContextMenu.Item>
+                )}
+                <ContextMenu.Separator />
+                <ContextMenu.Item
+                  onSelect={() =>
+                    navigator.clipboard
+                      .writeText(task.instructions)
+                      .catch(report)
+                  }
+                >
+                  Copy instructions
+                </ContextMenu.Item>
+                <ContextMenu.Item
+                  disabled={
+                    latest?.state === 'running' || (paused && resumable)
+                  }
+                  onSelect={() => action(task.id, 'delete')}
+                >
+                  Delete task
+                </ContextMenu.Item>
+              </ContextMenu.Content>
+            )}>
               <ContextMenu.Trigger>
                 <article className="ai-task-row">
                   <div className="ai-task-title">
@@ -421,52 +468,7 @@ export function AITasksPanel({
                   </details>
                 </article>
               </ContextMenu.Trigger>
-              <ContextMenu.Content>
-                <ContextMenu.Item
-                  disabled={busy || resumable}
-                  onSelect={() => action(task.id, 'run')}
-                >
-                  Run task
-                </ContextMenu.Item>
-                {paused && resumable && (
-                  <ContextMenu.Item
-                    disabled={busy}
-                    onSelect={() => window.electron.ai.resume().catch(report)}
-                  >
-                    Continue task
-                  </ContextMenu.Item>
-                )}
-                {(latest?.state === 'running' || (paused && resumable)) && (
-                  <ContextMenu.Item
-                    onSelect={() => window.electron.ai.stop().catch(report)}
-                  >
-                    Stop task
-                  </ContextMenu.Item>
-                )}
-                {task.schedule.kind !== 'manual' && (
-                  <ContextMenu.Item onSelect={() => action(task.id, 'toggle')}>
-                    {task.enabled ? 'Disable schedule' : 'Enable schedule'}
-                  </ContextMenu.Item>
-                )}
-                <ContextMenu.Separator />
-                <ContextMenu.Item
-                  onSelect={() =>
-                    navigator.clipboard
-                      .writeText(task.instructions)
-                      .catch(report)
-                  }
-                >
-                  Copy instructions
-                </ContextMenu.Item>
-                <ContextMenu.Item
-                  disabled={
-                    latest?.state === 'running' || (paused && resumable)
-                  }
-                  onSelect={() => action(task.id, 'delete')}
-                >
-                  Delete task
-                </ContextMenu.Item>
-              </ContextMenu.Content>
+
             </ContextMenu.Root>
           );
         }}

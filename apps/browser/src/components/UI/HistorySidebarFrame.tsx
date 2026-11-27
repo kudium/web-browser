@@ -5,29 +5,33 @@ import { Pin, Plus, PanelLeftClose, PanelLeft } from 'lucide-react';
 
 export function HistorySidebarFrame({
   title,
+  titleContent,
   label,
   pinned,
   busy,
   onPin,
   onClose,
   onNew,
+  newActions,
   children,
   sidebarRef,
 }: {
   title: string;
+  titleContent?: ReactNode;
   label: string;
   pinned: boolean;
   busy: boolean;
   onPin: () => void;
   onClose: () => void;
   onNew: () => void;
+  newActions?: ReactNode;
   children: ReactNode;
   sidebarRef?: RefObject<HTMLElement | null>;
 }) {
   return (
     <aside ref={sidebarRef} className="ai-chat-history" aria-label={label}>
       <div className="ai-chat-history-heading">
-        <strong>{title}</strong>
+        {titleContent || <strong>{title}</strong>}
         <button
           type="button"
           aria-label={`${pinned ? 'Unpin' : 'Pin'} ${label.toLowerCase()}`}
@@ -45,14 +49,14 @@ export function HistorySidebarFrame({
         >
           <PanelLeftClose size={15} />
         </button>
-        <button
+        {newActions ?? <button
           type="button"
           aria-label={title === 'Chats' ? 'Start new chat' : 'New note'}
           disabled={busy}
           onClick={onNew}
         >
           <Plus size={16} />
-        </button>
+        </button>}
       </div>
       {children}
     </aside>
@@ -66,6 +70,7 @@ export function HistoryToolbar({
   busy,
   onOpen,
   onNew,
+  newActions,
   newLabel,
   toggleRef,
 }: {
@@ -75,6 +80,7 @@ export function HistoryToolbar({
   busy: boolean;
   onOpen: () => void;
   onNew: () => void;
+  newActions?: ReactNode;
   newLabel: string;
   toggleRef?: RefObject<HTMLButtonElement | null>;
 }) {
@@ -92,7 +98,7 @@ export function HistoryToolbar({
       >
         <PanelLeft size={15} />
       </button>
-      <button
+      {newActions ?? <button
         type="button"
         aria-label={newLabel}
         title={newLabel}
@@ -100,7 +106,7 @@ export function HistoryToolbar({
         onClick={onNew}
       >
         <Plus size={15} />
-      </button>
+      </button>}
     </div>
   );
 }

@@ -70,7 +70,9 @@
     "release:verify-migrations": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-release-gate.ts",
     "storage:recovery": "cross-env TS_NODE_TRANSPILE_ONLY=true ts-node .erb/scripts/storage-recovery.ts",
     "test:space-gestures": "node .erb/scripts/build-space-gestures.cjs && electron .erb/scripts/space-gesture-smoke.cjs",
-    "dummy": "node .erb/scripts/dummy.cjs"
+    "dummy": "node .erb/scripts/dummy.cjs",
+    "test:page-translation": "node .erb/scripts/run-page-translation-smoke.cjs",
+    "test:agent-perf": "node .erb/scripts/run-agent-perf.cjs"
   },
   "browserslist": [],
   "prettier": {
@@ -118,7 +120,7 @@
       "<rootDir>/demo/"
     ],
     "transform": {
-      "node_modules/(marked|lowlight|devlop|hast-util-to-text)/.*\\.js$": [
+      "node_modules/(marked|lowlight|devlop|hast-util-to-text|franc-min|trigram-utils|n-gram|collapse-white-space)/.*\\.js$": [
         "babel-jest",
         {
           "plugins": [
@@ -145,13 +147,14 @@
       ]
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!lowlight/|devlop/|hast-util-to-text/|@tiptap/markdown/|marked/|@toon-format/toon/|react-arborist/|react-dnd/|react-dnd-html5-backend/|dnd-core/|@react-dnd/)"
+      "/node_modules/(?!franc-min/|trigram-utils/|n-gram/|collapse-white-space/|lowlight/|devlop/|hast-util-to-text/|@tiptap/markdown/|marked/|@toon-format/toon/|react-arborist/|react-dnd/|react-dnd-html5-backend/|dnd-core/|@react-dnd/)"
     ],
     "modulePathIgnorePatterns": [
       "<rootDir>/release/app/package.json"
     ]
   },
   "dependencies": {
+    "@browsermt/bergamot-translator": "0.4.9",
     "@codemirror/autocomplete": "^6.20.4",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-css": "^6.3.1",
@@ -178,11 +181,14 @@
     "electron-chrome-web-store": "^0.13.0",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.11",
+    "franc-min": "6.2.0",
     "image-size": "2.1.0",
+    "imapflow": "^2.12.2",
     "jju": "^1.4.0",
     "json5": "^2.2.3",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.73.0",
+    "mailparser": "^3.15.0",
     "mammoth": "^1.13.0",
     "marked": "^18.2.0",
     "node-pty": "^1.1.0",
@@ -210,6 +216,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/jest": "^30.0.0",
+    "@types/mailparser": "^3.9.0",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -284,7 +291,8 @@
     },
     "asarUnpack": [
       "**\\*.{node,dll}",
-      "node_modules/node-pty/**"
+      "node_modules/node-pty/**",
+      "dist/main/translation-engine/**"
     ],
     "files": [
       "dist",

@@ -56,6 +56,7 @@ it('delays hover, cancels short visits, bridges the popup gap, and cleans timers
 });
 
 it('resizes the bounded window of 10,000 tabs and reaches the end and search results', () => {
+  jest.useFakeTimers();
   let listHeight = 224;
   let resizeList = () => {};
   (ResizeObserver as jest.Mock).mockImplementation((callback) => ({
@@ -105,6 +106,7 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
   act(() => {
     listHeight = 640;
     resizeList();
+    jest.advanceTimersByTime(20);
   });
   expect(screen.getByRole('button', { name: 'Page 19' })).toBeInTheDocument();
   expect(
@@ -113,6 +115,7 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
   act(() => {
     listHeight = 160;
     resizeList();
+    jest.advanceTimersByTime(20);
   });
   expect(
     document.querySelectorAll('.tab-preview-row').length
@@ -120,6 +123,7 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
   act(() => {
     listHeight = 224;
     resizeList();
+    jest.advanceTimersByTime(20);
   });
   const search = screen.getByLabelText('Search preview');
   fireEvent.keyDown(search, { key: 'End' });
@@ -214,3 +218,5 @@ it('shows group identity above a compact hover list, including single-tab groups
   expect(groupMenu).toHaveBeenCalledTimes(1);
   anchor.remove();
 });
+
+afterEach(() => jest.useRealTimers());

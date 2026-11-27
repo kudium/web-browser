@@ -59,7 +59,7 @@ test('backs up notes using encrypted records and respects category opt-out', asy
     request,
   });
   const notes = [
-    { id: 'n', title: 'Plan', notes: 'Private **notes**', scope: 'group:a' },
+    { id: 'n', title: 'Plan', notes: 'Private **notes**', scope: 'group:a', todo: {items:[{id:'task',title:'Private task',today:'2026-11-26'}]} },
   ];
   await client.syncNotes(notes, () => true);
   expect(stored.recordId).toBe('notes_one');

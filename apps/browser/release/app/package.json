@@ -12,7 +12,8 @@
   "dependencies": {
     "electron-chrome-extensions": "^4.10.0",
     "electron-chrome-web-store": "^0.13.0",
-    "node-pty": "^1.1.0"
+    "node-pty": "^1.1.0",
+    "@browsermt/bergamot-translator": "0.4.9"
   },
   "homepage": "https://kudium.com",
   "packageManager": "npm@12.2.0",

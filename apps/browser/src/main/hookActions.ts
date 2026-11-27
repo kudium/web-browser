@@ -1,3 +1,4 @@
+import { addTodo } from './todos';
 import {
   captureActionField,
   fillActionField,
@@ -344,6 +345,11 @@ export function hookActionMenu(
             signal: controller.signal,
             check: () => current(hook.id, action),
           });
+        } else if (command.capability === 'todos.create') {
+          const input = command.input as {key:string;title:string;today?:boolean};
+          current(hook.id, action);
+          if (options.preview) {await dialog.showMessageBox(window,{message:'Todo preview',detail:input.title});continue;}
+          addTodo(input.title,input.today===true,who.scope,undefined,JSON.stringify([profile,new URL(url).origin,hook.id,action.id,input.key]),hook.name);
         } else if (
           command.capability === 'notes.create' ||
           command.capability === 'activity.create'

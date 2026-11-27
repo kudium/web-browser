@@ -57,6 +57,8 @@ export function aiNewGroupFields(
     sessionIconEmoji: undefined,
     sessionIconImage: undefined,
     sessionHomeURL: undefined,
+    browserEmail: undefined,
+    browserEmails: undefined,
     folderId: typeof collectionId === 'string' ? collectionId : undefined,
     position: undefined,
     tabPinned: false,

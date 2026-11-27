@@ -55,6 +55,32 @@ beforeEach(() => {
     },
   });
 });
+it('expands Ollama setup inside Provider and checks local models only on request', async () => {
+  const localModels = jest.fn().mockResolvedValue({
+    installed: false,
+    running: false,
+    brew: false,
+    platform: 'darwin',
+    choices: [],
+    models: [],
+    licenceAcknowledged: {},
+  });
+  window.electron.ai.localModels = localModels;
+  render(<Theme><AISettingsPage /></Theme>);
+  const toggle = screen.getByRole('button', { name: 'Optional: Set up Ollama' });
+  await waitFor(() => expect(toggle).toBeEnabled());
+  expect(toggle.closest('.preference-card')).toContainElement(screen.getByLabelText('Provider'));
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  expect(localModels).not.toHaveBeenCalled();
+  fireEvent.click(toggle);
+  await screen.findByRole('button', { name: 'Open download page' });
+  expect(localModels).toHaveBeenCalledWith({ action: 'status' });
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  fireEvent.click(toggle);
+  expect(screen.queryByRole('button', { name: 'Open download page' })).not.toBeInTheDocument();
+  expect(localModels).toHaveBeenCalledTimes(1);
+});
+
 it('discovers models, saves a selected model and never retains the entered key', async () => {
   render(
     <Theme>

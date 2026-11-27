@@ -66,7 +66,8 @@ import type {
 import type { AIAccessMode, AIAccessStatus } from '../browser/aiPermissions';
 import type { AIGroup } from '../browser/aiGroups';
 import type { AITaskInput, SavedAITask } from '../browser/aiTasks';
-import type { MCPStatus, MCPConnection } from '../browser/mcp';
+import type { MCPStatus, MCPConnection, MCPClientSummary } from '../browser/mcp';
+import type { MCPRelayCommand, MCPRelayStatus } from '../browser/mcpRelay';
 import type {
   PersonalAgentRequest,
   PersonalAgentResult,
@@ -138,6 +139,7 @@ function invokeWhenReady(channel: string, ...args: unknown[]) {
       'account-sync',
       'browser-migration',
       'browser-activity',
+      'email',
     ].includes(channel)
   ) {
     if (!storageReady)
@@ -235,6 +237,18 @@ const electronHandler = {
       ipcRenderer.removeListener('browser-open-activity', open);
     };
   },
+  email(
+    request: import('../browser/email').EmailRequest
+  ): Promise<import('../browser/email').EmailStatus | import('../browser/email').EmailAlias | import('../browser/email').EmailBrowserDetection> {
+    return invokeWhenReady('email', request);
+  },
+  onEmailChanged(callback: () => void) {
+    const listener = () => callback();
+    ipcRenderer.on('email-changed', listener);
+    return () => {
+      ipcRenderer.removeListener('email-changed', listener);
+    };
+  },
   onPasswordManagerChanged(callback: () => void) {
     const listener = () => callback();
     ipcRenderer.on('password-manager-changed', listener);
@@ -252,6 +266,9 @@ const electronHandler = {
   ): Promise<
     | VaultItem
     | import('../browser/passwordManager').VaultSummary[]
+    | import('../browser/todos').TodoEntry[]
+    | import('../browser/hookSuggestions').HookSuggestion[]
+    | {recordId: string; taskId?: string; deepLink: string}
     | VaultStatus
     | { filled: number }
     | { imported: number; skipped: number; canceled?: boolean }
@@ -337,6 +354,7 @@ const electronHandler = {
       enabled: boolean;
       port?: number;
       rotate?: boolean;
+      https?: boolean;
     }): Promise<MCPStatus> {
       return invokeWhenReady('ai-mcp', 'update', patch);
     },
@@ -347,6 +365,32 @@ const electronHandler = {
     },
     mcpConnection(): Promise<MCPConnection> {
       return invokeWhenReady('ai-mcp', 'connection');
+    },
+    mcpClients(): Promise<MCPClientSummary[]> {
+      return invokeWhenReady('ai-mcp', 'clients');
+    },
+    mcpClientCeiling(
+      id: string,
+      ceiling: 'ask' | 'standard' | 'full' | undefined
+    ): Promise<MCPClientSummary[]> {
+      return invokeWhenReady('ai-mcp', 'client-ceiling', { id, ceiling });
+    },
+    mcpRevokeClient(id: string): Promise<MCPClientSummary[]> {
+      return invokeWhenReady('ai-mcp', 'client-revoke', { id });
+    },
+    mcpExportAudit(since?: string): Promise<{ exported: boolean; path?: string; runs?: number }> {
+      return invokeWhenReady('ai-mcp', 'export-audit', { since });
+    },
+    mcpRelay(request: MCPRelayCommand): Promise<MCPRelayStatus> {
+      return invokeWhenReady('ai-mcp', 'relay', request);
+    },
+    onMCPRelay(callback: (status: MCPRelayStatus) => void) {
+      const listener = (_event: IpcRendererEvent, value: MCPRelayStatus) =>
+        callback(value);
+      ipcRenderer.on('ai-mcp-relay-changed', listener);
+      return () => {
+        ipcRenderer.removeListener('ai-mcp-relay-changed', listener);
+      };
     },
     onMCP(callback: (status: MCPStatus) => void) {
       const listener = (_event: IpcRendererEvent, value: MCPStatus) =>
@@ -361,6 +405,23 @@ const electronHandler = {
     },
     models(config?: { endpoint: string; key?: string }): Promise<string[]> {
       return invokeWhenReady('ai-models', config);
+    },
+    localModels(
+      request: import('./aiLocalModels').LocalModelRequest
+    ): Promise<unknown> {
+      return invokeWhenReady('ai-local-models', request);
+    },
+    onLocalModelProgress(
+      callback: (progress: import('./aiLocalModels').LocalModelProgress) => void
+    ) {
+      const listener = (
+        _event: IpcRendererEvent,
+        value: import('./aiLocalModels').LocalModelProgress
+      ) => callback(value);
+      ipcRenderer.on('ai-local-model-progress', listener);
+      return () => {
+        ipcRenderer.removeListener('ai-local-model-progress', listener);
+      };
     },
     onSettings(callback: (settings: AISettings) => void) {
       const listener = (_event: IpcRendererEvent, value: AISettings) =>
@@ -537,7 +598,26 @@ const electronHandler = {
       ipcRenderer.send('hook-marketplace-ready');
     },
   },
+  setActiveNote(value: {id:string;scope?:string;kind:'note'|'todo'} | undefined) { ipcRenderer.send('active-note',value); },
+  onOpenSavedNote(callback: (id: string, taskId?: string) => void) {
+    const listener = (_event: IpcRendererEvent, value: {id?: string; taskId?: string}) => {
+      if (typeof value?.id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(value.id) &&
+          (value.taskId === undefined || (typeof value.taskId === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(value.taskId)))) callback(value.id, value.taskId);
+    };
+    ipcRenderer.on('open-saved-note', listener);
+    return () => ipcRenderer.removeListener('open-saved-note', listener);
+  },
+  onTodosChanged(callback: () => void) {
+    const listener = () => callback();
+    ipcRenderer.on('todos-changed', listener);
+    return () => ipcRenderer.removeListener('todos-changed', listener);
+  },
   siteDeveloper: {
+    onSuggestionsChanged(callback: () => void) {
+      const listener = () => callback();
+      ipcRenderer.on('hook-suggestions-changed', listener);
+      return () => ipcRenderer.removeListener('hook-suggestions-changed', listener);
+    },
     onAskAI(callback: (prompt: string) => void) {
       const listener = (_event: IpcRendererEvent, prompt: unknown) => {
         if (typeof prompt === 'string' && prompt.length <= 30000)

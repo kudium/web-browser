@@ -1,4 +1,5 @@
 /* eslint jsx-a11y/label-has-associated-control: ["error", { "assert": "htmlFor" }] */
+import { LocalModelInstaller } from './LocalModelInstaller';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, Callout, Switch } from '@radix-ui/themes';
@@ -288,6 +289,17 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
                   ))}
                 </select>
               </div>
+              <LocalModelInstaller
+                disabled={!ready || busy}
+                onInstalled={(installed) => {
+                  setProvider('ollama');
+                  setEndpoint(installed.endpoint);
+                  setModel(installed.model);
+                  setModels([installed.model]);
+                  setModelError('');
+                  setNotice(`${installed.model} is ready. Save to use it as the current model.`);
+                }}
+              />
               <div className="preference-row">
                 <label htmlFor="ai-endpoint">
                   {apple ? 'Local provider' : 'API endpoint'}

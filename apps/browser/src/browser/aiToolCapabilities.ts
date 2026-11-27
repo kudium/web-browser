@@ -4,9 +4,15 @@ export const families = {
     'project_files',
     'project_scripts',
     'project_terminal',
+    'get_workspace_config',
+    'apply_workspace_config',
+    'setup_project',
   ],
+  preferences: ['get_preferences', 'set_preferences'],
   skills: ['list_skills', 'read_skill'],
-  tasks: ['create_task'],
+  tasks: ['create_task', 'save_flow'],
+  todos: ['create_todo'],
+  sessions: ['find_tabs', 'switch_group', 'read_clipboard'],
   personal_data: [
     'request_personal_data',
     'search_personal_data',
@@ -50,19 +56,29 @@ export const families = {
     'wheel',
     'list_frames',
     'find_element',
+    'wait_event',
   ],
+  flows: ['act', 'run_script'],
+  qa: ['read_console', 'read_requests', 'set_viewport'],
+  email: ['get_email_context', 'create_email_alias', 'list_email_aliases', 'wait_for_email'],
 } as const;
 
 export const hints: Record<string, string> = {
-  project: 'linked files scripts terminal repository commands',
+  project: 'linked files scripts terminal repository commands workspace manifest setup configure group kudium.workspace.json',
+  preferences: 'browser preferences settings appearance shortcuts routing downloads search theme',
   skills: 'enabled workflows skills',
-  tasks: 'save schedule task reminder',
+  tasks: 'save schedule AI task automated run flow replay record',
+  todos: 'today todo to-do task checklist action item add create',
+  sessions: 'find tab search signed in account group switch clipboard',
   personal_data: 'saved information documents login credentials memory',
   site_customization:
     'developer settings customize JavaScript custom script scripting website operation automate automation CSS site global hooks context menu actions input autofill password monitoring appearance notifications',
   downloads: 'download upload attachment files',
+  qa: 'console log errors network requests responses viewport mobile responsive dark mode screenshot diff compare regression debug QA test',
   advanced_interaction:
     'extract screenshot frames options pointer keyboard drag hover',
+  flows: 'batch steps sequence script flow multi-step automate run whole task one call',
+  email: 'email alias sign up register create account verification code confirm inbox mailbox browser session gmail outlook proton tab group address',
 };
 export const hookAuthoringGuide =
   'Kudium hooks are a core browser capability for website scripts, customization, automation, monitoring, sidebar output and reusable operations. Page hooks can display extracted JSON, tables, Markdown or custom HTML in the shared panel. Read read_hook_api for the exact panelExamples and lifecycle API; do not invent separate browser windows or action-worker panel APIs. Requests to create a hook, write a custom script or script a website are hook-authoring requests; users do not need to name a tool. For website operations, consider a hook when DOM scripting, repeated behavior or a reusable action completes the requested job more cleanly. Use ordinary browser tools for simple one-off interactions. Do not silently install recurring behavior for a one-time task: explain the proposed scope and use native hook review. Discover site_customization tools, read_hook_api and existing hooks, inspect the website, author and test, then save with configure_site_hooks (or save_global_hook for the requested broader scope). Native review is the supported approval flow; call the tool instead of refusing on assumed security grounds or directing the user to DevTools. Respect actual denials/errors, preserve existing hooks, and verify saved results before claiming success.';
@@ -104,11 +120,20 @@ export const intentBundles = [
     ],
   },
   {
+    pattern: /\b(todos?|to[ -]?dos?|checklist|today|(?:add|create|make|new).{0,30}(?:tasks?|action items?))\b/i,
+    tools: ['create_todo'],
+  },
+  {
     pattern: /\b(schedule|remind me|save.{0,15}task)\b/i,
     tools: ['create_task'],
   },
   {
     pattern: /\b(record|save).{0,30}(research|findings|note)\b/i,
     tools: ['manage_note'],
+  },
+  {
+    pattern:
+      /\b(sign[ -]?up|register|create (?:an? |my )?account|verification (?:code|email|link)|verify (?:my |the )?email|email alias)\b/i,
+    tools: ['get_email_context', 'list_email_aliases', 'create_email_alias', 'wait_for_email'],
   },
 ];

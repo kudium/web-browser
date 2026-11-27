@@ -42,7 +42,7 @@ export function aboutDocument(version: string, icon: string) {
       )}</p></div>
     </div>
     <p class="description">Your tabs, workspace, and AI in one place.</p>
-    <footer><div class="links"><a href="${website}" target="_blank" rel="noopener noreferrer">browser.kudium.com ↗</a>
+    <footer><div class="links"><a href="${website}" target="_blank" rel="noopener noreferrer">browser.kudium.com <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
       <p class="copyright">© ${new Date().getFullYear()} Kudium LTD</p></div>
       <button id="close" class="primary" type="button">Done</button></footer>
     <script>window.aboutClosed=new Promise(resolve=>{document.getElementById('close').onclick=()=>resolve(true);document.addEventListener('keydown',event=>{if(event.key==='Escape')resolve(true)});});document.getElementById('close').focus();</script>

@@ -1,7 +1,25 @@
+import {
+  AIModelTier,
+  AI_TIER_SUGGESTIONS,
+} from '../browser/aiModelTiers';
+
 /** Stop repeated inference rounds before re-running the same no-progress tools. */
 export class AILoopGuard {
   private signature = '';
+
   private repeats = 0;
+
+  constructor(private readonly tier: AIModelTier = 'assist') {}
+
+  /** The stop message names the next tier up instead of only reporting failure. */
+  message() {
+    return `${
+      this.tier === 'assist' ? 'Apple local AI' : 'The model'
+    } repeated the same step without progressing. The run was stopped before repeating it again. ${
+      AI_TIER_SUGGESTIONS[this.tier]
+    }`;
+  }
+
   check(message: any) {
     if (!message.tool_calls?.length) {
       this.signature = '';
@@ -37,9 +55,6 @@ export class AILoopGuard {
     );
     this.repeats = signature === this.signature ? this.repeats + 1 : 1;
     this.signature = signature;
-    if (this.repeats >= 3)
-      throw new Error(
-        'Apple local AI repeated the same step without progressing. The run was stopped before repeating it again. Try a more capable model for this task.'
-      );
+    if (this.repeats >= 3) throw new Error(this.message());
   }
 }

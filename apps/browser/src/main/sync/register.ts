@@ -151,6 +151,7 @@ export function registerAccountSync(
                 id: item.id,
                 title: item.title,
                 notes: item.notes || '',
+                ...(item.todo ? {todo:item.todo} : {}),
                 scope: item.scope,
                 sensitive: item.sensitive === true,
               };

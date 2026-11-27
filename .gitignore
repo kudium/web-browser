@@ -21,6 +21,8 @@ node_modules
 apps/browser/release/app/dist
 apps/browser/release/build
 apps/browser/release/local-*
+apps/browser/release/perf
+apps/browser/release/*-smoke/
 release-artifacts/
 apps/browser/.erb/dll
 

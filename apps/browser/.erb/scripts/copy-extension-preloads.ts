@@ -7,6 +7,7 @@ export function copyExtensionPreloads(destination: string) {
     path.join(__dirname, 'legacy-storage-decrypt.cjs'),
     path.join(destination, 'legacy-storage-decrypt.cjs')
   );
+  require('./copy-translation-engine.cjs').copyTranslationEngine(destination);
   [
     ['electron-chrome-extensions/preload', 'chrome-extension-api.preload.js'],
     ['electron-chrome-web-store/preload', 'chrome-web-store.preload.js'],

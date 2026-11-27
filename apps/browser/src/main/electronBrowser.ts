@@ -1,3 +1,8 @@
+import { activeNoteFor, sameActiveNote } from './activeNote';
+import { captureSelectedText } from './selectionCapture';
+import { savePageSelection } from './pageSelection';
+import { registerTranslationPage, translationMenu, pageTranslationState, translationAction } from './pageTranslation';
+import { readFormContextState } from './formContextMenu';
 import { PageDevTools } from './pageDevTools';
 import { showAppToast } from './appToast';
 import { registerEnergySaver } from './energySaver';
@@ -51,6 +56,8 @@ import { hookNotifications } from './hookNotifications';
 import {
   authenticatePersonalData,
   autoLoginMenu,
+  personalDataFormActions,
+  personalDataFormAvailable,
   personalDataRevision,
   registerPasswordPage,
 } from './passwordManager';
@@ -70,8 +77,7 @@ import {
   groupKey,
   personalDataScope,
   newGroupName,
-  loginProfileKey as storedProfileKey,
-} from '../utils/groups';
+  loginProfileKey as storedProfileKey, profilePartition } from '../utils/groups';
 
 import {
   waitForBrowserNetwork,
@@ -81,6 +87,7 @@ import { siteRule } from '../browser/advancedPreferences';
 import { registerAI } from './ai';
 import { isPrivateSession } from './privateSessions';
 import { registerPageCapture } from './pageCapture';
+import { registerEmailBrowserDetection } from './emailBrowserDetection';
 import { AINewTabs } from './aiTabs';
 import { getBrowserWindows } from './browserWindows';
 import { WebsiteTabRecovery } from './websiteTabRecovery';
@@ -167,6 +174,15 @@ export function registerElectronBrowser(
   let developerWindows: ReturnType<typeof registerSiteDeveloperWindows>;
   let synchronizingExtensions = false;
   const groupMutations = new Map<string, { window: BrowserWindow; changes: { id: string; changes: Partial<IApp> }[]; finish(error?: string): void }>();
+  // The renderer owns the workspace: group edits round-trip through it and
+  // resolve once it confirms the save (extension tab groups and AI share this).
+  const updateGroupTabs = (owner: BrowserWindow, changes: { id: string; changes: Partial<IApp> }[]) =>
+    new Promise<void>((resolve, reject) => {
+      const mutationId = randomUUID();
+      const timer = setTimeout(() => { groupMutations.delete(mutationId); reject(new Error('The workspace did not save the group change')); }, 10000);
+      groupMutations.set(mutationId, { window: owner, changes, finish(error) { clearTimeout(timer); error ? reject(new Error(error)) : resolve(); } });
+      owner.webContents.send('browser-tab-request', { action: 'extension-group-update', mutationId, groupChanges: changes });
+    });
   const releaseExtensionWorkspace = privateMode ? () => {} : registerExtensionWorkspace({
     apps: () => [...configurations.values()],
     contents: (id) => views.get(id)?.webContents,
@@ -175,12 +191,7 @@ export function registerElectronBrowser(
     assertAccess: (app) => {
       if (isGroupLocked(app) || removals.blocks(app)) throw new Error('Unlock this group before changing it');
     },
-    update: (owner, changes) => new Promise<void>((resolve, reject) => {
-      const mutationId = randomUUID();
-      const timer = setTimeout(() => { groupMutations.delete(mutationId); reject(new Error('The workspace did not save the group change')); }, 10000);
-      groupMutations.set(mutationId, { window: owner, changes, finish(error) { clearTimeout(timer); error ? reject(new Error(error)) : resolve(); } });
-      owner.webContents.send('browser-tab-request', { action: 'extension-group-update', mutationId, groupChanges: changes });
-    }),
+    update: (owner, changes) => updateGroupTabs(owner, changes),
   });
   const retiringTabs = new Set<number>();
   const closingHosts = new WeakSet<BrowserWindow>();
@@ -244,8 +255,10 @@ export function registerElectronBrowser(
     contents: WebContents,
     dataScope: () => string | undefined = () => undefined
   ) => {
-    if (!privateMode && contents !== window.webContents)
+    if (!privateMode && contents !== window.webContents) {
       registerPasswordPage(contents, dataScope);
+      registerTranslationPage(contents, () => !getGroupLocks().locked((dataScope() || '').replace(/^group:/, '')), () => { for (const [id, view] of views) if (view.webContents === contents) publish(id, view); }, (title, message, type) => { void showAppToast(window, {id:`page-translation-${contents.id}`, title, message, type}).catch(() => {}); });
+    }
     const stopCapture = captureTabShortcuts(contents);
     const resetMenuShortcuts = () => {
       if (!contents.isDestroyed()) contents.setIgnoreMenuShortcuts(false);
@@ -419,6 +432,7 @@ export function registerElectronBrowser(
     const profile = loginProfileKey(configurations.get(id) || ({} as IApp));
     const state: BrowserState = {
       id,
+      translation: pageTranslationState(contents),
       devToolsDock: pageDevTools.mode(contents),
       devToolsFraction: pageDevTools.fraction(contents),
       siteSettings: origin
@@ -445,9 +459,9 @@ export function registerElectronBrowser(
       sidebarMediaEligible: sidebarMediaSessions.get(id)?.eligible ?? false,
       pictureInPicture: pictureInPicture.get(id)?.state,
       extensionContext: {
-        profile: `persist:kudiumbrowser-${loginProfileKey(
+        profile: profilePartition(loginProfileKey(
           configurations.get(id) || ({} as IApp)
-        )}`,
+        )),
         tab: String(contents.id),
       },
       discarded: false,
@@ -690,7 +704,7 @@ export function registerElectronBrowser(
               ...(privateMode
                 ? { session: window.webContents.session }
                 : {
-                    partition: `persist:kudiumbrowser-${loginProfileKey(item)}`,
+                    partition: profilePartition(loginProfileKey(item)),
                   }),
               sandbox: true,
               contextIsolation: true,
@@ -1094,8 +1108,16 @@ export function registerElectronBrowser(
           }
         );
         pictureInPicture.set(item.id, pip);
-        contents.on('context-menu', (_, params) => {
+        let contextMenuRevision = 0;
+        contents.on('context-menu', async (_, params) => {
+          const revision = ++contextMenuRevision;
+          const menuURL = contents.getURL();
+          const fieldState = !privateMode && personalDataFormAvailable(contents)
+            ? await readFormContextState(contents, params.x, params.y)
+            : { hasValue: false, formHasValues: false };
+          if (revision !== contextMenuRevision || contents.isDestroyed() || contents.getURL() !== menuURL) return;
           const window = hostFor(item.id);
+          const appendTarget=activeNoteFor(window.webContents);
           showBrowserContextMenu(
             window,
             contents,
@@ -1137,11 +1159,11 @@ export function registerElectronBrowser(
               params
             ) || [],
             pip.contextAction(params),
-            privateMode ? [] : [fillFormMenu(autoLoginMenu(window, contents), () => {
+            privateMode ? [] : [translationMenu(contents), fillFormMenu(autoLoginMenu(window, contents), () => {
                 const current = configurations.get(item.id);
                 if (window.isDestroyed() || contents.isDestroyed() || !current || isGroupLocked(current)) return;
                 window.webContents.send('browser-ai-fill-form', current.id);
-              }), ...hookActionMenu(window, contents, params, profileId, () => {
+              }, personalDataFormActions(contents, params.isEditable, params.x, params.y, fieldState)), ...hookActionMenu(window, contents, params, profileId, () => {
               const current = configurations.get(item.id);
               return current && !isGroupLocked(current)
                 ? {
@@ -1151,7 +1173,22 @@ export function registerElectronBrowser(
                   }
                 : undefined;
             })],
-            () => { void pageDevTools.open(contents, pageDevTools.mode(contents) || 'right').then(() => { if (!contents.isDestroyed()) contents.inspectElement(params.x, params.y); }).catch(error => console.warn('Could not inspect page', error)); }
+            () => { void pageDevTools.open(contents, pageDevTools.mode(contents) || 'right').then(() => { if (!contents.isDestroyed()) contents.inspectElement(params.x, params.y); }).catch(error => console.warn('Could not inspect page', error)); },
+            privateMode ? undefined : async (kind, text) => {
+              const current = configurations.get(item.id);
+              if (!current || contents.isDestroyed() || contents.getURL() !== menuURL || isGroupLocked(current)) return;
+              try {
+                const captured = params.frameURL && params.frameURL !== menuURL ? undefined : await captureSelectedText(contents, params.selectionText);
+                if (contents.isDestroyed() || contents.getURL() !== menuURL || configurations.get(item.id) !== current || isGroupLocked(current)) return;
+                if(kind==='append' && !sameActiveNote(appendTarget,activeNoteFor(window.webContents))) throw new Error('The current note changed. Try again.');
+                const saved = savePageSelection(kind, captured?.markdown || text, personalDataScope(current), captured?.text,appendTarget);
+                if(kind !== 'append') window.webContents.send('open-saved-note',{id:saved.recordId,taskId:'taskId' in saved ? saved.taskId : undefined});
+                void showAppToast(window, {id:'selection-saved', title:kind === 'append' ? 'Added to current '+(appendTarget?.kind === 'todo' ? 'to-do list' : 'note') : kind === 'note' ? 'Added to Notes' : 'Added to Today', message:kind === 'append' ? 'Your selected text was appended.' : kind === 'note' ? 'Your selected text was saved as a new note.' : 'Your selected text was added to today’s to-do list.', type:'success', action:{label:kind === 'today' ? 'View task' : 'View note', run:() => { if (!window.isDestroyed()) window.webContents.send('open-saved-note', {id:saved.recordId, taskId:'taskId' in saved ? saved.taskId : undefined}); }}}).catch(() => {});
+              } catch (error) {
+                void showAppToast(window, {id:'selection-saved',title:'Couldn’t save selection', message:error instanceof Error ? error.message : 'Please try again.',type:'error'}).catch(() => {});
+              }
+            },
+            appendTarget?.kind
           );
         });
         const permissionProfile = profileId;
@@ -2282,6 +2319,12 @@ export function registerElectronBrowser(
           },
         ]).popup({ window });
         break;
+      case 'page-translate':
+      case 'page-translation-original':
+      case 'page-translation-always':
+      case 'page-translation-target':
+        translationAction(contents, request.action, request.translationTarget);
+        break;
       case 'page-devtools-menu':
         showPageDevToolsMenu(contents,window);
         break;
@@ -2527,6 +2570,15 @@ export function registerElectronBrowser(
           ? views.get(id)?.webContents
           : undefined;
       },
+      updateGroup: (changes) => {
+        changes.forEach(({ id }) => {
+          const item = configurations.get(id);
+          if (!item || isGroupLocked(item) || removals.blocks(item))
+            throw new Error('Unlock this group before changing it');
+        });
+        const owner = changes[0] ? hostFor(changes[0].id) : window;
+        return updateGroupTabs(owner, changes);
+      },
       createTab: (item, signal) =>
         aiNewTabs.request(item.id, signal, () => {
           if (removals.blocks(item))
@@ -2573,6 +2625,14 @@ export function registerElectronBrowser(
       })
       .catch((error) => log.error('AI startup failed.', error));
   } else disposeAI = attachAI();
+  const registerInboxDetection = (host: BrowserWindow) => registerEmailBrowserDetection(host, {
+    tabs: () => [...configurations.values()].filter((item) => !isGroupLocked(item) && !removals.blocks(item) && (!windows || windows.allows(host, item.id))),
+    contents: (id) => {
+      const item = configurations.get(id);
+      return item && !isGroupLocked(item) && !removals.blocks(item) && (!windows || windows.allows(host, id)) ? views.get(id)?.webContents : undefined;
+    },
+  });
+  const disposeInboxDetection = registerInboxDetection(window);
   const disposeCapture = registerPageCapture(window, (id) => {
     const item = configurations.get(id);
     return item && !isGroupLocked(item) && !removals.blocks(item)
@@ -2758,6 +2818,7 @@ export function registerElectronBrowser(
         gestureCleanup.delete(stopGestures);
       });
       keyboard(host.webContents);
+      const inboxDetection = registerInboxDetection(host);
       const capture = registerPageCapture(host, (id) =>
         windows.allows(host, id) ? views.get(id)?.webContents : undefined
       );
@@ -2774,6 +2835,7 @@ export function registerElectronBrowser(
           );
       onWindowClosed(host, () => {
         capture();
+        inboxDetection();
         library();
       });
     },
@@ -2830,6 +2892,7 @@ export function registerElectronBrowser(
     stopRuntime?.();
     disposeAI?.();
     disposeCapture();
+    disposeInboxDetection();
     developerWindows.dispose();
     disposeDeveloperLibrary();
     releaseGroupLocks();

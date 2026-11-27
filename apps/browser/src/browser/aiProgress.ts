@@ -31,6 +31,7 @@ const progress: Record<string, string> = {
   list_frames: 'Checking embedded content…',
   scroll: 'Scrolling the page…',
   create_task: 'Saving the task…',
+  create_todo: 'Adding your todo…',
   hand_off: 'Preparing for your input…',
   request_user_feedback: 'Waiting for your input…',
   request_personal_data: 'Waiting for private information…',
@@ -38,6 +39,10 @@ const progress: Record<string, string> = {
   handle_dialog: 'Handling the page dialog…',
   get_download: 'Checking the download…',
   upload_files: 'Attaching files…',
+  create_email_alias: 'Creating an email alias…',
+  list_email_aliases: 'Checking email aliases…',
+  wait_for_email: 'Waiting for the email…',
+  get_email_context: 'Checking configured inboxes…',
 };
 
 export function aiToolProgress(name: string) {

@@ -103,6 +103,14 @@ export function validatePreferences(
     throw new Error('Invalid preferences');
   const validated: Partial<BrowserPreferences> = {};
   Object.entries(patch).forEach(([key, value]) => {
+    if (key === 'pageTranslation') {
+      const setting = value as BrowserPreferences['pageTranslation'];
+      const validLanguage = (code: unknown) => typeof code === 'string' && /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(code);
+      if (!setting || !validLanguage(setting.target) || !setting.always || typeof setting.always !== 'object' || Array.isArray(setting.always) || Object.keys(setting.always).length > 100 ||
+        Object.entries(setting.always).some(([source, target]) => !validLanguage(source) || !validLanguage(target)) || !Array.isArray(setting.never) || setting.never.length > 200 ||
+        setting.never.some(site => { try { return new URL(site).origin !== site || !/^https?:/.test(site); } catch { return true; } })) throw new Error('Invalid translation preferences');
+      validated.pageTranslation = { target: setting.target, always: { ...setting.always }, never: [...new Set(setting.never)] }; return;
+    }
     if(key === 'usageDiagnosticsConsentVersion' && (value === 0 || value === 1)) {
       validated.usageDiagnosticsConsentVersion=value;
       return;

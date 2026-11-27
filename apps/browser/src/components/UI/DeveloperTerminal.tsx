@@ -1,3 +1,4 @@
+import { frameResizeObserver } from '../../utils/frameResizeObserver';
 /* Optional callbacks use defaults; separators and tabs implement keyboard interaction. */
 /* eslint-disable react/require-default-props, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-static-element-interactions, no-nested-ternary */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -211,7 +212,7 @@ function TerminalSurface({
       }
       return true;
     });
-    const observer = new ResizeObserver(fitTerminal);
+    const observer = frameResizeObserver(fitTerminal);
     observer.observe(element);
     window.electron.siteDeveloper
       .terminal(group, {
@@ -496,7 +497,7 @@ export function DeveloperTerminal({
           : 80;
       setWorkspaceLimit(Math.max(96, bounds.height - reserved));
     };
-    const observer = new ResizeObserver(update);
+    const observer = frameResizeObserver(update);
     observer.observe(sidebar);
     const workspace = sidebar.querySelector('.developer-sidebar-pages');
     if (workspace) observer.observe(workspace);

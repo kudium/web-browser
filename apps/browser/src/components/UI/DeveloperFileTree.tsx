@@ -1,3 +1,4 @@
+import { frameResizeObserver } from '../../utils/frameResizeObserver';
 /* Arborist renderers forward their supplied positioning style. */
 /* eslint-disable react/require-default-props, jsx-a11y/no-static-element-interactions */
 import {
@@ -171,9 +172,10 @@ export function DeveloperFileTree({
     if (!element) return undefined;
     const measure = () => {
       if (element.clientWidth && element.clientHeight)
-        setSize({ width: element.clientWidth, height: element.clientHeight });
+        setSize(previous => previous.width === element.clientWidth && previous.height === element.clientHeight
+          ? previous : { width: element.clientWidth, height: element.clientHeight });
     };
-    const observer = new ResizeObserver(measure);
+    const observer = frameResizeObserver(measure);
     observer.observe(element);
     measure();
     return () => observer.disconnect();

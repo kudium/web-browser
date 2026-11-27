@@ -265,6 +265,7 @@ export function SidebarPanels({
                           ? 'Excluded by a website rule · Manage to change'
                           : 'Enable here and run',
                     canManage: true,
+                    actionLabel: enabled ? 'Run' : 'Enable',
                     disabled:
                       !masterEnabled || wildcardExcluded ||
                       ![hook.before, hook.after, hook.css].some((source) =>

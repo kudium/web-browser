@@ -100,7 +100,7 @@ it('offers enable-here-and-run for an Auto hook that is off on the current websi
   fireEvent.click(await screen.findByRole('button', { name: 'Global hooks' }));
   const option = await screen.findByRole('option', { name: /Auto reader/ });
   expect(option).toHaveTextContent('Enable here and run');
-  expect(option).not.toBeDisabled(); fireEvent.click(option);
+  expect(option).not.toBeDisabled(); fireEvent.click(screen.getByRole('button', { name: 'Enable Auto reader' }));
   await waitFor(() => expect(request).toHaveBeenCalledWith({ action: 'global-run', id: '@current-page', hookId: 'global:all:auto', allGroups: true }));
 });
 

@@ -17,6 +17,8 @@ export interface GroupSettings {
   spaceId: string;
   folderId: string;
   placement: 'regular' | 'pinned' | 'favorite';
+  aiTrusted?: boolean;
+  aiTier?: 'auto' | 'assist' | 'control' | 'cloud';
 }
 export function updateGroupSettings(
   tabs: IApp[],
@@ -35,6 +37,8 @@ export function updateGroupSettings(
       ? {
           ...tab,
           groupDisplay: settings.groupDisplay || tab.groupDisplay,
+          aiTrusted: settings.aiTrusted ?? tab.aiTrusted,
+          aiTier: settings.aiTier ?? tab.aiTier,
           sessionMode:
             settings.folderId && settings.placement !== 'favorite'
               ? settings.sessionMode || tab.sessionMode

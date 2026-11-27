@@ -13,12 +13,18 @@ import {
 import type { AIProjectTool } from '../browser/ai';
 import type { AIAccessMode } from '../browser/aiPermissions';
 
+/**
+ * Shell execution is a sensitive action: reviewed in Ask first and Standard
+ * (once per run there), automatic in Full access. The taint rule in ai.ts can
+ * still force a review after foreign page reads.
+ */
 export function requiresAIProjectApproval(
   mode: AIAccessMode,
   execution: boolean,
   read: boolean
 ) {
-  return execution || (mode !== 'full' && !(read && mode === 'standard'));
+  if (execution) return mode !== 'full';
+  return mode !== 'full' && !(read && mode === 'standard');
 }
 
 export async function aiProjectTool(options: {

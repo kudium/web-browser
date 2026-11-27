@@ -1,3 +1,4 @@
+import { frameResizeObserver } from '../frameResizeObserver';
 import { useEffect, useState } from 'react';
 
 const developmentOverlaySelector =
@@ -46,7 +47,7 @@ export function useNativeOverlay(surfaces = allNativeSurfaces) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const update = () => setOpen(hasGlobalOverlay(document, surfaces));
-    const geometry = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(update);
+    const geometry = typeof ResizeObserver === 'undefined' ? undefined : frameResizeObserver(update);
     const observeSurfaces = () => {
       geometry?.disconnect();
       document.querySelectorAll(surfaces).forEach(element => geometry?.observe(element));

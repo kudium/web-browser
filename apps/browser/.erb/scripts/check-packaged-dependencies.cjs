@@ -29,6 +29,13 @@ function verifyPackagedDependencies(resources, platform, arch) {
           `Runtime dependency resolved outside the package: ${name}`
         );
     });
+    if (metadata.dependencies?.['@browsermt/bergamot-translator']) {
+      for (const name of ['translator-worker.cjs', 'bergamot-translator-worker.js', 'bergamot-translator-worker.wasm']) {
+        const file = path.join(resources, 'app.asar.unpacked/dist/main/translation-engine', name);
+        if (!fs.existsSync(file) || fs.statSync(file).size === 0)
+          throw new Error(`Packaged offline translation engine is missing: ${name}`);
+      }
+    }
     if (metadata.dependencies?.['node-pty']) {
       const unpacked = path.join(
         resources,

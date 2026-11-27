@@ -84,10 +84,21 @@ export const AI_PROJECT_TOOLS = [
   'project_terminal',
 ] as const;
 export type AIProjectTool = (typeof AI_PROJECT_TOOLS)[number];
+/** Group configuration as one document (kudium.workspace.json) and browser preferences. */
+export const AI_WORKSPACE_TOOLS = [
+  'get_workspace_config',
+  'apply_workspace_config',
+  'setup_project',
+  'get_preferences',
+  'set_preferences',
+] as const;
+export type AIWorkspaceTool = (typeof AI_WORKSPACE_TOOLS)[number];
 export const AI_TOOLS = [
   'list_skills',
   'read_skill',
   ...AI_PROJECT_TOOLS,
+  ...AI_WORKSPACE_TOOLS,
+  'export_audit_log',
   'request_user_feedback',
   'request_personal_data',
   'read_hook_api',
@@ -102,7 +113,12 @@ export const AI_TOOLS = [
   'fill_personal_data',
   'save_personal_data',
   'manage_note',
+  'create_todo',
   'create_activity',
+  'create_email_alias',
+  'get_email_context',
+  'list_email_aliases',
+  'wait_for_email',
   'capture_personal_form',
   'attach_personal_document',
   'upload_chat_attachment',
@@ -113,6 +129,10 @@ export const AI_TOOLS = [
   'get_access',
   'request_access',
   'list_groups',
+  'find_tabs',
+  'switch_group',
+  'save_flow',
+  'read_clipboard',
   'set_scope',
   'resolve_reference',
   'create_task',
@@ -151,6 +171,12 @@ export const AI_TOOLS = [
   'list_frames',
   'find_element',
   'close_tab',
+  'act',
+  'run_script',
+  'wait_event',
+  'read_console',
+  'read_requests',
+  'set_viewport',
 ] as const;
 export type AITool = (typeof AI_TOOLS)[number];
 export function aiURL(value: unknown): string {

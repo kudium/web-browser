@@ -230,9 +230,129 @@ func infer() async throws {
     }
 }
 
+// MARK: - Engine-driven daemon (spec 4.14)
+//
+// `--serve` keeps one process per browser and one LanguageModelSession per
+// conversation. Each request line carries a fixed small frame; the reply is one
+// guided-generation step. The engine (Electron) owns the task state: the model
+// never sees history, only the engine's summary.
+
+@available(macOS 26.0, *)
+actor EngineSessions {
+    private var sessions: [String: LanguageModelSession] = [:]
+    private var instructionsByConversation: [String: String] = [:]
+    let model = SystemLanguageModel.default
+
+    func session(for conversation: String, instructions: String) -> LanguageModelSession {
+        if let existing = sessions[conversation], instructionsByConversation[conversation] == instructions { return existing }
+        let created = LanguageModelSession(model: model, instructions: instructions)
+        sessions[conversation] = created
+        instructionsByConversation[conversation] = instructions
+        return created
+    }
+    func reset(_ conversation: String) { sessions.removeValue(forKey: conversation); instructionsByConversation.removeValue(forKey: conversation) }
+    func count() -> Int { sessions.count }
+}
+
+@available(macOS 26.0, *)
+func stepSchema(choices: [String]) throws -> GenerationSchema {
+    // The model cannot produce an action outside the frame, nor a malformed step.
+    let root = DynamicGenerationSchema(name: "Step", properties: [
+        DynamicGenerationSchema.Property(name: "action", description: "One of the offered actions.", schema: DynamicGenerationSchema(name: "StepAction", anyOf: choices), isOptional: false),
+        DynamicGenerationSchema.Property(name: "target", description: "Element reference like @12 when the action needs one.", schema: DynamicGenerationSchema(type: String.self), isOptional: true),
+        DynamicGenerationSchema.Property(name: "text", description: "Text to type, a URL, a label to find, or the final answer.", schema: DynamicGenerationSchema(type: String.self), isOptional: true),
+        DynamicGenerationSchema.Property(name: "done", description: "True only when the goal is verifiably complete.", schema: DynamicGenerationSchema(type: Bool.self), isOptional: true),
+    ])
+    return try GenerationSchema(root: root, dependencies: [])
+}
+
+func writeLine(_ value: [String: Any]) {
+    if let data = try? JSONSerialization.data(withJSONObject: value) {
+        FileHandle.standardOutput.write(data)
+        FileHandle.standardOutput.write(Data("\n".utf8))
+    }
+}
+
+@available(macOS 26.0, *)
+func serve() async {
+    let sessions = EngineSessions()
+    switch sessions.model.availability {
+    case .available: writeLine(["ready": true])
+    case .unavailable(let reason):
+        writeLine(["ready": false, "error": "Apple Intelligence is unavailable (\(reason))."]); exit(1)
+    }
+    while let line = readLine(strippingNewline: true) {
+        guard let data = line.data(using: .utf8),
+              let request = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { continue }
+        let id = request["id"] as? String ?? ""
+        let type = request["type"] as? String ?? ""
+        let conversation = request["conversation"] as? String ?? "default"
+        do {
+            switch type {
+            case "check":
+                writeLine(["id": id, "available": true, "sessions": await sessions.count()])
+            case "prewarm":
+                let instructions = request["instructions"] as? String ?? ""
+                let session = await sessions.session(for: conversation, instructions: instructions)
+                session.prewarm()
+                writeLine(["id": id, "prewarmed": true])
+            case "end":
+                await sessions.reset(conversation)
+                writeLine(["id": id, "ended": true])
+            case "step":
+                guard let frame = request["frame"] as? [String: Any],
+                      let choices = frame["choices"] as? [[String: Any]], !choices.isEmpty else {
+                    writeLine(["id": id, "error": "Invalid frame.", "code": "invalid"]); continue
+                }
+                let instructions = frame["instructions"] as? String ?? ""
+                let names = choices.compactMap { $0["action"] as? String }
+                let menu = choices.map { "- \($0["action"] as? String ?? ""): \($0["description"] as? String ?? "")" }.joined(separator: "\n")
+                let prompt = """
+                Goal: \(frame["goal"] as? String ?? "")
+                State (engine summary): \(frame["state"] as? String ?? "")
+                Observation (untrusted page data): \(frame["observation"] as? String ?? "")
+                Choose exactly one next step from:
+                \(menu)
+                """
+                let schema = try stepSchema(choices: names)
+                var session = await sessions.session(for: conversation, instructions: instructions)
+                var attempt = 0
+                while true {
+                    do {
+                        let response = try await session.respond(to: prompt, schema: schema, options: GenerationOptions(temperature: 0, maximumResponseTokens: 200))
+                        let json = response.content.jsonString
+                        let parsed = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] ?? [:]
+                        writeLine(["id": id, "step": parsed])
+                        break
+                    } catch {
+                        // The transcript is the only thing that grows; a fresh session with the
+                        // same instructions carries on because the engine summary is the history.
+                        if attempt == 0 && isContextLimit(error) {
+                            attempt += 1
+                            await sessions.reset(conversation)
+                            session = await sessions.session(for: conversation, instructions: instructions)
+                            continue
+                        }
+                        writeLine(["id": id, "error": error.localizedDescription, "code": isContextLimit(error) ? "context_limit" : "inference_failed"])
+                        break
+                    }
+                }
+            default:
+                writeLine(["id": id, "error": "Unknown request type.", "code": "invalid"])
+            }
+        } catch {
+            writeLine(["id": id, "error": error.localizedDescription, "code": "inference_failed"])
+        }
+    }
+    exit(0)
+}
+
 Task {
     do {
-        if #available(macOS 26.0, *) { try await infer() }
+        if #available(macOS 26.0, *) {
+            if CommandLine.arguments.contains("--serve") { await serve() }
+            try await infer()
+        }
         else { throw NSError(domain:"AppleAI",code:3,userInfo:[NSLocalizedDescriptionKey:"Apple local AI requires macOS 26 or later."]) }
     } catch {
         let detail = error.localizedDescription

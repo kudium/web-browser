@@ -48,6 +48,7 @@ jest.mock('../main/groupLocks', () => ({
 jest.mock('../main/activity', () => ({
   browserActivity: jest.fn(() => ({ create: jest.fn() })),
 }));
+jest.mock('../main/todos', () => ({ addTodo: jest.fn() }));
 jest.mock('../main/noteActivity', () => ({
   saveNoteWithActivity: jest.fn(() => ({ recordId: 'saved' })),
 }));
@@ -316,6 +317,7 @@ it('reruns only the selected hook and disposes its previous listeners and CSS', 
       sendSync: () => config, send: jest.fn(), invoke: jest.fn(async () => false),
     } }),
     window, document, location: { href: 'https://example.com' },
+    MutationObserver: class { observe() {} disconnect() {} },
     addEventListener: jest.fn(), removeEventListener: jest.fn(),
     AbortController, setTimeout, clearTimeout,
     setInterval: (...args: Parameters<typeof setInterval>) => { const timer = setInterval(...args); intervals.push(timer); return timer; }, clearInterval,

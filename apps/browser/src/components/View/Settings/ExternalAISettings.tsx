@@ -6,6 +6,7 @@ import { Button, Switch, Callout } from '@radix-ui/themes';
 import type { MCPStatus } from '../../../browser/mcp';
 import { PreferenceHint } from '../../UI/PreferenceHint';
 import { PersonalAgentSettings } from './PersonalAgentSettings';
+import { MCPRelaySettings } from './MCPRelaySettings';
 
 const message = (reason: unknown) =>
   (reason as Error).message.replace(
@@ -19,7 +20,7 @@ export function ExternalAISettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [format, setFormat] = useState<'http' | 'stdio' | 'tunnel'>('http');
+  const [format, setFormat] = useState<'http' | 'https' | 'stdio' | 'tunnel'>('http');
   const [tunnelDraft, setTunnelDraft] = useState<string>();
   const [tunnelError, setTunnelError] = useState('');
   const [configuration, setConfiguration] = useState('');
@@ -95,7 +96,15 @@ export function ExternalAISettings() {
           : window.electron.ai.mcpConnection();
       request
         .then((value) => {
-          if (alive) setConfiguration(JSON.stringify(format === 'tunnel' ? mcpTunnelConnection(value as MCPConnection, status.tunnelUrl || '') : value, null, 2));
+          if (alive) {
+            let shown = value;
+            if (format === 'tunnel') shown = mcpTunnelConnection(value as MCPConnection, status.tunnelUrl || '');
+            else if (format === 'https' && status.httpsUrl) {
+              const connection = value as MCPConnection;
+              shown = { mcpServers: { kudiumbrowser: { ...connection.mcpServers.kudiumbrowser, url: status.httpsUrl } } };
+            }
+            setConfiguration(JSON.stringify(shown, null, 2));
+          }
           return undefined;
         })
         .catch((reason) => {
@@ -105,7 +114,7 @@ export function ExternalAISettings() {
     return () => {
       alive = false;
     };
-  }, [status?.running, status?.url, status?.tunnelUrl, format, revision, manualOpen]);
+  }, [status?.running, status?.url, status?.tunnelUrl, status?.httpsUrl, format, revision, manualOpen]);
   const update = async (enabled: boolean, rotate = false) => {
     setBusy(true);
     setError('');
@@ -146,6 +155,27 @@ export function ExternalAISettings() {
       setNotice('Copied.');
     } catch (reason) {
       setError(message(reason));
+    }
+  };
+  const toggleHttps = async (https: boolean) => {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const next = await window.electron.ai.mcpUpdate({ enabled: status?.enabled || false, port: status?.port, https });
+      setStatus(next);
+      setRevision((current) => current + 1);
+      if (https)
+        setNotice(
+          next.httpsTrusted
+            ? 'https ready: the local certificate authority is trusted for localhost only.'
+            : 'https ready. The certificate authority could not be trusted automatically; see the note below.'
+        );
+      else setNotice('Local https turned off.');
+    } catch (reason) {
+      setError(message(reason));
+    } finally {
+      setBusy(false);
     }
   };
   let connectionState = 'MCP service off';
@@ -303,6 +333,50 @@ export function ExternalAISettings() {
               Use a port from 1024 to 65535.
             </p>
           )}
+          <div className="preference-card">
+            <div className="preference-row">
+              <div>
+                <div className="preference-label">
+                  <strong>Use https locally</strong>
+                  <PreferenceHint label="Local https">
+                    For clients that refuse plain http. Kudium creates a
+                    certificate authority that can only sign for localhost,
+                    127.0.0.1 and ::1, trusts it for your user account, proves
+                    that a certificate for any other site is rejected, and
+                    serves https on the next port. Node agents: run setup with
+                    --https so NODE_EXTRA_CA_CERTS points at the CA file.
+                  </PreferenceHint>
+                </div>
+                {status?.httpsUrl ? (
+                  <p className="ai-model-help">
+                    <code>{status.httpsUrl}</code>
+                    <br />
+                    CA certificate: <code>{status.caPath}</code>
+                    {status.httpsTrusted === false && status.httpsNotice && (
+                      <>
+                        <br />
+                        {status.httpsNotice}
+                      </>
+                    )}
+                  </p>
+                ) : (
+                  <p className="ai-model-help">
+                    {status?.https
+                      ? status.httpsNotice || 'Enable external control to start https.'
+                      : 'Off. http on 127.0.0.1 stays available either way.'}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="soft"
+                disabled={busy || !status?.enabled}
+                onClick={() => toggleHttps(!status?.https)}
+              >
+                {status?.https ? 'Turn off https' : 'Use https locally'}
+              </Button>
+            </div>
+          </div>
+          <MCPRelaySettings externalEnabled={!!status?.enabled} />
           {status?.running ? (
             <div className="ai-connection-config">
               <div className="ai-config-toolbar">
@@ -311,10 +385,11 @@ export function ExternalAISettings() {
                   id="ai-mcp-format"
                   value={format}
                   onChange={(event) =>
-                    setFormat(event.target.value as 'http' | 'stdio' | 'tunnel')
+                    setFormat(event.target.value as 'http' | 'https' | 'stdio' | 'tunnel')
                   }
                 >
                   <option value="http">HTTP</option>
+                  {status?.httpsUrl && <option value="https">Local HTTPS</option>}
                   <option value="tunnel">Custom HTTPS / tunnel</option>
                   <option value="stdio">stdio · Node 22+</option>
                 </select>
@@ -349,7 +424,7 @@ export function ExternalAISettings() {
               )}
               <div className="ai-config-address">
                 <span>Endpoint</span>
-                <code>{format === 'tunnel' ? status.tunnelUrl || 'No tunnel endpoint configured' : status.url}</code>
+                <code>{format === 'tunnel' ? status.tunnelUrl || 'No tunnel endpoint configured' : format === 'https' ? status.httpsUrl || status.url : status.url}</code>
               </div>
               <textarea
                 aria-label="MCP configuration"
@@ -380,6 +455,82 @@ export function ExternalAISettings() {
                   onClick={() => update(true, true)}
                 >
                   Reset token
+                </Button>
+              </div>
+              <div className="ai-clients">
+                <strong>Connected clients</strong>
+                <small>
+                  Each paired client has its own token and name on receipts. A
+                  ceiling caps what it may do even in a Full access group.
+                </small>
+                {status.clients?.length ? (
+                  <ul aria-label="Connected clients">
+                    {status.clients.map((client) => (
+                      <li key={client.id}>
+                        <span>
+                          {client.name}
+                          {client.shared ? ' (shared token)' : ''}
+                        </span>
+                        <label htmlFor={`ai-client-ceiling-${client.id}`}>
+                          Ceiling{' '}
+                          <select
+                            id={`ai-client-ceiling-${client.id}`}
+                            aria-label={`Permission ceiling for ${client.name}`}
+                            value={client.ceiling || ''}
+                            disabled={busy}
+                            onChange={(event) =>
+                              window.electron.ai
+                                .mcpClientCeiling(
+                                  client.id,
+                                  (event.target.value || undefined) as
+                                    | 'ask'
+                                    | 'standard'
+                                    | 'full'
+                                    | undefined
+                                )
+                                .catch((reason) => setError(message(reason)))
+                            }
+                          >
+                            <option value="">Group access</option>
+                            <option value="ask">Ask first</option>
+                            <option value="standard">Standard</option>
+                            <option value="full">Full access</option>
+                          </select>
+                        </label>
+                        <Button
+                          size="1"
+                          variant="ghost"
+                          disabled={busy}
+                          onClick={() =>
+                            window.electron.ai
+                              .mcpRevokeClient(client.id)
+                              .catch((reason) => setError(message(reason)))
+                          }
+                        >
+                          Revoke
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <small>No client has paired yet.</small>
+                )}
+                <Button
+                  size="1"
+                  variant="surface"
+                  disabled={busy}
+                  onClick={() =>
+                    window.electron.ai
+                      .mcpExportAudit()
+                      .then((result) => {
+                        if (result.exported)
+                          setNotice(`Exported ${result.runs ?? 0} runs to ${result.path}.`);
+                        return result;
+                      })
+                      .catch((reason) => setError(message(reason)))
+                  }
+                >
+                  Export audit log
                 </Button>
               </div>
             </div>

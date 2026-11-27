@@ -155,9 +155,14 @@ it('moves the browser context when relinking to another folder', async () => {
     undefined,
     { name: 'Website', slug: 'website' }
   );
-  expect(fs.readFileSync(path.join(first, 'BROWSER.md'), 'utf8')).toContain(
-    '"slug":"website"'
+  expect(fs.readFileSync(path.join(first, 'kudium.workspace.json'), 'utf8')).toContain(
+    '"slug": "website"'
   );
+  expect(fs.readFileSync(path.join(first, 'AGENTS.md'), 'utf8')).toContain('kudium.workspace.json');
+  expect(JSON.parse(fs.readFileSync(path.join(first, '.mcp.json'), 'utf8')).mcpServers.kudiumbrowser).toEqual({
+    command: 'npx',
+    args: ['-y', '@kudiumbrowser/mcp'],
+  });
   picker.mockResolvedValue({ canceled: false, filePaths: [second] });
   await projectAction(
     {} as any,
@@ -168,11 +173,11 @@ it('moves the browser context when relinking to another folder', async () => {
     undefined,
     { name: 'Website', slug: 'website' }
   );
-  expect(fs.existsSync(path.join(first, 'BROWSER.md'))).toBe(false);
+  expect(fs.existsSync(path.join(first, 'kudium.workspace.json'))).toBe(false);
   expect(fs.existsSync(path.join(first, 'AGENTS.md'))).toBe(false);
-  expect(fs.existsSync(path.join(second, 'BROWSER.md'))).toBe(true);
+  expect(fs.existsSync(path.join(second, 'kudium.workspace.json'))).toBe(true);
   await projectAction({} as any, 'group', 'unlink', () => {});
-  expect(fs.existsSync(path.join(second, 'BROWSER.md'))).toBe(false);
+  expect(fs.existsSync(path.join(second, 'kudium.workspace.json'))).toBe(false);
 });
 
 it('links a project without writing instructions when disabled', async () => {
@@ -183,8 +188,9 @@ it('links a project without writing instructions when disabled', async () => {
     name: 'Project',
     slug: 'project',
   });
-  expect(fs.existsSync(path.join(folder, 'BROWSER.md'))).toBe(false);
+  expect(fs.existsSync(path.join(folder, 'kudium.workspace.json'))).toBe(false);
   expect(fs.existsSync(path.join(folder, 'AGENTS.md'))).toBe(false);
+  expect(fs.existsSync(path.join(folder, '.mcp.json'))).toBe(false);
 });
 
 it('retains the saved project when optional instruction refresh is denied', async () => {
@@ -194,7 +200,7 @@ it('retains the saved project when optional instruction refresh is denied', asyn
   await projectAction({} as any, 'group', 'link', () => {}, undefined, folder, group);
   const original = fs.readFileSync;
   const denied = jest.spyOn(fs, 'readFileSync').mockImplementation((file, ...args) => {
-    if (String(file) === path.join(fs.realpathSync(folder), 'BROWSER.md'))
+    if (String(file) === path.join(fs.realpathSync(folder), 'AGENTS.md'))
       throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
     return (original as any)(file, ...args);
   });

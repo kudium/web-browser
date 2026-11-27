@@ -31,6 +31,7 @@ it.each([
   'system:history',
   'system:archive',
   'rename',
+  'suggestions-toggle',
 ])('routes %s from the footer to its intended destination', async (choice) => {
   const source = fs.readFileSync(
     path.join(__dirname, '../components/View/Main/Main.tsx'),
@@ -62,6 +63,7 @@ it.each([
     active: spaces[0],
     sidebarPage: 'personal',
     compact: false,
+    showSpaceSuggestions: true,
     browser: { nativeMenu: jest.fn().mockResolvedValue(choice), preferences },
     spaceFooterMenu,
     activateSidebarPage: activate,
@@ -80,6 +82,10 @@ it.each([
   if (choice === 'system:archive') {
     expect(activate).toHaveBeenCalledWith('archive-page');
     expect(preferences).not.toHaveBeenCalled();
+  } else if (choice === 'suggestions-toggle') {
+    expect(preferences).toHaveBeenCalledWith('update',{showSpaceSuggestions:false});
+    expect(activate).not.toHaveBeenCalled();
+    expect(apply).not.toHaveBeenCalled();
   } else if (choice === 'rename')
     expect(apply).toHaveBeenCalledWith('rename', spaces[1]);
   else
@@ -90,4 +96,9 @@ it.each([
         ? 'downloads-page'
         : 'history-page'
     );
+});
+
+it('offers a reversible suggestions visibility option without loading banner contents', () => {
+  expect(parseNativeMenu(spaceFooterMenu(spaces,'work',false,true)).find(item=>item.id==='suggestions-toggle')?.label).toBe('Hide Suggestions');
+  expect(parseNativeMenu(spaceFooterMenu(spaces,'work',false,false)).find(item=>item.id==='suggestions-toggle')?.label).toBe('Show Suggestions');
 });

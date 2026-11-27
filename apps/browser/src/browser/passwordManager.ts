@@ -19,6 +19,7 @@ export interface VaultItem {
   scope?: string;
   source?: { label: string; url?: string; capturedAt: string };
   notes?: string;
+  todo?: import('./todos').TodoData;
   document?: { name: string; mime: string; content: string; text: string };
   inherited?: boolean;
   overridden?: boolean;
@@ -29,9 +30,11 @@ export interface VaultItem {
 }
 export type VaultSummary = Omit<
   VaultItem,
-  'password' | 'fields' | 'notes' | 'document'
+  'password' | 'fields' | 'notes' | 'document' | 'todo'
 > & {
   fieldCount: number;
+  noteType?: 'todo';
+  todoInbox?: boolean;
   preview?: string;
   privateCount?: number;
 };
@@ -49,13 +52,19 @@ export interface VaultStatus {
 }
 type VaultOperation =
   | { action: 'notes' }
+  | { action: 'todos'; all?: boolean }
+  | { action: 'hookSuggestions'; groupId?: string }
+  | { action: 'hookSuggestionRun'; id:string; groupId?:string }
+  | { action: 'todoChange'; id: string; taskId: string; change: 'complete' | 'undo' | 'today' | 'removeToday' | 'next' | 'delete' | 'rename' | 'up' | 'down' | 'move' | 'schedule'; date?: string; title?:string; markdown?:string; beforeTaskId?: string; todayOrder?: number }
+  | { action: 'todoDeleteCompleted'; tasks: {noteId:string;taskId:string;scope?:string}[] }
+  | { action: 'todoAdd'; id?: string; title: string; today?: boolean; initialNote?: VaultItem }
   | { action: 'moveNote'; id: string; destination?: string }
   | { action: 'status' | 'lock' | 'authenticate' | 'createOS' }
   | { action: 'migrateOS'; password: string }
   | { action: 'unlock' | 'create'; password: string }
   | { action: 'settings'; enabled: boolean; autofill: boolean; ai: boolean }
   | { action: 'save'; item: VaultItem; destination?: string | null }
-  | { action: 'delete' | 'edit' | 'reveal'; id: string }
+  | { action: 'delete' | 'noteDelete' | 'edit' | 'reveal'; id: string }
   | { action: 'changePassword'; password: string }
   | { action: 'fill'; id: string; pageId: number }
   | { action: 'pages' }

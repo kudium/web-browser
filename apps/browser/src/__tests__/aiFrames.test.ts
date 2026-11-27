@@ -6,7 +6,6 @@ import {
   executeAIPageProtocol,
   listAIFrames,
   withAIFrame,
-  hasAIUnloadHandlers,
 } from '../main/aiFrames';
 
 jest.mock('../main/aiProtocol', () => ({
@@ -207,63 +206,6 @@ it('validates a frame path without dispatching input before upload approval', as
   expect(
     send.mock.calls.some(([method]) => method === 'Input.dispatchMouseEvent')
   ).toBe(false);
-});
-
-it.each([false, true])(
-  'inspects default-world unload handlers in OOP renderers (present=%s)',
-  async (present) => {
-    const original = send.getMockImplementation()!;
-    send.mockImplementation(async (method, params, session) => {
-      if (method === 'Runtime.enable') {
-        page.debugger.emit(
-          'message',
-          {},
-          'Runtime.executionContextCreated',
-          {
-            context: {
-              id: session ? 88 : 77,
-              auxData: {
-                isDefault: true,
-                frameId: session ? 'child' : 'parent',
-              },
-            },
-          },
-          session
-        );
-        return {};
-      }
-      if (method === 'Runtime.evaluate')
-        return {
-          result: { objectId: session ? 'child-window' : 'parent-window' },
-        };
-      if (method === 'DOMDebugger.getEventListeners')
-        return {
-          listeners: present && session ? [{ type: 'beforeunload' }] : [],
-        };
-      return original(method, params, session);
-    });
-    await expect(
-      hasAIUnloadHandlers(page, new AbortController().signal)
-    ).resolves.toBe(present);
-    expect(send).toHaveBeenCalledWith(
-      'Runtime.evaluate',
-      { expression: 'window', contextId: 88 },
-      'child-session'
-    );
-    expect(send).toHaveBeenCalledWith(
-      'Runtime.releaseObject',
-      { objectId: 'child-window' },
-      'child-session'
-    );
-    expect(page.debugger.listenerCount('message')).toBe(0);
-  }
-);
-
-it('requires approval when unload inspection cannot identify a default context', async () => {
-  await expect(
-    hasAIUnloadHandlers(page, new AbortController().signal)
-  ).resolves.toBe(true);
-  expect(page.debugger.listenerCount('message')).toBe(0);
 });
 
 it('executes adopted main-page programs in the same stable isolated world as frames', async () => {

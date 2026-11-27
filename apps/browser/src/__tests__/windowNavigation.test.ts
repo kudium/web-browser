@@ -4,7 +4,10 @@ import {
   protectWindowNavigation,
 } from '../main/windowNavigation';
 
-it('limits external launches to web/mail URLs without embedded credentials', () => {
+it('limits external launches to web/mail/phone URLs without embedded credentials', () => {
+  expect(externalLinkURL('tel:+14165550123')).toBe('tel:+14165550123');
+  expect(externalLinkURL('tel:123')).toBeUndefined();
+  expect(externalLinkURL('tel:+14165550123?extra=1')).toBeUndefined();
   expect(externalLinkURL('https://kudium.com')).toBe('https://kudium.com/');
   expect(externalLinkURL('mailto:hello@kudium.com')).toBe(
     'mailto:hello@kudium.com'
@@ -58,6 +61,8 @@ it('keeps the exact trusted document, permits fragments, and denies remote navig
   expect(launch).toHaveBeenCalledWith('https://example.com/');
   expect(popup({ url: 'https://kudium.com' })).toEqual({ action: 'deny' });
   expect(launch).toHaveBeenCalledWith('https://kudium.com/');
+  expect(popup({ url: 'tel:+14165550123' })).toEqual({ action: 'deny' });
+  expect(launch).toHaveBeenCalledWith('tel:+14165550123');
   await Promise.resolve();
 });
 
@@ -81,6 +86,7 @@ it('allows only named Assistant blank windows from the main host and protects th
     'activity',
     'tasks',
     'developer',
+    'email',
   ]) {
     const result = popup({
       url: 'about:blank',

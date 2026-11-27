@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://browser.kudium.com/schemas/kudium.workspace.v1.json",
+  "title": "Kudium workspace manifest",
+  "description": "One configuration document per Kudium Browser group, kept as kudium.workspace.json in the linked project folder. Secrets never belong here: reference a Personal Data record by name instead.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": { "const": 1 },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "slug": { "type": "string", "maxLength": 100, "description": "The @slug agents use in references." },
+        "display": { "enum": ["folder", "stack"] },
+        "sessionMode": { "enum": ["separate", "collection"] }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "maxLength": 1024, "description": "Relative to the manifest; usually \".\"." },
+        "editor": { "type": "string", "maxLength": 60 }
+      }
+    },
+    "tabs": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url"],
+        "properties": {
+          "url": { "type": "string", "format": "uri", "maxLength": 2048 },
+          "title": { "type": "string", "maxLength": 200 },
+          "pinned": { "type": "boolean" }
+        }
+      }
+    },
+    "scripts": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "command"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "command": { "type": "string", "minLength": 1, "maxLength": 4096, "description": "Runs in the project terminal after the user approved the manifest; commands listed here keep running without a prompt even after the agent read other websites." },
+          "shortcut": { "type": "string", "maxLength": 40, "description": "Reserved; not bound by the browser yet." }
+        }
+      }
+    },
+    "terminals": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "cwd": { "type": "string", "maxLength": 1024 }
+        }
+      }
+    },
+    "siteSettings": {
+      "type": "object",
+      "maxProperties": 64,
+      "description": "Keyed by origin or host:port (localhost:5173).",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "geolocation": { "enum": ["ask", "allow", "block"] },
+          "notifications": { "enum": ["ask", "allow", "block"] },
+          "camera": { "enum": ["ask", "allow", "block"] },
+          "microphone": { "enum": ["ask", "allow", "block"] },
+          "display-capture": { "enum": ["ask", "allow", "block"] },
+          "clipboard-read": { "enum": ["ask", "allow", "block"] },
+          "fullscreen": { "enum": ["ask", "allow", "block"] },
+          "midi": { "enum": ["ask", "allow", "block"] }
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "type": "string", "maxLength": 1024 },
+      "description": "SKILL.md files or skill folders inside the project; list_skills returns them for this group."
+    },
+    "ai": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Applied only after its own confirmation, because it widens what the agent may do.",
+      "properties": {
+        "mode": { "enum": ["ask", "standard", "full"] },
+        "trusted": { "type": "boolean" },
+        "sessions": {
+          "type": "object",
+          "maxProperties": 32,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tabs"],
+            "properties": {
+              "tabs": { "type": "array", "maxItems": 64, "items": { "type": "string", "format": "uri" } },
+              "description": { "type": "string", "maxLength": 400 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

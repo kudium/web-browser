@@ -37,6 +37,7 @@ jest.mock('../main/hookActionField', () => ({
   readActionFieldContext: jest.fn(),
   fillActionForm: jest.fn(),
 }));
+jest.mock('../main/todos', () => ({ addTodo: jest.fn() }));
 jest.mock('../main/noteActivity', () => ({ saveNoteWithActivity: jest.fn() }));
 jest.mock('../main/activity', () => ({
   browserActivity: () => ({ create: jest.fn() }),
@@ -613,4 +614,11 @@ test('action failures show the browser error dialog without a native alert', asy
   await click(menu());
   expect(showBrowserDialog).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({message:'Hook action could not run',detail:expect.stringContaining('Fixture failed'),buttons:['Close']}));
   expect(dialog.showMessageBox).not.toHaveBeenCalled();
+});
+
+
+test('validates todo creation outputs from declarative hook actions', () => {
+  const action: HookAction = {id:'todo',name:'Save a task',contexts:['page'],source:'',permissions:['todos.create']};
+  expect(validateActionCommands([{capability:'todos.create',input:{key:'follow-up',title:'Follow up',today:true}}],action.permissions)).toHaveLength(1);
+  expect(()=>validateActionCommands([{capability:'todos.create',input:{key:'follow-up',title:'',today:true}}],action.permissions)).toThrow();
 });

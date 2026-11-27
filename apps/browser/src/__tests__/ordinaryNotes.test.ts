@@ -138,3 +138,18 @@ test('disk-full partial writes preserve the previous note and leave no orphan fi
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+
+test('todo-only edits persist without exposing task content in the title index', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ordinary-todos-'));
+  try {
+    const file = path.join(root, 'notes.bin');
+    const storage = ordinaryNotesStorage(file);
+    const todo = {...note, todo:{items:[{id:'task',title:'Private action'}]}};
+    storage.upsert?.(todo);
+    expect(storage.summaries?.()[0]).toMatchObject({noteType:'todo'});
+    expect(JSON.stringify(storage.summaries?.())).not.toContain('Private action');
+    storage.upsert?.({...todo,todo:{items:[{...todo.todo.items[0],completedAt:'2026-11-26T12:00:00Z'}]}});
+    expect(ordinaryNotesStorage(file).get?.(note.id)?.todo?.items[0].completedAt).toBe('2026-11-26T12:00:00Z');
+  } finally {fs.rmSync(root,{recursive:true,force:true});}
+});

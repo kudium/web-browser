@@ -2,8 +2,29 @@ import { EventEmitter } from 'events';
 import {
   navigateAIPage,
   AI_NAVIGATION_TIMEOUT,
+  AI_NETWORK_IDLE_MS,
   AINavigationReview,
 } from '../main/aiNavigation';
+
+/** Resolves to the settled state without waiting for a pending promise. */
+const settled = async (promise: Promise<unknown>) => {
+  let state = 'pending';
+  promise
+    .then(
+      () => {
+        state = 'resolved';
+        return undefined;
+      },
+      () => {
+        state = 'rejected';
+        return undefined;
+      }
+    )
+    .catch(() => {});
+  await Promise.resolve();
+  await Promise.resolve();
+  return state;
+};
 
 function fixture() {
   let complete: () => void = () => {};
@@ -428,4 +449,115 @@ it('rejects renderer exit immediately without stopping a later replacement load'
   expect(page.listenerCount('render-process-gone')).toBe(0);
   expect(page.listenerCount('did-start-navigation')).toBe(0);
   expect(jest.getTimerCount()).toBe(0);
+});
+
+it('returns at main-frame commit before the load finishes when asked', async () => {
+  const { page, complete } = fixture();
+  const pending = navigateAIPage(
+    page,
+    'https://site.test/',
+    new AbortController().signal,
+    undefined,
+    undefined,
+    undefined,
+    'commit'
+  );
+  expect(await settled(pending)).toBe('pending');
+  page.emit('did-navigate', {}, 'https://site.test/redirected', 200, 'OK');
+  await expect(pending).resolves.toEqual({
+    url: 'https://site.test/redirected',
+    title: 'Loaded',
+  });
+  expect(page.listenerCount('did-navigate')).toBe(0);
+  expect(page.listenerCount('dom-ready')).toBe(0);
+  expect(page.stop).not.toHaveBeenCalled();
+  complete();
+});
+
+it('returns at DOMContentLoaded when asked and ignores commit', async () => {
+  const { page } = fixture();
+  const pending = navigateAIPage(
+    page,
+    'https://site.test/',
+    new AbortController().signal,
+    undefined,
+    undefined,
+    undefined,
+    'domcontentloaded'
+  );
+  page.emit('did-navigate', {}, 'https://site.test/', 200, 'OK');
+  expect(await settled(pending)).toBe('pending');
+  page.emit('dom-ready', {});
+  await expect(pending).resolves.toMatchObject({ title: 'Loaded' });
+});
+
+it('waits for a quiet network gap after load for networkidle', async () => {
+  jest.useFakeTimers();
+  const { page, complete } = privateFixture();
+  const observed = (resourceType: string) => {
+    const reply = jest.fn();
+    (page.session.webRequest as any).listener?.(
+      { url: 'https://site.test/x', webContentsId: 27, resourceType, method: 'GET' },
+      reply
+    );
+    return reply;
+  };
+  const original = page.session.webRequest.onBeforeRequest;
+  page.session.webRequest.onBeforeRequest = (filter: unknown, listener: any) => {
+    (page.session.webRequest as any).listener = listener;
+    original(filter, listener);
+  };
+  const pending = navigateAIPage(
+    page,
+    'https://site.test/',
+    new AbortController().signal,
+    undefined,
+    undefined,
+    undefined,
+    'networkidle'
+  );
+  complete();
+  await jest.advanceTimersByTimeAsync(AI_NETWORK_IDLE_MS - 100);
+  expect(await settled(pending)).toBe('pending');
+  expect(observed('script')).toHaveBeenCalledWith({ cancel: false });
+  await jest.advanceTimersByTimeAsync(AI_NETWORK_IDLE_MS - 100);
+  expect(await settled(pending)).toBe('pending');
+  // Long-lived connections never settle and must not restart the gap.
+  expect(observed('webSocket')).toHaveBeenCalledWith({ cancel: false });
+  await jest.advanceTimersByTimeAsync(100);
+  await expect(pending).resolves.toMatchObject({ title: 'Loaded' });
+});
+
+it('bounds networkidle by the navigation deadline', async () => {
+  jest.useFakeTimers();
+  const { page, complete } = privateFixture();
+  let listener: any;
+  const original = page.session.webRequest.onBeforeRequest;
+  page.session.webRequest.onBeforeRequest = (filter: unknown, handler: any) => {
+    listener = handler;
+    original(filter, handler);
+  };
+  const pending = navigateAIPage(
+    page,
+    'https://site.test/',
+    new AbortController().signal,
+    undefined,
+    undefined,
+    undefined,
+    'networkidle'
+  );
+  const outcome = pending.then(
+    () => 'resolved',
+    (error: Error) => error.message
+  );
+  complete();
+  for (let elapsed = 0; elapsed < AI_NAVIGATION_TIMEOUT; elapsed += 200) {
+    listener(
+      { url: 'https://site.test/poll', webContentsId: 27, resourceType: 'xhr', method: 'GET' },
+      jest.fn()
+    );
+    await jest.advanceTimersByTimeAsync(200);
+  }
+  await expect(outcome).resolves.toContain('Navigation timed out');
+  expect(page.stop).toHaveBeenCalled();
 });

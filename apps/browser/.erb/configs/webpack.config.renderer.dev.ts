@@ -133,7 +133,9 @@ const configuration: webpack.Configuration = {
       debug: true,
     }),
 
-    new ReactRefreshWebpackPlugin(),
+    // Webpack's overlay below handles compile and runtime errors. A second
+    // React Refresh overlay bypasses its ResizeObserver warning filter.
+    new ReactRefreshWebpackPlugin({ overlay: false }),
 
     new HtmlWebpackPlugin({
       filename: path.join('index.html'),
@@ -159,6 +161,16 @@ const configuration: webpack.Configuration = {
     port,
     compress: true,
     hot: true,
+    client: {
+      overlay: {
+        // Chromium defers resize notifications when callbacks change layout.
+        // Keep the warning in the console without covering native app views.
+        runtimeErrors: (error: Error) =>
+          error.message !==
+            'ResizeObserver loop completed with undelivered notifications.' &&
+          error.message !== 'ResizeObserver loop limit exceeded',
+      },
+    },
     headers: { 'Access-Control-Allow-Origin': '*' },
     static: {
       publicPath: '/',

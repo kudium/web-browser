@@ -1,6 +1,6 @@
 /* Optional refs and props have functional defaults. */
 /* eslint-disable react/require-default-props */
-import { forwardRef, useImperativeHandle, useEffect } from 'react';
+import { forwardRef, useImperativeHandle, useEffect, useRef } from 'react';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
@@ -30,15 +30,19 @@ export const MarkdownNoteEditor = forwardRef<
   NoteEditorHandle,
   {
     markdown: string;
+    externalRevision?: number;
+    label?: string;
+    autoFocus?: boolean;
     onChange: (markdown: string) => void;
     onSelectionChange: (selected: boolean) => void;
     onFocusTitle: () => void;
   }
->(({ markdown, onChange, onSelectionChange, onFocusTitle }, ref) => {
+>(({ markdown, externalRevision = 0, label = 'Note content', autoFocus = false, onChange, onSelectionChange, onFocusTitle }, ref) => {
   const panelDocument = useAssistantPanelDocument();
   const [wrap, setWrap] = useAIPagePreference('noteWrap', true);
   const editor = useEditor({
     shouldRerenderOnTransaction: false,
+    autofocus: autoFocus ? 'start' : false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
@@ -69,13 +73,22 @@ export const MarkdownNoteEditor = forwardRef<
       },
       attributes: {
         role: 'textbox',
-        'aria-label': 'Note content',
+        'aria-label': label,
         'aria-multiline': 'true',
         class: 'ai-markdown notes-rich-editor',
       },
     },
     onUpdate: ({ editor: current }) => onChange(current.getMarkdown()),
   });
+  const appliedRevision=useRef(externalRevision);
+  useEffect(()=>{
+    if(!editor || appliedRevision.current===externalRevision) return;
+    appliedRevision.current=externalRevision;
+    const {from,to}=editor.state.selection;
+    editor.chain().setContent(markdown,{contentType:'markdown',emitUpdate:false}).setMeta('addToHistory',false).run();
+    const end=editor.state.doc.content.size;
+    editor.commands.setTextSelection({from:Math.min(from,end),to:Math.min(to,end)});
+  },[editor,externalRevision,markdown]);
   useEffect(() => {
     if (!editor || editor.isDestroyed) return undefined;
     editor.view.updateRoot();

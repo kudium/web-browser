@@ -1,0 +1,20 @@
+{
+  "$comment": "Budgets from docs/kudium-fast-agent-control-spec.md sections 1 and 5. A run fails when a metric exceeds its budget by more than 20 percent. Unmeasured entries wait for the script runtime (Phase 1). readPageBytes is re-baselined to the fixture dashboard (30-row table in compact text); the Delight dashboard target of 1500 bytes stays in the spec.",
+  "firstCallMs": 100,
+  "readPageMs": 10,
+  "readPageBytes": 2500,
+  "listTabsBytes": 2000,
+  "navigatePlainMs": 250,
+  "navigateSpaLoadMs": 500,
+  "screenshotMs": 50,
+  "screenshotBytes": 80000,
+  "loginSettingsFlowMs": 12000,
+  "unmeasured": {
+    "diffObservationChars": 300
+  },
+  "scriptCallOverheadMs": 60,
+  "pageApiCallMs": 10,
+  "navigateProtocolAttaches": 0,
+  "actFlowMs": 12000,
+  "scriptFlowMs": 12000
+}

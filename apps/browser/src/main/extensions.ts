@@ -81,12 +81,17 @@ const pending = new Map<
 >();
 const catalogFile = () => path.join(app.getPath('userData'), 'extensions.json');
 const extensionFiles = () => path.join(app.getPath('userData'), 'Extensions');
+const catalogStamp = () => {
+  try { const stat = fs.statSync(catalogFile()); return `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`; }
+  catch { return undefined; }
+};
+let menuCatalog: { file: string; revision: number; stamp: string | undefined; items: InstalledExtension[] } | undefined;
 function read(): InstalledExtension[] {
   try {
     const saved: unknown = JSON.parse(fs.readFileSync(catalogFile(), 'utf8'));
     if (!Array.isArray(saved)) return [];
     const seen = new Set<string>();
-    return saved.flatMap((value: unknown) => {
+    const items = saved.flatMap((value: unknown) => {
       if (!value || typeof value !== 'object') return [];
       const item = value as InstalledExtension;
       const validList = (list: unknown) =>
@@ -120,6 +125,8 @@ function read(): InstalledExtension[] {
         },
       ];
     });
+    menuCatalog = { file: catalogFile(), revision: catalogRevision, stamp: catalogStamp(), items: items.map(item => ({ ...item, profiles: [...item.profiles], excluded: [...item.excluded] })) };
+    return items;
   } catch {
     return [];
   }
@@ -1034,7 +1041,10 @@ export function extensionMenu(
   const current =
     getExtensionProfile(profileId || active.get(owner.id) || '') ||
     getExtensionProfiles().find((profile) => profile.owner === owner);
-  const items = read().filter(item => !extensionId || item.id === extensionId);
+  // Lifecycle reads populate this snapshot; mutations invalidate it by revision.
+  const catalog = menuCatalog?.stamp !== undefined && menuCatalog.revision === catalogRevision && menuCatalog.file === catalogFile() && menuCatalog.stamp === catalogStamp()
+    ? menuCatalog.items : read();
+  const items = catalog.filter(item => !extensionId || item.id === extensionId);
   const setPolicy = (id: string, patch: Partial<InstalledExtension>) =>
     change(async () => {
       save(

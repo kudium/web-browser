@@ -4,13 +4,14 @@ import { SidebarPanelHost } from './SidebarPanelHost';
 export { focusSidebarPanel as focusAssistantPanel } from './SidebarPanelHost';
 
 export type AssistantPanel =
-  'assistant' | 'notes' | 'activity' | 'tasks' | 'developer';
+  'assistant' | 'notes' | 'activity' | 'tasks' | 'developer' | 'email';
 export const ASSISTANT_PANEL_NAMES: Record<AssistantPanel, string> = {
   assistant: 'Chat',
   notes: 'Notes',
   activity: 'Activity',
   tasks: 'Tasks',
   developer: 'Developer',
+  email: 'Email',
 };
 function preference(panel: AssistantPanel, open: boolean) {
   try {

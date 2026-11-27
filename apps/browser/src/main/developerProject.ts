@@ -201,7 +201,7 @@ export async function projectAction(
       const permissionDenied = ['EPERM', 'EACCES'].includes((reason as NodeJS.ErrnoException).code || '');
       project.instructionsNotice = permissionDenied
         ? 'Project linked. Kudium could not update its AI instruction files because folder access is blocked. Check folder permissions or turn off Project browser instructions in AI settings.'
-        : 'Project linked. Its AI instruction files could not be updated. Check BROWSER.md and AGENTS.md, or turn off Project browser instructions in AI settings.';
+        : 'Project linked. Its AI instruction files could not be updated. Check kudium.workspace.json and AGENTS.md, or turn off Project browser instructions in AI settings.';
     }
   }
   if (['get', 'link', 'unlink'].includes(action)) return project;

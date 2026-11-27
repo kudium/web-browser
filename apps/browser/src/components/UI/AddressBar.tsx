@@ -1,3 +1,5 @@
+import { PageTranslationButton } from './PageTranslationButton';
+import type { BrowserState } from '../../browser/contracts';
 import { matchNavigationTabs, navigationSuggestionTitle } from '../../utils/navigationSuggestions';
 import { cachedSearchEngines } from '../../utils/navigation';
 import { matchSearchEngines, searchUrl, validateSearchEngines, type SearchEngine } from '../../browser/searchEngines';
@@ -40,6 +42,8 @@ export function AddressBar({
   navigation,
   groupBadge,
   mediaControl,
+  translation,
+  onTranslationAction,
   suggestionTabs = [],
   onSuggestionTab,
   onSuggestionNavigate,
@@ -75,6 +79,8 @@ export function AddressBar({
   navigation?: ReactNode;
   groupBadge?: ReactNode;
   mediaControl?: ReactNode;
+  translation?: BrowserState['translation'];
+  onTranslationAction?: (action: 'page-translate' | 'page-translation-original' | 'page-translation-always' | 'page-translation-target', target?: string) => void;
 }) {
   const anchor = useRef<HTMLDivElement>(null);
   const extensionsId = useId();
@@ -191,6 +197,7 @@ export function AddressBar({
           autoComplete="off"
           spellCheck={false}
         />
+        {onTranslationAction && <PageTranslationButton state={translation} action={onTranslationAction} />}
         {mediaControl}
         <ChromeIconButton
           icon={Link}

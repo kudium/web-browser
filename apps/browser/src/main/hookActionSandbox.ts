@@ -117,6 +117,7 @@ export async function runActionSandbox(
             personalData: Object.freeze({fill: () => emit('personalData.fill'), saveForm: () => emit('personalData.saveForm'), request: options => request('personalData', options)}),
             input: Object.freeze({request: options => request('input', options)}),
             ai: Object.freeze({compose: prompt => emit('ai.compose', prompt)}),
+            todos: Object.freeze({create: input => emit('todos.create', input)}),
             notes: Object.freeze({create: input => emit('notes.create', input)}),
             activity: Object.freeze({create: input => emit('activity.create', input)})
           });

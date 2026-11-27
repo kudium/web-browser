@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { AIDialogs } from '../main/aiDialogs';
+import { AIDialogs, AIDepartureBlockedError } from '../main/aiDialogs';
 
 beforeAll(() => {
   Object.defineProperty(AbortSignal.prototype, 'throwIfAborted', {
@@ -288,7 +288,7 @@ it('authorizes one beforeunload event only for the approved source page', async 
       contents.emit('will-prevent-unload', { preventDefault: allow });
       contents.emit('will-prevent-unload', { preventDefault: second });
     },
-    { beforeUnloadURL: 'https://fixture.test/editor' }
+    { departure: { url: 'https://fixture.test/editor', approved: true } }
   );
   expect(allow).toHaveBeenCalledTimes(1);
   expect(second).not.toHaveBeenCalled();
@@ -301,7 +301,67 @@ it('authorizes one beforeunload event only for the approved source page', async 
       contents.getURL.mockReturnValue('https://human.test');
       contents.emit('will-prevent-unload', { preventDefault: replaced });
     },
-    { beforeUnloadURL: 'https://fixture.test/editor' }
+    { departure: { url: 'https://fixture.test/editor', approved: true } }
   );
   expect(replaced).not.toHaveBeenCalled();
+});
+
+it('runs a navigation lease without attaching a page protocol session', async () => {
+  const contents = page();
+  const attach = jest.spyOn(contents.debugger, 'attach');
+  const dialogs = new AIDialogs();
+  await expect(
+    dialogs.perform(contents, new AbortController().signal, async () => 'navigated', {
+      protocol: false,
+    })
+  ).resolves.toBe('navigated');
+  expect(attach).not.toHaveBeenCalled();
+  expect(dialogs.busy()).toBe(false);
+  await expect(
+    dialogs.perform(contents, new AbortController().signal, async () => 'clicked')
+  ).resolves.toBe('clicked');
+  expect(attach).toHaveBeenCalledTimes(1);
+});
+
+it('ends an unapproved departure as soon as the page blocks leaving', async () => {
+  const contents = page();
+  contents.getURL = jest.fn(() => 'https://fixture.test/editor');
+  const dialogs = new AIDialogs();
+  const keep = jest.fn();
+  const pending = dialogs.perform(
+    contents,
+    new AbortController().signal,
+    (signal) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () =>
+          reject(new Error('Stopped. Navigation cancelled.'))
+        );
+        contents.emit('will-prevent-unload', { preventDefault: keep });
+      }),
+    { departure: { url: 'https://fixture.test/editor', approved: false } }
+  );
+  await expect(pending).rejects.toBeInstanceOf(AIDepartureBlockedError);
+  await expect(pending).rejects.toMatchObject({
+    url: 'https://fixture.test/editor',
+  });
+  expect(keep).not.toHaveBeenCalled();
+  expect(contents.listenerCount('will-prevent-unload')).toBe(0);
+  expect(dialogs.busy()).toBe(false);
+});
+
+it('ignores a blocked unload on another page and reports the real failure', async () => {
+  const contents = page();
+  contents.getURL = jest.fn(() => 'https://human.test');
+  const dialogs = new AIDialogs();
+  await expect(
+    dialogs.perform(
+      contents,
+      new AbortController().signal,
+      async () => {
+        contents.emit('will-prevent-unload', { preventDefault: jest.fn() });
+        throw new Error('Navigation failed (-3): ERR_ABORTED');
+      },
+      { departure: { url: 'https://fixture.test/editor', approved: false } }
+    )
+  ).rejects.toThrow('Navigation failed (-3): ERR_ABORTED');
 });

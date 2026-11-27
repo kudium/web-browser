@@ -1,3 +1,4 @@
+import { frameResizeObserver } from '../../utils/frameResizeObserver';
 import { ReactNode, RefObject, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAssistantPanelDocument } from './AssistantPanelContext';
@@ -108,7 +109,7 @@ export function AIComposerSuggestions({
     position();
     const observer =
       typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(position)
+        ? frameResizeObserver(position, panelWindow)
         : undefined;
     observer?.observe(textarea);
     panelWindow.addEventListener('resize', position);

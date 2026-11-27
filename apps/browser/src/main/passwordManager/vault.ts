@@ -1,3 +1,5 @@
+import { todosChanged } from '../todoEvents';
+import { validateTodo } from '../../browser/todos';
 import { autofillMetadata, AutofillMetadataCache } from './autofillMetadata';
 import { Worker } from 'worker_threads';
 import {
@@ -549,6 +551,7 @@ export class PasswordVault {
             );
           });
         this.changed();
+        if (note.todo || existing?.noteType === 'todo') todosChanged();
         return note.id;
       }
     }
@@ -581,6 +584,7 @@ export class PasswordVault {
       asRead: input.asRead !== false,
       scope,
       notes: bounded(input.notes || '', 100000),
+      ...(input.todo === undefined ? {} : { todo: validateTodo(input.todo) }),
       source: input.source
         ? {
             label: bounded(input.source.label, 200),
@@ -664,6 +668,7 @@ export class PasswordVault {
           this.ordinaryNotes.load().filter((note) => note.id !== item.id),
         );
     }
+    if (item.todo) todosChanged();
     return item.id;
   }
 
@@ -926,6 +931,7 @@ export class PasswordVault {
           return JSON.stringify([
             item.title,
             item.notes || '',
+            item.todo || null,
             item.scope || '',
           ]);
         }),
@@ -935,6 +941,7 @@ export class PasswordVault {
           const signature = JSON.stringify([
             note.title,
             note.notes,
+            note.todo || null,
             note.scope || '',
           ]);
           if (signatures.has(signature)) return false;
@@ -970,6 +977,7 @@ export class PasswordVault {
       if (ordinary.length)
         this.ordinaryNotes.save([...this.ordinaryNotes.load(), ...ordinary]);
       this.changed();
+      if (incoming.some(note => note.todo)) todosChanged();
       return incoming.length;
     }
     const data = this.requireData();
@@ -1024,6 +1032,7 @@ export class PasswordVault {
       }),
     );
     this.changed();
+    if (notes.some(note => note.scope === scope && note.todo)) todosChanged();
   }
 
   migrateOrdinaryNotes() {
@@ -1109,6 +1118,7 @@ export class PasswordVault {
             .map((item) => (item.id === id ? next : item)),
         );
       this.changed();
+      if (note.todo) todosChanged();
       return;
     }
     const data = this.requireData();
@@ -1238,6 +1248,7 @@ export class PasswordVault {
           this.ordinaryNotes.load().filter((item) => item.id !== id),
         );
       this.changed();
+      if (note.noteType === 'todo') todosChanged();
       return;
     }
     const data = this.requireData();

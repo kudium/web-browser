@@ -1,3 +1,6 @@
+import { SuggestionsWidget } from '../../UI/SuggestionsWidget';
+import { openTodoNote } from '../../UI/noteNavigation';
+import { frameResizeObserver } from '../../../utils/frameResizeObserver';
 import { usePanelDock } from '../../../utils/hooks/usePanelDock';
 import { PageDevToolsFrame } from '../../UI/PageDevToolsFrame';
 import { COLLECTION_DRAG_MIME, reorderCollections } from '../../../utils/collectionOrder';
@@ -47,6 +50,7 @@ import {
   Code2,
   StickyNote,
   Bell,
+  Mail,
   Brush,
   ArrowDownToLine,
   ChevronDown,
@@ -73,7 +77,7 @@ import { SpaceSettingsForm } from '../../UI/SpaceSettingsForm';
 import { EmptySpaceWelcome } from '../../UI/EmptySpaceWelcome';
 import { BrowserWelcome } from '../../UI/BrowserWelcome';
 import { AccountSyncPublisher } from '../../UI/AccountSyncPublisher';
-import { BrowserRecommendations } from '../../UI/BrowserRecommendations';
+import { ActionSuggestions } from '../../UI/ActionSuggestions';
 import { TabSwitcher } from '../../UI/TabSwitcher';
 import { useTabSwitcher } from '../../../utils/hooks/useTabSwitcher';
 import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
@@ -245,7 +249,7 @@ export function Main() {
   const aiOpenValue = useRef(aiOpen);
   aiOpenValue.current = aiOpen;
   const aiPane = nativePanelActive ? 'panels' : savedAIPane;
-  const setAIPane = useCallback((pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels') => {
+  const setAIPane = useCallback((pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email' | 'panels') => {
     nativePanelRequested.current = pane === 'panels';
     setNativePanelActive(pane === 'panels');
     setSavedAIPane(pane);
@@ -331,17 +335,19 @@ export function Main() {
         token: (previous?.token || 0) + 1,
       }));
     };
+    const stopOpenNote = window.electron.onOpenSavedNote?.(openTodoNote);
     window.addEventListener('kudiumbrowser-open-note', open);
     return () => {
       active = false;
       stopNotes?.();
+      stopOpenNote?.();
       window.removeEventListener('kudiumbrowser-open-note', open);
     };
   }, []);
   const [developerRequest, setDeveloperRequest] = useState(0);
   const [terminalOpenRequest, setTerminalOpenRequest] = useState(0);
   const [menuPaneRequest, setMenuPaneRequest] = useState<{
-    pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
+    pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email';
     notesScope?: string;
     token: number;
   }>();
@@ -430,6 +436,7 @@ export function Main() {
   }, [active.id]);
   const [spaceFontSize, setSpaceFontSize] = useState(13);
   const [spaceBackground, setSpaceBackground] = useState(true);
+  const [showSpaceSuggestions, setShowSpaceSuggestions] = useState(true);
   const spaceDrag = useRef<string | undefined>(undefined);
   const [spaceDrop, setSpaceDrop] = useState<string>();
   const [translucentChrome, setTranslucentChrome] = useState(true);
@@ -668,7 +675,7 @@ export function Main() {
         token: (previous?.token || 0) + 1,
       }));
       setAIPromptRequest(previous => ({
-        text: 'Fill the form on the attached tab using my saved Personal Data. Inspect the form and choose the saved details that best match this website and its fields. For login forms, check list_saved_logins for this tab first and use fill_saved_login with a matching accountId. For other forms, use list_autofill_data to find saved field keys matching the observed fields and use fill_personal_data with its recordId. Never reveal passwords or secrets in chat. Ask me if the account or a required value is unclear. Fill the form without submitting it unless I request submission.\n\nAdditional instructions: ',
+        text: 'Fill this form with my saved Personal Data. Ask me if anything is missing or unclear, and securely save any new details I provide for next time. Don’t submit the form.',
         append: true,
         token: (previous?.token || 0) + 1,
       }));
@@ -1114,7 +1121,7 @@ export function Main() {
       reveal();
       const list = tab.closest('.horizontal-tabs');
       if (list) {
-        const observer = new ResizeObserver(reveal);
+        const observer = frameResizeObserver(reveal);
         observer.observe(list);
         observers.push(observer);
       }
@@ -1292,7 +1299,7 @@ export function Main() {
   const showFooterMenu = async (spaceId?: string) => {
     const target = spaces.find((space) => space.id === spaceId) || active;
     const choice = await browser.nativeMenu(
-      spaceFooterMenu(spaces, sidebarPage, compact)
+      spaceFooterMenu(spaces, sidebarPage, compact, showSpaceSuggestions)
     );
     if (!choice) return;
     if (choice.startsWith('space:')) {
@@ -1303,6 +1310,9 @@ export function Main() {
     else if (choice === 'system:history') activateSidebarPage(HISTORY_PAGE);
     else if (choice === 'system:archive') activateSidebarPage(ARCHIVE_PAGE);
     else if (choice === 'sidebar-mode') setCompact(!compact);
+    else if (choice === 'suggestions-toggle') {
+      await browser.preferences('update', {showSpaceSuggestions: !showSpaceSuggestions});
+    }
     else if (choice === 'sidebar-hide') setSidebarHidden(true);
     else if (choice === 'settings') await browser.preferences('open');
     else {
@@ -1462,7 +1472,6 @@ export function Main() {
   const overlayOpen =
     !!tabSwitcher.shown ||
     !!editingGroup ||
-    siteSettingsOpen ||
     !!pageCapture ||
     paletteOpen ||
     spaceDialog ||
@@ -1506,6 +1515,7 @@ export function Main() {
       translucentChrome?: boolean;
       spaceFontSize?: number;
       spaceBackground?: boolean;
+      showSpaceSuggestions?: boolean;
       translucentAI?: boolean;
       showExtensionIcons?: boolean;
       tabOverflowMode?: 'dropdown' | 'scroll';
@@ -1539,6 +1549,7 @@ export function Main() {
       setExtensionToolbarOrder(preferences.extensionToolbarOrder ?? null);
       setSpaceFontSize(preferences.spaceFontSize || 13);
       setSpaceBackground(preferences.spaceBackground !== false);
+      setShowSpaceSuggestions(preferences.showSpaceSuggestions !== false);
       setTranslucentChrome(preferences.translucentChrome !== false);
       setTranslucentAI(preferences.translucentAI === true);
       setSmartLabelsEnabled(preferences.smartTabLabels !== false);
@@ -1831,7 +1842,7 @@ export function Main() {
             })),
       });
     };
-    const observer = new ResizeObserver(sync);
+    const observer = frameResizeObserver(sync);
     observer.observe(element);
     window.addEventListener('resize', sync);
     sync();
@@ -2827,7 +2838,7 @@ export function Main() {
       ariaExpanded =
         preview.target?.kind === 'session' && preview.target.id === item.id;
     return (
-      <ContextMenu.Root key={item.id} onOpenChange={setMenuOpen}>
+      <ContextMenu.Root key={item.id} menu={() => renderGroupMenu(item)} onOpenChange={setMenuOpen}>
         <div
           className="sidebar-group"
           data-folder-view={folderView || undefined}
@@ -3144,7 +3155,6 @@ export function Main() {
             </div>
           )}
         </div>
-        {renderGroupMenu(item)}
       </ContextMenu.Root>
     );
   };
@@ -3230,6 +3240,13 @@ export function Main() {
         onClick={() => toggleSidebarPane('activity')}
       />
       <ChromeIconButton
+        icon={Mail}
+        className="ai-toolbar-toggle"
+        label="Toggle Email sidebar"
+        aria-expanded={aiOpen && aiPane === 'email'}
+        onClick={() => toggleSidebarPane('email')}
+      />
+      <ChromeIconButton
         icon={StickyNote}
         className="ai-toolbar-toggle notes-toolbar-button"
         label={
@@ -3290,6 +3307,8 @@ export function Main() {
       onNewGroup={value => { try { const destination=commandDestination(AppManager.getAll().filter(tab=>!lockedGroup(tab)), selected, resolveAddress(value), true, active.id); if(destination.app){AppManager.add(destination.app);select(destination.app);}setEditingAddress(false); } catch(error){setMoveMessage(String(error));} }}
       onMoreActions={text=>{setPaletteQuery(text);setPaletteOpen(true);}}
       placement={addressBarPlacement}
+      translation={state?.translation}
+      onTranslationAction={(action, translationTarget) => { if (selected) browser.command({id: selected.id, action, translationTarget}); }}
       themeColor={state?.themeColor}
       mediaControl={
         <PictureInPictureButton
@@ -3851,7 +3870,7 @@ export function Main() {
             }
             const TabLabel = renaming ? 'div' : 'button';
             return (
-              <ContextMenu.Root key={item.id} onOpenChange={setMenuOpen}>
+              <ContextMenu.Root key={item.id} menu={() => renderTabMenu(item, side)} onOpenChange={setMenuOpen}>
                 <ContextMenu.Trigger>
                   <div
                     className={`horizontal-tab ${
@@ -3971,7 +3990,6 @@ export function Main() {
                     </button>
                   </div>
                 </ContextMenu.Trigger>
-                {renderTabMenu(item, side)}
               </ContextMenu.Root>
             );
           })}
@@ -4429,7 +4447,113 @@ export function Main() {
                             finishDrag();
                           }}
                         >
-                          <ContextMenu.Root onOpenChange={setMenuOpen}>
+                          <ContextMenu.Root menu={() => (
+                            <ContextMenu.Content>
+                              {[
+                                'Copy all links',
+                                'Copy all links as Markdown',
+                              ].map((label, index) => (
+                                <ContextMenu.Item
+                                  key={label}
+                                  disabled={
+                                    !folderLinks(
+                                      appList.filter(
+                                        (item) => !lockedGroup(item)
+                                      ),
+                                      active.id,
+                                      folder.id
+                                    )
+                                  }
+                                  onSelect={() => {
+                                    navigator.clipboard
+                                      .writeText(
+                                        folderLinks(
+                                          appList.filter(
+                                            (item) => !lockedGroup(item)
+                                          ),
+                                          active.id,
+                                          folder.id,
+                                          index === 1
+                                        )
+                                      )
+                                      .then(() =>
+                                        setFolderFeedback({
+                                          id: folder.id,
+                                          text: 'Links copied',
+                                        })
+                                      )
+                                      .catch(() =>
+                                        setFolderFeedback({
+                                          id: folder.id,
+                                          text: 'Could not copy links. Try again.',
+                                        })
+                                      );
+                                  }}
+                                >
+                                  {label}
+                                </ContextMenu.Item>
+                              ))}
+                              <ContextMenu.Sub>
+                                <ContextMenu.SubTrigger>
+                                  Move to space
+                                </ContextMenu.SubTrigger>
+                                <ContextMenu.SubContent>
+                                  {spaces
+                                    .filter((space) => space.id !== active.id)
+                                    .map((space) => (
+                                      <ContextMenu.Item
+                                        key={space.id}
+                                        onSelect={() => {
+                                          const moved = moveFolder(
+                                            appList,
+                                            spaces,
+                                            active.id,
+                                            folder.id,
+                                            space.id
+                                          );
+                                          AppManager.set(moved.apps);
+                                          SpaceManager.set(moved.spaces);
+                                        }}
+                                      >
+                                        {space.name}
+                                      </ContextMenu.Item>
+                                    ))}
+                                  {spaces.length < 2 && (
+                                    <ContextMenu.Item disabled>
+                                      No other spaces
+                                    </ContextMenu.Item>
+                                  )}
+                                </ContextMenu.SubContent>
+                              </ContextMenu.Sub>
+                              <ContextMenu.Separator />
+                              <ContextMenu.Item
+                                onSelect={() => {
+                                  setEditingFolder(folder.id);
+                                  setFolderName(folder.name);
+                                  setFolderIcon({
+                                    emoji: folder.iconEmoji || '',
+                                    image: folder.iconImage || '',
+                                    focusColor: folder.focusColor,
+                                  });
+                                  setFolderDialog(true);
+                                }}
+                              >
+                                Manage collection…
+                              </ContextMenu.Item>
+                              <ContextMenu.Item
+                                color="red"
+                                onSelect={() =>
+                                  setDeletingCollection({
+                                    id: folder.id,
+                                    name: folder.name,
+                                    spaceId: active.id,
+                                  })
+                                }
+                              >
+                                Delete collection…
+                              </ContextMenu.Item>
+                            </ContextMenu.Content>
+                          )} onOpenChange={setMenuOpen}>
                             <ContextMenu.Trigger>
                               <div
                                 className="folder-header"
@@ -4564,111 +4688,7 @@ export function Main() {
                                 </ContextMenu.OptionsTrigger>
                               </div>
                             </ContextMenu.Trigger>
-                            <ContextMenu.Content>
-                              {[
-                                'Copy all links',
-                                'Copy all links as Markdown',
-                              ].map((label, index) => (
-                                <ContextMenu.Item
-                                  key={label}
-                                  disabled={
-                                    !folderLinks(
-                                      appList.filter(
-                                        (item) => !lockedGroup(item)
-                                      ),
-                                      active.id,
-                                      folder.id
-                                    )
-                                  }
-                                  onSelect={() => {
-                                    navigator.clipboard
-                                      .writeText(
-                                        folderLinks(
-                                          appList.filter(
-                                            (item) => !lockedGroup(item)
-                                          ),
-                                          active.id,
-                                          folder.id,
-                                          index === 1
-                                        )
-                                      )
-                                      .then(() =>
-                                        setFolderFeedback({
-                                          id: folder.id,
-                                          text: 'Links copied',
-                                        })
-                                      )
-                                      .catch(() =>
-                                        setFolderFeedback({
-                                          id: folder.id,
-                                          text: 'Could not copy links. Try again.',
-                                        })
-                                      );
-                                  }}
-                                >
-                                  {label}
-                                </ContextMenu.Item>
-                              ))}
-                              <ContextMenu.Sub>
-                                <ContextMenu.SubTrigger>
-                                  Move to space
-                                </ContextMenu.SubTrigger>
-                                <ContextMenu.SubContent>
-                                  {spaces
-                                    .filter((space) => space.id !== active.id)
-                                    .map((space) => (
-                                      <ContextMenu.Item
-                                        key={space.id}
-                                        onSelect={() => {
-                                          const moved = moveFolder(
-                                            appList,
-                                            spaces,
-                                            active.id,
-                                            folder.id,
-                                            space.id
-                                          );
-                                          AppManager.set(moved.apps);
-                                          SpaceManager.set(moved.spaces);
-                                        }}
-                                      >
-                                        {space.name}
-                                      </ContextMenu.Item>
-                                    ))}
-                                  {spaces.length < 2 && (
-                                    <ContextMenu.Item disabled>
-                                      No other spaces
-                                    </ContextMenu.Item>
-                                  )}
-                                </ContextMenu.SubContent>
-                              </ContextMenu.Sub>
-                              <ContextMenu.Separator />
-                              <ContextMenu.Item
-                                onSelect={() => {
-                                  setEditingFolder(folder.id);
-                                  setFolderName(folder.name);
-                                  setFolderIcon({
-                                    emoji: folder.iconEmoji || '',
-                                    image: folder.iconImage || '',
-                                    focusColor: folder.focusColor,
-                                  });
-                                  setFolderDialog(true);
-                                }}
-                              >
-                                Manage collection…
-                              </ContextMenu.Item>
-                              <ContextMenu.Item
-                                color="red"
-                                onSelect={() =>
-                                  setDeletingCollection({
-                                    id: folder.id,
-                                    name: folder.name,
-                                    spaceId: active.id,
-                                  })
-                                }
-                              >
-                                Delete collection…
-                              </ContextMenu.Item>
-                            </ContextMenu.Content>
+
                           </ContextMenu.Root>
                           {folderFeedback?.id === folder.id && (
                             <span
@@ -4847,7 +4867,6 @@ export function Main() {
           )}
         </SidebarPager>
         <AccountSyncPublisher tabs={appList} states={states} />
-        {!windowWorkspace.state()?.private && <BrowserRecommendations onMarketplace={() => openDiscoveryLink('https://browser.kudium.com/hooks')} />}
         <AppUpdateBanner compact={compact} onWhatsNew={openDiscoveryLink} />
         <SidebarMediaWidget
           selectedId={selected?.id}
@@ -4856,6 +4875,7 @@ export function Main() {
           onCommand={(request) => browser.command(request)}
           onSelect={select}
         />
+        {!windowWorkspace.state()?.private && <SuggestionsWidget expanded={showSpaceSuggestions} onHide={() => { void browser.preferences('update',{showSpaceSuggestions:false}).catch(error => setMoveMessage(String(error))); }}><ActionSuggestions scope={selected ? personalDataScope(selected) : undefined} groupId={selected ? groupKey(selected) : undefined} onMarketplace={() => openDiscoveryLink('https://browser.kudium.com/hooks')} /></SuggestionsWidget>}
         <div
           className="sidebar-bottom"
           onContextMenu={(event) => {
@@ -4988,17 +5008,7 @@ export function Main() {
         >
           <div className="sidebar-header-control">
             {' '}
-            <ContextMenu.Root>
-              <ContextMenu.Trigger>
-                <ChromeIconButton
-                  className="sidebar-header-toggle"
-                  icon={sidebarHidden ? PanelLeftOpen : PanelLeftClose}
-                  label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
-                  aria-expanded={!sidebarHidden}
-                  aria-controls="workspace-sidebar"
-                  onClick={() => setSidebarHidden((previous) => !previous)}
-                />
-              </ContextMenu.Trigger>
+            <ContextMenu.Root menu={() => (
               <ContextMenu.Content>
                 <ContextMenu.Item
                   disabled={!sidebarHidden && !compact}
@@ -5019,6 +5029,18 @@ export function Main() {
                   Hidden sidebar
                 </ContextMenu.Item>
               </ContextMenu.Content>
+            )}>
+              <ContextMenu.Trigger>
+                <ChromeIconButton
+                  className="sidebar-header-toggle"
+                  icon={sidebarHidden ? PanelLeftOpen : PanelLeftClose}
+                  label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
+                  aria-expanded={!sidebarHidden}
+                  aria-controls="workspace-sidebar"
+                  onClick={() => setSidebarHidden((previous) => !previous)}
+                />
+              </ContextMenu.Trigger>
+
             </ContextMenu.Root>
           </div>
           {sidebarHidden && (
@@ -5106,7 +5128,7 @@ export function Main() {
               aria-label="Dismiss tab move message"
               onClick={() => setMoveMessage('')}
             >
-              ×
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -5333,7 +5355,7 @@ export function Main() {
                 promptRequest={aiPromptRequest}
                 focusedTabId={selected?.id}
                 onFocusTab={(id) => {
-                  const target = appList.find((item) => item.id === id);
+                  const target = AppManager.getAll().find((item) => item.id === id);
                   if (target) {
                     setDownloadsOpen(false);
                     select(target);

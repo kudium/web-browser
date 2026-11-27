@@ -5,12 +5,14 @@ type AIPagePreferences = {
   open: boolean;
   historyOpen: boolean;
   historyPinned: boolean;
-  pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels';
+  pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email' | 'panels';
   preview: boolean;
   showStats: boolean;
   noteFontSize: number;
   noteWrap: boolean;
   noteOrder: string[];
+  notePins: string[];
+  todayPinned: boolean;
 };
 
 /** Layout preferences only; chats and credentials use main-process storage. */
@@ -22,7 +24,7 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
   const [value, setValue] = useState<AIPagePreferences[K]>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
-      if (key === 'noteOrder')
+      if ((key === 'noteOrder' || key === 'notePins'))
         return Array.isArray(saved) &&
           saved.length <= 10000 &&
           saved.every((id) => typeof id === 'string' && id.length <= 100)
@@ -39,6 +41,7 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
           'developer',
           'notes',
           'activity',
+          'email',
           'panels',
         ].includes(saved)
           ? saved
@@ -64,7 +67,7 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
       if (changed !== storageKey) return;
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
-        if (key === 'noteOrder') {
+        if ((key === 'noteOrder' || key === 'notePins')) {
           if (
             Array.isArray(saved) &&
             saved.length <= 10000 &&
@@ -76,7 +79,7 @@ export function useAIPagePreference<K extends keyof AIPagePreferences>(
             setValue(saved);
         } else if (key === 'pane') {
           if (
-            ['assistant', 'tasks', 'developer', 'notes', 'activity', 'panels'].includes(
+            ['assistant', 'tasks', 'developer', 'notes', 'activity', 'email', 'panels'].includes(
               saved
             )
           )

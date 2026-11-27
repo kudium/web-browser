@@ -5,6 +5,7 @@ import { connect } from "./db";
 import { authConfig } from "./config";
 import { createAuth } from "./auth";
 import { createApp } from "./app";
+import { relayWebSocket } from "./relay/websocket";
 function required(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required`);
@@ -34,14 +35,19 @@ const app = createApp({
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean),
+  // Devices get https://<id>.<RELAY_HOST>/mcp when wildcard DNS exists; the path form always works.
+  relay: { host: process.env.RELAY_HOST },
 });
 const server = Bun.serve({
   port: Number(process.env.PORT ?? 3000),
   fetch(request, server) {
     return app.fetch(request, {
       remoteAddress: server.requestIP(request)?.address,
+      // The relay upgrades device sockets through the server (relay/websocket.ts).
+      server,
     });
   },
+  websocket: relayWebSocket,
   maxRequestBodySize: 12 * 1024 * 1024,
   idleTimeout: 255,
 });

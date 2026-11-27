@@ -5,7 +5,14 @@ import { NativeTooltip, validateTooltip } from '../main/nativeTooltip';
 jest.mock('electron', () => ({
   BrowserWindow: jest.fn(),
   screen: { getDisplayMatching: jest.fn() },
+  nativeTheme: {},
 }));
+jest.mock('../main/nativeGlass', () => ({
+  usesNativeGlass: jest.fn(() => false),
+  nativeGlassSurfaceTokens: '',
+}));
+import { usesNativeGlass } from '../main/nativeGlass';
+
 const request = {
   id: 'chat',
   label: '<b>Chat</b>',
@@ -15,11 +22,13 @@ const request = {
 let owner: any;
 let hint: any;
 beforeEach(() => {
+  (usesNativeGlass as jest.Mock).mockReturnValue(false);
   hint = {
     isDestroyed: () => false,
     hide: jest.fn(),
     destroy: jest.fn(),
     setBounds: jest.fn(),
+    setVibrancy: jest.fn(),
     showInactive: jest.fn(),
     setIgnoreMouseEvents: jest.fn(),
     loadURL: jest.fn(async () => {}),
@@ -111,4 +120,29 @@ it('places a full link URL at the bottom of its own webpage viewport', async () 
   expect(hint.setIgnoreMouseEvents).toHaveBeenCalledWith(true);
   tooltip.hide();
   expect(hint.hide).toHaveBeenCalled();
+});
+
+
+it('uses a single translucent surface for URL previews without a native backdrop', async () => {
+  (usesNativeGlass as jest.Mock).mockReturnValue(true);
+  const tooltip = new NativeTooltip(owner);
+  const footer = { x: 40, y: 100, width: 300, height: 300 };
+  await tooltip.update(request, footer);
+  expect(hint.setVibrancy).not.toHaveBeenCalled();
+  expect(hint.webContents.executeJavaScript.mock.calls[0][0]).toContain('dark footer glass');
+  await tooltip.update(request, footer);
+  expect(hint.setVibrancy).not.toHaveBeenCalled();
+  await tooltip.update(request);
+  expect(hint.setVibrancy).not.toHaveBeenCalled();
+});
+
+it('removes glass when the shared accessibility policy disables it', async () => {
+  (usesNativeGlass as jest.Mock).mockReturnValue(true);
+  const tooltip = new NativeTooltip(owner);
+  const footer = { x: 40, y: 100, width: 300, height: 300 };
+  await tooltip.update(request, footer);
+  (usesNativeGlass as jest.Mock).mockReturnValue(false);
+  await tooltip.update(request, footer);
+  expect(hint.setVibrancy).not.toHaveBeenCalled();
+  expect(hint.webContents.executeJavaScript.mock.calls[1][0]).toContain('"dark footer"');
 });

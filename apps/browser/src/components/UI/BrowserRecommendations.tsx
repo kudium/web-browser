@@ -17,7 +17,6 @@ const recommendations = [
   { id: 'ai', icon: Sparkles, title: 'Meet your browser assistant', description: 'Choose an AI model to help with pages and your workspace.', action: 'Explore Assistant', section: 'ai' },
   { id: 'extensions', icon: Blocks, title: 'Bring your favorite extensions', description: 'Use extensions in selected groups or across your browser.', action: 'Explore extensions', section: 'extensions' },
 ] as const;
-const compactTitles: Record<string, string> = { hooks:'Website hooks', import:'Import browser', sync:'Sync your account', appearance:'Appearance', shortcuts:'Keyboard shortcuts', performance:'Performance', routing:'Link routing', ai:'Browser assistant', extensions:'Extensions' };
 interface RecommendationState { started: number; hiddenUntil: number; done: string[] }
 function read(): RecommendationState {
   const fallback = { started: Date.now(), hiddenUntil: 0, done: [] as string[] };
@@ -34,7 +33,6 @@ function read(): RecommendationState {
 export function BrowserRecommendations({ onMarketplace }: { onMarketplace: () => boolean }) {
   const [state, setState] = useState(read);
   const [now, setNow] = useState(Date.now);
-  const [selectedId, setSelectedId] = useState('');
   const [error, setError] = useState('');
   const syncEligible = useSyncSuggestionEligibility();
   useEffect(() => {
@@ -54,26 +52,23 @@ export function BrowserRecommendations({ onMarketplace }: { onMarketplace: () =>
     setState(next); setNow(Date.now());
   };
   const introduced = Math.min(recommendations.length, 3 + Math.floor(Math.max(0, now - state.started) / day) * 2);
-  const visible = recommendations.slice(0, introduced).filter(item => !state.done.includes(item.id) && (item.id !== 'sync' || syncEligible)).slice(0, 3);
-  const selected = visible.find(item => item.id === selectedId) || visible[0];
-  const stacked = selected ? [selected, ...visible.filter(item => item.id !== selected.id)] : [];
-  if (now < state.hiddenUntil || !visible.length) return null;
+  const item = recommendations.slice(0, introduced).find(item => !state.done.includes(item.id) && (item.id !== 'sync' || syncEligible));
+  if (now < state.hiddenUntil || !item) return null;
   return <section className="browser-recommendations" aria-label="Discover Kudium">
-    <div className="recommendations-heading"><span>Discover Kudium</span><button type="button" title="Hide recommendations for 3 days" onClick={() => save({ ...state, hiddenUntil: Date.now() + 3 * day })}>Later</button></div>
     <div className="recommendation-stack">
-      {stacked.map((item, index) => <article className="onboarding-suggestion recommendation-card" data-front={index === 0 || undefined} key={item.id}>
-        {index > 0 ? <button className="recommendation-select" data-title={item.title} type="button" onClick={() => setSelectedId(item.id)} aria-label={`Show recommendation: ${item.title}`}><item.icon size={16} aria-hidden="true" /><strong>{compactTitles[item.id]}</strong><span aria-hidden="true">›</span></button> : <>
-
+      <article className="onboarding-suggestion recommendation-card" data-front key={item.id}>
         <item.icon size={16} aria-hidden="true" /><div><strong>{item.title}</strong><p>{item.description}</p>
-          <button type="button" onClick={async () => {
+          <div className="recommendation-actions"><button type="button" onClick={async () => {
             try {
               if (item.id === 'hooks') { if (!onMarketplace()) { setError('Select an unlocked tab to explore the marketplace.'); return; } }
               else await browser.preferences('open', { section: item.section });
               setError(''); save({ ...read(), done: [...new Set([...read().done, ...state.done, item.id])] });
             } catch { setError('Could not open this feature. Please try again.'); }
           }}>{item.action}</button>
-        </div></>}
-      </article>)}
+            <button className="recommendation-later" type="button" title="Hide recommendations for 3 days" onClick={() => save({ ...state, hiddenUntil: Date.now() + 3 * day })}>Later</button>
+          </div>
+        </div>
+      </article>
     </div>
     {error && <p role="alert">{error}</p>}
   </section>;

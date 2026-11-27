@@ -7,11 +7,13 @@ import { SearchEngine, defaultSearchEngines } from './searchEngines';
 
 /** Shared, engine-neutral preferences. Add controls to the registry below. */
 export interface BrowserPreferences {
+  pageTranslation: { target: string; always: Record<string, string>; never: string[] };
   setupCompleted: boolean;
   startPage: 'kudium' | 'blank' | 'custom';
   startPageURL: string;
   spaceFontSize: number;
   spaceBackground: boolean;
+  showSpaceSuggestions: boolean;
   linkRoutingRules: LinkRoutingRule[];
   systemSpaceRetentionDays: number;
   advanced: AdvancedPreferences;
@@ -20,6 +22,8 @@ export interface BrowserPreferences {
   shareUsageDiagnostics: boolean;
   usageDiagnosticsConsentVersion: number;
   writeBrowserInstructions: boolean;
+  /** Days of AI run audit log (JSON lines) to keep before pruning. */
+  auditRetentionDays: number;
   tabDisplayMode: 'horizontal' | 'horizontal-only' | 'hover' | 'click';
   tabOverflowMode: 'dropdown' | 'scroll';
   folderHoverPreviews: boolean;
@@ -62,10 +66,12 @@ export interface BrowserPreferences {
   downloadDirectory: string;
 }
 export const defaultPreferences: BrowserPreferences = {
+  pageTranslation: { target: 'en', always: {}, never: [] },
   setupCompleted: false,
   startPage:'kudium',
   startPageURL:'',
   spaceFontSize:13,
+  showSpaceSuggestions: true,
   spaceBackground:true,
   linkRoutingRules: [],
   systemSpaceRetentionDays: 14,
@@ -75,6 +81,7 @@ export const defaultPreferences: BrowserPreferences = {
   shareUsageDiagnostics: false,
   usageDiagnosticsConsentVersion: 0,
   writeBrowserInstructions: true,
+  auditRetentionDays: 90,
   tabDisplayMode: 'horizontal',
   tabOverflowMode: 'scroll',
   folderHoverPreviews: true,
@@ -130,6 +137,7 @@ export const preferenceControls: PreferenceControl[] = [
   {key:'startPage',section:'appearance',title:'Start page',description:'Shown when no group is active, including after unloading all groups.',kind:'select',options:[{label:'Kudium',value:'kudium'},{label:'Blank',value:'blank'},{label:'Custom website',value:'custom'}]},
   {key:'startPageURL',section:'appearance',title:'Custom start page URL',description:'An HTTP or HTTPS address. Used when Start page is set to Custom website.',kind:'text'},
   {key:'spaceFontSize',section:'appearance',title:'Space text size',description:'Size of group names and tabs in the space sidebar.',kind:'number',min:11,max:20},
+  {key:'showSpaceSuggestions',section:'appearance',title:'Space suggestions',description:'Show Today tasks and discovery suggestions above the space footer.',kind:'toggle'},
   {key:'spaceBackground',section:'appearance',title:'Space container background',description:'Show the background behind space content. Turn off for a lighter sidebar.',kind:'toggle'},
   {
     key: 'automaticPictureInPicture', section: 'websites',
@@ -319,6 +327,16 @@ export const preferenceControls: PreferenceControl[] = [
     title: 'Low battery alerts',
     description: 'Show a browser toast at 20% battery or below while unplugged. Hook-created toasts remain available.',
     kind: 'toggle',
+  },
+  {
+    key: 'auditRetentionDays',
+    section: 'ai',
+    title: 'Keep the AI run audit log for',
+    description:
+      'Enter 1–3650 days. Each act or run_script run is logged (agent, group, steps, approvals, outcome) and can be exported as JSON lines from External AI.',
+    kind: 'number',
+    min: 1,
+    max: 3650,
   },
   {
     key: 'discardAfterMinutes',

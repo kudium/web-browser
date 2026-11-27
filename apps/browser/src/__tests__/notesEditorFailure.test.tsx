@@ -20,7 +20,7 @@ it('keeps the note draft available when the lazy editor fails', async () => {
     fields: [],
   };
   const request = jest.fn(async ({ action }) =>
-    action === 'notes' ? [item] : action === 'edit' ? item : {}
+    action === 'notes' ? [item] : action === 'todos' ? [] : action === 'edit' ? item : {}
   );
   Object.assign(window, {
     electron: {
@@ -34,6 +34,7 @@ it('keeps the note draft available when the lazy editor fails', async () => {
         <NotesPage />
       </Theme>
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Note history' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Draft' }));
     expect(
       await screen.findByText('Note editor could not be displayed')

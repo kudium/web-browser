@@ -60,6 +60,7 @@ import { registerPrivateBrowserWindow } from './browserWindows';
 import { isSiteDeveloperEditor } from './siteDeveloperWindow';
 import { registerHookLanguage } from './hookLanguage';
 import { registerActivity } from './activity';
+import { registerEmail } from './email';
 import { registerBrowserMigration } from './browserMigration';
 import { registerAppUpdates, startAppUpdates } from './appUpdates';
 import { registerSidebarPanelWindow } from './sidebarPanels';
@@ -583,6 +584,7 @@ registerBrowserMigration(
     isBrowserChrome(contents)
 );
 registerActivity((contents) => isBrowserChrome(contents));
+registerEmail((contents) => isBrowserChrome(contents));
 registerHookLanguage(
   (contents) => isBrowserChrome(contents) || isSiteDeveloperEditor(contents)
 );

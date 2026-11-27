@@ -127,3 +127,11 @@ To disable the browser’s automatic battery reminder, turn off **Preferences �
 Enable **Browser toasts** in the Activity page’s customization settings to show new unread activities in the reusable toast stack. It is off by default and independent of notification sounds and system notifications. Activities linking to a note or page include the corresponding **Open note** or **Open page** action.
 
 Closing a toast, pressing Escape, choosing Dismiss all, or using its action marks the associated activity read and updates the Activity list and unread count. Automatic expiry, window closure, disabling alerts and group locking do not mark activities read. Reading or deleting an activity elsewhere removes its toast; locked groups never show activity toasts.
+
+## Todo tasks and quick suggestions
+
+Page hooks can use `context.todos.create` for saved action items and
+`context.suggestions` for temporary actions in the bottom sidebar. Declarative
+hook actions support `api.todos.create`. See
+[todo and suggestion APIs](specs/todos-and-suggestions.md) for lifecycle, scoping,
+limits, examples and the distinction between a saved task and a live suggestion.

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Dialog, TextField, Text } from '@radix-ui/themes';
-import { Plus, RotateCcw, Search, Upload, Download } from 'lucide-react';
+import { Plus, RotateCcw, Search, Upload, Download, X } from 'lucide-react';
 import { browser } from '../../../browser/client';
 import {
   shortcutActions,
@@ -274,7 +274,7 @@ export function KeyboardShortcuts({
                       )
                     }
                   >
-                    ×
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </span>
               ))}

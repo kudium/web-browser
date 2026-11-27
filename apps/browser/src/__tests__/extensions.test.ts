@@ -46,6 +46,7 @@ jest.mock('fs', () => {
   let saved = '[]';
   return {
     readFileSync: jest.fn(() => saved),
+    statSync: jest.fn(),
     mkdirSync: jest.fn(),
     writeFileSync: jest.fn((_file: string, value: string) => {
       saved = value;
@@ -606,4 +607,15 @@ it('accepts only exact secure store detail URLs for the native install action', 
   await expect(installStoreExtension({} as any, {} as any)).rejects.toThrow(
     'no longer available'
   );
+});
+
+it('reuses the validated extension catalog when opening an unchanged menu', () => {
+  (fs.statSync as jest.Mock).mockReturnValue({ mtimeMs: 1, ctimeMs: 1, size: 2 });
+  extensionMenu({ id: 1 } as any);
+  const reads = jest.spyOn(fs, 'readFileSync');
+  reads.mockClear();
+  extensionMenu({ id: 1 } as any);
+  extensionMenu({ id: 1 } as any);
+  expect(reads.mock.calls.filter(([file]) => String(file).endsWith('/extensions.json'))).toHaveLength(0);
+  reads.mockRestore();
 });

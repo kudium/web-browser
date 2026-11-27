@@ -80,6 +80,8 @@ export function moveTab(
           sessionIconEmoji: target?.sessionIconEmoji,
           sessionIconImage: target?.sessionIconImage,
           sessionHomeURL: target?.sessionHomeURL,
+          browserEmail: target?.browserEmail,
+          browserEmails: target?.browserEmails,
           favorite: target?.favorite || false,
           pinned: target ? target.pinned : true,
         }
@@ -111,6 +113,8 @@ export function duplicateGroup(apps: IApp[], sourceId: string): IApp[] {
     sessionId,
     sessionName,
     sessionProfileId: undefined,
+    browserEmail: undefined,
+    browserEmails: undefined,
     protectionGroupId: undefined,
     extensionInstallTarget: undefined,
     restorationId: undefined,

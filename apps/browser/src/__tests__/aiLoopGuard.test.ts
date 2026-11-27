@@ -23,3 +23,14 @@ it('allows changed reads and resets after genuine browser actions', () => {
   for (let i = 0; i < 5; i++)
     expect(() => guard.check(message('scroll'))).not.toThrow();
 });
+it('names the next tier up when it stops a loop', () => {
+  const assist = new AILoopGuard('assist');
+  expect(assist.message()).toContain('Apple local AI');
+  expect(assist.message()).toContain('Install a local model');
+  expect(new AILoopGuard('control').message()).toContain('cloud model');
+  expect(new AILoopGuard('cloud').message()).toContain('more capable model');
+  const guard = new AILoopGuard('control');
+  guard.check(message('list_tabs'));
+  guard.check(message('list_tabs'));
+  expect(() => guard.check(message('list_tabs'))).toThrow('cloud model');
+});

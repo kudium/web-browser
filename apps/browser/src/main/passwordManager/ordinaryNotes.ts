@@ -109,6 +109,7 @@ export function ordinaryNotesStorage(file: string): OrdinaryNotesStorage {
           old &&
           old.title === note.title &&
           old.notes === note.notes &&
+          JSON.stringify(old.todo) === JSON.stringify(note.todo) &&
           old.scope === note.scope &&
           old.allowAI === note.allowAI &&
           old.asRead === note.asRead

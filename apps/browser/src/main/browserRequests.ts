@@ -1,4 +1,5 @@
 import { validDeveloperConfig } from '../browser/siteDeveloper';
+import { parseEmailBrowserInbox } from '../browser/email';
 import type { BrowserCommand, BrowserLayout } from '../browser/contracts';
 
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -31,6 +32,8 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
         ids.has(item.id) ||
         !text(item.url, 65536) ||
         !text(item.name, 65536) ||
+        (item.browserEmail !== undefined && !parseEmailBrowserInbox(item.browserEmail)) ||
+        (item.browserEmails !== undefined && (!Array.isArray(item.browserEmails) || item.browserEmails.length > 20 || !item.browserEmails.every(parseEmailBrowserInbox))) ||
         (item.groupDisplay !== undefined &&
           !['folder', 'stack'].includes(item.groupDisplay as string)) ||
         (item.sessionMode !== undefined &&
@@ -120,6 +123,10 @@ const commands = new Set<BrowserCommand['action']>([
   'settings',
   'extensions',
   'menu',
+  'page-translate',
+  'page-translation-original',
+  'page-translation-always',
+  'page-translation-target',
   'page-devtools-panel',
   'page-devtools-right',
   'page-devtools-bottom',
@@ -162,6 +169,7 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
     text(value.id) &&
     typeof value.action === 'string' &&
     commands.has(value.action as BrowserCommand['action']) &&
+    (value.action !== 'page-translation-target' || (typeof value.translationTarget === 'string' && /^[a-z]{2}$/.test(value.translationTarget))) &&
     (value.action !== 'page-devtools-resize' || (typeof value.devToolsFraction === 'number' && Number.isFinite(value.devToolsFraction) && value.devToolsFraction >= .2 && value.devToolsFraction <= .75)) &&
     (value.action !== 'extension-group-result' || (text(value.mutationId, 100) && optionalText(value.error))) &&
     (value.url === undefined || text(value.url, 65536)) &&

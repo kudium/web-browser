@@ -585,3 +585,55 @@ it.each(['empty', 'ambiguous', 'matching'])('offers form filling only for usable
     if (mode === 'empty') expect(panel.querySelector('[aria-label^="Fill Email:"]')).toBeNull();
   } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
 });
+
+it.each(['pick', 'save', 'fill', 'save-form', 'save-page'] as const)('native Form menu %s works without an automatic picker', async action => {
+  let shadow!: ShadowRoot;
+  const original = HTMLElement.prototype.attachShadow;
+  const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function(this: HTMLElement, init) {
+    shadow = original.call(this, init); return shadow;
+  });
+  const listeners = new Map<string, Function>();
+  const record = { id: 'profile', kind: 'profile', title: 'Personal profile', fields: [{ name: 'Email', aliases: ['email'], value: 'saved@example.com' }] };
+  const bridge = { on: jest.fn((channel, callback) => listeners.set(channel, callback)), invoke: jest.fn(async channel => {
+    if (channel === 'personal-data-autofill-enabled') return true;
+    if (channel === 'personal-data-autofill-focus') return false;
+    if (channel === 'personal-data-autofill-records' || channel === 'personal-data-autofill-browse') return [record];
+    if (channel === 'personal-data-autofill-save-field') return { saved: true };
+    return null;
+  }) };
+  document.body.innerHTML = `<form><input name="${action === 'fill' ? 'email' : 'unusual-field'}" value="my value"></form>`;
+  if (action === 'save-form' || action === 'save-page') document.querySelector('form')!.insertAdjacentHTML('beforeend', '<input type="email" name="email" value="work@example.com"><input type="password" value="example-secret"><input name="empty"><input type="hidden" name="token" value="exclude">');
+  if (action === 'save-page') document.body.insertAdjacentHTML('beforeend', '<form><input name="Note" value="Second form"></form>');
+  const input = document.querySelector('input')!;
+  document.querySelectorAll('input').forEach(field => { field.getClientRects = () => [{}] as any; });
+  input.getClientRects = () => [{}] as any;
+  const hitTest = Object.getOwnPropertyDescriptor(document, 'elementFromPoint');
+  Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => action === 'save-page' ? document.body : input });
+  const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+  await settle();
+  expect(shadow).toBeUndefined();
+  listeners.get('personal-data-autofill-command')!(null, { action, x: 20, y: 20 });
+  await settle(); await settle();
+  if (action === 'pick') {
+    expect(shadow.querySelector('.saved-search')).not.toBeNull();
+    expect(shadow.textContent).toContain('saved@example.com');
+    expect(input.value).toBe('my value');
+  } else if (action === 'save') {
+    expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-save-field', expect.objectContaining({ value: 'my value' }));
+    expect(bridge.invoke).not.toHaveBeenCalledWith('personal-data-autofill-records');
+    expect(shadow.textContent).toContain('Input saved for this website.');
+  } else if (action === 'save-form' || action === 'save-page') {
+    expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-save-field', { fields: [
+      { name: 'unusual-field', value: 'my value', secret: false, aliases: ['unusual-field'] },
+      { name: 'Email', value: 'work@example.com', secret: false, aliases: ['email'] },
+      { name: 'Password', value: 'example-secret', secret: true, aliases: [] },
+      ...(action === 'save-page' ? [{ name: 'Note', value: 'Second form', secret: false, aliases: ['Note'] }] : []),
+    ] });
+    expect(shadow.textContent).toContain('Form values saved for this website.');
+  } else {
+    expect(input.value).toBe('saved@example.com');
+  }
+  dispose(); attach.mockRestore();
+  if (hitTest) Object.defineProperty(document, 'elementFromPoint', hitTest);
+  else delete (document as any).elementFromPoint;
+});

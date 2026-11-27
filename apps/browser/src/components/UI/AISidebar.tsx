@@ -32,6 +32,8 @@ import { useChatAutoScroll } from '../../utils/hooks/useChatAutoScroll';
 import { NotesPage } from './NotesPage';
 import { RenderErrorBoundary } from './RenderErrorBoundary';
 import { ActivityPage } from './ActivityPage';
+import { EmailPage } from './EmailPage';
+import { normalizeHostname } from '../../browser/email';
 import { AssistantPanelHost, focusAssistantPanel } from './AssistantPanelHost';
 import { SidebarPanels } from './SidebarPanels';
 import { EMPTY_SIDEBAR_PANELS, SidebarPanelState } from '../../browser/sidebarPanels';
@@ -104,8 +106,8 @@ export function AISidebar({
   onSidebarClose,
 }: {
   sidebarPanels?: SidebarPanelState;
-  sidebarPane?: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels';
-  onSidebarPaneChange?: (pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'panels') => void;
+  sidebarPane?: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email' | 'panels';
+  onSidebarPaneChange?: (pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email' | 'panels') => void;
   onSidebarClose?: () => void;
   visible?: boolean;
   promptRequest?: { text: string; token: number; append?: boolean };
@@ -115,7 +117,7 @@ export function AISidebar({
   developerRequest?: number;
   terminalOpenRequest?: number;
   menuPaneRequest?: {
-    pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity';
+    pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email';
     notesScope?: string;
     token: number;
   };
@@ -999,6 +1001,9 @@ export function AISidebar({
     return undefined;
   }, [contextRequest, attaching, addContext, changeScope, setPane]);
   const activeContextTabId = focusedTabId || activeTabId;
+  const currentHostname = normalizeHostname(
+    allContextTabs.find((tab) => tab.id === activeContextTabId)?.url
+  );
   const activeContextGroup = groups.find((group) =>
     group.tabs.some((tab) => tab.id === activeContextTabId)
   );
@@ -1357,6 +1362,7 @@ export function AISidebar({
             },
             { id: 'notes', label: 'Notes', enabled: pane !== 'notes' },
             { id: 'activity', label: 'Activity', enabled: pane !== 'activity' },
+            { id: 'email', label: 'Email', enabled: pane !== 'email' },
             ...(sidebarPanels.panels.length ? [{ id: 'panels', label: 'Panels', enabled: pane !== 'panels' }] : []),
             { type: 'separator' },
             { id: 'settings', label: 'AI settings…' },
@@ -1367,7 +1373,7 @@ export function AISidebar({
               choice === 'tasks' ||
               choice === 'developer' ||
               choice === 'notes' ||
-              choice === 'activity' || choice === 'panels'
+              choice === 'activity' || choice === 'email' || choice === 'panels'
             )
               setPane(choice);
             if (choice === 'settings') openSettings();
@@ -1422,6 +1428,18 @@ export function AISidebar({
               requestAnimationFrame(() => taskInput.current?.focus());
             }}
           />
+        </div>
+      </AssistantPanelHost>
+      <AssistantPanelHost panel="email" visible={visible} active={pane === 'email'}>
+        <div
+          className="ai-sidebar-pane ai-email-pane"
+          role="region"
+          id="ai-email-panel"
+          aria-label="Email workspace"
+        >
+          <RenderErrorBoundary label="Email">
+            <EmailPage active currentHostname={currentHostname} onFocusTab={onFocusTab} />
+          </RenderErrorBoundary>
         </div>
       </AssistantPanelHost>
       <AssistantPanelHost panel="notes" visible={visible} active={pane === 'notes'}>

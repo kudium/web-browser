@@ -4,6 +4,12 @@ import { IApp } from '../types';
 export const loginProfileKey = (tab: IApp) =>
   tab.sessionProfileId || tab.sessionId || 'legacy';
 export const groupKey = (tab: IApp) => tab.sessionId || 'legacy';
+/** A disposable session: fresh in-memory storage that never touches the user's cookies. */
+export const DISPOSABLE_PROFILE_PREFIX = 'disposable:';
+export const isDisposableProfile = (profile: string) => profile.startsWith(DISPOSABLE_PROFILE_PREFIX);
+/** Electron partition for a login profile; disposable profiles are not persisted. */
+export const profilePartition = (profile: string) =>
+  isDisposableProfile(profile) ? `kudiumbrowser-${profile}` : `persist:kudiumbrowser-${profile}`;
 export function isGroupHomeTab(tab: IApp): boolean {
   if (!tab.sessionHomeURL) return false;
   try {

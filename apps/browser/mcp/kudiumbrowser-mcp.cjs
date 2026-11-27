@@ -19,10 +19,14 @@ try {
   if (!file) throw new Error('Pass the path to your Kudium Browser MCP configuration JSON file.');
   connection = JSON.parse(fs.readFileSync(file, 'utf8')).mcpServers?.kudiumbrowser;
   const url = new URL(connection?.url);
-  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.pathname !== '/mcp' || url.username || url.password || url.search || url.hash) throw new Error('Only a local Kudium Browser endpoint is allowed.');
+  // Plain http on the loopback address, or Kudium's local https (name-constrained CA, trusted via NODE_EXTRA_CA_CERTS).
+  const local = (url.protocol === 'http:' && url.hostname === '127.0.0.1') || (url.protocol === 'https:' && ['localhost', '127.0.0.1'].includes(url.hostname));
+  if (!local || url.pathname !== '/mcp' || url.username || url.password || url.search || url.hash) throw new Error('Only a local Kudium Browser endpoint is allowed.');
   if (!/^Bearer [a-f0-9]{64}$/.test(connection?.headers?.Authorization || '')) throw new Error('A valid local connection token is required.');
 } catch (error) { process.stderr.write(`${error.message}\n`); process.exit(1); }
 const pending = new Map();
+// Kudium keeps one MCP session per client; the id arrives on initialize and travels on every later request.
+let sessionId;
 const output = (value) => process.stdout.write(`${JSON.stringify(value)}\n`);
 const input = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 input.on('line', async (line) => {
@@ -37,9 +41,12 @@ input.on('line', async (line) => {
     if (request.id !== undefined) pending.set(request.id, controller);
     const response = await fetch(connection.url, {
       method: 'POST', redirect: 'error', signal: controller.signal,
-      headers: { ...connection.headers, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+      headers: { ...connection.headers, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', ...(sessionId ? { 'Mcp-Session-Id': sessionId } : {}) },
       body: JSON.stringify(request),
     });
+    const issued = response.headers.get('mcp-session-id');
+    if (issued) sessionId = issued;
+    if (response.status === 404 && sessionId) sessionId = undefined;
     if (response.status === 202 || request.id === undefined) return;
     if (!response.ok) throw new Error(`Kudium Browser returned ${response.status}. Check that external control is enabled and the connection token is current.`);
     output(await response.json());

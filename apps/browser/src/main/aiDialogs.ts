@@ -8,6 +8,24 @@ export interface AIDialogLifecycle {
   beginReview?(): () => void;
 }
 
+/** The source page's beforeunload handler blocked an unapproved departure. */
+export class AIDepartureBlockedError extends Error {
+  readonly url: string;
+
+  constructor(url: string) {
+    super('This page has an unload handler that blocked leaving.');
+    this.name = 'AIDepartureBlockedError';
+    this.url = url;
+  }
+}
+
+export interface AIDeparturePolicy {
+  /** The source page URL this decision applies to. */
+  url: string;
+  /** Approved: leave despite the handler once. Otherwise fail fast so the caller can ask. */
+  approved: boolean;
+}
+
 export interface AIDialog {
   id: string;
   type: string;
@@ -61,8 +79,10 @@ export class AIDialogs {
     ) => Promise<unknown>,
     options: {
       actionTimeoutMs?: number;
+      /** false runs the action without a page protocol session (navigation). */
+      protocol?: boolean;
       tabId?: string;
-      beforeUnloadURL?: string;
+      departure?: AIDeparturePolicy;
       onCompletion?: (completion: Promise<unknown>) => void;
     } = {}
   ) {
@@ -185,17 +205,26 @@ export class AIDialogs {
     };
     events.on('-cancel-dialogs', nativeCancel);
     let departureUsed = false;
+    let departureBlocked = false;
     const departure = (event: { preventDefault: () => void }) => {
+      const policy = options.departure;
       if (
-        !departureUsed &&
-        options.beforeUnloadURL !== undefined &&
-        contents.getURL() === options.beforeUnloadURL &&
-        !controller.signal.aborted &&
-        !source.aborted
-      ) {
-        departureUsed = true;
+        departureUsed ||
+        !policy ||
+        contents.getURL() !== policy.url ||
+        controller.signal.aborted ||
+        source.aborted
+      )
+        return;
+      departureUsed = true;
+      if (policy.approved) {
         event.preventDefault();
+        return;
       }
+      // Chromium cancels the navigation itself. End the lease now instead of
+      // waiting for the navigation deadline, so the caller can ask the human.
+      departureBlocked = true;
+      owner.cancel().catch(() => {});
     };
     events.on('will-prevent-unload', departure);
     const cleanup = () => {
@@ -223,19 +252,21 @@ export class AIDialogs {
       listeners.clear();
       this.idle?.();
     };
-    withAIProtocol(
-      contents,
-      controller.signal,
-      async () => {
-        // The lease also shares native pointer/frame protocol operations.
-        arm(actionTimeout);
-        if (source.aborted) {
-          await owner.cancel();
-          throw new Error('Stopped.');
-        }
-        return action(controller.signal, lifecycle);
-      },
-      { timeoutMs: 120000 }
+    const perform = async () => {
+      // The lease also shares native pointer/frame protocol operations.
+      arm(actionTimeout);
+      if (source.aborted) {
+        await owner.cancel();
+        throw new Error('Stopped.');
+      }
+      return action(controller.signal, lifecycle);
+    };
+    // Navigation needs no protocol session; attaching one per navigate was a fixed cost.
+    (options.protocol === false
+      ? perform()
+      : withAIProtocol(contents, controller.signal, perform, {
+          timeoutMs: 120000,
+        })
     )
       .then((value) => {
         cleanup();
@@ -243,8 +274,12 @@ export class AIDialogs {
         completed.resolve(value);
         return undefined;
       })
-      .catch((error) => {
+      .catch((raised) => {
         cleanup();
+        const error =
+          departureBlocked && options.departure
+            ? new AIDepartureBlockedError(options.departure.url)
+            : raised;
         first.reject(error);
         completed.reject(error);
         owner.notify?.({ error: (error as Error).message });

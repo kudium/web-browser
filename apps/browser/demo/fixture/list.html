@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Long list</title><link rel="stylesheet" href="/style.css"></head>
+<body><h1>Long list</h1><input id="filter" placeholder="Filter"><ul id="items"></ul>
+<script>
+const items=Array.from({length:2000},(_,i)=>`Item ${i+1}`);
+const render=(q='')=>{document.getElementById('items').innerHTML=items.filter(x=>x.toLowerCase().includes(q.toLowerCase())).map(x=>`<li><a href="#${x.replace(' ','-')}">${x}</a></li>`).join('');};
+document.getElementById('filter').addEventListener('input',e=>render(e.target.value));render();
+</script></body></html>

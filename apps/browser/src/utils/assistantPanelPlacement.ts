@@ -1,7 +1,7 @@
 /** Restore floating pages even when the docked Assistant was closed. */
 export function hasFloatingAssistantPanels() {
   try {
-    return ['assistant', 'notes', 'activity', 'tasks', 'developer'].some(
+    return ['assistant', 'notes', 'activity', 'tasks', 'developer', 'email'].some(
       (panel) =>
         JSON.parse(
           localStorage.getItem(`kudium-assistant-window-${panel}`) || 'null'

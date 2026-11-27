@@ -32,7 +32,7 @@ const contents = {
   navigationHistory: { canGoBack: () => false, canGoForward: () => true },
 } as unknown as WebContents;
 const pictureInPicture = jest.fn();
-function menu(patch: Partial<ContextMenuParams> = {}) {
+function menu(patch: Partial<ContextMenuParams> = {}, hookActions: any[] = [], addSelection?: (kind: 'note' | 'today' | 'append', text: string) => void, appendKind?: 'note'|'todo') {
   showBrowserContextMenu(
     owner as unknown as BrowserWindow,
     contents,
@@ -45,7 +45,11 @@ function menu(patch: Partial<ContextMenuParams> = {}) {
     } as ContextMenuParams,
     openTab,
     [{ label: 'Extension Action' } as MenuItem],
-    pictureInPicture
+    pictureInPicture,
+    hookActions,
+    undefined,
+    addSelection,
+    appendKind
   );
   return (Menu.buildFromTemplate as jest.Mock).mock.calls.at(-1)[0];
 }
@@ -229,7 +233,7 @@ test('puts built-in AI first and prefills the owning window without opening a se
 });
 
 
-test('page menu separates navigation and tools without boxing individual page actions', () => {
+test('page menu separates navigation and save actions from inspection tools', () => {
   const items = menu();
   const separators = items.flatMap((entry: any, index: number) => entry.type === 'separator' ? [index] : []);
   expect(separators).toHaveLength(2);
@@ -242,11 +246,67 @@ test('Fill form puts an editable AI request first and preserves multiple login a
   const accounts = [{ label: 'Personal', click: jest.fn() }, { label: 'Business', click: jest.fn() }];
   const login = { label: 'Auto login', submenu: accounts };
   const item = fillFormMenu([login], draft);
-  expect(item.label).toBe('Fill form');
+  expect(item.label).toBe('Form');
   const options = item.submenu as any[];
-  expect(options.map(option => option.label)).toEqual(['With AI', 'Auto login']);
+  expect(options.map(option => option.label)).toEqual(['Fill with AI', 'Auto login']);
   expect(options[1]).toBe(login);
   options[0].click();
   expect(draft).toHaveBeenCalledTimes(1);
   expect(accounts[0].click).not.toHaveBeenCalled();
+});
+
+test('Form keeps personal-data fallback actions together before saved login accounts', () => {
+  const pick = { label: 'Choose saved value…', click: jest.fn() };
+  const save = { label: 'Save this value…', click: jest.fn() };
+  const fill = { label: 'Autofill form', click: jest.fn() };
+  const menu = fillFormMenu([{ label: 'Auto login' }], jest.fn(), [pick, save, fill]);
+  const entries = menu.submenu as any[];
+  expect(entries.map(entry => entry.label)).toEqual(['Fill with AI', 'Choose saved value…', 'Save this value…', 'Autofill form', 'Auto login']);
+  entries[1].click(); entries[2].click(); entries[3].click();
+  expect(pick.click).toHaveBeenCalledTimes(1);
+  expect(save.click).toHaveBeenCalledTimes(1);
+  expect(fill.click).toHaveBeenCalledTimes(1);
+});
+
+ test('selection places lookup and search with Form, then Copy in the save group', () => {
+  const items = menu({selectionText:'selected text'}, [{label:'Form',submenu:[]},{label:'Translate to English'}]);
+  const labels = items.map((item: any) => item.label || item.type);
+  const search = labels.indexOf('Search With');
+  expect(labels[0]).toBe('Form');
+  expect(labels.slice(0, search + 1)).not.toContain('separator');
+  expect(labels[search + 1]).toBe('separator');
+  expect(labels[search + 2]).toBe('Copy');
+  const translate = labels.indexOf('Translate to English');
+  expect(labels.slice(search + 2, translate + 1)).not.toContain('separator');
+  expect(labels[labels.indexOf('Inspect') - 1]).toBe('separator');
+});
+
+test('Add to appears directly under Form only for highlighted page text', () => {
+  const add=jest.fn();
+  const items=menu({selectionText:'  Remember this  '},[{label:'Form',submenu:[]}],add);
+  expect(items[1].label).toBe('Add to');
+  items[1].submenu[0].click();items[1].submenu[1].click();
+  expect(add).toHaveBeenNthCalledWith(1,'note','Remember this');
+  expect(add).toHaveBeenNthCalledWith(2,'today','Remember this');
+  expect(menu({},[],add).some((item: any)=>item.label==='Add to')).toBe(false);
+});
+
+ test('Add to saves link destinations with selected text and supports links alone', () => {
+  const add = jest.fn();
+  const url = 'https://example.com/review?id=42';
+  menu({selectionText:'Review this',linkURL:url},[],add).find((item:any)=>item.label==='Add to').submenu[1].click();
+  expect(add).toHaveBeenLastCalledWith('today',`Review this\n${url}`);
+  menu({linkURL:url},[],add).find((item:any)=>item.label==='Add to').submenu[1].click();
+  expect(add).toHaveBeenLastCalledWith('today',url);
+  expect(menu({linkURL:'javascript:alert(1)'},[],add).some((item:any)=>item.label==='Add to')).toBe(false);
+  expect(menu({selectionText:'x',isEditable:true,editFlags:{} as ContextMenuParams['editFlags']},[],add).some((item:any)=>item.label==='Add to')).toBe(false);
+ });
+
+test('long selections remain available for Today and current editors offer contextual append', () => {
+  const add=jest.fn();
+  const entries=menu({selectionText:'word '.repeat(180)},[],add,'note').find((item:any)=>item.label==='Add to').submenu;
+  expect(entries[1].enabled).toBe(true);
+  expect(entries[2].label).toBe('Append to current note');
+  entries[2].click();expect(add).toHaveBeenLastCalledWith('append',expect.any(String));
+  expect(menu({selectionText:'Text'},[],add,'todo').find((item:any)=>item.label==='Add to').submenu[2].label).toBe('Append to current to-do list');
 });

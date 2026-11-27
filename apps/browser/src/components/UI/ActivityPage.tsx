@@ -11,6 +11,7 @@ import {
   Settings2,
   Code2,
   Play,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   activitySounds,
@@ -379,7 +380,7 @@ export function ActivityPage({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Hook guide ↗
+              Hook guide <ArrowUpRight size={13} aria-hidden="true" />
             </a>
           </div>
           {showExample && (

@@ -127,13 +127,13 @@ it('refuses private results after rename until durable sync succeeds, including 
   }
 });
 
-it('keeps local project files and shell execution unavailable to external MCP clients', () => {
+it('exposes project tools to external MCP clients under the same approvals and taint rule', () => {
   [
     'get_project',
     'project_files',
     'project_scripts',
     'project_terminal',
-  ].forEach((name) =>
-    expect(MCP_NAMES as readonly string[]).not.toContain(name)
-  );
+    'act',
+    'run_script',
+  ].forEach((name) => expect(MCP_NAMES as readonly string[]).toContain(name));
 });

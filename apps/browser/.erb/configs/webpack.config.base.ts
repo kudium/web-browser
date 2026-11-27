@@ -53,6 +53,10 @@ const configuration: webpack.Configuration = {
       NODE_ENV: 'production',
       KUDIUM_POSTHOG_KEY: '',
       KUDIUM_POSTHOG_HOST: 'https://us.i.posthog.com',
+      KUDIUM_GOOGLE_OAUTH_CLIENT_ID: '',
+      KUDIUM_GOOGLE_OAUTH_CLIENT_SECRET: '',
+      KUDIUM_MICROSOFT_OAUTH_CLIENT_ID: '',
+      KUDIUM_MICROSOFT_OAUTH_CLIENT_SECRET: '',
     }),
   ],
 };

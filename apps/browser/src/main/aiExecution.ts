@@ -2,6 +2,7 @@ import type { AIExecution } from '../browser/ai';
 
 const effects = new Set([
   'create_task',
+  'create_todo',
   'configure_site_hooks',
   'save_global_hook',
   'set_page_appearance',
@@ -32,6 +33,7 @@ const effects = new Set([
   'save_personal_data',
   'manage_note',
   'create_activity',
+  'create_email_alias',
   'control_download',
 ]);
 

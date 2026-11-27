@@ -11,6 +11,39 @@ one header row. Do not duplicate picker, placeholder, permission, navigation, or
 group-storage logic. Route extension operations into the existing Kudium model
 and workspace save path instead of maintaining a second implementation.
 
+## Email identities for AI sign-ups
+
+Read [apps/browser/docs/email-identities.md](apps/browser/docs/email-identities.md)
+before changing the Email sidebar, its providers or the `email` AI tool family.
+Add providers through the shared catalog and client registry; keep secrets in
+the main process and keep inbox content tainted.
+
+## Browser interaction speed
+
+Treat interaction latency as a requirement in every browser change, including
+menus, tab/group switching, panels, editors, form actions and sign-in flows.
+
+- Build context-menu contents only on request. Reuse `NativeContextMenu.Root`'s
+  `menu={() => ...}` factory for declarative menus; do not construct hidden menu
+  trees for every row during rendering. Keep native menu validation and trust checks.
+- Opening a menu must not initiate network calls, authentication, filesystem scans,
+  value loading or saves. Defer these to the chosen action. Reuse validated cached
+  metadata; invalidate it on mutations and check freshness when appropriate.
+- Bound renderer/IPC probes so a busy page cannot indefinitely block native UI.
+  The form context-menu probe has an 8 ms scan budget and a 60 ms wait deadline.
+  On timeout, omit unavailable actions; never use stale sensitive data or targets.
+- Cancel or ignore stale work when the tab, group, page or row changes. Preserve
+  panel/editor content and avoid remounting or blanket-suspending unrelated views.
+- Prefer shared event-driven listeners over polling. Avoid redundant native view
+  updates, whole-workspace scans on each keystroke, and eager per-row computation.
+  Coalesce resize/drag updates to animation frames and clean up listeners and timers.
+- Keep sign-in and autofill protections, scope checks, authentication and action
+  confirmation intact. Speed does not justify bypassing safeguards.
+- For performance fixes, identify the actual hot path and verify the affected flow.
+  Use appropriate regression tests for lazy construction, deadline/cancellation,
+  cache invalidation and retained UI state. Report measured limits honestly; do not
+  claim the entire app is optimized based on one menu or fixture.
+
 ## Builds, versions and releases
 
 Read [docs/build-and-release.md](docs/build-and-release.md) before changing or

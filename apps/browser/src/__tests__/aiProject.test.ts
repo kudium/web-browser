@@ -283,9 +283,12 @@ it('advertises narrow project tools without allowing folder relinking or raw ter
 });
 
 it.each(['ask', 'standard', 'full'] as const)(
-  'requires command approval even in %s mode',
+  'treats shell execution as a sensitive action in %s mode',
   (mode) => {
-    expect(requiresAIProjectApproval(mode, true, false)).toBe(true);
+    // Reviewed in Ask first and Standard (once per run there), automatic in
+    // Full access; the taint rule in ai.ts still forces a review after
+    // foreign page reads in every mode.
+    expect(requiresAIProjectApproval(mode, true, false)).toBe(mode !== 'full');
   }
 );
 

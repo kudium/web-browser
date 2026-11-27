@@ -128,6 +128,7 @@ const projects = new Map<
     folderPath?: string
   ) => Promise<DeveloperProject | null>
 >();
+const projectLinkers = new Map<number, (folder: string) => void>();
 const transfers = new Map<
   number,
   (
@@ -430,6 +431,11 @@ export function registerSiteDeveloperLibrary(
   const terminalAudit = setInterval(audit, 2000);
   terminalAudit.unref();
   let chosenFolder: string | undefined;
+  projectLinkers.set(hostId, (folder) => {
+    // setup_project links a folder the user approved in the native review,
+    // the same way the Developer panel links one chosen in the folder dialog.
+    chosenFolder = folder;
+  });
   projects.set(hostId, async (id, action, editorId, folderPath) => {
     if (action === 'choose-folder') {
       const selection = await projectAction(host, '', action, () => {
@@ -514,6 +520,7 @@ export function registerSiteDeveloperLibrary(
     transfers.delete(hostId);
     if (!transfers.size) ipcMain.removeHandler('group-transfer');
     projects.delete(hostId);
+    projectLinkers.delete(hostId);
     projectHosts.delete(hostId);
     preparedFileDrags.delete(hostId);
     offLocks();
@@ -558,6 +565,19 @@ export function aiDeveloperProjectAccess(
     terminals: owner.terminals,
     project: () => project(sourceId, 'get'),
   };
+}
+
+/** Link an approved folder to the source's group through the panel's own path. */
+export async function aiLinkDeveloperProject(
+  host: BrowserWindow,
+  sourceId: string,
+  folder: string
+) {
+  const project = projects.get(host.webContents.id);
+  const linker = projectLinkers.get(host.webContents.id);
+  if (!project || !linker) throw new Error('Developer project is unavailable.');
+  linker(folder);
+  return project(sourceId, 'link', undefined, folder);
 }
 
 export function aiDeveloperProjectInfo(host: BrowserWindow, sourceId: string) {

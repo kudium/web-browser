@@ -17,6 +17,7 @@ export const actionPermissions = [
   "password.generate",
   "ai.compose",
   "notes.create",
+  "todos.create",
   "activity.create",
 ] as const;
 export type HookActionPermission = (typeof actionPermissions)[number];
@@ -355,6 +356,8 @@ export function validateActionCommands(
     } else if (capability === "password.generate") {
       if (input !== undefined)
         throw new Error("Password generation takes no data.");
+    } else if (capability === "todos.create") {
+      if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some(k => !["key", "title", "today"].includes(k)) || typeof input.key !== "string" || !/^[a-zA-Z0-9_-]{1,100}$/.test(input.key) || typeof input.title !== "string" || !input.title.trim() || input.title.length > 500 || (input.today !== undefined && typeof input.today !== "boolean")) throw new Error("Invalid todo task.");
     } else if (capability === "notes.create") {
       if (
         !input ||

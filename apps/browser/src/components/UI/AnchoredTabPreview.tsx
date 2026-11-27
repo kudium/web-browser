@@ -1,3 +1,4 @@
+import { frameResizeObserver } from '../../utils/frameResizeObserver';
 import { focusColorStyle } from '../../utils/focusColor';
 import { TabIcon } from './TabIcon';
 import { Button, Popover } from '@radix-ui/themes';
@@ -122,7 +123,7 @@ export function AnchoredTabPreview({
     const measure = () => {
       if (list.clientHeight > 0) setViewportHeight(list.clientHeight);
     };
-    const observer = new ResizeObserver(measure);
+    const observer = frameResizeObserver(measure);
     observer.observe(list);
     measure();
     return () => observer.disconnect();
@@ -140,7 +141,7 @@ export function AnchoredTabPreview({
   const [side, setSide] = useState(measureSide);
   useLayoutEffect(() => {
     const update = () => setSide(measureSide());
-    const observer = new ResizeObserver(update);
+    const observer = frameResizeObserver(update);
     observer.observe(target.anchor);
     window.addEventListener('resize', update);
     update();

@@ -7,6 +7,8 @@ import {
   ReactNode,
   useContext,
   useCallback,
+  useEffect,
+  useRef,
 } from 'react';
 import { browser } from '../../browser/client';
 import { NativeMenuItem } from '../../browser/nativeUi';
@@ -127,11 +129,18 @@ export async function showNativeContextMenu(
 
 function Root({
   children,
+  menu,
 }: {
   children: ReactNode;
+  menu?: () => ReactNode;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const show = useCallback(() => showNativeContextMenu(children), [children]);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const show = useCallback(
+    () => showNativeContextMenu(menu ? menu() : children, () => mounted.current),
+    [children, menu]
+  );
   const openMenu = useCallback(() => {
     show().catch(() => {});
   }, [show]);

@@ -57,7 +57,9 @@ handle.addEventListener('keydown',event=>{
   const step=steps[event.key];if(!step)return;
   const rect=dock.getBoundingClientRect();place(rect.x+step[0],rect.y+step[1]);event.preventDefault();
 });
-new ResizeObserver(()=>{if(position)place(position.x,position.y)}).observe(dock);
+let resizeFrame=0;
+new ResizeObserver(()=>{if(resizeFrame)return;resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;if(position)place(position.x,position.y)})}).observe(dock);
+addEventListener('pagehide',()=>cancelAnimationFrame(resizeFrame),{once:true});
 addEventListener('resize',()=>{if(position)place(position.x,position.y);pointer.classList.remove('visible')});
 window.showAIPointer=point=>{
   if(!Number.isFinite(point.x)||!Number.isFinite(point.y)||point.x<0||point.y<0||point.x>=innerWidth||point.y>=innerHeight)return;

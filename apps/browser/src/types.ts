@@ -27,6 +27,9 @@ export interface IApp {
   sessionIconEmoji?: string;
   sessionIconImage?: string;
   sessionHomeURL?: string;
+  /** The inbox account the user uses in this group's browser session. */
+  browserEmail?: import('./browser/email').EmailBrowserInbox;
+  browserEmails?: import('./browser/email').EmailBrowserInbox[];
   sessionNameCustom?: boolean;
   sessionNameGenerated?: boolean;
   spaceId?: string;
@@ -35,6 +38,10 @@ export interface IApp {
   collectionName?: string;
   groupDisplay?: 'stack' | 'folder';
   sessionMode?: 'separate' | 'collection';
+  /** Agents act without hard-floor review in this group (dev groups with seed data). */
+  aiTrusted?: boolean;
+  /** Model tier override for this group: auto (default), assist, control or cloud. */
+  aiTier?: 'auto' | 'assist' | 'control' | 'cloud';
   pinned?: boolean;
   tabPinned?: boolean;
   tabDefaultURL?: string;

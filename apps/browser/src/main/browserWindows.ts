@@ -561,6 +561,8 @@ export class BrowserWindows {
         sessionName: tab.customName || tab.name,
         sessionSlug: undefined,
         sessionHomeURL: undefined,
+        browserEmail: undefined,
+        browserEmails: undefined,
         sessionIconEmoji: undefined,
         sessionIconImage: undefined,
         folderId: undefined,

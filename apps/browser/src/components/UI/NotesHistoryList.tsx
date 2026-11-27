@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { TextField } from '@radix-ui/themes';
-import { Check, X, Pencil, Trash2, LockKeyhole } from 'lucide-react';
+import {
+  Check,
+  X,
+  Pencil,
+  Trash2,
+  LockKeyhole,
+  ListTodo,
+  Sun,
+  Pin,
+} from 'lucide-react';
 import type { VaultSummary } from '../../browser/passwordManager';
 import { NativeContextMenu as ContextMenu } from './NativeContextMenu';
 
@@ -14,7 +23,19 @@ export function NotesHistoryList({
   onRename,
   onDelete,
   onReorder,
+  onToday,
+  todaySelected = false,
+  pinnedIds = [],
+  onPin,
+  todayPinned = true,
+  onTodayPin,
 }: {
+  pinnedIds?: string[];
+  onPin?: (id: string) => void;
+  todayPinned?: boolean;
+  onTodayPin?: () => void;
+  onToday?: () => void;
+  todaySelected?: boolean;
   notes: VaultSummary[];
   groupNames: Record<string, string>;
   selectedId: string | undefined;
@@ -42,18 +63,95 @@ export function NotesHistoryList({
       return;
     onReorder(
       notes[index].id,
-      direction < 0 ? notes[index - 1].id : notes[index + 2]?.id || null
+      direction < 0 ? notes[index - 1].id : notes[index + 2]?.id || null,
     );
   };
+  const todayRow = onToday ? (
+    <ContextMenu.Root
+      menu={() => (
+        <ContextMenu.Content>
+          <ContextMenu.Item
+            disabled={busy || !onTodayPin}
+            onSelect={onTodayPin}
+          >
+            {todayPinned ? 'Unpin note' : 'Pin note'}
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      )}
+    >
+      <ContextMenu.Trigger>
+        {' '}
+        <div className="notes-history-row notes-today-row">
+          <button
+            type="button"
+            aria-label="Today todo"
+            aria-pressed={todaySelected}
+            disabled={busy}
+            onClick={onToday}
+          >
+            <Sun size={16} aria-hidden="true" />
+            <span className="notes-row-copy">
+              <span className="notes-row-title">Today</span>
+            </span>
+            {todayPinned && (
+              <Pin size={12} className="notes-today-pin" aria-label="Pinned" />
+            )}
+          </button>
+        </div>
+      </ContextMenu.Trigger>
+    </ContextMenu.Root>
+  ) : null;
   return (
     <div className="ai-chat-history-list">
+      {todayPinned && todayRow}
       {!notes.length && (
         <p className="notes-list-empty">
           {searching ? 'No matching notes' : 'No notes yet'}
         </p>
       )}
       {notes.map((note, index) => (
-        <ContextMenu.Root key={note.id}>
+        <ContextMenu.Root
+          key={note.id}
+          menu={() => (
+            <ContextMenu.Content>
+              <ContextMenu.Item disabled={busy} onSelect={() => onSelect(note)}>
+                Open note
+              </ContextMenu.Item>
+              {onPin && (
+                <ContextMenu.Item
+                  disabled={busy}
+                  onSelect={() => onPin(note.id)}
+                >
+                  {pinnedIds.includes(note.id) ? 'Unpin note' : 'Pin note'}
+                </ContextMenu.Item>
+              )}
+              <ContextMenu.Item disabled={busy} onSelect={() => rename(note)}>
+                Rename note
+              </ContextMenu.Item>
+              <ContextMenu.Item
+                disabled={busy || searching || index === 0}
+                onSelect={() => move(index, -1)}
+              >
+                Move up
+              </ContextMenu.Item>
+              <ContextMenu.Item
+                disabled={busy || searching || index === notes.length - 1}
+                onSelect={() => move(index, 1)}
+              >
+                Move down
+              </ContextMenu.Item>
+              <ContextMenu.Separator />
+              <ContextMenu.Item
+                disabled={busy}
+                onSelect={() => {
+                  onDelete(note);
+                }}
+              >
+                Delete note
+              </ContextMenu.Item>
+            </ContextMenu.Content>
+          )}
+        >
           <ContextMenu.Trigger>
             <div
               className={`ai-chat-history-row notes-history-row${
@@ -64,7 +162,7 @@ export function NotesHistoryList({
                 setDragging(note.id);
                 event.dataTransfer.setData(
                   'application/x-kudiumbrowser-note',
-                  note.id
+                  note.id,
                 );
                 event.dataTransfer.effectAllowed = 'move';
                 event.stopPropagation();
@@ -85,13 +183,13 @@ export function NotesHistoryList({
                 const bounds = event.currentTarget.getBoundingClientRect();
                 const remaining = notes.filter((item) => item.id !== dragging);
                 const target = remaining.findIndex(
-                  (item) => item.id === note.id
+                  (item) => item.id === note.id,
                 );
                 onReorder(
                   dragging,
                   event.clientY > bounds.top + bounds.height / 2
                     ? remaining[target + 1]?.id || null
-                    : note.id
+                    : note.id,
                 );
                 setDragging(undefined);
               }}
@@ -166,19 +264,27 @@ export function NotesHistoryList({
                         {note.scope
                           ? groupNames[note.scope] || 'Unavailable group'
                           : note.sensitive
-                          ? 'Locked note'
-                          : note.preview?.trim() || 'Personal note'}
+                            ? 'Locked note'
+                            : note.preview?.trim() || ''}
                       </span>
                     </span>
-                    {note.asRead === false && (
-                      <span
-                        className="notes-unread-dot"
-                        aria-label="Unread note"
-                      />
-                    )}
-                    {note.sensitive && (
-                      <LockKeyhole size={12} aria-label="Locked note" />
-                    )}
+                    <span className="notes-row-badges">
+                      {pinnedIds.includes(note.id) && (
+                        <Pin size={12} aria-label="Pinned" />
+                      )}
+                      {note.asRead === false && (
+                        <span
+                          className="notes-unread-dot"
+                          aria-label="Unread note"
+                        />
+                      )}
+                      {note.noteType === 'todo' && (
+                        <ListTodo size={12} aria-label="Todo list" />
+                      )}
+                      {note.sensitive && (
+                        <LockKeyhole size={12} aria-label="Locked note" />
+                      )}
+                    </span>
                   </button>
                   <div className="ai-chat-row-actions">
                     <button
@@ -206,37 +312,9 @@ export function NotesHistoryList({
               )}
             </div>
           </ContextMenu.Trigger>
-          <ContextMenu.Content>
-            <ContextMenu.Item disabled={busy} onSelect={() => onSelect(note)}>
-              Open note
-            </ContextMenu.Item>
-            <ContextMenu.Item disabled={busy} onSelect={() => rename(note)}>
-              Rename note
-            </ContextMenu.Item>
-            <ContextMenu.Item
-              disabled={busy || searching || index === 0}
-              onSelect={() => move(index, -1)}
-            >
-              Move up
-            </ContextMenu.Item>
-            <ContextMenu.Item
-              disabled={busy || searching || index === notes.length - 1}
-              onSelect={() => move(index, 1)}
-            >
-              Move down
-            </ContextMenu.Item>
-            <ContextMenu.Separator />
-            <ContextMenu.Item
-              disabled={busy}
-              onSelect={() => {
-                onDelete(note);
-              }}
-            >
-              Delete note
-            </ContextMenu.Item>
-          </ContextMenu.Content>
         </ContextMenu.Root>
       ))}
+      {!todayPinned && todayRow}
     </div>
   );
 }

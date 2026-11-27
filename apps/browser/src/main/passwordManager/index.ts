@@ -1,3 +1,7 @@
+import { setActiveNote } from '../activeNote';
+import { showAppToast } from '../appToast';
+import { listSuggestions, runSuggestion } from '../hookSuggestions';
+import { listTodos, addTodo, changeTodo, deleteCompletedTodos } from '../todos';
 import { runAutoLogin, buildAutoLoginMenu } from './autoLogin';
 import { getGroupLocks } from '../groupLocks';
 import {
@@ -169,6 +173,37 @@ export function registerPasswordPage(
     pageScopes.delete(contents.id);
   });
 }
+export function personalDataFormAvailable(contents: WebContents) {
+  if (contents.isDestroyed() || pages.get(contents.id) !== contents) return false;
+  const preferences = getBrowserPreferences();
+  try {
+    const url = new URL(contents.getURL());
+    const scope = pageScopes.get(contents.id)?.();
+    return url.protocol === 'https:' && preferences.personalDataAutofill !== false &&
+      !preferences.personalDataAutofillExcludedSites.includes(url.origin) &&
+      !getGroupLocks().locked((scope || '').replace(/^group:/, ''));
+  } catch { return false; }
+}
+
+/** Explicit native-menu fallback; reuses the isolated autofill picker and IPC protections. */
+export function personalDataFormActions(contents: WebContents, editable: boolean, x: number, y: number, fieldState = { hasValue: false, formHasValues: false }): MenuItemConstructorOptions[] {
+  const scope = pageScopes.get(contents.id)?.();
+  const available = () => personalDataFormAvailable(contents) && pageScopes.get(contents.id)?.() === scope;
+  const expected = contents.getURL();
+  const run = (action: 'pick' | 'save' | 'fill' | 'save-form' | 'save-page') => () => {
+    if (available() && contents.getURL() === expected)
+      contents.send('personal-data-autofill-command', { action, x, y });
+  };
+  const allowed = available();
+  const saved = allowed && !!passwordVault().autofillAvailability(expected, scope)?.some(record => record.canFillLogin || record.fields.length);
+  return [
+    { label: 'Choose saved value…', enabled: allowed && editable, click: run('pick') },
+    ...(allowed && editable && fieldState.hasValue ? [{ label: 'Save this value…', click: run('save') }] : []),
+    ...(allowed && fieldState.formHasValues ? [{ label: 'Save form values…', click: run(editable ? 'save-form' : 'save-page') }] : []),
+    ...(saved ? [{ label: 'Autofill form', click: run('fill') }] : []),
+  ];
+}
+
 /** Native chrome entry point; website scripts cannot invoke this login flow. */
 export function autoLoginMenu(
   owner: BrowserWindow,
@@ -265,6 +300,9 @@ export function registerPasswordManager(
   authentication: Partial<typeof nativeAuthentication> = {},
 ) {
   authenticationAdapter = { ...nativeAuthentication, ...authentication };
+  ipcMain.on('active-note', (event,value) => {
+    if (isTrusted(event.sender) && event.senderFrame === event.sender.mainFrame) setActiveNote(event.sender,value);
+  });
   const autofillEnabled = (page?: WebContents) => {
     const preferences = getBrowserPreferences();
     if (preferences.personalDataAutofill === false) return false;
@@ -727,22 +765,12 @@ export function registerPasswordManager(
       (typeof input.username !== 'string' || input.username.length > 1000)
     )
       throw new Error('Invalid input field.');
-    if (
-      !autofillEnabled(page) ||
-      !input ||
-      typeof input.name !== 'string' ||
-      !input.name.trim() ||
-      input.name.length > 200 ||
-      typeof input.value !== 'string' ||
-      !input.value ||
-      input.value.length > 10000 ||
-      typeof input.secret !== 'boolean' ||
-      !Array.isArray(input.aliases) ||
-      input.aliases.length > 10 ||
-      input.aliases.some(
-        (alias: unknown) => typeof alias !== 'string' || alias.length > 200,
-      )
-    )
+    const incoming = input?.fields === undefined ? [input] : input.fields;
+    if (!autofillEnabled(page) || !Array.isArray(incoming) || !incoming.length || incoming.length > 100 ||
+      incoming.some(field => !field || typeof field.name !== 'string' || !field.name.trim() || field.name.length > 200 ||
+        typeof field.value !== 'string' || !field.value || field.value.length > 10000 || typeof field.secret !== 'boolean' ||
+        !Array.isArray(field.aliases) || field.aliases.length > 10 ||
+        field.aliases.some((alias: unknown) => typeof alias !== 'string' || alias.length > 200)))
       throw new Error('Invalid input field.');
     const expected = page.getURL();
     const scope = pageScopes.get(page.id)?.();
@@ -757,14 +785,9 @@ export function registerPasswordManager(
     )
       throw new Error('The target page changed.');
     return withPersonalData((vault) => {
-      const fields: VaultField[] = [
-        {
-          name: input.name.trim(),
-          value: input.value,
-          secret: input.secret,
-          aliases: input.aliases,
-        },
-      ];
+      const fields: VaultField[] = incoming.map(field => ({
+        name: field.name.trim(), value: field.value, secret: field.secret, aliases: field.aliases,
+      }));
       const username =
         input.name === 'Password' && input.secret
           ? input.username || loginIdentity(page)?.username
@@ -1058,6 +1081,31 @@ export function registerPasswordManager(
         vault.settings(request.enabled, request.autofill, request.ai);
         if (!request.enabled || !request.ai) revokeAuthorizations();
         break;
+      case 'hookSuggestions': {
+        const owner = BrowserWindow.fromWebContents(event.sender);
+        if (!owner) throw new Error('Browser window unavailable.');
+        return listSuggestions(owner,request.groupId);
+      }
+      case 'hookSuggestionRun': {
+        const owner = BrowserWindow.fromWebContents(event.sender);
+        if (!owner) throw new Error('Browser window unavailable.');
+        await runSuggestion(owner,request.id,request.groupId);
+        return listSuggestions(owner,request.groupId);
+      }
+      case 'todos':
+        return listTodos(request.scope, request.all === true);
+      case 'todoAdd':
+        if (request.id && !request.initialNote && !vault.isOrdinaryNote(request.id)) await authenticate();
+        return addTodo(request.title, request.today === true, request.scope, request.id, undefined, undefined, undefined, request.initialNote);
+      case 'todoDeleteCompleted':
+        if (!Array.isArray(request.tasks) || !request.tasks.length || request.tasks.length > 500) throw new Error('Invalid completed tasks.');
+        if (request.tasks.some(task => !vault.isOrdinaryNote(task?.noteId))) await authenticate();
+        deleteCompletedTodos(request.tasks);
+        return;
+      case 'todoChange':
+        if (!vault.isOrdinaryNote(request.id)) await authenticate();
+        changeTodo(request.id, request.taskId, request.change, request.scope, request.title, request.beforeTaskId, request.todayOrder, request.date, request.markdown);
+        return listTodos(request.scope);
       case 'notes':
         if (
           !ordinaryNotesMigrated &&
@@ -1277,6 +1325,27 @@ export function registerPasswordManager(
           vault.save(item, request.scope);
         }
         break;
+      }
+      case 'noteDelete': {
+        if (!vault.noteSummaries().some(item => item.id === request.id)) throw new Error('Note unavailable.');
+        if (!vault.isOrdinaryNote(request.id)) await authenticate();
+        const snapshot = vault.edit(request.id, request.scope);
+        const epoch = authEpoch;
+        vault.delete(request.id, request.scope);
+        const owner = BrowserWindow.fromWebContents(event.sender);
+        if (owner) await showAppToast(owner, {
+          id: `note-delete-${request.id}`, title: snapshot.todo ? 'To-do list deleted' : 'Note deleted', message: '',
+          action: {label:'Undo',run:async()=>{
+            try {
+              if (snapshot.sensitive && epoch !== authEpoch) throw new Error('Unlock Personal Data before restoring this note.');
+              if (vault.noteSummaries().some(item => item.id === snapshot.id)) throw new Error('Note already exists.');
+              vault.save(snapshot, request.scope);
+            } catch (failure) {
+              await showAppToast(owner,{id:`note-restore-error-${request.id}`,title:'Unable to restore note',message:failure instanceof Error ? failure.message : 'Try again.',type:'error'});
+            }
+          }},
+        });
+        return vault.noteSummaries();
       }
       case 'delete': {
         const note = vault

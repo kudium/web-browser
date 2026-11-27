@@ -74,3 +74,27 @@ it('supports shared menus opened by delegated elements and drops stale selection
   await showNativeContextMenu(content, () => true);
   expect(action).toHaveBeenCalledTimes(1);
 });
+
+it('builds lazy menus only on request and uses the current render state', async () => {
+  const action = jest.fn();
+  const factory = jest.fn(() => <Menu.Content><Menu.Item onSelect={action}>Current action</Menu.Item></Menu.Content>);
+  (browser.nativeMenu as jest.Mock).mockClear().mockResolvedValue('0');
+  const view = render(<Menu.Root menu={factory}><Menu.Trigger><button>Lazy menu</button></Menu.Trigger></Menu.Root>);
+  expect(factory).not.toHaveBeenCalled();
+  view.rerender(<Menu.Root menu={factory}><Menu.Trigger><button>Lazy menu</button></Menu.Trigger></Menu.Root>);
+  expect(factory).not.toHaveBeenCalled();
+  fireEvent.contextMenu(screen.getByRole('button', { name: 'Lazy menu' }));
+  await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+  expect(factory).toHaveBeenCalledTimes(1);
+});
+
+it('ignores a native-menu selection after its row has been removed', async () => {
+  let resolve!: (id: string) => void;
+  const action = jest.fn();
+  (browser.nativeMenu as jest.Mock).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+  const view = render(<Menu.Root menu={() => <Menu.Item onSelect={action}>Action</Menu.Item>}><button>Remove me</button></Menu.Root>);
+  fireEvent.contextMenu(screen.getByRole('button', { name: 'Remove me' }));
+  view.unmount(); resolve('0');
+  await Promise.resolve();
+  expect(action).not.toHaveBeenCalled();
+});
