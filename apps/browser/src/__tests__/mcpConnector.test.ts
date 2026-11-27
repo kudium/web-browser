@@ -219,6 +219,7 @@ it('serves the same MCP endpoint over local https with a name-constrained CA', a
     // generated and proven, trust is reported as manual.
     certificatePlatform: 'linux',
   });
+  let stage = 'enable https';
   try {
     const status = await controller.update({ enabled: true, port, https: true });
     expect(status.https).toBe(true);
@@ -235,6 +236,7 @@ it('serves the same MCP endpoint over local https with a name-constrained CA', a
       method: 'initialize',
       params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '1' } },
     });
+    stage = 'trusted https initialization';
     const secure = await new Promise<{ status: number; session: string | null }>((resolve, reject) => {
       const request = https.request(
         {
@@ -243,6 +245,7 @@ it('serves the same MCP endpoint over local https with a name-constrained CA', a
           servername: 'localhost',
           path: '/mcp',
           method: 'POST',
+          agent: false,
           ca: [caPem],
           headers: {
             Authorization: token,
@@ -253,6 +256,7 @@ it('serves the same MCP endpoint over local https with a name-constrained CA', a
         },
         (response) => {
           response.resume();
+          response.on('error', reject);
           response.on('end', () =>
             resolve({ status: response.statusCode || 0, session: response.headers['mcp-session-id'] as string | null })
           );
@@ -263,6 +267,7 @@ it('serves the same MCP endpoint over local https with a name-constrained CA', a
     });
     expect(secure.status).toBe(200);
     expect(secure.session).toMatch(/^[0-9a-f-]{36}$/);
+    stage = 'untrusted https rejection';
     // Without the CA the client refuses the connection: nothing else trusts this key.
     await expect(
       new Promise((resolve, reject) => {
@@ -275,19 +280,25 @@ it('serves the same MCP endpoint over local https with a name-constrained CA', a
       })
     ).rejects.toThrow();
     // The /connect pairing response advertises the https endpoint and the public CA.
+    stage = 'pairing over http';
     const paired = await fetch(`http://127.0.0.1:${port}/connect`, { method: 'POST', headers: { Connection: 'close' } });
     const pairing = await paired.json();
     expect(pairing.httpsUrl).toBe(status.httpsUrl);
     expect(pairing.caPem).toBe(caPem);
     expect(pairing.caPem).not.toContain('PRIVATE KEY');
     // Plain http keeps working, and turning https off removes the listener.
+    stage = 'plain http initialization';
     const plain = await fetch(`http://127.0.0.1:${port}/mcp`, { method: 'POST', headers: { Authorization: token, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', Connection: 'close' }, body });
     // Drain before the listeners restart, or the unread body resets the client socket.
     await plain.text();
     expect(plain.status).toBe(200);
+    stage = 'disable https';
     const off = await controller.update({ enabled: true, port, https: false });
     expect(off.https).toBe(false);
     expect(off.httpsUrl).toBeUndefined();
+  } catch (error) {
+    if (error instanceof Error) error.message = `${stage}: ${error.message}`;
+    throw error;
   } finally {
     await controller.dispose();
     fs.rmSync(root, { recursive: true, force: true });

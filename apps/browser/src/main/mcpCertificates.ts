@@ -313,6 +313,8 @@ async function handshake(
           port,
           path: '/',
           method: 'GET',
+          // This short-lived proof owns its socket; do not pool it past teardown.
+          agent: false,
           servername,
           ca: [caPem],
           ...(checkHostname ? {} : { checkServerIdentity: () => undefined }),
@@ -321,6 +323,9 @@ async function handshake(
         (response) => {
           response.resume();
           response.on('end', () => resolve({ ok: response.statusCode === 200 }));
+          response.on('error', (error: NodeJS.ErrnoException) =>
+            resolve({ ok: false, code: error.code || error.message })
+          );
         }
       );
       request.on('timeout', () => request.destroy(new Error('timeout')));
