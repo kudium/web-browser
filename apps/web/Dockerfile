@@ -1,6 +1,7 @@
 FROM oven/bun:1.4.4
 WORKDIR /app/apps/web
 COPY --chown=bun:bun apps/web/package.json apps/web/bun.lock ./
+COPY --chown=bun:bun apps/web/patches ./patches
 RUN bun install --frozen-lockfile --production
 COPY --chown=bun:bun apps/web/src ./src
 COPY --chown=bun:bun apps/web/public ./public

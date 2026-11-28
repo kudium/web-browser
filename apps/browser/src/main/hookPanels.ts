@@ -250,7 +250,8 @@ export function showHookPanel(binding: Binding, input: unknown) {
       if (e.view) views.delete(e.view.webContents);
       e.view = view;
       views.set(view.webContents, e);
-      view.webContents.once('destroyed', () => views.delete(view.webContents));
+      const contents = view.webContents;
+      contents.once('destroyed', () => views.delete(contents));
       view.webContents.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
       const link = (destination: string) => {
         if (available(e) && /^https?:\/\//i.test(destination))

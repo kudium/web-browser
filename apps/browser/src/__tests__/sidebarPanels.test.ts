@@ -51,6 +51,26 @@ function fixture(independent = false) {
   return { host, window, views, createView };
 }
 
+test.each(['dispose', 'replace', 'layout', 'suspend'])(
+  'a destroyed native panel with cleared webContents is safe during %s', async action => {
+    const { host, views, createView } = fixture();
+    const provider = { info: { id: 'one', title: 'One', kind: 'hook' as const }, contentKey: 'v1', createView };
+    const bounds = { x: 600, y: 50, width: 400, height: 650 };
+    host.register(provider);
+    host.activate('one');
+    host.layout('one', bounds);
+    const contents = views[0].webContents;
+    Object.defineProperty(views[0], 'webContents', { value: undefined });
+    if (action === 'dispose') expect(() => host.dispose()).not.toThrow();
+    else if (action === 'replace') expect(() => host.register({ ...provider, contentKey: 'v2' })).not.toThrow();
+    else if (action === 'layout') expect(() => host.layout('one', bounds)).not.toThrow();
+    else await expect(host.setSuspended(true)).resolves.toBeUndefined();
+    expect(contents.close).not.toHaveBeenCalled();
+    if (action === 'replace' || action === 'layout') expect(createView).toHaveBeenCalledTimes(2);
+    host.dispose();
+  },
+);
+
 test('group targeting resolves through the trusted host and restores Auto when a group disappears', () => {
   const { host } = fixture();
   const target = jest.fn();

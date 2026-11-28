@@ -1,4 +1,9 @@
-import type { BrowserWindow } from 'electron';
+import type { BrowserWindow, WebContents } from 'electron';
+
+/** Native window properties disappear before all shutdown callbacks finish. */
+export function windowOwnsContents(window: BrowserWindow | null | undefined, contents: WebContents) {
+  return !!window && !window.isDestroyed() && !contents.isDestroyed() && window.webContents === contents;
+}
 
 const closeHandlers = new WeakMap<
   BrowserWindow,

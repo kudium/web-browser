@@ -297,9 +297,10 @@ export function attachExtensionSidePanels(
                   webSecurity: true,
                 },
               });
-              ctx.store.tabToWindow.set(view.webContents, window);
-              view.webContents.once('destroyed', () =>
-                ctx.store.tabToWindow.delete(view.webContents),
+              const contents = view.webContents;
+              ctx.store.tabToWindow.set(contents, window);
+              contents.once('destroyed', () =>
+                ctx.store.tabToWindow.delete(contents),
               );
               recordInput(view.webContents, extension.id, window);
               const openLink = (destination: string) => {

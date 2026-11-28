@@ -33,7 +33,7 @@ import {
   queueHookInstallLink,
   deliverHookInstallLinks,
 } from './hookMarketplace';
-import { onWindowClosed } from './windowLifecycle';
+import { onWindowClosed, windowOwnsContents } from './windowLifecycle';
 import {
   initializeLocalStorage,
   localStorageStatus,
@@ -133,7 +133,7 @@ const isBrowserChrome = (contents: import('electron').WebContents) =>
   Object.entries(activeWindows).some(
     ([key, window]) =>
       (key === 'main' || key.startsWith('browser-')) &&
-      window?.webContents === contents
+      windowOwnsContents(window, contents)
   );
 let finishStorageStartup: () => void;
 const storageReady = new Promise<void>((resolve) => {
@@ -391,13 +391,15 @@ export const createNewWindow = async ({
     registerBrowser(newWindow, storageReady);
   }
   if (process.platform === 'darwin') {
-    const updateMaterial = () =>
+    const updateMaterial = () => {
+      if (newWindow.isDestroyed()) return;
       newWindow.setVibrancy(
         nativeTheme.prefersReducedTransparency ||
           nativeTheme.shouldUseHighContrastColors
           ? null
           : 'sidebar'
       );
+    };
     nativeTheme.on('updated', updateMaterial);
     updateMaterial();
     onWindowClosed(newWindow, () =>
@@ -423,9 +425,7 @@ export const createNewWindow = async ({
     view === 'main'
   );
   newWindow.once('ready-to-show', () => {
-    if (!activeWindows[windowKey]) {
-      throw new Error(`Window "${view}" is not defined`);
-    }
+    if (newWindow.isDestroyed() || activeWindows[windowKey] !== newWindow) return;
     if (savedSize?.maximized) newWindow.maximize();
     if (process.env.START_MINIMIZED) {
       activeWindows[windowKey]!.minimize();
@@ -436,7 +436,9 @@ export const createNewWindow = async ({
     if (view === 'main' && !additional) startStorage(newWindow);
   });
 
-  newWindow.loadURL(initialURL);
+  void newWindow.loadURL(initialURL).catch(error => {
+    if (!newWindow.isDestroyed()) log.error('Browser window failed to load', error);
+  });
 
   onWindowClosed(newWindow, () => {
     activeWindows[windowKey] = null;
@@ -535,7 +537,7 @@ else {
 
 registerHistory((contents) =>
   Object.values(activeWindows).some(
-    (window) => window?.webContents === contents
+    (window) => windowOwnsContents(window, contents)
   )
 );
 registerDownloadTracking();
@@ -550,7 +552,7 @@ registerDownloadLibrary(
   },
   (contents) =>
     Object.values(activeWindows).some(
-      (window) => window?.webContents === contents
+      (window) => windowOwnsContents(window, contents)
     )
 );
 registerPreferences(
@@ -565,22 +567,22 @@ registerPreferences(
   },
   (contents) =>
     Object.values(activeWindows).some(
-      (window) => window?.webContents === contents
+      (window) => windowOwnsContents(window, contents)
     ),
-  (contents) => activeWindows.settings?.webContents === contents
+  (contents) => windowOwnsContents(activeWindows.settings, contents)
 );
 
 registerSystemSpaceRetention();
 
 registerAppUpdates(
   (contents) =>
-    activeWindows.settings?.webContents === contents ||
+    windowOwnsContents(activeWindows.settings, contents) ||
     isBrowserChrome(contents)
 );
 
 registerBrowserMigration(
   (contents) =>
-    activeWindows.settings?.webContents === contents ||
+    windowOwnsContents(activeWindows.settings, contents) ||
     isBrowserChrome(contents)
 );
 registerActivity((contents) => isBrowserChrome(contents));
@@ -590,13 +592,13 @@ registerHookLanguage(
 );
 registerPasswordManager(
   (contents) =>
-    activeWindows.settings?.webContents === contents ||
+    windowOwnsContents(activeWindows.settings, contents) ||
     isBrowserChrome(contents)
 );
 
 registerNativeUi((contents) =>
   Object.values(activeWindows).some(
-    (window) => window?.webContents === contents
+    (window) => windowOwnsContents(window, contents)
   )
 );
 
@@ -611,7 +613,7 @@ registerAccountSync(
 registerWindowCommands(ipcMain, activeWindows, createNewWindow);
 registerTelemetry((contents) =>
   Object.values(activeWindows).some(
-    (window) => window?.webContents === contents
+    (window) => windowOwnsContents(window, contents)
   )
 );
 
@@ -709,6 +711,6 @@ app
 registerGroupLocks(
   (contents) =>
     isBrowserChrome(contents) ||
-    activeWindows.settings?.webContents === contents ||
-    activeWindows['add-app']?.webContents === contents
+    windowOwnsContents(activeWindows.settings, contents) ||
+    windowOwnsContents(activeWindows['add-app'], contents)
 );

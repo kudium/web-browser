@@ -229,3 +229,15 @@ test('debugger ownership, profile boundaries and privileged targets are enforced
   store.emit('tab-removed', a.id);
   expect(a.debugger.isAttached()).toBe(false);
 });
+
+test('debugger destruction releases cached listeners without accessing destroyed native properties', () => {
+  const { call, a, sendEvent } = fixture();
+  call('debugger.attach', { tabId: a.id }, '1.3');
+  const debuggerAPI = a.debugger;
+  Object.defineProperty(a, 'debugger', { get: () => { throw new TypeError('Object has been destroyed'); } });
+  expect(() => a.emit('destroyed')).not.toThrow();
+  expect(debuggerAPI.listenerCount('message')).toBe(0);
+  expect(debuggerAPI.listenerCount('detach')).toBe(0);
+  expect(a.listenerCount('did-start-navigation')).toBe(0);
+  expect(sendEvent).toHaveBeenCalledWith('owner', 'debugger.onDetach', { tabId: a.id }, 'target_closed');
+});

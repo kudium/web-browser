@@ -124,7 +124,7 @@ export function createHookTestWindow(
         });
     }
   );
-  preview.once('ready-to-show', () => preview.show());
+  preview.once('ready-to-show', () => { if (!preview.isDestroyed()) preview.show(); });
   preview.once('closed', () =>
     publish({ url: target, status: 'stopped', logs: [] })
   );

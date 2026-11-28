@@ -98,11 +98,17 @@ export async function requestAIInput(
       if (settled) return;
       settled = true;
       resolve(value);
-      win.close();
+      if (!win.isDestroyed()) win.close();
+    };
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+      if (!win.isDestroyed()) win.close();
     };
     const receive = (event: IpcMainEvent, value: unknown) => {
       if (
-        event.sender !== win.webContents ||
+        settled || win.isDestroyed() || event.sender !== win.webContents ||
         event.senderFrame !== win.webContents.mainFrame
       )
         return;
@@ -127,8 +133,7 @@ export async function requestAIInput(
       finish(data);
     };
     const abort = () => {
-      reject(new Error('Input request stopped.'));
-      win.close();
+      fail(new Error('Input request stopped.'));
     };
     ipcMain.on(channel, receive);
     signal.addEventListener('abort', abort, { once: true });
@@ -141,17 +146,18 @@ export async function requestAIInput(
         resolve(null);
       }
     });
-    win.once('ready-to-show', () => win.show());
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    win.once('ready-to-show', () => { if (!settled && !win.isDestroyed()) win.show(); });
     win
       .loadURL(
         `data:text/html;charset=utf-8,${encodeURIComponent(
           aiInputHTML(request)
         )}`
       )
-      .catch(() => {
-        reject(new Error('Input form unavailable.'));
-        win.close();
-      });
+      .catch(() => fail(new Error('Input form unavailable.')));
   });
 }
 

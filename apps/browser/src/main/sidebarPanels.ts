@@ -150,7 +150,8 @@ export class SidebarPanelRegistry {
     if (this.floating?.view === view) this.dock();
     if (!this.window.isDestroyed())
       this.window.contentView.removeChildView(view);
-    if (!view.webContents.isDestroyed()) view.webContents.close();
+    const contents = view.webContents;
+    if (contents && !contents.isDestroyed()) contents.close();
   }
   remove(id: string) {
     if (this.independent) {
@@ -274,15 +275,16 @@ export class SidebarPanelRegistry {
     this.preparingView = undefined;
     const entry = this.entries.get(this.activeId || '');
     const view = entry?.view;
-    if (value && !this.floating && entry?.shown && view && !view.webContents.isDestroyed()) {
+    const contents = view?.webContents;
+    if (value && !this.floating && entry?.shown && view && contents && !contents.isDestroyed()) {
       // Native views sit above HTML dialogs. Paint a captured replacement before
       // hiding the live view, preserving its document and scroll/draft state.
       this.preparingView = view;
       const controller = new AbortController();
       this.captureController = controller;
-      const capture = view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true })
+      const capture = contents.capturePage(undefined, { stayHidden: true, stayAwake: true })
         .then(image => { if (image.isEmpty?.()) throw new Error('Panel display surface is unavailable.'); return image.toDataURL(); })
-        .catch(async () => `data:image/png;base64,${await capturePagePNG(view.webContents, controller.signal)}`);
+        .catch(async () => `data:image/png;base64,${await capturePagePNG(contents, controller.signal)}`);
       this.suspensionWork = withinSnapshotDeadline(capture, fast ? 80 : undefined)
         .then(async image => {
         if (revision !== this.suspensionRevision || this.floating || entry.view !== view || this.activeId !== entry.provider.info.id) return;
@@ -364,7 +366,7 @@ export class SidebarPanelRegistry {
       return;
     }
     this.lastBounds = clipped;
-    if (!entry.view || entry.view.webContents.isDestroyed()) {
+    if (!entry.view?.webContents || entry.view.webContents.isDestroyed()) {
       try {
         entry.view = entry.provider.createView();
         const view = entry.view;
@@ -500,7 +502,7 @@ export class SidebarPanelRegistry {
       floating.window.contentView.removeChildView(floating.view);
     if (
       !this.window.isDestroyed() &&
-      !floating.view.webContents.isDestroyed()
+      floating.view.webContents && !floating.view.webContents.isDestroyed()
     ) {
       this.window.contentView.addChildView(floating.view);
       floating.view.setVisible(false);

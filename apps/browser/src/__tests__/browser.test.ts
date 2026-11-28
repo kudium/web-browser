@@ -987,3 +987,42 @@ it.each(['navigation', 'removal', 'window', 'empty-list'])(
     timer.mockRestore();
   }
 );
+
+it('cleans up after the native host and tab views have been destroyed', async () => {
+  let destroyed = false;
+  const contents = Object.assign(new EventEmitter(), {
+    send: jest.fn(),
+    isFocused: jest.fn(() => false),
+    isDestroyed: () => destroyed,
+    focus: jest.fn(),
+    setIgnoreMenuShortcuts: jest.fn(),
+    mainFrame: {},
+  });
+  const window = Object.assign(new EventEmitter(), {
+    isDestroyed: () => destroyed,
+    webContents: contents,
+    contentView: { addChildView: jest.fn(), removeChildView: jest.fn() },
+  });
+  const timer = jest.spyOn(global, 'setInterval').mockReturnValue({ unref: jest.fn() } as any);
+  try {
+    const dispose = registerBrowser(window as any);
+    ipcMain.emit('browser-sync', { sender: contents, senderFrame: contents.mainFrame }, {
+      apps: [{ id: 'shutdown-tab', name: 'Fixture', icon: '', url: 'https://example.com', sessionId: 'fixture' }],
+      visible: [{ id: 'shutdown-tab', x: 0, y: 0, width: 600, height: 400 }],
+      focusedId: 'shutdown-tab',
+    });
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    const view = (WebContentsView as unknown as jest.Mock).mock.results.at(-1)!.value;
+    view.webContents = undefined;
+    destroyed = true;
+    for (const property of ['webContents', 'contentView']) {
+      Object.defineProperty(window, property, { get: () => { throw new TypeError('Object has been destroyed'); } });
+    }
+    expect(() => window.emit('closed')).not.toThrow();
+    expect(dispose).not.toThrow();
+    expect(ipcMain.listenerCount('browser-sync')).toBe(0);
+    expect(contents.listenerCount('did-start-loading')).toBe(0);
+  } finally {
+    timer.mockRestore();
+  }
+});

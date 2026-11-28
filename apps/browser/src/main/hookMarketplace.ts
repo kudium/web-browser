@@ -78,9 +78,9 @@ export function queueHookInstallLink(value: string) {
 }
 export function deliverHookInstallLinks(host: BrowserWindow) {
   if (
+    host.isDestroyed() ||
     !hosts.has(host.webContents) ||
-    !readyHosts.has(host.webContents) ||
-    host.isDestroyed()
+    !readyHosts.has(host.webContents)
   )
     return;
   if (!pendingLinks.length) return;
@@ -187,7 +187,7 @@ function openGlobalHookEditor(
     source: import('electron').IpcMainEvent,
     command: unknown,
   ) => {
-    if (source.sender !== contents || source.senderFrame !== contents.mainFrame)
+    if (editor.isDestroyed() || contents.isDestroyed() || source.sender !== contents || source.senderFrame !== contents.mainFrame)
       return;
     if (command === 'close') editor.close();
     if (command === 'expand') {
@@ -200,7 +200,7 @@ function openGlobalHookEditor(
     const binding = globalEditors.get(contents);
     if (binding) {
       binding.testGeneration = (binding.testGeneration || 0) + 1;
-      binding.testWindow?.destroy();
+      if (binding.testWindow && !binding.testWindow.isDestroyed()) binding.testWindow.destroy();
     }
     globalEditors.delete(contents);
     globalEditorWindows.delete(key);
@@ -218,7 +218,7 @@ function openGlobalHookEditor(
   };
   contents.once('dom-ready', showEditor);
   editor.once('ready-to-show', showEditor);
-  editor.loadURL(documentURL).catch(() => editor.close());
+  editor.loadURL(documentURL).catch(() => { if (!editor.isDestroyed()) editor.close(); });
   return null;
 }
 
@@ -378,7 +378,7 @@ export function registerHookMarketplace(
         }
         editorBinding.testGeneration = (editorBinding.testGeneration || 0) + 1;
         const generation = editorBinding.testGeneration;
-        editorBinding.testWindow?.destroy();
+        if (editorBinding.testWindow && !editorBinding.testWindow.isDestroyed()) editorBinding.testWindow.destroy();
         editorBinding.testWindow = undefined;
         if (input.action === 'global-test-stop') {
           event.sender.send('global-hook-test-state', {

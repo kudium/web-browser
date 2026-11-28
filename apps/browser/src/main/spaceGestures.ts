@@ -3,6 +3,7 @@ import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
 import type { SpaceWheelEvent } from '../browser/contracts';
+import { windowOwnsContents } from './windowLifecycle';
 
 /** macOS phase boundaries distinguish finger swipes from inertial scrolling. */
 export function registerSpaceGestures(window: BrowserWindow) {
@@ -36,7 +37,7 @@ export function registerSpaceGestures(window: BrowserWindow) {
   }
   const ready = (event: IpcMainEvent) => {
     if (
-      event.sender === window.webContents &&
+      windowOwnsContents(window, event.sender) &&
       event.senderFrame === window.webContents.mainFrame
     )
       event.sender.send('browser-space-wheel', { available: Boolean(stop) });

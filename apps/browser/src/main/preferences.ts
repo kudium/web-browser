@@ -317,9 +317,12 @@ export function enablePagePinchZoom(contents: WebContents) {
   });
 }
 export function applyBrowserPreferences(contents: WebContents, profile = '') {
+  if (contents.isDestroyed()) return;
   enablePagePinchZoom(contents);
-  browsers.add(contents);
-  contents.once('destroyed', () => browsers.delete(contents));
+  if (!browsers.has(contents)) {
+    browsers.add(contents);
+    contents.once('destroyed', () => browsers.delete(contents));
+  }
   const preferences = getBrowserPreferences();
   applyAdvancedContents(contents, preferences.advanced, profile);
   apply(contents, preferences);

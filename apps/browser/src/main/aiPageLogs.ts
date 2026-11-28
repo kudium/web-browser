@@ -232,18 +232,24 @@ export class AIPageLogs {
       console.push(details.level, details.message, details.lineNumber, details.sourceId);
     };
     contents.on('console-message', onConsole as never);
-    const observer = this.observe(contents.session);
+    // Native WebContents properties are unavailable in the destroyed callback.
+    const session = contents.session;
+    const observer = this.observe(session);
     observer.logs.set(id, requests);
+    let detached = false;
     const detach = () => {
+      if (detached) return;
+      detached = true;
+      contents.removeListener('destroyed', detach);
+      contents.removeListener('console-message', onConsole as never);
       this.detachers.delete(id);
       this.consoles.delete(id);
       this.requestLogs.delete(id);
       observer.logs.delete(id);
       if (!observer.logs.size) {
         observer.release();
-        this.sessions.delete(contents.session);
+        this.sessions.delete(session);
       }
-      if (!contents.isDestroyed()) contents.removeListener('console-message', onConsole as never);
     };
     contents.once('destroyed', detach);
     this.detachers.set(id, detach);

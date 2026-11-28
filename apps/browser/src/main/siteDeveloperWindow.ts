@@ -213,7 +213,7 @@ export function registerSiteDeveloperWindows(
     };
     const receive = (source: IpcMainEvent, request: unknown) => {
       if (
-        source.sender !== editor.webContents ||
+        editor.isDestroyed() || source.sender !== editor.webContents ||
         source.senderFrame !== editor.webContents.mainFrame
       )
         return;
@@ -272,6 +272,7 @@ export function registerSiteDeveloperWindows(
       shell.openExternal(url)
     );
     editor.once('ready-to-show', () => {
+      if (editor.isDestroyed()) return;
       editor.show();
       update(true);
     });
@@ -279,7 +280,7 @@ export function registerSiteDeveloperWindows(
       ipcMain.removeListener('site-developer-command', receive);
       editors.delete(key);
     });
-    editor.loadURL(documentURL).catch(() => editor.close());
+    editor.loadURL(documentURL).catch(() => { if (!editor.isDestroyed()) editor.close(); });
   };
   return {
     open,
@@ -287,7 +288,7 @@ export function registerSiteDeveloperWindows(
     dispose: () => {
       stopRuntime();
       stopPreferences();
-      editors.forEach((editor) => editor.window.destroy());
+      editors.forEach((editor) => { if (!editor.window.isDestroyed()) editor.window.destroy(); });
       editors.clear();
     },
   };

@@ -7,8 +7,9 @@ import { loginProfileKey } from '../utils/groups';
 type Reader = { tabs: () => IApp[]; contents: (id: string) => WebContents | undefined };
 const readers = new WeakMap<WebContents, Reader>();
 export function registerEmailBrowserDetection(host: BrowserWindow, reader: Reader) {
-  readers.set(host.webContents, reader);
-  return () => { if (readers.get(host.webContents) === reader) readers.delete(host.webContents); };
+  const contents = host.webContents;
+  readers.set(contents, reader);
+  return () => { if (readers.get(contents) === reader) readers.delete(contents); };
 }
 
 /** Isolated-world probe: account chrome only, never inbox/body text, inputs or cookies. */

@@ -3,6 +3,8 @@
 !apps/web/
 !apps/web/package.json
 !apps/web/bun.lock
+!apps/web/patches/
+!apps/web/patches/**
 !apps/web/src/
 !apps/web/src/**
 !apps/web/public/

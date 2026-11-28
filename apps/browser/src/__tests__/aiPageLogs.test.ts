@@ -73,10 +73,15 @@ it('records request start, completion and failure with redacted URLs and answers
 });
 
 function fakeContents(id: number, session: object) {
-  const emitter = new EventEmitter() as EventEmitter & { id: number; session: object; isDestroyed: () => boolean };
+  const emitter = new EventEmitter() as EventEmitter & { id: number; session: object; isDestroyed: () => boolean; destroy: () => void };
+  let destroyed = false;
   emitter.id = id;
-  emitter.session = session;
-  emitter.isDestroyed = () => false;
+  Object.defineProperty(emitter, 'session', { get: () => {
+    if (destroyed) throw new TypeError('Object has been destroyed');
+    return session;
+  } });
+  emitter.isDestroyed = () => destroyed;
+  emitter.destroy = () => { destroyed = true; emitter.emit('destroyed'); };
   return emitter;
 }
 function fakeSession() {
@@ -118,12 +123,45 @@ it('fans one session observer out to each tab and detaches on destroy', () => {
     expect.objectContaining({ level: 'error', message: 'boom', line: 12, source: 'https://a.test/app.js' }),
   ]);
   expect(logs.console(two as never).read().entries).toEqual([]);
-  one.emit('destroyed');
+  expect(() => one.destroy()).not.toThrow();
   expect(one.listenerCount('console-message')).toBe(0);
   expect(ruleSets.get(session)!.size).toBe(1);
-  two.emit('destroyed');
+  expect(() => two.destroy()).not.toThrow();
   expect(ruleSets.get(session)!.size).toBe(0);
   expect(session.listeners.completed).toBeNull();
+});
+
+it('releases the last tab session after native properties become unavailable', () => {
+  const session = fakeSession();
+  const logs = new AIPageLogs();
+  const contents = fakeContents(9, session);
+  logs.attach(contents as never);
+  expect(() => contents.destroy()).not.toThrow();
+  expect(ruleSets.get(session)!.size).toBe(0);
+  expect(session.listeners.completed).toBeNull();
+  expect(session.listeners.error).toBeNull();
+  logs.dispose();
+});
+
+it('removes shutdown listeners on disposal and can reattach without stale cleanup', () => {
+  const session = fakeSession();
+  const logs = new AIPageLogs();
+  const contents = fakeContents(10, session);
+  logs.attach(contents as never);
+  logs.dispose();
+  logs.dispose();
+  expect(contents.listenerCount('destroyed')).toBe(0);
+  expect(contents.listenerCount('console-message')).toBe(0);
+  expect(ruleSets.get(session)!.size).toBe(0);
+  logs.attach(contents as never);
+  expect(contents.listenerCount('destroyed')).toBe(1);
+  expect(ruleSets.get(session)!.size).toBe(1);
+  expect(session.listeners.completed).toEqual(expect.any(Function));
+  expect(() => contents.destroy()).not.toThrow();
+  logs.dispose();
+  expect(ruleSets.get(session)!.size).toBe(0);
+  expect(session.listeners.completed).toBeNull();
+  expect(session.listeners.error).toBeNull();
 });
 
 it('composes a request condition into wait_until and taints on log reads', () => {

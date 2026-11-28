@@ -3,7 +3,7 @@ export type PageDevToolsDock = 'right' | 'bottom' | 'window' | 'panel';
 
 /** Chromium's inspector runs in its own native view, never the page renderer. */
 export class PageDevTools {
-  private entries = new Map<WebContents, { mode: PageDevToolsDock; fraction?: number; resizing?: boolean; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void }>();
+  private entries = new Map<WebContents, { mode: PageDevToolsDock; fraction?: number; resizing?: boolean; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; tools?: WebContents; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void }>();
   private generations = new WeakMap<WebContents, number>();
   constructor(private changed: (contents: WebContents) => void, private registerPanel?: (contents: WebContents, view: WebContentsView) => (() => void), private observeView?: (view: WebContentsView, owner: () => BrowserWindow | undefined) => void) {}
   mode(contents: WebContents) { return this.entries.get(contents)?.mode; }
@@ -39,11 +39,12 @@ export class PageDevTools {
     this.entries.delete(contents);
     contents.removeListener('devtools-closed', entry.closed);
     contents.removeListener('destroyed', entry.closed);
+    entry.tools?.removeListener('destroyed', entry.closed);
     if (!contents.isDestroyed()) contents.closeDevTools();
     entry.removePanel?.();
     if (entry.view) {
       if (entry.owner && !entry.owner.isDestroyed()) entry.owner.contentView.removeChildView(entry.view);
-      const tools = entry.view.webContents;
+      const tools = entry.tools;
       if (tools && !tools.isDestroyed()) tools.close();
     }
     if (entry.window) { entry.window.removeListener('closed', entry.closed); if (!entry.window.isDestroyed()) entry.window.destroy(); }
@@ -64,7 +65,7 @@ export class PageDevTools {
     const generation = this.generations.get(contents);
     if (closed) await closed;
     if (contents.isDestroyed() || generation !== this.generations.get(contents)) return;
-    const entry: { mode: PageDevToolsDock; fraction?: number; resizing?: boolean; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void } = { mode, closed: () => this.close(contents) };
+    const entry: { mode: PageDevToolsDock; fraction?: number; resizing?: boolean; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; tools?: WebContents; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void } = { mode, closed: () => this.close(contents) };
     this.entries.set(contents, entry);
     if (mode === 'window') {
       entry.window = new BrowserWindow({ width:1000, height:720, title:'Page Developer Tools', webPreferences:{ sandbox:true, contextIsolation:true, nodeIntegration:false } });
@@ -74,7 +75,9 @@ export class PageDevTools {
       entry.view = new WebContentsView({ webPreferences:{ sandbox:true, contextIsolation:true, nodeIntegration:false } });
       entry.view.setVisible(false);
       this.observeView?.(entry.view, () => entry.owner);
-      contents.setDevToolsWebContents(entry.view.webContents);
+      entry.tools = entry.view.webContents;
+      entry.tools.once('destroyed', entry.closed);
+      contents.setDevToolsWebContents(entry.tools);
     }
     contents.once('devtools-closed', entry.closed);
     contents.once('destroyed', entry.closed);

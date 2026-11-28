@@ -30,6 +30,7 @@ export function createPrivateSession() {
 export function attachPrivateWindow(window: BrowserWindow, target: Session) {
   const family = families.get(target);
   if (!family) throw new Error('Unknown private browsing session.');
+  const contents = window.webContents;
   family.windows.add(window);
   window.once('closed', () => {
     family.windows.delete(window);
@@ -37,12 +38,17 @@ export function attachPrivateWindow(window: BrowserWindow, target: Session) {
     family.downloads.forEach((item) => item.cancel());
     family.downloads.clear();
     clearPrivateDownloads(target);
-    Promise.allSettled([
-      target.clearStorageData(),
-      target.clearCache(),
-      target.clearAuthCache(),
-      target.closeAllConnections(),
-    ]).catch(() => {});
+    const clear = () => {
+      Promise.allSettled([
+        target.clearStorageData(),
+        target.clearCache(),
+        target.clearAuthCache(),
+        target.closeAllConnections(),
+      ]).catch(() => {});
+    };
+    // A closed window can still have native contents finishing destruction.
+    if (contents.isDestroyed()) clear();
+    else contents.once('destroyed', clear);
   });
 }
 export async function createPrivateWindow() {

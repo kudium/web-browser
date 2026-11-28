@@ -38,8 +38,8 @@ it('uses a nonpersistent session and delegates UI creation to the existing shell
 });
 it('cleans up only after the last related shell window closes', () => {
   const { created, store } = target();
-  const first = new EventEmitter();
-  const second = new EventEmitter();
+  const first = Object.assign(new EventEmitter(), { webContents: { isDestroyed: () => true } });
+  const second = Object.assign(new EventEmitter(), { webContents: { isDestroyed: () => true } });
   attachPrivateWindow(first as any, created);
   attachPrivateWindow(second as any, created);
   first.emit('closed');
@@ -47,4 +47,18 @@ it('cleans up only after the last related shell window closes', () => {
   second.emit('closed');
   expect(store.clearStorageData).toHaveBeenCalledTimes(1);
   expect(store.clearCache).toHaveBeenCalledTimes(1);
+});
+
+it('waits for native contents destruction before clearing the closed private session', () => {
+  const { created, store } = target();
+  const contents = Object.assign(new EventEmitter(), { isDestroyed: () => false });
+  const window = Object.assign(new EventEmitter(), { webContents: contents });
+  attachPrivateWindow(window as any, created);
+  Object.defineProperty(window, 'webContents', { get: () => { throw new TypeError('Object has been destroyed'); } });
+  expect(() => window.emit('closed')).not.toThrow();
+  expect(store.clearStorageData).not.toHaveBeenCalled();
+  contents.emit('destroyed');
+  expect(store.clearStorageData).toHaveBeenCalledTimes(1);
+  contents.emit('destroyed');
+  expect(store.clearStorageData).toHaveBeenCalledTimes(1);
 });

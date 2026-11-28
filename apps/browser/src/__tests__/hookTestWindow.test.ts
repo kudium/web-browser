@@ -90,3 +90,15 @@ it('only runs a restricted draft on allowed websites and their selected subdomai
   expect(validateHookTest({ ...hook, sites: [{ host: 'example.com', includeSubdomains: true }] }, 'https://news.example.com')).toBe('https://news.example.com/');
   expect(() => validateHookTest(hook, 'https://example.com.evil.com')).toThrow('does not match');
 });
+
+it('ignores a ready event delivered after the test window has closed', () => {
+  mockWindow.once.mockClear();
+  mockWindow.show.mockClear();
+  createHookTestWindow({} as any, sampleGlobalHooks[0], 'https://example.com', jest.fn());
+  const destroyed = jest.spyOn(mockWindow, 'isDestroyed').mockReturnValue(true);
+  try {
+    const ready = mockWindow.once.mock.calls.find(([name]) => name === 'ready-to-show')![1];
+    expect(ready).not.toThrow();
+    expect(mockWindow.show).not.toHaveBeenCalled();
+  } finally { destroyed.mockRestore(); }
+});

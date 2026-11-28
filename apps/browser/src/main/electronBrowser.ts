@@ -156,6 +156,7 @@ export function registerElectronBrowser(
   window: BrowserWindow,
   storageReady?: Promise<void>
 ) {
+  const hostContents = window.webContents;
   const removals = getGroupRemovalJournal();
   const windows = getBrowserWindows(window);
   const privateMode = isPrivateSession(window.webContents.session);
@@ -166,7 +167,7 @@ export function registerElectronBrowser(
   const hostFor = (id: string) => windows?.host(id) || window;
   const activityLayoutChanges = new EventEmitter();
   const removeView = (view: WebContentsView) => {
-    if (windows) windows.remove(view); else window.contentView.removeChildView(view);
+    if (windows) windows.remove(view); else if (!window.isDestroyed()) window.contentView.removeChildView(view);
     activityLayoutChanges.emit('change');
   };
   const stateSignatures = new Map<string, string>();
@@ -2963,7 +2964,7 @@ export function registerElectronBrowser(
     keyboardCleanup.forEach((cleanup) => cleanup());
     pendingTabCleanup.forEach((cleanup) => cleanup());
     window.removeListener('closed', dispose);
-    window.webContents.removeListener('did-start-loading', resetStateSignatures);
+    hostContents.removeListener('did-start-loading', resetStateSignatures);
     ipcMain.removeListener('browser-sync', sync);
     ipcMain.removeListener('browser-command', command);
     websiteTabs.forEach(({ contents, cleanup }) => {
@@ -2973,7 +2974,8 @@ export function registerElectronBrowser(
     websiteTabs.clear();
     websiteTabRecovery.clear();
     views.forEach((view) => {
-      if (!view.webContents.isDestroyed()) view.webContents.close();
+      const contents = view.webContents;
+      if (contents && !contents.isDestroyed()) contents.close();
     });
     views.clear();
   };

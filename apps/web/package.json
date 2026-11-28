@@ -53,6 +53,10 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "ip-address": "10.7.7"
+  },
+  "patchedDependencies": {
+    "geoip-country@5.0.202611210415": "patches/geoip-country@5.0.202611210415.patch"
   }
 }

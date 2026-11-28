@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
-import type { WebContents } from 'electron';
-import { detectBrowserEmail, detectEmailAccountLabels, detectEmailForWindow } from '../main/emailBrowserDetection';
+import type { BrowserWindow, WebContents } from 'electron';
+import { detectBrowserEmail, detectEmailAccountLabels, detectEmailForWindow, registerEmailBrowserDetection } from '../main/emailBrowserDetection';
 import { aiGroupId } from '../browser/aiGroups';
 import type { IApp } from '../types';
 
@@ -70,4 +70,18 @@ it('validates requests and exposes no detector to unregistered windows', async (
   expect(() => detectEmailForWindow({} as WebContents, '', 'google')).toThrow();
   expect(() => detectEmailForWindow({} as WebContents, 'group', 'unknown')).toThrow();
   await expect(detectEmailForWindow({} as WebContents, 'group', 'google')).resolves.toEqual({ accounts: [] });
+});
+
+it('removes the registered reader after native window properties are destroyed', async () => {
+  const contents = page();
+  const host = { webContents: contents };
+  const tabs = jest.fn(() => [tab]);
+  const dispose = registerEmailBrowserDetection(host as BrowserWindow, { tabs, contents: () => contents });
+  await expect(detectEmailForWindow(contents, aiGroupId(tab), 'google')).resolves.toHaveProperty('accounts.0.address', 'owner@example.com');
+  tabs.mockClear();
+  Object.defineProperty(host, 'webContents', { get: () => { throw new TypeError('Object has been destroyed'); } });
+  expect(dispose).not.toThrow();
+  expect(dispose).not.toThrow();
+  await expect(detectEmailForWindow(contents, aiGroupId(tab), 'google')).resolves.toEqual({ accounts: [] });
+  expect(tabs).not.toHaveBeenCalled();
 });

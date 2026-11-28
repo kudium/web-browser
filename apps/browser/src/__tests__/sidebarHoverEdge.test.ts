@@ -24,6 +24,7 @@ function fixture() {
       { type: 'mouseMove', x: 4, y: 240, ...input },
     );
   return {
+    view,
     contents,
     send,
     enabled,
@@ -73,7 +74,9 @@ it('validates pointer bounds and removes listeners on destruction or unsubscribe
   f.mouse({});
   f.mouse({ type: 'mouseLeave' });
   expect(f.send.mock.calls[1]).toEqual(['browser-sidebar-hover-edge', false]);
-  f.contents.emit('destroyed');
+  Object.defineProperty(f.view, 'webContents', { value: undefined });
+  expect(() => f.contents.emit('destroyed')).not.toThrow();
+  expect(() => f.stop()).not.toThrow();
   expect(f.contents.listenerCount('before-mouse-event')).toBe(0);
   const other = fixture();
   other.stop();

@@ -283,6 +283,7 @@ module.exports = async ({ main, evaluate, runtimeDir, out, windows }) => {
     }
   };
   const check = async (name, operation) => {
+    console.log(`Checking: ${name}`);
     try {
       await bounded(operation);
       results.push({ name, outcome: 'passed' });
@@ -560,6 +561,7 @@ module.exports = async ({ main, evaluate, runtimeDir, out, windows }) => {
     );
     const api = require(path.join(runtimeDir, 'electronBrowser.js'));
     const createPrivate = async (id) => {
+      console.log(`Opening private family: ${id}`);
       const owner = new BrowserWindow({
         show: true,
         webPreferences: {
@@ -579,10 +581,12 @@ module.exports = async ({ main, evaluate, runtimeDir, out, windows }) => {
         throw new Error('No secondary fixture');
       });
       require(path.join(runtimeDir, 'browser.js')).registerBrowser(owner);
-      await owner.loadFile(
+      console.log(`Loading private shell: ${id}`);
+      await bounded(() => owner.loadFile(
         path.resolve('release/app/dist/renderer/index.html'),
         { query: { view: 'main', private: '1' } },
-      );
+      ));
+      console.log(`Private shell loaded: ${id}`);
       await until(() =>
         evaluate(owner, "!!document.querySelector('[data-private]')"),
       );
@@ -628,7 +632,9 @@ module.exports = async ({ main, evaluate, runtimeDir, out, windows }) => {
       },
     );
     await exercise(privateFirst.contents, 'Private');
+    console.log('Closing first private family');
     privateFirst.owner.destroy();
+    console.log('First private family closed');
     const privateFresh = await createPrivate('fresh');
     await check(
       'Fresh private family has no previous private records or service workers',
@@ -657,7 +663,7 @@ module.exports = async ({ main, evaluate, runtimeDir, out, windows }) => {
     );
   } finally {
     for (const owner of privateOwners)
-      if (!owner.isDestroyed()) owner.destroy();
+      if (!owner.isDestroyed()) { console.log('Cleaning private fixture'); owner.destroy(); }
     for (const key of Object.keys(windows))
       if (key.startsWith('compatibility-private-')) delete windows[key];
     server.close();

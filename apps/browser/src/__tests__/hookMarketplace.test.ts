@@ -81,7 +81,7 @@ const mockEditor = {
   maximize: jest.fn(),
   unmaximize: jest.fn(),
 };
-const mockTestWindow = { destroy: jest.fn() };
+const mockTestWindow = { destroy: jest.fn(), isDestroyed: jest.fn(() => false) };
 const targets = [
   {
     id: 'tab',
@@ -518,6 +518,11 @@ it('opens the shared native window, binds saves to its hook and reuses an open e
   );
   await handler(editorEvent, { action: 'global-test-stop' });
   expect(mockTestWindow.destroy).toHaveBeenCalled();
+  await handler(editorEvent, { action: 'global-test-run', url: 'https://example.com', hook: result.editorHook });
+  mockTestWindow.isDestroyed.mockReturnValue(true);
+  mockTestWindow.destroy.mockImplementation(() => { if (mockTestWindow.isDestroyed()) throw new TypeError('Object has been destroyed'); });
+  await expect(handler(editorEvent, { action: 'global-test-stop' })).resolves.toBeNull();
+  await handler(editorEvent, { action: 'global-test-run', url: 'https://example.com', hook: result.editorHook });
   await expect(
     handler(event, {
       action: 'global-test-run',
@@ -528,10 +533,16 @@ it('opens the shared native window, binds saves to its hook and reuses an open e
   const closed = mockEditor.once.mock.calls.find(
     ([name]) => name === 'closed'
   )[1];
-  closed();
+  expect(closed).not.toThrow();
+  mockTestWindow.isDestroyed.mockReturnValue(false);
   await expect(handler(editorEvent, { action: 'state' })).rejects.toThrow(
     'Untrusted'
   );
+});
+
+it('does not read native contents while delivering install links to a destroyed host', () => {
+  const host = { isDestroyed: () => true, get webContents(): never { throw new TypeError('Object has been destroyed'); } };
+  expect(() => deliverHookInstallLinks(host as any)).not.toThrow();
 });
 
 it('publishes the saved test URL and retains it when installing the package', async () => {

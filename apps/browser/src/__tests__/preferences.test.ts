@@ -131,6 +131,8 @@ it('persists validated preferences and applies live settings to existing views',
     },
   });
   applyBrowserPreferences(contents as any);
+  for (let index = 0; index < 20; index++) applyBrowserPreferences(contents as any);
+  expect(contents.listenerCount('destroyed')).toBe(1);
   expect(contents.setVisualZoomLevelLimits).toHaveBeenCalledWith(1, 5);
   updateBrowserPreferences({
     searchEngine: 'google',
@@ -162,6 +164,13 @@ it('persists validated preferences and applies live settings to existing views',
   contents.setZoomFactor.mockClear();
   updateBrowserPreferences({ zoom: 1 });
   expect(contents.setZoomFactor).not.toHaveBeenCalled();
+});
+
+it('does not apply preferences or add listeners to destroyed native contents', () => {
+  const contents = Object.assign(new EventEmitter(), { isDestroyed: () => true });
+  Object.defineProperty(contents, 'session', { get: () => { throw new TypeError('Object has been destroyed'); } });
+  expect(() => applyBrowserPreferences(contents as any)).not.toThrow();
+  expect(contents.listenerCount('destroyed')).toBe(0);
 });
 
 it('requires confirmation and keeps extension origins when clearing one profile', async () => {

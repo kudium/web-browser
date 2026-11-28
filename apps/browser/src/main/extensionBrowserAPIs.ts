@@ -249,6 +249,7 @@ export function attachExtensionBrowserAPIs(api: ElectronChromeExtensions) {
     (event: Event, source: any, version: string) => {
       const contents = target(source);
       if (!event.extension) throw new Error('Extension identity required');
+      const debuggerAPI = contents.debugger;
       if (typeof version !== 'string' || !/^1\.\d+$/.test(version))
         throw new Error('Unsupported debugger protocol version');
       if (attachments.has(contents.id) || contents.debugger.isAttached())
@@ -274,8 +275,8 @@ export function attachExtensionBrowserAPIs(api: ElectronChromeExtensions) {
       const detach = (_event: any, reason: string) => {
         if (attachments.get(contents.id) !== attachment) return;
         attachments.delete(contents.id);
-        contents.debugger.removeListener('message', message);
-        contents.debugger.removeListener('detach', detach);
+        debuggerAPI.removeListener('message', message);
+        debuggerAPI.removeListener('detach', detach);
         contents.removeListener('did-start-navigation', navigating);
         contents.removeListener('destroyed', destroyed);
         ctx.router.sendEvent(

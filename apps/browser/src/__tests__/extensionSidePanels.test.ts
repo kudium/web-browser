@@ -232,6 +232,11 @@ test('toolbar action behavior opens the shared host and its view retains profile
   });
   f.call('open', { windowId: 1 });
   expect(f.host.activate).toHaveBeenCalledTimes(2);
+  const contents = view.webContents;
+  expect(f.store.tabToWindow.get(contents)).toBe(f.window);
+  Object.defineProperty(view, 'webContents', { value: undefined });
+  expect(() => contents.emit('destroyed')).not.toThrow();
+  expect(f.store.tabToWindow.has(contents)).toBe(false);
 });
 
 test('extension unloading destroys its registrations', () => {

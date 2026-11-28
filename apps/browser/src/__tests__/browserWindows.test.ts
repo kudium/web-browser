@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import type { BrowserWindow } from 'electron';
 import { screen } from 'electron';
-import { BrowserWindows } from '../main/browserWindows';
+import { BrowserWindows, getBrowserWindows } from '../main/browserWindows';
 import { isBrowserWindowRequest } from '../browser/windows';
 import type { IApp } from '../types';
 
@@ -22,6 +22,11 @@ jest.mock('../main/groupLocks', () => ({
   }),
 }));
 let serial = 0;
+
+it('does not read a closed window while resolving its browser manager', () => {
+  const window = { isDestroyed: () => true, get webContents(): never { throw new TypeError('Object has been destroyed'); } } as unknown as BrowserWindow;
+  expect(getBrowserWindows(window)).toBeUndefined();
+});
 function host() {
   let visible = true;
   let destroyed = false;
@@ -61,6 +66,11 @@ function host() {
       window.emit('closed');
     },
   });
+  const contents = window.webContents;
+  Object.defineProperty(window, 'webContents', { get: () => {
+    if (destroyed) throw new TypeError('Object has been destroyed');
+    return contents;
+  } });
   return window as unknown as BrowserWindow;
 }
 const tab = (id: string, patch: Partial<IApp> = {}): IApp => ({

@@ -9,6 +9,7 @@ export function observeSidebarHoverEdge(
   owner: () => BrowserWindow | undefined,
   enabled: (window: BrowserWindow) => boolean,
 ) {
+  const contents = view.webContents;
   let inside = false;
   let previousOwner: BrowserWindow | undefined;
   const mouse = (_event: unknown, input: MouseInputEvent) => {
@@ -49,10 +50,10 @@ export function observeSidebarHoverEdge(
     window.webContents.send('browser-sidebar-hover-edge', inside);
   };
   const stop = () => {
-    view.webContents.removeListener('before-mouse-event', mouse);
-    view.webContents.removeListener('destroyed', stop);
+    contents.removeListener('before-mouse-event', mouse);
+    contents.removeListener('destroyed', stop);
   };
-  view.webContents.on('before-mouse-event', mouse);
-  view.webContents.once('destroyed', stop);
+  contents.on('before-mouse-event', mouse);
+  contents.once('destroyed', stop);
   return stop;
 }

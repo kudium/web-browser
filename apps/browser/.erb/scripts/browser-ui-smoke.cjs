@@ -1,6 +1,9 @@
 process.on('warning', warning => console.error(warning.stack));
 // Run after npm run build. Uses a disposable user-data directory and local test websites.
 const { app, BrowserWindow, WebContentsView, ipcMain, Menu, dialog } = require('electron');
+// Fail the check instead of leaving an Electron exception dialog open.
+process.on('uncaughtException', error => { console.error('Uncaught smoke exception:', error); app.exit(1); });
+process.on('unhandledRejection', error => { console.error('Unhandled smoke rejection:', error); app.exit(1); });
 const path = require('path'),
   fs = require('fs'),
   assert = require('assert'),

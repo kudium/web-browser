@@ -113,8 +113,9 @@ export class BrowserWindows {
       stateSignatures: new Map(),
     };
     this.hosts.set(window.id, host);
+    const contents = window.webContents;
     const resetStates = () => host.stateSignatures.clear();
-    window.webContents.on('did-start-loading', resetStates);
+    contents.on('did-start-loading', resetStates);
     if (window !== this.root) this.runtime?.chrome?.(window);
     window.on('focus', () => {
       host.stamp = this.tick();
@@ -136,7 +137,7 @@ export class BrowserWindows {
       });
     });
     onWindowClosed(window, () => {
-      window.webContents.removeListener('did-start-loading', resetStates);
+      contents.removeListener('did-start-loading', resetStates);
       this.hosts.delete(window.id);
       const removed = [...this.reserved]
         .filter(([, owner]) => owner === window.id)
@@ -833,7 +834,7 @@ export class BrowserWindows {
 let manager: BrowserWindows | undefined;
 const privateManagers = new Map<import('electron').Session, BrowserWindows>();
 export const getBrowserWindows = (window?: BrowserWindow) =>
-  window && isPrivateSession(window.webContents.session)
+  window?.isDestroyed() ? undefined : window && isPrivateSession(window.webContents.session)
     ? privateManagers.get(window.webContents.session)
     : manager;
 export function registerPrivateBrowserWindow(
