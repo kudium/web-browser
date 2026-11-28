@@ -1,5 +1,14 @@
 export const whatsNew = [
   {
+    version: '1.0.29', date: '2026-11-28', title: 'Safer shutdowns and a refreshed browser engine',
+    highlights: [
+      ['Safer closing and update restarts', 'Fixes destroyed-object errors when closing tabs, closing the browser, or restarting to install an update. Window cleanup and AI page logging safely handle native objects being destroyed.'],
+      ['More dependable panel cleanup', 'Sidebar hover, extension panels, email detection and Developer Tools release their listeners and views safely. Closing an inspector restores the page and allows it to reopen in the supported dock positions.'],
+      ['Dialogs that close cleanly', 'Late loading, readiness and input callbacks are ignored after dialogs and Hook Editors close. Already-closed hook test windows are handled safely.'],
+      ['Updated browser engine', 'Electron 45.5.0 with Chromium 156.0.8078.109 includes upstream fixes for renderer crashes and aborted dialogs. This release also updates HTML sanitization, routing and folder-tree dependencies.'],
+    ],
+  },
+  {
     version: '1.0.28', date: '2026-11-27', title: 'Independent panels and smoother browser controls',
     highlights: [
       ['Keep multiple panels open', 'Open Chat, Developer, Email and other panels together in opening order. Resize neighboring panels, dock each one beside or below the webpage, and restore your layout after restart.'],
