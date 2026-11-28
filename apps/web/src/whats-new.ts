@@ -1,5 +1,16 @@
 export const whatsNew = [
   {
+    version: '1.0.28', date: '2026-11-27', title: 'Independent panels and smoother browser controls',
+    highlights: [
+      ['Keep multiple panels open', 'Open Chat, Developer, Email and other panels together in opening order. Resize neighboring panels, dock each one beside or below the webpage, and restore your layout after restart.'],
+      ['Readable narrow headers', 'Secondary panel actions move into a More menu as space gets tight. Resizing keeps headers aligned and preserves panel content.'],
+      ['A cleaner compact sidebar', 'Folders and collections appear as icon stacks with shared previews. Improved icon sizes, alignment and suggestion rows keep the compact rail tidy; the hidden sidebar reveals from a slimmer left frame.'],
+      ['Smoother popups and autofill', 'Popups open more smoothly over webpages. Autofill remembers dragged positions relative to the input, keeps suggestions clear of the field, and hides redundant trigger buttons when focus suggestions are enabled.'],
+      ['Portable project workspaces', 'Improved project linking, workspace import and restoration, saved terminal tabs and working directories, and file drops make Developer work easier to resume. Saved commands are not replayed automatically.'],
+      ['Simpler cloud connections', 'Account-based relay pairing and quick-tunnel setup provide clearer connection states while keeping credentials protected.'],
+    ],
+  },
+  {
     version: '1.0.27', date: '2026-11-27', title: 'Email identities, Today todos, and better AI workflows',
     highlights: [
       ['Email accounts and aliases', 'Connect multiple inboxes and forwarding-alias accounts, or associate a signed-in browser inbox with a group. The assistant can reuse aliases, fill sign-up forms, and read matching verification messages from a configured inbox.'],
