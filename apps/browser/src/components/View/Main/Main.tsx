@@ -1,3 +1,10 @@
+import { fittedSidebarPageWidth } from '../../../utils/hooks/useSidebarPageWidths';
+import { SidebarPageAreaResizeHandle } from '../../UI/SidebarPageAreaResizeHandle';
+import { useSidebarPageDocks } from '../../../utils/hooks/useSidebarPageDocks';
+import { useSidebarPageWidths } from '../../../utils/hooks/useSidebarPageWidths';
+import { useSidebarPages, nativeSidebarPage, type SidebarPage } from '../../../utils/hooks/useSidebarPages';
+import { useSidebarHoverOverlay } from '../../../utils/hooks/useSidebarHoverOverlay';
+import { applyWorkspaceMutation } from '../../../utils/workspaceMutation';
 import { SuggestionsWidget } from '../../UI/SuggestionsWidget';
 import { openTodoNote } from '../../UI/noteNavigation';
 import { frameResizeObserver } from '../../../utils/frameResizeObserver';
@@ -66,7 +73,6 @@ import {
 } from 'lucide-react';
 import { HorizontalTabList } from '../../UI/HorizontalTabList';
 import { FindBar } from '../../UI/FindBar';
-import { useSidebarPaneToggle } from '../../../utils/hooks/useSidebarPaneToggle';
 import { useSidebarPanels } from '../../../utils/useSidebarPanels';
 import { useArchiveRetention } from '../../../utils/hooks/useArchiveRetention';
 import { Archive } from '../Settings/tabs/Archive';
@@ -80,7 +86,7 @@ import { AccountSyncPublisher } from '../../UI/AccountSyncPublisher';
 import { ActionSuggestions } from '../../UI/ActionSuggestions';
 import { TabSwitcher } from '../../UI/TabSwitcher';
 import { useTabSwitcher } from '../../../utils/hooks/useTabSwitcher';
-import { useNativeOverlay } from '../../../utils/hooks/useNativeOverlay';
+import { useNativeOverlayPresentation } from '../../../utils/hooks/useNativeOverlay';
 import {
   groupAccessAction,
   lockedGroup,
@@ -115,6 +121,7 @@ import {
   savedNavigationURL,
 } from '../../../browser/tabDefaults';
 import { AISidebar } from '../../UI/AISidebar';
+import { focusAssistantPanel } from '../../UI/AssistantPanelHost';
 import { hasFloatingAssistantPanels } from '../../../utils/assistantPanelPlacement';
 import { ChromeIconButton } from '../../UI/ChromeIconButton';
 import { PictureInPictureButton } from '../../UI/PictureInPictureButton';
@@ -155,7 +162,7 @@ import {
   filterSpaceGroups,
   searchSpaceGroupTabs,
 } from '../../../utils/spaceGroupSearch';
-import type { SpaceIconName } from '../../../utils/SpaceManager';
+import type { SpaceIconName, Collection } from '../../../utils/SpaceManager';
 import {
   NativeContextMenu as ContextMenu,
   showNativeContextMenu,
@@ -243,25 +250,22 @@ export function Main() {
   }>();
   const [savedAIOpen, setSavedAIOpen] = useAIPagePreference('open', false);
   const [savedAIPane, setSavedAIPane] = useAIPagePreference('pane', 'assistant');
-  const [nativePanelActive, setNativePanelActive] = useState(savedAIPane === 'panels' && savedAIOpen);
-  const nativePanelRequested = useRef(savedAIPane === 'panels' && savedAIOpen);
-  const aiOpen = savedAIOpen || nativePanelActive;
-  const aiOpenValue = useRef(aiOpen);
-  aiOpenValue.current = aiOpen;
-  const aiPane = nativePanelActive ? 'panels' : savedAIPane;
-  const setAIPane = useCallback((pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email' | 'panels') => {
-    nativePanelRequested.current = pane === 'panels';
-    setNativePanelActive(pane === 'panels');
-    setSavedAIPane(pane);
-    if (pane === 'panels') setSavedAIOpen(true);
-  }, [setSavedAIPane, setSavedAIOpen]);
+  const rightPages = useSidebarPages(savedAIOpen, savedAIPane);
+  const aiOpen = rightPages.pages.length > 0;
+  const aiPane = rightPages.activePage;
+  const setAIPane = useCallback((pane: SidebarPage) => {
+    rightPages.openPage(pane);
+    if (!pane.startsWith('native-')) setSavedAIPane(pane as import('../../../utils/hooks/useSidebarPages').BuiltinSidebarPage);
+    setSavedAIOpen(true);
+  }, [rightPages.openPage, setSavedAIPane, setSavedAIOpen]);
   const setAIOpen = useCallback((next: boolean | ((previous: boolean) => boolean)) => {
-    const open = typeof next === 'function' ? next(aiOpenValue.current) : next;
-    aiOpenValue.current = open;
-    if (!open) { nativePanelRequested.current = false; setNativePanelActive(false); }
-    setSavedAIOpen(open);
-  }, [setSavedAIOpen]);
-  const sidebarPanels = useSidebarPanels(aiOpen && aiPane === 'panels');
+    rightPages.setOpen(next);
+  }, [rightPages.setOpen]);
+  const closeSidebarPage = useCallback((pane: SidebarPage) => {
+    rightPages.closePage(pane);
+  }, [rightPages.closePage]);
+  useEffect(() => { setSavedAIOpen(aiOpen); }, [aiOpen, setSavedAIOpen]);
+  const sidebarPanels = useSidebarPanels(rightPages.pages.includes('panels'));
   const lastPanelRequest = useRef(0);
 
   const [aiMounted, setAIMounted] = useState(
@@ -271,12 +275,33 @@ export function Main() {
     if (sidebarPanels.activeId && sidebarPanels.openRequest > lastPanelRequest.current) {
       lastPanelRequest.current = sidebarPanels.openRequest;
       setAIMounted(true);
-      nativePanelRequested.current = true;
-      setNativePanelActive(true);
-      setSavedAIPane('panels');
-      setSavedAIOpen(true);
+      const info = sidebarPanels.panels.find(panel => panel.id === sidebarPanels.activeId);
+      if (info) rightPages.openPage(nativeSidebarPage(info));
     }
   }, [sidebarPanels.activeId, sidebarPanels.openRequest]);
+  const restoredNativePanels = useRef(new Set<string>());
+  useEffect(() => {
+    for (const info of sidebarPanels.panels) {
+      const page = nativeSidebarPage(info);
+      if (!rightPages.pages.includes(page) || restoredNativePanels.current.has(info.id) || sidebarPanels.openedPanels?.some(panel => panel.id === info.id)) continue;
+      restoredNativePanels.current.add(info.id);
+      void browser.sidebarPanels({ action: 'activate', id: info.id, reveal: false }).catch(() => restoredNativePanels.current.delete(info.id));
+    }
+  }, [sidebarPanels.panels, rightPages.pages, sidebarPanels.openedPanels]);
+  const previouslyOpenNativePanels = useRef(new Map<string, SidebarPage>());
+  useEffect(() => {
+    if (!sidebarPanels.openedPanels) return;
+    const next = new Map<string, SidebarPage>();
+    for (const opened of sidebarPanels.openedPanels) {
+      const info = sidebarPanels.panels.find(info => info.id === opened.id);
+      if (info) next.set(info.id, nativeSidebarPage(info));
+    }
+    for (const page of previouslyOpenNativePanels.current.values()) {
+      if (![...next.values()].includes(page) && sidebarPanels.panels.some(info => nativeSidebarPage(info) === page))
+        rightPages.closePage(page);
+    }
+    previouslyOpenNativePanels.current = next;
+  }, [sidebarPanels.openedPanels, sidebarPanels.panels, rightPages.closePage]);
   const [unreadNotes, setUnreadNotes] = useState(0);
   const [unreadActivity, setUnreadActivity] = useState(0);
   useEffect(() => {
@@ -295,7 +320,7 @@ export function Main() {
     const stop = window.electron.onActivityChanged?.(refresh);
     const open = () => {
       setAIMounted(true);
-      setAIOpen(true);
+      setAIPane('activity');
       setMenuPaneRequest((previous) => ({
         pane: 'activity',
         token: (previous?.token || 0) + 1,
@@ -329,7 +354,7 @@ export function Main() {
     const stopNotes = window.electron.onPasswordManagerChanged?.(refresh);
     const open = () => {
       setAIMounted(true);
-      setAIOpen(true);
+      setAIPane('notes');
       setMenuPaneRequest((previous) => ({
         pane: 'notes',
         token: (previous?.token || 0) + 1,
@@ -351,23 +376,27 @@ export function Main() {
     notesScope?: string;
     token: number;
   }>();
-  const toggleSidebarPane = useSidebarPaneToggle(
-    aiOpen,
-    aiPane,
-    setAIOpen,
-    setAIPane,
-    setAIMounted
-  );
+  const toggleSidebarPane = (pane: SidebarPage) => {
+    if (focusAssistantPanel(pane)) return;
+    setAIMounted(true);
+    if (!pane.startsWith('native-')) setSavedAIPane(pane as import('../../../utils/hooks/useSidebarPages').BuiltinSidebarPage);
+    rightPages.togglePage(pane);
+  };
   const addToAI = (reference: AIContextReference, mode?: 'scope') => {
     setAIMounted(true);
-    setAIOpen(true);
+    setAIPane('assistant');
     setAIContextRequest((previous) => ({
       reference,
       mode,
       token: (previous?.token || 0) + 1,
     }));
   };
-  const { position: panelDock } = usePanelDock();
+  const { position: panelDock, change: setDefaultPanelDock } = usePanelDock();
+  const pageDock = useSidebarPageDocks(panelDock);
+  const visibleSidebarPages = useMemo(() => rightPages.pages.filter(page => !page.startsWith('native-') || sidebarPanels.panels.some(info => nativeSidebarPage(info) === page)), [rightPages.pages, sidebarPanels.panels]);
+  const rightDockPages = visibleSidebarPages.filter(page => pageDock.position(page) === 'right');
+  const bottomDockPages = visibleSidebarPages.filter(page => pageDock.position(page) === 'bottom');
+  const [bottomColumns, setBottomColumns] = useState<HTMLDivElement | null>(null);
   const [panelHeight, setPanelHeight] = useState(() => {
     try {
       const value = Number(localStorage.getItem('kudium-panel-height'));
@@ -377,17 +406,23 @@ export function Main() {
   const [bodyHeight, setBodyHeight] = useState(700);
   const panelMaxHeight = Math.max(180, Math.floor(bodyHeight * .65));
   const effectivePanelHeight = Math.min(panelHeight, panelMaxHeight);
-  const [aiWidth, setAIWidth] = useState(() => {
+  const workspaceResizeTarget = useRef<HTMLDivElement>(null);
+  const [aiWidth] = useState(() => {
     const saved = Number(
       localStorage.getItem('kudiumbrowser-ai-sidebar-width')
     );
     return saved >= 240 && Number.isFinite(saved) ? Math.min(saved, 1200) : 368;
   });
+  const { widths: pageWidths, changeWidths: changePageWidths, resetWidths } = useSidebarPageWidths();
   const [aiResizing, setAIResizing] = useState(false);
   const [bodyWidth, setBodyWidth] = useState(800);
   const body = useRef<HTMLDivElement>(null);
   const aiMaxWidth = Math.max(240, Math.min(1200, Math.floor(bodyWidth - 248)));
   const effectiveAIWidth = Math.min(aiWidth, aiMaxWidth);
+  const firstSidebarPage = rightDockPages[0] || aiPane;
+  const firstSidebarWidth = fittedSidebarPageWidth(firstSidebarPage, pageWidths, effectiveAIWidth, aiMaxWidth);
+  const totalSidebarWidth = rightDockPages.reduce((total, page) => total + fittedSidebarPageWidth(page, pageWidths, effectiveAIWidth, aiMaxWidth), 0) + Math.max(0, rightDockPages.length - 1) * 8;
+  const rightPanelsWidth = Math.min(aiMaxWidth, totalSidebarWidth || effectiveAIWidth);
   useEffect(() => {
     if (aiResizing) return;
     try {
@@ -512,6 +547,17 @@ export function Main() {
   const [folderName, setFolderName] = useState('');
   const [folderIcon, setFolderIcon] = useState<{ emoji: string; image: string; focusColor?: string }>({ emoji: '', image: '' });
   const [editingFolder, setEditingFolder] = useState<string>();
+  const openCollectionSettings = (folder: Collection) => {
+    preview.close();
+    setEditingFolder(folder.id);
+    setFolderName(folder.name);
+    setFolderIcon({
+      emoji: folder.iconEmoji || '',
+      image: folder.iconImage || '',
+      focusColor: folder.focusColor,
+    });
+    setFolderDialog(true);
+  };
 
   const [folderFeedback, setFolderFeedback] = useState<{
     id: string;
@@ -545,9 +591,18 @@ export function Main() {
       ),
     [appList, active.id]
   );
-  const [selectedId, setSelectedId] = useState<string | undefined>(
-    appList[Math.max(0, lastIndex)]?.id
-  );
+  const [tabSelection, setTabSelection] = useState(() => ({
+    spaceId: active.id,
+    id: appList[Math.max(0, lastIndex)]?.id as string | undefined,
+  }));
+  // Use the destination's remembered tab in the first render of a space switch.
+  // An effect-only restore briefly lays out a neighboring tab from the old space.
+  const selectedId = tabSelection.spaceId === active.id
+    ? tabSelection.id : active.selectedAppId;
+  const setSelectedId = useCallback((id: string | undefined) => {
+    setTabSelection((previous) => previous.spaceId === active.id && previous.id === id
+      ? previous : { spaceId: active.id, id });
+  }, [active.id]);
   const [split, setSplit] = useState<SplitView | null>(null);
   const [snapshots, setSnapshots] = useState<BrowserSnapshot[]>([]);
   const [windowMirrors, setWindowMirrors] = useState<BrowserSnapshot[]>([]);
@@ -668,7 +723,6 @@ export function Main() {
       const source = AppManager.getAll().find(tab => tab.id === sourceId && !tab.archived);
       if (!source || lockedGroup(source)) return;
       setAIMounted(true);
-      setAIOpen(true);
       setAIPane('assistant');
       setAIContextRequest(previous => ({
         reference: { kind: 'tab', id: source.id },
@@ -680,13 +734,12 @@ export function Main() {
         token: (previous?.token || 0) + 1,
       }));
     }),
-    [setAIOpen, setAIPane]
+    [setAIPane]
   );
   useEffect(
     () =>
       browser.onAISelection?.((text) => {
         setAIMounted(true);
-        setAIOpen(true);
         setAIPane('assistant');
         setAIPromptRequest((previous) => ({
           text,
@@ -694,19 +747,19 @@ export function Main() {
           token: (previous?.token || 0) + 1,
         }));
       }),
-    [setAIOpen, setAIPane]
+    [setAIPane]
   );
   useEffect(
     () =>
       window.electron.siteDeveloper?.onAskAI?.((text) => {
         setAIMounted(true);
-        setAIOpen(true);
+        setAIPane('assistant');
         setAIPromptRequest((previous) => ({
           text,
           token: (previous?.token || 0) + 1,
         }));
       }),
-    [setAIOpen]
+    [setAIPane]
   );
   useEffect(() => {
     const reference = (event: Event) => {
@@ -724,7 +777,7 @@ export function Main() {
       );
       if (!source || lockedGroup(source)) return;
       setAIMounted(true);
-      setAIOpen(true);
+      setAIPane('assistant');
       setAIContextRequest((previous) => ({
         reference: { kind: 'tab', id: source.id },
         token: (previous?.token || 0) + 1,
@@ -742,7 +795,7 @@ export function Main() {
         'kudiumbrowser-reference-project-file',
         reference
       );
-  }, [setAIOpen]);
+  }, [setAIPane]);
   const [findValue, setFindValue] = useState('');
   const [libraryTab, setLibraryTab] = useState<
     'downloads' | 'history' | 'archive'
@@ -899,7 +952,8 @@ export function Main() {
         !item.archived &&
         ((item.spaceId || 'default') === active.id || item.favorite)
     ) ||
-    nextGroupTab(availableTabs, selectedId) ||
+    nextGroupTab(availableTabs.filter((item) =>
+      (item.spaceId || 'default') === active.id || item.favorite), selectedId) ||
     spaceApps.find(
       (item) => !closedGroups.has(aiGroupId(item)) && !closedTabs.has(item.id)
     ) ||
@@ -1467,8 +1521,10 @@ export function Main() {
     select(item);
     return true;
   };
-  const nativeOverlayOpen = useNativeOverlay('.browser-viewport');
-  const panelOverlayOpen = useNativeOverlay('.sidebar-feature-content');
+  const nativeOverlay = useNativeOverlayPresentation('.browser-viewport', 'page', browser.onNativeOverlayReady);
+  const nativeOverlayOpen = nativeOverlay.open;
+  const panelOverlay = useNativeOverlayPresentation('.sidebar-feature-content', 'panel', browser.onNativeOverlayReady);
+  const panelOverlayOpen = panelOverlay.open;
   const overlayOpen =
     !!tabSwitcher.shown ||
     !!editingGroup ||
@@ -1477,10 +1533,9 @@ export function Main() {
     spaceDialog ||
     folderDialog ||
     !!favoriteRename ||
-    sidebarResizing ||
-    aiResizing ||
     !!dragged || !!collectionDrag;
-  const pageSuspended = overlayOpen || nativeOverlayOpen;
+  const sidebarOverlay = useSidebarHoverOverlay(sidebarHidden, sidebarBoundary, menuOpen || overlayOpen || nativeOverlayOpen || sidebarResizing || fileDragging, browser.onSidebarOverlayReady, browser.onSidebarHoverEdge);
+  const pageSuspended = overlayOpen || nativeOverlayOpen || sidebarOverlay.open;
   // Website dialogs and resize/drag state must not blanket-hide an unrelated
   // native sidebar. Only an overlay actually covering its slot suspends it.
   const panelSuspended = panelOverlayOpen;
@@ -1593,7 +1648,7 @@ export function Main() {
 
   useEffect(() => {
     setSelectedId(active.selectedAppId);
-  }, [active.id, active.selectedAppId]);
+  }, [active.id, active.selectedAppId, setSelectedId]);
   useEffect(() => setSplit(null), [active.id]);
   useEffect(
     () =>
@@ -1617,7 +1672,7 @@ export function Main() {
         if (action === 'site-settings' && selected) setSiteSettingsOpen(true);
         if (['assistant', 'ai-tasks', 'developer'].includes(action)) {
           setAIMounted(true);
-          setAIOpen(true);
+          setAIPane(action === 'developer' ? 'developer' : action === 'ai-tasks' ? 'tasks' : 'assistant');
           setMenuPaneRequest((previous) => ({
             pane: (
               {
@@ -1804,30 +1859,36 @@ export function Main() {
       selected && lockedGroup(selected) ? '' : state?.url || selected?.url || ''
     );
   }, [state?.url, selected, groupAccess]);
+  const browserLayoutApps = useMemo(
+    () => appList.filter((item) => !item.archived).map((item) => ({
+      ...item,
+      collectionName: spaces
+        .find((space) => space.id === (item.spaceId || 'default'))
+        ?.folders.find((folder) => folder.id === item.folderId)?.name,
+    })),
+    [appList, spaces]
+  );
   useEffect(() => {
     const element = viewport.current;
     if (!element) return undefined;
-    const sync = () => {
+    const ids = (split ? [split.left, split.right] : [selected?.id]).filter(
+      (id, index, all) =>
+        id && all.indexOf(id) === index && appList.some((item) => item.id === id)
+    ) as string[];
+    const sync = (geometryOnly = false) => {
       const bounds = element.getBoundingClientRect();
-      const ids = (split ? [split.left, split.right] : [selected?.id]).filter(
-        (id, index, all) =>
-          id &&
-          all.indexOf(id) === index &&
-          appList.some((item) => item.id === id)
-      ) as string[];
       browser.sync({
+        geometryOnly,
         suspended: pageSuspended,
+        sidebarOverlay: sidebarOverlay.open,
+        sidebarHidden,
+        sidebarOverlayToken: sidebarOverlay.open ? sidebarOverlay.token : undefined,
+        nativeOverlayToken: nativeOverlay.open ? nativeOverlay.token : undefined,
+        panelOverlayToken: panelOverlay.open ? panelOverlay.token : undefined,
         sidebarSuspended: panelSuspended,
         tabSwitcher: !!tabSwitcher.shown,
-        focusedId: selected?.id,
-        apps: appList
-          .filter((item) => !item.archived)
-          .map((item) => ({
-            ...item,
-            collectionName: spaces
-              .find((space) => space.id === (item.spaceId || 'default'))
-              ?.folders.find((folder) => folder.id === item.folderId)?.name,
-          })),
+        focusedId: geometryOnly ? undefined : selected?.id,
+        apps: geometryOnly ? [] : browserLayoutApps,
         visible: pageSuspended
           ? []
           : ids.map((id, index) => ({
@@ -1842,20 +1903,26 @@ export function Main() {
             })),
       });
     };
-    const observer = frameResizeObserver(sync);
+    const resize = () => sync(true);
+    const observer = frameResizeObserver(resize);
     observer.observe(element);
-    window.addEventListener('resize', sync);
+    window.addEventListener('resize', resize);
     sync();
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', sync);
+      window.removeEventListener('resize', resize);
     };
   }, [
     appList,
+    browserLayoutApps,
     selected?.id,
     appList.map(tab=>`${states[tab.id]?.devToolsDock || ''}:${states[tab.id]?.devToolsFraction || .4}`).join('|'),
     split,
     pageSuspended,
+    sidebarOverlay.open,
+    sidebarOverlay.token,
+    nativeOverlay.token,
+    panelOverlay.token,
     panelSuspended,
     tabSwitcher.shown,
     spaces,
@@ -1925,10 +1992,7 @@ export function Main() {
         if (request.action === 'extension-group-update') {
           let error: string | undefined;
           try {
-            const patches = new Map((request.groupChanges || []).map((patch) => [patch.id, patch.changes]));
-            const apps = AppManager.getAll();
-            if (!patches.size || [...patches.keys()].some((id) => !apps.some((app) => app.id === id))) throw new Error('Tab is unavailable in this window');
-            AppManager.set(apps.map((app) => patches.has(app.id) ? { ...app, ...patches.get(app.id) } : app));
+            applyWorkspaceMutation(request.groupChanges || [], request.groupAdditions);
           } catch (failure) { error = String(failure); }
           browser.command({ id: '', action: 'extension-group-result', mutationId: request.mutationId, error });
           return;
@@ -2814,9 +2878,9 @@ export function Main() {
       item.spaceId || 'default',
       groupKey(item),
     ]);
-    const expanded = item.sessionChromeCollapsed === undefined
+    const expanded = !compact && (item.sessionChromeCollapsed === undefined
       ? expandedGroups.includes(expansionKey)
-      : !item.sessionChromeCollapsed;
+      : !item.sessionChromeCollapsed);
     const renaming =
       renameTarget?.id === item.id && renameTarget.axis === 'vertical';
     const Row = renaming ? 'div' : 'button';
@@ -2829,11 +2893,11 @@ export function Main() {
       slug ? `\n@${slug.length > 36 ? `${slug.slice(0, 35)}…` : slug}` : ''
     }${locked ? '\nLocked group' : ''}`;
     const hasPreview =
-      tabDisplayMode !== 'horizontal-only' &&
+      (tabDisplayMode !== 'horizontal-only' || (compact && folderView)) &&
       !locked &&
       tabsForPreview(item).length > 0;
     let ariaExpanded: boolean | undefined;
-    if (folderView) ariaExpanded = expanded && !locked;
+    if (folderView && !compact) ariaExpanded = expanded && !locked;
     else if (hasPreview)
       ariaExpanded =
         preview.target?.kind === 'session' && preview.target.id === item.id;
@@ -2875,7 +2939,7 @@ export function Main() {
                 }
                 aria-haspopup={hasPreview ? 'dialog' : undefined}
                 aria-expanded={ariaExpanded}
-                aria-controls={folderView ? `group-tabs-${item.id}` : undefined}
+                aria-controls={folderView && !compact ? `group-tabs-${item.id}` : undefined}
                 onKeyDown={(event) => {
                   if (hasPreview && event.key === 'ArrowRight') {
                     event.preventDefault();
@@ -2891,7 +2955,12 @@ export function Main() {
                 aria-current={isActive ? 'page' : undefined}
                 onClick={(event) => {
                   if (renaming) return;
-                  if (folderView && !locked) {
+                  if (folderView && compact && hasPreview) {
+                    if (preview.target?.kind === 'session' && preview.target.id === item.id && preview.target.interaction === 'click') preview.close();
+                    else preview.open({kind:'session',id:item.id,anchor:event.currentTarget.parentElement!,interaction:'click'});
+                    return;
+                  }
+                  if (folderView && !compact && !locked) {
                     closePreview();
                     if (item.sessionChromeCollapsed !== undefined) {
                       AppManager.set(AppManager.getAll().map((app) => groupKey(app) === groupKey(item) ? { ...app, sessionChromeCollapsed: expanded } : app));
@@ -2946,7 +3015,7 @@ export function Main() {
                 <GroupIcon
                   item={item}
                   tabs={appList}
-                  compact={!!item.favorite}
+                  compact={compact || !!item.favorite}
                   expanded={expanded}
                 />
                 {protectedGroup && (
@@ -2992,7 +3061,7 @@ export function Main() {
                     closePreview();
                     select(item);
                     setAIMounted(true);
-                    setAIOpen(true);
+                    setAIPane('developer');
                     setDeveloperRequest((previous) => previous + 1);
                     setTerminalOpenRequest((previous) => previous + 1);
                   }}
@@ -3036,7 +3105,7 @@ export function Main() {
               )}
             </div>
           </ContextMenu.Trigger>
-          {folderView && !locked && !item.favorite && (
+          {folderView && !compact && !locked && !item.favorite && (
             <div
               id={`group-tabs-${item.id}`}
               className="sidebar-group-content"
@@ -3213,14 +3282,14 @@ export function Main() {
         icon={SquareStack}
         className="ai-toolbar-toggle"
         label="Toggle sidebar panels"
-        aria-expanded={aiOpen && aiPane === 'panels'}
+        aria-expanded={rightPages.pages.includes('panels')}
         onClick={() => toggleSidebarPane('panels')}
       />}
       <ChromeIconButton
         icon={Code2}
         className="ai-toolbar-toggle"
         label="Toggle Developer sidebar"
-        aria-expanded={aiOpen && aiPane === 'developer'}
+        aria-expanded={rightPages.pages.includes('developer')}
         disabled={!selected || lockedGroup(selected)}
         onClick={() => {
           if (!selected || lockedGroup(selected)) return;
@@ -3236,14 +3305,14 @@ export function Main() {
             : 'Toggle Activity sidebar'
         }
         badgeCount={unreadActivity}
-        aria-expanded={aiOpen && aiPane === 'activity'}
+        aria-expanded={rightPages.pages.includes('activity')}
         onClick={() => toggleSidebarPane('activity')}
       />
       <ChromeIconButton
         icon={Mail}
         className="ai-toolbar-toggle"
         label="Toggle Email sidebar"
-        aria-expanded={aiOpen && aiPane === 'email'}
+        aria-expanded={rightPages.pages.includes('email')}
         onClick={() => toggleSidebarPane('email')}
       />
       <ChromeIconButton
@@ -3255,7 +3324,7 @@ export function Main() {
             : 'Toggle Notes sidebar'
         }
         badgeCount={unreadNotes}
-        aria-expanded={aiOpen && aiPane === 'notes'}
+        aria-expanded={rightPages.pages.includes('notes')}
         onClick={() => toggleSidebarPane('notes')}
       />
       <ChromeIconButton
@@ -3268,7 +3337,7 @@ export function Main() {
             : 'Toggle Chat sidebar'
         }
         badgeCount={aiNeedsReply ? Math.max(1, aiWorkingTabs.length) : aiWorkingTabs.length}
-        aria-expanded={aiOpen && aiPane === 'assistant'}
+        aria-expanded={rightPages.pages.includes('assistant')}
         onClick={() => toggleSidebarPane('assistant')}
       />
     </>
@@ -3303,7 +3372,7 @@ export function Main() {
       onSuggestionTab={tab => { select(tab); setEditingAddress(false); }}
       onSuggestionNavigate={navigateAddress}
       onEditValue={setAddress}
-      onChat={text => { setAIPane('assistant'); setAIMounted(true); setAIOpen(true); setAIPromptRequest(previous=>({text,token:(previous?.token||0)+1})); }}
+      onChat={text => { setAIPane('assistant'); setAIMounted(true); setAIPromptRequest(previous=>({text,token:(previous?.token||0)+1})); }}
       onNewGroup={value => { try { const destination=commandDestination(AppManager.getAll().filter(tab=>!lockedGroup(tab)), selected, resolveAddress(value), true, active.id); if(destination.app){AppManager.add(destination.app);select(destination.app);}setEditingAddress(false); } catch(error){setMoveMessage(String(error));} }}
       onMoreActions={text=>{setPaletteQuery(text);setPaletteOpen(true);}}
       placement={addressBarPlacement}
@@ -3480,7 +3549,7 @@ export function Main() {
       if (!item || lockedGroup(item)) return;
       select(item);
       setAIMounted(true);
-      setAIOpen(true);
+      setAIPane('developer');
       setDeveloperRequest((previous) => previous + 1);
     };
     window.addEventListener('kudiumbrowser-ai-focus-tab', focus);
@@ -3681,7 +3750,7 @@ export function Main() {
     if (!item || lockedGroup(item)) return;
     selectGroup(item);
     setAIMounted(true);
-    setAIOpen(true);
+    setAIPane(pane);
     setMenuPaneRequest((previous) => ({
       pane,
       ...(pane === 'notes' ? { notesScope: personalDataScope(item) } : {}),
@@ -4030,32 +4099,45 @@ export function Main() {
           undoCloseGroup();
         }
       }}
+      ref={workspaceResizeTarget}
       className={`workspace space-${active.color} ${`${
-        compact ? 'compact-sidebar' : ''
-      } ${sidebarHidden ? 'hidden-sidebar' : ''}`} ${
+        compact && !sidebarOverlay.open ? 'compact-sidebar' : ''
+      } ${sidebarHidden ? 'hidden-sidebar' : ''} ${sidebarOverlay.open ? 'sidebar-hover-overlay' : ''}`} ${
         sidebarResizing ? 'sidebar-resizing' : ''
       } ${aiResizing ? 'ai-resizing' : ''}`}
+      data-sidebar-overlay-ready={sidebarOverlay.visible || undefined}
       data-website-space={active.useWebsiteColors || undefined}
       data-glass={translucentChrome}
       data-ai-glass={translucentAI}
       data-space-background={spaceBackground}
-      data-panel-dock={panelDock}
+      data-panel-dock="independent"
       data-private={windowWorkspace.state()?.private || undefined}
       style={
         {
           '--space-font-size': `${spaceFontSize}px`,
           '--sidebar-width': `${sidebarWidth}px`,
           '--ai-sidebar-width': `${effectiveAIWidth}px`,
+          '--right-panels-width': `${rightPanelsWidth}px`,
           '--panel-bottom-height': `${effectivePanelHeight}px`,
           ...appThemeStyle(theme),
         } as CSSProperties
       }
     >
+      {sidebarHidden && <div
+        className="sidebar-hover-edge"
+        aria-hidden="true"
+        onPointerEnter={sidebarOverlay.enterEdge}
+        onPointerLeave={sidebarOverlay.leave}
+        onPointerDown={sidebarOverlay.reveal}
+      />}
       <aside
         ref={setSidebarBoundary}
         className="workspace-sidebar"
         id="workspace-sidebar"
-        hidden={sidebarHidden}
+        hidden={sidebarHidden && !sidebarOverlay.visible}
+        onPointerEnter={sidebarOverlay.enter}
+        onPointerLeave={sidebarOverlay.leave}
+        onBlur={sidebarOverlay.leave}
         aria-label="Apps"
         onContextMenu={(event) => {
           if (
@@ -4340,7 +4422,7 @@ export function Main() {
                   />
                 ) : (
                   <>
-                    {tabGroups.length === 0 && (
+                    {tabGroups.length === 0 && !compact && (
                       <EmptySpaceWelcome
                         onAction={(action) => {
                           applySpaceMenuChoice(action).catch((error) =>
@@ -4528,14 +4610,7 @@ export function Main() {
                               <ContextMenu.Separator />
                               <ContextMenu.Item
                                 onSelect={() => {
-                                  setEditingFolder(folder.id);
-                                  setFolderName(folder.name);
-                                  setFolderIcon({
-                                    emoji: folder.iconEmoji || '',
-                                    image: folder.iconImage || '',
-                                    focusColor: folder.focusColor,
-                                  });
-                                  setFolderDialog(true);
+                                  openCollectionSettings(folder);
                                 }}
                               >
                                 Manage collection…
@@ -4573,7 +4648,7 @@ export function Main() {
                                 onMouseEnter={(event) => {
                                   if (
                                     folderHoverPreviews &&
-                                    collapsedFolders.includes(folder.id) &&
+                                    (compact || collapsedFolders.includes(folder.id)) &&
                                     (previewIndex.folders.get(folder.id)
                                       ?.length || 0) > 0 &&
                                     !dragged && !collectionDrag &&
@@ -4593,17 +4668,26 @@ export function Main() {
                                   className="folder-heading"
                                   aria-current={
                                     !filteringGroups &&
-                                    collapsedFolders.includes(folder.id) &&
+                                    (compact || collapsedFolders.includes(folder.id)) &&
                                     focusedCollectionId === folder.id
                                       ? 'page'
                                       : undefined
                                   }
-                                  aria-expanded={
-                                    filteringGroups ||
-                                    !collapsedFolders.includes(folder.id)
-                                  }
-                                  aria-controls={`folder-content-${folder.id}`}
+                                  aria-label={folder.name}
+                                  title={compact ? folder.name : undefined}
+                                  aria-haspopup={compact ? 'dialog' : undefined}
+                                  aria-expanded={compact ? preview.target?.kind === 'folder' && preview.target.id === folder.id : filteringGroups || !collapsedFolders.includes(folder.id)}
+                                  aria-controls={compact ? undefined : `folder-content-${folder.id}`}
                                   onKeyDown={(event) => {
+                                    if (compact) {
+                                      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                                        event.preventDefault();
+                                        preview.open({kind:'folder',id:folder.id,anchor:event.currentTarget.parentElement!,interaction:'keyboard'});
+                                      } else if (event.key === 'ArrowLeft' || event.key === 'Escape') {
+                                        event.preventDefault();preview.close();
+                                      }
+                                      return;
+                                    }
                                     if (
                                       event.key === 'ArrowDown' &&
                                       folderHoverPreviews &&
@@ -4646,7 +4730,12 @@ export function Main() {
                                       }
                                     }
                                   }}
-                                  onClick={() => {
+                                  onClick={(event) => {
+                                    if (compact) {
+                                      if (preview.target?.kind === 'folder' && preview.target.id === folder.id && preview.target.interaction === 'click') preview.close();
+                                      else preview.open({kind:'folder',id:folder.id,anchor:event.currentTarget.parentElement!,interaction:'click'});
+                                      return;
+                                    }
                                     preview.close();
                                     setCollapsedFolders((previous) =>
                                       previous.includes(folder.id)
@@ -4663,7 +4752,7 @@ export function Main() {
                                   >
                                     <CollectionIcon
                                       collection={folder}
-                                      size={16}
+                                      size={compact ? 22 : 16}
                                       strokeWidth={1.5}
                                     />
                                   </span>
@@ -4701,23 +4790,17 @@ export function Main() {
                           <div
                             id={`folder-content-${folder.id}`}
                             className="folder-content"
-                            data-collapsed={
-                              !filteringGroups &&
-                              collapsedFolders.includes(folder.id)
-                            }
-                            aria-hidden={
-                              !filteringGroups &&
-                              collapsedFolders.includes(folder.id)
-                            }
+                            data-collapsed={compact || (!filteringGroups && collapsedFolders.includes(folder.id))}
+                            aria-hidden={compact || (!filteringGroups && collapsedFolders.includes(folder.id))}
                             // React 18 types do not yet expose the native inert attribute.
                             // eslint-disable-next-line react/jsx-props-no-spreading
-                            {...(!filteringGroups &&
-                            collapsedFolders.includes(folder.id)
+                            {...((compact || (!filteringGroups &&
+                            collapsedFolders.includes(folder.id)))
                               ? { inert: true }
                               : {})}
                           >
                             <div className="folder-content-inner">
-                              {(filteringGroups ||
+                              {!compact && (filteringGroups ||
                                 !collapsedFolders.includes(folder.id)) &&
                                 filteredGroups
                                   .filter((item) => item.folderId === folder.id)
@@ -4809,6 +4892,13 @@ export function Main() {
                         </div>
                       )}
                     <div className="sidebar-create-actions">
+                      {compact ? <ChromeIconButton icon={Plus} className="compact-create-button" label={`Add to ${active.name}`} aria-haspopup="menu" onClick={async () => {
+                        closePreview();
+                        try {
+                          const choice = await browser.nativeMenu([{id:'new-tab',label:'New tab…'},{id:'new-group',label:'New group…'},{id:'folder',label:'New collection…'}]);
+                          if (choice) await applySpaceMenuChoice(choice);
+                        } catch (error) {setMoveMessage(String(error));}
+                      }} /> : <>
                       <button
                         type="button"
                         className="new-tab-button"
@@ -4832,6 +4922,7 @@ export function Main() {
                         <FolderPlus size={16} />
                         <span>Add group</span>
                       </button>
+                      </>}
                     </div>
                     {!filteringGroups &&
                       (showUnpinnedGroups ||
@@ -4867,7 +4958,7 @@ export function Main() {
           )}
         </SidebarPager>
         <AccountSyncPublisher tabs={appList} states={states} />
-        <AppUpdateBanner compact={compact} onWhatsNew={openDiscoveryLink} />
+        <AppUpdateBanner compact={compact && !sidebarOverlay.open} onWhatsNew={openDiscoveryLink} />
         <SidebarMediaWidget
           selectedId={selected?.id}
           tabs={appList.filter((tab) => !tab.archived && !lockedGroup(tab))}
@@ -4990,9 +5081,10 @@ export function Main() {
             </IconButton>
           </Tooltip>
         </div>
-        {!compact && (
+        {(!compact || sidebarOverlay.open) && (
           <SidebarResizeHandle
             width={sidebarWidth}
+            liveResize={{ target: workspaceResizeTarget, property: '--sidebar-width' }}
             onChange={setSidebarWidth}
             onResizingChange={setSidebarResizing}
           />
@@ -5148,7 +5240,7 @@ export function Main() {
               command('find', '');
               setFindOpen(false);
               setAIMounted(true);
-              setAIOpen(true);
+              setAIPane('assistant');
               setAIPromptRequest((previous) => ({
                 text,
                 token: (previous?.token || 0) + 1,
@@ -5171,7 +5263,7 @@ export function Main() {
             {(split ? [split.left, split.right] : [selected?.id]).filter(Boolean).map((id, index) => {
               const dock = states[id!]?.devToolsDock;
               if (!dock || dock === 'window' || dock === 'panel') return null;
-              return <PageDevToolsFrame key={`devtools-${id}`} mode={dock} fraction={states[id!]?.devToolsFraction || .4} style={{left:split && index ? 'calc(50% + 1px)' : 0,width:split?'calc(50% - 1px)':'100%'}} menu={()=>browser.command({id:id!,action:'page-devtools-menu'})} close={()=>browser.command({id:id!,action:'page-devtools-close'})} resize={fraction=>browser.command({id:id!,action:'page-devtools-resize',devToolsFraction:fraction})}/>;
+              return <PageDevToolsFrame key={`devtools-${id}`} mode={dock} fraction={states[id!]?.devToolsFraction || .4} style={{left:split && index ? 'calc(50% + 1px)' : 0,width:split?'calc(50% - 1px)':'100%'}} menu={()=>browser.command({id:id!,action:'page-devtools-menu'})} close={()=>browser.command({id:id!,action:'page-devtools-close'})} resize={(fraction,live)=>browser.command({id:id!,action:'page-devtools-resize',devToolsFraction:fraction,devToolsLive:live})}/>;
             })}
             {!split && selected && !lockedGroup(selected) && (
               <PageStatus
@@ -5292,7 +5384,7 @@ export function Main() {
               .map((frame) => (
                 <BrowserCaptureImage
                   alt=""
-                  key={frame.id}
+                  key={`${frame.id}:${frame.surface || 'page'}`}
                   className="browser-snapshot"
                   data-presentation-id={frame.presentationId}
                   src={frame.image}
@@ -5319,30 +5411,48 @@ export function Main() {
           </div>
           {aiMounted && (
             <div
-              className={`ai-panel-slot ${aiOpen ? 'ai-panel-open' : ''}`}
-              aria-hidden={!aiOpen}
+              className={`ai-panel-slot ${rightDockPages.length ? 'ai-panel-open' : ''}`}
+              aria-hidden={!rightDockPages.length}
               ref={(element) => {
                 if (element && element.inert !== !aiOpen)
                   element.inert = !aiOpen;
               }}
             >
-              <SidebarResizeHandle
-                side="right"
-                axis={panelDock==='bottom'?'vertical':'horizontal'}
-                label="Resize panel"
-                width={panelDock==='bottom'?effectivePanelHeight:effectiveAIWidth}
-                minWidth={panelDock==='bottom'?180:240}
-                maxWidth={panelDock==='bottom'?panelMaxHeight:aiMaxWidth}
-                resetWidth={panelDock==='bottom'?320:368}
-                onChange={panelDock==='bottom'?setPanelHeight:setAIWidth}
+              <SidebarPageAreaResizeHandle
+                page={firstSidebarPage}
+                width={firstSidebarWidth}
+                totalWidth={totalSidebarWidth}
+                maxAreaWidth={aiMaxWidth}
+                target={workspaceResizeTarget}
+                onChange={width => changePageWidths({ [firstSidebarPage]: width })}
                 onResizingChange={setAIResizing}
               />
               <AISidebar
                 visible={aiOpen}
                 sidebarPanels={sidebarPanels}
-                sidebarPane={aiPane}
+                sidebarPane={aiPane.startsWith('native-') ? 'panels' : aiPane as import('../../../utils/hooks/useSidebarPages').BuiltinSidebarPage}
                 onSidebarPaneChange={setAIPane}
-                onSidebarClose={() => setAIOpen(false)}
+                onSidebarClose={closeSidebarPage}
+                openedPages={visibleSidebarPages}
+                activation={rightPages.activation}
+                selectedPage={rightPages.activePage}
+                pageWidths={pageWidths}
+                defaultPageWidth={effectiveAIWidth}
+                dockPosition={panelDock}
+                pageDocks={pageDock.docks}
+                onPageDockChange={pageDock.changeDock}
+                bottomTarget={bottomColumns}
+                onReorder={rightPages.reorder}
+                onBalance={position => {
+                  const pages = visibleSidebarPages.filter(page => pageDock.position(page) === position);
+                  if (!pages.length) return;
+                  const area = position === 'bottom' ? bottomColumns?.parentElement?.clientWidth || bodyWidth : rightPanelsWidth;
+                  const width = Math.max(240, Math.floor((area - (pages.length - 1) * 8) / pages.length));
+                  changePageWidths(Object.fromEntries(pages.map(page => [page,width])));
+                }}
+                onResetLayout={() => { resetWidths(); pageDock.resetDocks(); rightPages.resetOrder(); setDefaultPanelDock('right'); setPanelHeight(320); }}
+                onPageWidthsChange={changePageWidths}
+                onPageResizingChange={setAIResizing}
                 workingTabs={aiWorkingTabs.map((tab) => ({
                   id: tab.id,
                   name: tab.customName || states[tab.id]?.title || tab.name,
@@ -5371,6 +5481,11 @@ export function Main() {
               />
             </div>
           )}
+          {aiMounted && <div className={`ai-bottom-panel-slot ${bottomDockPages.length ? 'ai-panel-open' : ''}`} aria-hidden={!bottomDockPages.length}>
+            <SidebarResizeHandle side="right" axis="vertical" label="Resize bottom panels" width={effectivePanelHeight} minWidth={180} maxWidth={panelMaxHeight} resetWidth={320}
+              liveResize={{ target: workspaceResizeTarget, property: '--panel-bottom-height' }} onChange={setPanelHeight} onResizingChange={setAIResizing} />
+            <aside className="ai-sidebar ai-sidebar-multi" aria-label="Bottom sidebar pages"><div className="sidebar-page-columns" ref={setBottomColumns} /></aside>
+          </div>}
         </div>
       </main>
       <SiteSettingsDialog
@@ -5614,7 +5729,7 @@ export function Main() {
           onCancel={() => tabSwitcher.finish(false)}
         />
       )}
-      {preview.target && previewItems.length > 0 && (
+      {preview.target && (previewItems.length > 0 || preview.target.kind === 'folder') && (
         <AnchoredTabPreview
           glass={translucentChrome}
           key={`${preview.target.kind}:${preview.target.id}`}
@@ -5742,6 +5857,16 @@ export function Main() {
                 interaction: 'click',
               });
           }}
+          onNewGroup={preview.target.kind === 'folder' ? () => {
+            const folderId = preview.target?.id;
+            if (!folderId || !active.folders.some(folder => folder.id === folderId)) return;
+            closePreview();openNewGroup(active.id,{folderId});
+          } : undefined}
+          onManageCollection={preview.target.kind === 'folder' ? () => {
+            const folder=active.folders.find(folder => folder.id === preview.target?.id);
+            if (!folder) return;
+            openCollectionSettings(folder);
+          } : undefined}
           onNewTab={() => {
             const item =
               preview.target && previewIndex.byId.get(preview.target.id);

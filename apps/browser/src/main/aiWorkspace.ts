@@ -9,21 +9,18 @@ import { aiGroupId, aiGroups, scopedAITabs } from '../browser/aiGroups';
 import { loginProfileKey } from '../utils/groups';
 import {
   WORKSPACE_MANIFEST_FILE,
-  WORKSPACE_PERMISSIONS,
   WorkspaceDiff,
   WorkspaceManifest,
-  WorkspacePermission,
-  WorkspacePermissionChoice,
   describeWorkspaceDiff,
   diffWorkspaceManifest,
-  manifestFromBrowserState,
   validateWorkspaceManifest,
   workspaceDiffEmpty,
   workspaceOrigin,
+  workspaceURLsEqual,
 } from '../browser/workspaceManifest';
 import { linkedProjectFolder } from './developerProject';
 import { projectScripts } from './projectScripts';
-import { getSiteSettings, siteOrigin, updateSiteSettings } from './siteSettings';
+import { getSiteSettings, updateSiteSettings } from './siteSettings';
 import {
   getBrowserPreferences,
   updateBrowserPreferences,
@@ -44,6 +41,7 @@ export const AI_PREFERENCES_HIDDEN: (keyof BrowserPreferences)[] = [
   'shareUsageDiagnostics',
   'setupCompleted',
   'personalDataAutofillPositions',
+  'personalDataAutofillPopupPositions',
   'extensionToolbarOrder',
 ];
 
@@ -72,59 +70,15 @@ export interface AIWorkspaceContext {
   /** Links the folder to the group of `sourceTabId` (the Developer panel's own path). */
   linkFolder: (sourceTabId: string, folder: string) => Promise<void>;
   chooseAccess: (mode: AIAccessMode) => void;
+  beforeAIChange?: () => void;
+  /** Native folder imports commit group edits and new tabs in one workspace save. */
+  applyGroupTabs?: (manifest: WorkspaceManifest, diff: WorkspaceDiff) => Promise<string[]>;
   /** Runs the nested tab and group tools under the setup approval so they do not prompt again. */
   withApproval: <T>(run: () => Promise<T>) => Promise<T>;
 }
 
-type Permissions = Partial<Record<WorkspacePermission, WorkspacePermissionChoice>>;
-
-/** The browser's current state for a group as a manifest. */
-export function workspaceFromBrowser(
-  tabs: IApp[],
-  groupId: string,
-  folder: string | undefined,
-  file: WorkspaceManifest | undefined
-): WorkspaceManifest {
-  const group = aiGroups(tabs).find((entry) => entry.id === groupId);
-  const members = scopedAITabs(tabs, groupId).filter((tab) => aiGroupId(tab) === groupId);
-  if (!group || !members.length) throw new Error('Group is unavailable.');
-  const source = members[0];
-  const siteSettings: Record<string, Permissions> = {};
-  members.forEach((tab) => {
-    const origin = siteOrigin(tab.url);
-    if (!origin || siteSettings[origin]) return;
-    const permissions = getSiteSettings(loginProfileKey(tab), origin).permissions;
-    const chosen: Permissions = {};
-    WORKSPACE_PERMISSIONS.forEach((permission) => {
-      const value = permissions[permission];
-      if (value === 'allow' || value === 'block') chosen[permission] = value;
-    });
-    if (Object.keys(chosen).length) siteSettings[origin] = chosen;
-  });
-  return manifestFromBrowserState({
-    group: {
-      name: group.name,
-      slug: group.slug,
-      display: source.groupDisplay || 'stack',
-      sessionMode: source.sessionMode || 'separate',
-    },
-    tabs: members
-      .filter((tab) => /^https?:/.test(tab.url))
-      .map((tab) => ({
-        url: tab.url,
-        title: tab.customName || tab.name,
-        pinned: tab.pinned === true,
-      })),
-    scripts: folder
-      ? projectScripts(groupId, folder, { action: 'list' })
-          .filter((script) => script.scope === 'project')
-          .map(({ name, command }) => ({ name, command }))
-      : [],
-    siteSettings,
-    trusted: source.aiTrusted === true,
-    file,
-  });
-}
+export { workspaceFromBrowser } from './workspaceBrowserState';
+import { workspaceFromBrowser } from './workspaceBrowserState';
 
 function sameFolder(a: string, b: string) {
   try {
@@ -171,8 +125,36 @@ interface ApplyOutcome {
   notes: string[];
 }
 
+/** Group fields shared by native project imports and AI configuration tools. */
+export function workspaceGroupPatch(
+  source: IApp,
+  manifest: WorkspaceManifest,
+  diff: WorkspaceDiff
+): Partial<IApp> {
+  const changed = (field: string) =>
+    diff.group.some((line) => line.startsWith(`${field}:`));
+  const changes: Partial<IApp> = {};
+  if (!manifest.group) return changes;
+  if (changed('name'))
+    Object.assign(changes, {
+      sessionName: manifest.group.name,
+      sessionNameCustom: true,
+      sessionNameGenerated: false,
+    });
+  if (changed('slug')) changes.sessionSlug = manifest.group.slug;
+  if (changed('display') && manifest.group.display)
+    changes.groupDisplay = manifest.group.display;
+  if (
+    changed('sessionMode') &&
+    (manifest.group.sessionMode === 'separate' ||
+      (manifest.group.sessionMode === 'collection' && source.folderId))
+  )
+    changes.sessionMode = manifest.group.sessionMode;
+  return changes;
+}
+
 /** Apply the reviewed, non-AI part of a manifest to a group. Nothing is removed. */
-async function applyWorkspace(
+export async function applyWorkspace(
   context: AIWorkspaceContext,
   groupId: string,
   manifest: WorkspaceManifest,
@@ -186,36 +168,33 @@ async function applyWorkspace(
     if (!tab) throw new Error('Group is no longer available.');
     return tab;
   };
-  if (diff.group.length && manifest.group) {
-    // Only the fields the review listed change; the diff is the contract.
-    const changed = (field: string) => diff.group.some((line) => line.startsWith(`${field}:`));
-    const changes: Partial<IApp> = {};
-    if (changed('name')) Object.assign(changes, { sessionName: manifest.group.name, sessionNameCustom: true, sessionNameGenerated: false });
-    if (changed('display') && manifest.group.display) changes.groupDisplay = manifest.group.display;
-    if (
-      changed('sessionMode') &&
-      (manifest.group.sessionMode === 'separate' || (manifest.group.sessionMode === 'collection' && source().folderId))
-    )
-      changes.sessionMode = manifest.group.sessionMode;
-    if (!context.updateGroup) outcome.notes.push('Group settings are unavailable in this window.');
-    else await context.updateGroup(members().map((tab) => ({ id: tab.id, changes })));
+  if (context.applyGroupTabs) {
+    outcome.openedTabIds = await context.applyGroupTabs(manifest, diff);
     context.check();
-  }
-  for (const tab of diff.tabs.open) {
-    const opened = await context.openTab(tab.url, source().id);
-    context.check();
-    if (typeof opened.tabId === 'string') {
-      outcome.openedTabIds.push(opened.tabId);
-      if (tab.pinned && context.updateGroup) await context.updateGroup([{ id: opened.tabId, changes: { pinned: true } }]);
+  } else {
+    if (diff.group.length && manifest.group) {
+      // Only the fields the review listed change; the diff is the contract.
+      const changes = workspaceGroupPatch(source(), manifest, diff);
+      if (!context.updateGroup) outcome.notes.push('Group settings are unavailable in this window.');
+      else await context.updateGroup(members().map((tab) => ({ id: tab.id, changes })));
+      context.check();
     }
-  }
-  if (diff.tabs.pin.length && context.updateGroup) {
-    const pins = diff.tabs.pin
-      .map((tab) => members().find((entry) => entry.url === tab.url))
-      .filter((entry): entry is IApp => !!entry)
-      .map((entry) => ({ id: entry.id, changes: { pinned: true } as Partial<IApp> }));
-    if (pins.length) await context.updateGroup(pins);
-    context.check();
+    for (const tab of diff.tabs.open) {
+      const opened = await context.openTab(tab.url, source().id);
+      context.check();
+      if (typeof opened.tabId === 'string') {
+        outcome.openedTabIds.push(opened.tabId);
+        if (tab.pinned && context.updateGroup) await context.updateGroup([{ id: opened.tabId, changes: { tabPinned: true } }]);
+      }
+    }
+    if (diff.tabs.pin.length && context.updateGroup) {
+      const pins = diff.tabs.pin
+        .map((tab) => members().find((entry) => workspaceURLsEqual(entry.url, tab.url)))
+        .filter((entry): entry is IApp => !!entry)
+        .map((entry) => ({ id: entry.id, changes: { tabPinned: true } as Partial<IApp> }));
+      if (pins.length) await context.updateGroup(pins);
+      context.check();
+    }
   }
   if (diff.scripts.add.length || diff.scripts.change.length) {
     if (!folder) outcome.notes.push('Scripts were not registered: link a project folder first.');
@@ -263,7 +242,7 @@ async function applyWorkspace(
 }
 
 /** The `ai` block widens what the agent may do, so it gets its own confirmation. */
-async function applyAIBlock(
+export async function applyAIBlock(
   context: AIWorkspaceContext,
   groupId: string,
   manifest: WorkspaceManifest,
@@ -277,6 +256,7 @@ async function applyAIBlock(
     'Change AI access'
   );
   if (!approved) return false;
+  context.beforeAIChange?.();
   if (manifest.ai.trusted !== undefined && context.updateGroup) {
     const members = context.tabs().filter((tab) => !tab.archived && aiGroupId(tab) === groupId);
     await context.updateGroup(members.map((tab) => ({ id: tab.id, changes: { aiTrusted: manifest.ai!.trusted } })));
@@ -407,7 +387,7 @@ export async function aiWorkspaceTool(context: AIWorkspaceContext): Promise<unkn
         groupId = created.groupId;
         sourceTabId = created.tabId;
         opened = [created.tabId];
-        if (first.pinned && context.updateGroup) await context.updateGroup([{ id: created.tabId, changes: { pinned: true } }]);
+        if (first.pinned && context.updateGroup) await context.updateGroup([{ id: created.tabId, changes: { tabPinned: true } }]);
         diff.tabs.open = rest;
         diff.group = [];
       }

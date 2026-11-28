@@ -306,12 +306,15 @@ export function manifestFromBrowserState(state: WorkspaceBrowserState): Workspac
       ...(tab.pinned ? { pinned: true } : {}),
     })),
     scripts: state.scripts.map((script) => {
-      const existing = fileScripts.find((entry) => entry.command === script.command);
+      const existing = fileScripts.find((entry) =>
+        !used.has(entry.id) && (entry.command === script.command || entry.name === script.name));
       if (existing) {
         used.add(existing.id);
-        return { ...existing, name: script.name };
+        return { ...existing, name: script.name, command: script.command };
       }
-      return { id: workspaceScriptId(script.name, used), name: script.name, command: script.command };
+      const id = workspaceScriptId(script.name, new Set([...used, ...fileScripts.map((entry) => entry.id)]));
+      used.add(id);
+      return { id, name: script.name, command: script.command };
     }),
   };
   if (state.file?.terminals) manifest.terminals = state.file.terminals;
@@ -335,7 +338,7 @@ export interface WorkspaceDiff {
   ai: string[];
 }
 
-const sameURL = (a: string, b: string) => {
+export const workspaceURLsEqual = (a: string, b: string) => {
   try {
     const left = new URL(a);
     const right = new URL(b);
@@ -364,7 +367,7 @@ export function diffWorkspaceManifest(
   };
   const before = current || { version: WORKSPACE_MANIFEST_VERSION };
   if (next.group) {
-    (['name', 'display', 'sessionMode'] as const).forEach((field) => {
+    (['name', 'slug', 'display', 'sessionMode'] as const).forEach((field) => {
       if (next.group![field] !== undefined && next.group![field] !== before.group?.[field])
         diff.group.push(`${field}: ${before.group?.[field] ?? '(unset)'} → ${next.group![field]}`);
     });
@@ -372,7 +375,7 @@ export function diffWorkspaceManifest(
   if (next.project?.editor && next.project.editor !== before.project?.editor)
     diff.project.push(`editor: ${before.project?.editor ?? '(unset)'} → ${next.project.editor}`);
   (next.tabs || []).forEach((tab) => {
-    const open = (before.tabs || []).find((entry) => sameURL(entry.url, tab.url));
+    const open = (before.tabs || []).find((entry) => workspaceURLsEqual(entry.url, tab.url));
     if (!open) diff.tabs.open.push(tab);
     else if (tab.pinned && !open.pinned) diff.tabs.pin.push(tab);
   });
@@ -390,9 +393,15 @@ export function diffWorkspaceManifest(
       if (previous !== value) diff.siteSettings.push(`${site} ${permission}: ${previous} → ${value}`);
     });
   });
+  const terminalMatches = [...(before.terminals || [])];
   (next.terminals || []).forEach((terminal) => {
-    if (!(before.terminals || []).some((entry) => entry.name === terminal.name))
-      diff.terminals.push(`${terminal.name}${terminal.cwd ? ` (${terminal.cwd})` : ''}`);
+    const index = terminalMatches.findIndex((entry) => entry.name === terminal.name);
+    if (index < 0) diff.terminals.push(`${terminal.name}${terminal.cwd ? ` (${terminal.cwd})` : ''}`);
+    else {
+      const [previous] = terminalMatches.splice(index, 1);
+      if ((previous.cwd || '.') !== (terminal.cwd || '.'))
+        diff.terminals.push(`${terminal.name}: directory ${previous.cwd || '.'} → ${terminal.cwd || '.'}`);
+    }
   });
   (next.skills || []).forEach((skill) => {
     if (!(before.skills || []).includes(skill)) diff.skills.push(skill);

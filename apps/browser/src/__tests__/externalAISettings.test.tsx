@@ -437,3 +437,101 @@ it('rejects insecure tunnel URLs and keeps unsaved endpoints out of configuratio
   await screen.findByText('Save an HTTPS tunnel endpoint before copying its configuration.');
   expect(screen.getByRole('button', { name: 'Copy' })).toBeDisabled();
 });
+
+it('connects the relay through the native account action and exposes its path URL', async () => {
+  const relay = { enabled: false, paired: false, connected: false, relayUrl: 'https://browser.kudium.com', allowProjectTools: false, connectors: [], quickTunnel: { running: false, available: true } };
+  Object.assign(window.electron.ai, {
+    mcpStatus: jest.fn().mockResolvedValue({ enabled: true, running: true, port: 43187, url: 'http://127.0.0.1:43187/mcp' }),
+    onMCPRelay: jest.fn(() => () => {}),
+    mcpRelay: jest.fn(async (request) => request.action === 'status' ? relay : { ...relay, enabled: true, paired: true, connected: true, urls: { path: 'https://browser.kudium.com/relay/d/abcdefghijklmnop/mcp', host: 'https://unused.relay.kudium.com/mcp' } }),
+  });
+  render(<Theme><ExternalAISettings /></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  await screen.findByText(/device credential is created/);
+  fireEvent.click(screen.getByRole('button', { name: 'Connect cloud relay' }));
+  await screen.findByRole('button', { name: 'Copy connector URL' });
+  expect(window.electron.ai.mcpRelay).toHaveBeenCalledWith({ action: 'connect' });
+  fireEvent.click(screen.getByRole('button', { name: 'Copy connector URL' }));
+  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://browser.kudium.com/relay/d/abcdefghijklmnop/mcp');
+});
+
+it('uses only a ready quick tunnel in client configuration and falls back when it stops', async () => {
+  let relay = { enabled: false, paired: false, connected: false, relayUrl: 'https://browser.kudium.com', allowProjectTools: false, connectors: [], quickTunnel: { running: false, ready: false, available: true, url: undefined as string | undefined } };
+  Object.assign(window.electron.ai, {
+    mcpStatus: jest.fn().mockResolvedValue({ enabled: true, running: true, port: 43187, url: 'http://127.0.0.1:43187/mcp' }),
+    onMCPRelay: jest.fn(() => () => {}),
+    mcpRelay: jest.fn(async (request) => {
+      if (request.action === 'quickTunnel') relay = { ...relay, quickTunnel: { ...relay.quickTunnel, running: request.running, ready: request.running, url: request.running ? 'https://fixture.trycloudflare.com' : undefined } };
+      return relay;
+    }),
+  });
+  render(<Theme><ExternalAISettings /></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  await waitFor(() => expect((screen.getByLabelText('MCP configuration') as HTMLTextAreaElement).value).toContain('127.0.0.1'));
+  fireEvent.click(screen.getByRole('button', { name: 'Use quick tunnel' }));
+  await waitFor(() => expect((screen.getByLabelText('MCP configuration') as HTMLTextAreaElement).value).toContain('https://fixture.trycloudflare.com/mcp'));
+  expect((screen.getByLabelText('MCP configuration') as HTMLTextAreaElement).value).toContain('Bearer test-token');
+  fireEvent.click(screen.getByRole('button', { name: 'Stop tunnel' }));
+  await waitFor(() => expect((screen.getByLabelText('MCP configuration') as HTMLTextAreaElement).value).toContain('http://127.0.0.1:43187/mcp'));
+});
+
+
+it('shows environment limitations without a dead relay switch or connect action', async () => {
+  Object.assign(window.electron.ai, {
+    onMCPRelay: jest.fn(() => () => {}),
+    mcpRelay: jest.fn().mockResolvedValue({ enabled: false, paired: false, connected: false, relayUrl: 'https://browser.kudium.com', account: { available: false, signedIn: false, reason: 'Cloud account pairing is unavailable in private windows.' }, connectors: [], quickTunnel: { running: false, available: false } }),
+  });
+  render(<Theme><ExternalAISettings /></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  await screen.findByText('Cloud account pairing is unavailable in private windows.');
+  expect(screen.queryByRole('switch', { name: 'Cloud relay' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Connect cloud relay' })).not.toBeInTheDocument();
+});
+
+it('routes a signed-out account to Sync instead of trying to pair', async () => {
+  const openAccount = jest.fn();
+  Object.assign(window.electron.ai, {
+    onMCPRelay: jest.fn(() => () => {}),
+    mcpRelay: jest.fn().mockResolvedValue({ enabled: false, paired: false, connected: false, relayUrl: 'https://browser.kudium.com', account: { available: true, signedIn: false }, connectors: [], quickTunnel: { running: false, available: false } }),
+  });
+  render(<Theme><ExternalAISettings onOpenAccount={openAccount}/></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Sign in to Kudium' }));
+  expect(openAccount).toHaveBeenCalledTimes(1);
+  expect(window.electron.ai.mcpRelay).not.toHaveBeenCalledWith({ action: 'connect' });
+  expect(window.electron.ai.mcpUpdate).not.toHaveBeenCalled();
+  expect(screen.queryByRole('switch', { name: 'Cloud relay' })).not.toBeInTheDocument();
+});
+
+it('lets a signed-in user enable external control before connecting and surfaces failure at the relay heading', async () => {
+  const relay = { enabled: false, paired: false, connected: false, relayUrl: 'https://browser.kudium.com', account: { available: true, signedIn: true }, connectors: [], quickTunnel: { running: false, available: false } };
+  Object.assign(window.electron.ai, {
+    onMCPRelay: jest.fn(() => () => {}),
+    mcpRelay: jest.fn(async (request) => { if(request.action==='connect') throw new Error('Your account session expired. Reconnect in Preferences → Sync.'); return relay; }),
+  });
+  render(<Theme><ExternalAISettings /></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  const enable = await screen.findByRole('button', { name: 'Enable external control' });
+  expect(enable).toBeEnabled();fireEvent.click(enable);
+  const connect = await screen.findByRole('button', { name: 'Connect cloud relay' });
+  expect(connect).toBeEnabled();fireEvent.click(connect);
+  const error = await screen.findByRole('alert');
+  expect(error).toHaveTextContent('session expired');
+  expect(error.closest('.preference-row')).toBe(document.querySelector('.ai-relay-settings > .preference-row'));
+  expect(window.electron.ai.mcpRelay).toHaveBeenCalledWith({ action: 'connect' });
+});
+
+it('shows an external-control startup failure beside the relay instead of silently leaving Connect disabled', async () => {
+  Object.assign(window.electron.ai, {
+    onMCPRelay: jest.fn(() => () => {}),
+    mcpRelay: jest.fn().mockResolvedValue({ enabled: false, paired: false, connected: false, relayUrl: 'https://browser.kudium.com', account: { available: true, signedIn: true }, connectors: [], quickTunnel: { running: false, available: false } }),
+    mcpUpdate: jest.fn().mockResolvedValue({ enabled: true, running: false, port: 43187, url: 'http://127.0.0.1:43187/mcp' }),
+  });
+  render(<Theme><ExternalAISettings /></Theme>);
+  fireEvent.click(screen.getByText('Other agents & manual setup'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Enable external control' }));
+  const error = await screen.findByText('External control could not start. Check the local port setting and try again.');
+  expect(error).toHaveAttribute('role', 'alert');
+  expect(error.closest('.preference-row')).toBe(document.querySelector('.ai-relay-settings > .preference-row'));
+  expect(window.electron.ai.mcpRelay).not.toHaveBeenCalledWith({ action: 'connect' });
+});

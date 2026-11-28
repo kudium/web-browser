@@ -22,3 +22,28 @@ test('native layout follows ancestor motion without observing unrelated animatio
  act(()=>{document.body.dispatchEvent(new Event('transitionend',{bubbles:true}));jest.runOnlyPendingTimers();});
  expect(api).not.toHaveBeenCalled();rect.mockRestore();global.ResizeObserver=previousObserver;jest.useRealTimers();
 });
+
+test('tracks intermediate ancestor positions and stops after the transition ends', () => {
+  const callbacks = new Map<number, FrameRequestCallback>(); let next = 0;
+  const raf = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(fn => { callbacks.set(++next, fn); return next; });
+  const cancel = jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => { callbacks.delete(id); });
+  const flush = () => act(() => { const pending = [...callbacks.values()]; callbacks.clear(); pending.forEach(fn => fn(16)); });
+  const previousObserver = global.ResizeObserver;
+  global.ResizeObserver = class { observe() {} disconnect() {} } as any;
+  let x = 1100;
+  const rect = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ x, y: 70, width: 368, height: 650 } as DOMRect));
+  const view = render(<div className="moving-shell"><SidebarPanels state={{panels:[{id:'hook',title:'Hook',kind:'hook'}],activeId:'hook',openRequest:1}} active onClose={()=>{}} /></div>);
+  flush();
+  const shell = view.container.querySelector('.moving-shell')!;
+  const api = browser.sidebarPanels as jest.Mock; api.mockClear();
+  act(() => shell.dispatchEvent(new Event('transitionrun', { bubbles: true })));
+  x = 1000; flush();
+  expect(api).toHaveBeenLastCalledWith({ action:'layout', id:'hook', bounds:{x:1000,y:70,width:368,height:650} });
+  x = 900; flush();
+  expect(api).toHaveBeenLastCalledWith({ action:'layout', id:'hook', bounds:{x:900,y:70,width:368,height:650} });
+  act(() => shell.dispatchEvent(new Event('transitionend', { bubbles: true })));
+  x = 784; flush();
+  expect(api).toHaveBeenLastCalledWith({ action:'layout', id:'hook', bounds:{x:784,y:70,width:368,height:650} });
+  expect(callbacks.size).toBe(0);
+  view.unmount(); rect.mockRestore(); raf.mockRestore(); cancel.mockRestore(); global.ResizeObserver = previousObserver;
+});

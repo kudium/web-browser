@@ -1,3 +1,7 @@
+import { restoreProjectWorkspace, WorkspaceMutation } from './projectWorkspaceRestore';
+import type { ProjectWorkspaceSync } from './projectWorkspaceSync';
+import { readWorkspaceManifest } from './workspaceManifest';
+import { workspaceAccess } from './aiWorkspaceAccess';
 import {
   app,
   BrowserWindow,
@@ -51,7 +55,8 @@ import type {
 export function developerPageSummaries(
   tabs: IApp[],
   source: IApp,
-  contents: (id: string) => WebContents | undefined
+  contents: (id: string) => WebContents | undefined,
+  workspace?: { update: WorkspaceMutation; sync: ProjectWorkspaceSync }
 ): SiteDeveloperPageSummary[] {
   if (isGroupLocked(source))
     throw new Error('Unlock this group to manage its hooks.');
@@ -149,7 +154,8 @@ const projectHosts = new Map<
 export function registerSiteDeveloperLibrary(
   host: BrowserWindow,
   tabs: () => IApp[],
-  contents: (id: string) => WebContents | undefined
+  contents: (id: string) => WebContents | undefined,
+  workspace?: { update: WorkspaceMutation; sync: ProjectWorkspaceSync }
 ) {
   if (!libraries.size)
     ipcMain.handle('group-transfer', (event, action: unknown, id: unknown) => {
@@ -425,16 +431,21 @@ export function registerSiteDeveloperLibrary(
     terminals.prune(new Set(tabs().map(aiGroupId)));
   };
   const offLocks = getGroupLocks().subscribe(audit);
-  const offProjectDrop = registerProjectFolderDrop(host, tabs, () =>
-    terminals.prune()
-  );
+  const offProjectDrop = registerProjectFolderDrop(host, tabs, () => terminals.prune(), workspace ? async (id, folder) => {
+    chosenFolder = folder;
+    approvedAILink = false;
+    return projects.get(hostId)!(id, 'link', undefined, folder);
+  } : undefined);
   const terminalAudit = setInterval(audit, 2000);
   terminalAudit.unref();
   let chosenFolder: string | undefined;
+  let approvedAILink = false;
+  let linking = false;
   projectLinkers.set(hostId, (folder) => {
     // setup_project links a folder the user approved in the native review,
     // the same way the Developer panel links one chosen in the folder dialog.
     chosenFolder = folder;
+    approvedAILink = true;
   });
   projects.set(hostId, async (id, action, editorId, folderPath) => {
     if (action === 'choose-folder') {
@@ -442,12 +453,16 @@ export function registerSiteDeveloperLibrary(
         if (host.isDestroyed()) throw new Error('Window closed.');
       });
       chosenFolder = selection?.path;
+      approvedAILink = false;
       return selection;
     }
+    const approvedLink = approvedAILink;
     if (action === 'link' && folderPath !== undefined) {
+      if (linking) throw new Error('Finish linking the current project first.');
       if (folderPath !== chosenFolder)
         throw new Error('Choose the project folder again.');
       chosenFolder = undefined;
+      approvedAILink = false;
     }
     const synchronizedSource = async (
       attempt = 0
@@ -463,29 +478,47 @@ export function registerSiteDeveloperLibrary(
     const source = await synchronizedSource();
     if (!source) throw new Error('This group is no longer available.');
     const key = aiGroupId(source);
-    const result = await projectAction(
-      host,
-      key,
-      action,
-      () => {
-        const current = tabs().find((tab) => tab.id === id && !tab.archived);
-        if (host.isDestroyed() || !current || aiGroupId(current) !== key)
-          throw new Error('This group is no longer available.');
-        if (isGroupLocked(current))
-          throw new Error('Unlock this group to use its project.');
-      },
-      editorId,
-      folderPath,
-      aiGroups(tabs()).find((group) => group.id === key)
-    );
-    if (action === 'link' || action === 'unlink') terminals.prune();
-    return result;
+    const check = () => {
+      const current = tabs().find((tab) => tab.id === id && !tab.archived);
+      if (host.isDestroyed() || !current || aiGroupId(current) !== key)
+        throw new Error('This group is no longer available.');
+      if (isGroupLocked(current)) throw new Error('Unlock this group to use its project.');
+    };
+    if (action === 'link' && linking) throw new Error('Finish linking the current project first.');
+    const resume = action === 'link' ? workspace?.sync.suspend(key) : undefined;
+    if (action === 'link') linking = true;
+    let definitions: ReturnType<typeof readWorkspaceManifest>;
+    try {
+      const result = await projectAction(
+        host, key, action, check, editorId, folderPath,
+        aiGroups(tabs()).find((group) => group.id === key),
+        action === 'link' && workspace && !approvedLink ? async (folder) => {
+          definitions = readWorkspaceManifest(folder);
+          return restoreProjectWorkspace(host, id, folder, tabs, workspace.update, check, {
+            mode: () => workspaceAccess(host).mode(),
+            change: (mode) => workspaceAccess(host).change(mode),
+            assertChange: () => workspaceAccess(host).assertChange(),
+          });
+        } : undefined
+      );
+      if (action === 'link' || action === 'unlink') terminals.prune();
+      if (action === 'link' && definitions?.terminals) terminals.restoreDefinitions(key, definitions.terminals);
+      const notice = workspace?.sync.notice(key);
+      if (result && notice) result.instructionsNotice = [result.instructionsNotice, notice].filter(Boolean).join('\n');
+      return result;
+    } finally {
+      if (action === 'link') linking = false;
+      resume?.();
+    }
   });
   libraries.set(hostId, (id) => {
     const items = tabs();
     const source = items.find((tab) => tab.id === id && !tab.archived);
     if (!source) throw new Error('This group is no longer available.');
     return developerPageSummaries(items, source, contents);
+  });
+  const offWorkspaceNotice = workspace?.sync.onNotice(() => {
+    if (!host.isDestroyed()) host.webContents.send('site-developer-library-changed');
   });
   const offScripts = onProjectScriptsChanged(() => {
     if (!host.isDestroyed())
@@ -510,6 +543,7 @@ export function registerSiteDeveloperLibrary(
       host.webContents.send('site-developer-library-changed');
   });
   return () => {
+    offWorkspaceNotice?.();
     offProjectDrop();
     offDrop();
     offProjects();

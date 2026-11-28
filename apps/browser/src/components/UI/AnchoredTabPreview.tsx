@@ -23,6 +23,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { EmptyState } from './EmptyState';
 import { CollectionIcon } from './CollectionIcon';
 import type { IApp } from '../../types';
 import type { Collection } from '../../utils/SpaceManager';
@@ -68,6 +69,8 @@ export function AnchoredTabPreview({
   onGroupContextMenu,
   onRemove,
   onNewTab,
+  onNewGroup,
+  onManageCollection,
   onBack,
   onClose,
   onEnter,
@@ -93,6 +96,8 @@ export function AnchoredTabPreview({
   onGroupContextMenu?: () => void;
   onRemove: (id: string) => void;
   onNewTab: () => void;
+  onNewGroup?: () => void;
+  onManageCollection?: () => void;
   onBack: () => void;
   onClose: () => void;
   onEnter: () => void;
@@ -102,19 +107,21 @@ export function AnchoredTabPreview({
   const [query, setQuery] = useState('');
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(
-    searchThreshold * rowHeight
+    searchThreshold * rowHeight,
   );
   const visibleRows = Math.max(1, Math.ceil(viewportHeight / rowHeight));
   const [highlighted, setHighlighted] = useState(() =>
     Math.max(
       0,
-      entries.findIndex((entry) => entry.id === selectedId)
-    )
+      entries.findIndex((entry) => entry.id === selectedId),
+    ),
   );
   const showSearch =
-    entries.length > searchThreshold || target.interaction !== 'hover';
-  const [viewportElement, setViewportElement] =
-    useState<HTMLDivElement | null>(null);
+    entries.length > searchThreshold ||
+    (entries.length > 0 && target.interaction !== 'hover');
+  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(
+    null,
+  );
   const searchInput = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
     const list = viewportElement;
@@ -136,7 +143,7 @@ export function AnchoredTabPreview({
       window.innerWidth - 8
         ? ('right' as const)
         : ('bottom' as const),
-    [target.anchor]
+    [target.anchor],
   );
   const [side, setSide] = useState(measureSide);
   useLayoutEffect(() => {
@@ -152,13 +159,13 @@ export function AnchoredTabPreview({
   }, [target.anchor, measureSide]);
   const anchorRef = useMemo(
     () => ({ current: target.anchor }),
-    [target.anchor]
+    [target.anchor],
   );
   const matches = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return needle
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.detail}`.toLocaleLowerCase().includes(needle)
+          `${entry.title} ${entry.detail}`.toLocaleLowerCase().includes(needle),
         )
       : entries;
   }, [query, entries]);
@@ -212,7 +219,7 @@ export function AnchoredTabPreview({
           if (target.interaction === 'keyboard' && target.anchor.isConnected)
             (
               target.anchor.querySelector<HTMLElement>(
-                '.sidebar-app, .folder-heading'
+                '.sidebar-app, .folder-heading',
               ) || target.anchor
             ).focus();
         }}
@@ -236,11 +243,13 @@ export function AnchoredTabPreview({
           <div className="tab-preview-group-icon" aria-hidden="true">
             {group && <GroupIdentityIcon item={group} tabs={tabs} />}
             {!group && icon && <AppIcon icon={icon} title={title} />}
-            {!group && !icon && (
-              target.kind === 'folder'
-                ? <CollectionIcon collection={collection} size={22} />
-                : <Layers size={22} />
-            )}
+            {!group &&
+              !icon &&
+              (target.kind === 'folder' ? (
+                <CollectionIcon collection={collection} size={22} />
+              ) : (
+                <Layers size={22} />
+              ))}
           </div>
           <div className="tab-preview-title">
             <strong>{title}</strong>
@@ -292,7 +301,7 @@ export function AnchoredTabPreview({
                   if (event.key === 'Home') nextIndex = 0;
                   if (event.key === 'End') nextIndex = matches.length - 1;
                   setHighlighted(
-                    Math.max(0, Math.min(matches.length - 1, nextIndex))
+                    Math.max(0, Math.min(matches.length - 1, nextIndex)),
                   );
                 } else if (event.key === 'Enter' && matches[activeIndex]) {
                   event.preventDefault();
@@ -315,8 +324,14 @@ export function AnchoredTabPreview({
               <div
                 className="tab-preview-row"
                 key={entry.id}
-                data-background-color={!!entry.group && !!focusColorStyle(entry.focusColor) || undefined}
-                data-focus-color={!entry.group && !!focusColorStyle(entry.focusColor) || undefined}
+                data-background-color={
+                  (!!entry.group && !!focusColorStyle(entry.focusColor)) ||
+                  undefined
+                }
+                data-focus-color={
+                  (!entry.group && !!focusColorStyle(entry.focusColor)) ||
+                  undefined
+                }
                 data-highlighted={
                   target.interaction !== 'hover' &&
                   start + index === activeIndex
@@ -363,7 +378,41 @@ export function AnchoredTabPreview({
             ))}
           </div>
         </div>
-        {!matches.length && <p className="tab-preview-empty">No matches</p>}
+        {!matches.length &&
+          (target.kind === 'folder' && !entries.length ? (
+            <EmptyState
+              className="collection-preview-empty"
+              title="Empty collection"
+              description="Add a group to keep related tabs together."
+              action={
+                onNewGroup
+                  ? { label: 'New group', onClick: onNewGroup }
+                  : undefined
+              }
+            />
+          ) : (
+            <p className="tab-preview-empty">No matches</p>
+          ))}
+        {target.kind === 'folder' && (
+          <div
+            className="tab-preview-collection-actions"
+            aria-label="Collection actions"
+          >
+            {onNewGroup && entries.length > 0 && (
+              <Button size="1" variant="ghost" onClick={onNewGroup}>
+                <Plus size={14} />
+                New group
+              </Button>
+            )}
+            {onManageCollection && (
+              <ChromeIconButton
+                icon={Settings2}
+                label="Manage collection"
+                onClick={onManageCollection}
+              />
+            )}
+          </div>
+        )}
         {target.kind === 'session' && (
           <div className="tab-preview-actions" aria-label="Group actions">
             <Button

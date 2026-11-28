@@ -10,6 +10,14 @@ import type {
   ProjectCommandReceipt,
 } from '../browser/developerProject';
 import { writePrivateFile } from './privateFile';
+import { projectTerminalDirectory } from './projectTerminalDirectory';
+import type { WorkspaceTerminal } from '../browser/workspaceManifest';
+
+const terminalListeners = new Set<(group: string) => void>();
+export function onProjectTerminalsChanged(listener: (group: string) => void) {
+  terminalListeners.add(listener);
+  return () => { terminalListeners.delete(listener); };
+}
 
 type Session = {
   cwd?: string;
@@ -32,6 +40,14 @@ type Workspace = {
   tabs: Session[];
 };
 const MAX_OUTPUT = 128 * 1024;
+type DirectoryCheck = {
+  pty: IPty;
+  timer?: ReturnType<typeof setTimeout>;
+  checking: boolean;
+  dirty: boolean;
+  afterInput: boolean;
+  lastCheck: number;
+};
 export class ProjectTerminals {
   private groups = new Map<string, Workspace>();
 
@@ -41,10 +57,13 @@ export class ProjectTerminals {
 
   private loaded = false;
 
+  private directoryChecks = new Map<Session, DirectoryCheck>();
+
   constructor(
     host: BrowserWindow,
     private folderFor: (group: string) => string,
-    private filename?: string
+    private filename?: string,
+    private readDirectory = projectTerminalDirectory
   ) {
     this.attachHost(host);
   }
@@ -139,6 +158,7 @@ export class ProjectTerminals {
   }
 
   private save() {
+    this.groups.forEach((_, group) => terminalListeners.forEach((listener) => listener(group)));
     if (!this.filename || this.timer) return;
     this.timer = setTimeout(() => {
       this.timer = undefined;
@@ -194,6 +214,7 @@ export class ProjectTerminals {
 
   private stop(group: string, session: Session) {
     const { pty } = session;
+    this.cancelDirectoryCheck(session);
     session.pty = undefined;
     session.running = false;
     if (session.command?.status === 'running') {
@@ -251,6 +272,89 @@ export class ProjectTerminals {
     this.persist();
   }
 
+  private cancelDirectoryCheck(session: Session) {
+    const check = this.directoryChecks.get(session);
+    if (check?.timer) clearTimeout(check.timer);
+    this.directoryChecks.delete(session);
+  }
+
+  private refreshDirectory(
+    group: string,
+    session: Session,
+    pty: IPty,
+    afterInput = false
+  ) {
+    let check = this.directoryChecks.get(session);
+    if (!check || check.pty !== pty) {
+      this.cancelDirectoryCheck(session);
+      check = {
+        pty,
+        checking: false,
+        dirty: false,
+        afterInput: false,
+        lastCheck: 0,
+      };
+      this.directoryChecks.set(session, check);
+    }
+    check.dirty = true;
+    if (check.checking) return;
+    if (check.timer) {
+      if (check.afterInput && !afterInput) return;
+      clearTimeout(check.timer);
+    }
+    check.afterInput ||= afterInput;
+    const current = check;
+    current.timer = setTimeout(
+      () => {
+        current.timer = undefined;
+        if (session.pty !== pty) return;
+        current.dirty = false;
+        current.afterInput = false;
+        current.checking = true;
+        current.lastCheck = Date.now();
+        const stillCurrent = () =>
+          session.pty === pty &&
+          this.directoryChecks.get(session) === current &&
+          this.folderFor(group) === session.folder;
+        void this.readDirectory(pty.pid)
+          .then(async (directory) => {
+            if (!directory || !stillCurrent()) return undefined;
+            const [root, cwd] = await Promise.all([
+              fs.promises.realpath(session.folder),
+              fs.promises.realpath(directory),
+            ]);
+            const relative = path.relative(root, cwd);
+            if (
+              relative === '..' ||
+              relative.startsWith(`..${path.sep}`) ||
+              path.isAbsolute(relative) ||
+              !(await fs.promises.stat(cwd)).isDirectory() ||
+              !stillCurrent() ||
+              session.cwd === cwd
+            )
+              return undefined;
+            session.cwd = cwd;
+            this.save();
+            return undefined;
+          })
+          .catch(() => {
+            // Retain the last validated directory when a process or folder disappears.
+          })
+          .finally(() => {
+            current.checking = false;
+            if (
+              current.dirty &&
+              session.pty === pty &&
+              this.directoryChecks.get(session) === current
+            )
+              this.refreshDirectory(group, session, pty);
+          });
+      },
+      Math.max(200, 1000 - (Date.now() - current.lastCheck))
+    );
+    current.timer.unref();
+  }
+
   private start(group: string, session: Session, cols: number, rows: number) {
     const count = [...this.groups.values()].reduce(
       (total, value) => total + value.tabs.filter((tab) => tab.running).length,
@@ -287,7 +391,15 @@ export class ProjectTerminals {
     let cwd = session.folder;
     if (session.cwd) {
       const root = fs.realpathSync(session.folder);
-      cwd = fs.realpathSync(session.cwd);
+      try {
+        cwd = fs.realpathSync(session.cwd);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        // Keep the restored tab usable if its old subdirectory was deleted.
+        session.cwd = undefined;
+        cwd = root;
+        this.save();
+      }
       const relative = path.relative(root, cwd);
       if (
         relative === '..' ||
@@ -297,6 +409,7 @@ export class ProjectTerminals {
       )
         throw new Error('Choose a folder inside the linked project.');
     }
+    const interactive = session.commandText === undefined;
     let shellArgs = process.platform === 'win32' ? ['-NoLogo'] : ['-l'];
     if (session.commandText !== undefined)
       shellArgs =
@@ -326,12 +439,14 @@ export class ProjectTerminals {
         return;
       }
       session.data = (session.data + data).slice(-MAX_OUTPUT);
+      if (interactive) this.refreshDirectory(group, session, pty);
       session.sequence += 1;
       this.emit(group, session, { data });
       this.save();
     });
     pty.onExit(({ exitCode }) => {
       if (session.pty !== pty) return;
+      this.cancelDirectoryCheck(session);
       session.running = false;
       session.pty = undefined;
       if (session.command?.status === 'running') {
@@ -528,6 +643,8 @@ export class ProjectTerminals {
         if (!session.pty) this.start(group, session, 80, 24);
         if (!session.pty) throw new Error('Could not open a terminal shell.');
         session.pty.write(request.data);
+        if (/[\r\n]/.test(request.data))
+          this.refreshDirectory(group, session, session.pty, true);
       }
       if (request.action === 'clear') {
         session.data = '';
@@ -574,9 +691,49 @@ export class ProjectTerminals {
       height: workspace.height,
     };
   }
+
+  definitions(group: string): WorkspaceTerminal[] | undefined {
+    this.load();
+    const workspace = this.groups.get(group);
+    if (!workspace || workspace.folder !== this.folderFor(group)) return undefined;
+    return workspace.tabs.map((tab) => {
+      const relative = path.relative(workspace.folder, tab.cwd || workspace.folder);
+      const safe = relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+      return { name: tab.name, cwd: safe ? relative.split(path.sep).join('/') || '.' : '.' };
+    });
+  }
+
+  /** Restore tab definitions only; attaching an interactive shell remains a user action. */
+  restoreDefinitions(group: string, definitions: WorkspaceTerminal[]) {
+    if (!definitions.length) return;
+    this.request(group, { action: 'list' });
+    const workspace = this.groups.get(group)!;
+    const root = fs.realpathSync(workspace.folder);
+    const matched = new Set<Session>();
+    for (const definition of definitions) {
+      const existing = workspace.tabs.find((tab) => tab.name === definition.name && !matched.has(tab));
+      if (existing) {
+        matched.add(existing);
+        if (existing.running) continue;
+      } else if (workspace.tabs.length >= 8) continue;
+      let cwd = root;
+      try {
+        const target = fs.realpathSync(path.resolve(root, definition.cwd || '.'));
+        const relative = path.relative(root, target);
+        if (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative) && fs.statSync(target).isDirectory()) cwd = target;
+      } catch { /* Deleted directories restore at the project root. */ }
+      if (existing) { existing.cwd = cwd; existing.restored = true; continue; }
+      const tab: Session = { id: randomUUID(), name: definition.name, folder: workspace.folder, cwd, data: '', running: false, restored: true, sequence: 0 };
+      workspace.tabs.push(tab);
+      matched.add(tab);
+      if (!workspace.selected) workspace.selected = tab.id;
+    }
+    this.save();
+  }
 }
 
 let shared: ProjectTerminals | undefined;
+export function projectTerminalDefinitions(group: string) { return shared?.definitions(group); }
 export function sharedProjectTerminals(
   host: BrowserWindow,
   folderFor: (group: string) => string

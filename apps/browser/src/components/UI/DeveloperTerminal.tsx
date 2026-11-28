@@ -1,7 +1,9 @@
+import { SidebarResizeHandle } from './SidebarResizeHandle';
+import { terminalDropText } from '../../utils/terminalDrop';
 import { frameResizeObserver } from '../../utils/frameResizeObserver';
 /* Optional callbacks use defaults; separators and tabs implement keyboard interaction. */
 /* eslint-disable react/require-default-props, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-static-element-interactions, no-nested-ternary */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   Dialog,
   DropdownMenu,
@@ -72,6 +74,7 @@ function TerminalSurface({
   onReady,
   onAction,
   onRename,
+  onDropReady,
 }: {
   group: string;
   tab: string;
@@ -81,10 +84,12 @@ function TerminalSurface({
   onReady: () => void;
   onAction: (request: ProjectTerminalRequest) => Promise<unknown>;
   onRename: () => void;
+  onDropReady: (handler: ((files: File[]) => void) | undefined) => void;
 }) {
   const { appearance } = useThemeContext();
   const container = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | undefined>(undefined);
+  const inputReady = useRef(false);
   const activeRef = useRef(active);
   activeRef.current = active;
   const readyRef = useRef(onReady);
@@ -132,6 +137,7 @@ function TerminalSurface({
       sequence = event.sequence;
       if (event.data) terminal.write(event.data);
       if (event.exitCode !== undefined || event.stopped) {
+        inputReady.current = false;
         terminal.options.disableStdin = false;
         terminal.write(
           event.stopped
@@ -236,6 +242,7 @@ function TerminalSurface({
         terminal.write(connected.data);
         terminal.options.disableStdin = !connected.running;
         ready = true;
+        inputReady.current = connected.running;
         pending.forEach(accept);
         pending = [];
         fitTerminal();
@@ -252,6 +259,7 @@ function TerminalSurface({
       });
     return () => {
       live = false;
+      inputReady.current = false;
       off();
       observer.disconnect();
       input.dispose();
@@ -302,6 +310,19 @@ function TerminalSurface({
   useEffect(() => {
     if (active) terminalRef.current?.focus();
   }, [active]);
+  useEffect(() => {
+    if (!active) return undefined;
+    onDropReady((files) => {
+      try {
+        if (!inputReady.current || !terminalRef.current)
+          throw new Error('Wait for the terminal to connect before dropping a path.');
+        const paths = window.electron.siteDeveloper.droppedFilePaths(files);
+        terminalRef.current.paste(terminalDropText(paths, window.electron.platform));
+        terminalRef.current.focus();
+      } catch (reason) { errorRef.current(projectErrorMessage(reason)); }
+    });
+    return () => onDropReady(undefined);
+  }, [active, onDropReady]);
   const menu = () => {
     const terminal = terminalRef.current;
     if (!terminal) return;
@@ -403,8 +424,6 @@ export function DeveloperTerminal({
 }) {
   const [state, setState] = useState<ProjectTerminalState>();
   const [height, setHeight] = useState(220);
-  const heightRef = useRef(height);
-  heightRef.current = height;
   const [resizing, setResizing] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -412,8 +431,9 @@ export function DeveloperTerminal({
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
   const [renameTab, setRenameTab] = useState('');
+  const dropHandler = useRef<((files: File[]) => void) | undefined>(undefined);
+  const setDropHandler = useCallback((handler: ((files: File[]) => void) | undefined) => { dropHandler.current = handler; }, []);
   const root = useRef<HTMLElement>(null);
-  const drag = useRef<{ y: number; height: number } | undefined>(undefined);
   const revision = useRef(0);
   const live = useRef(true);
   const request = async (value: ProjectTerminalRequest) => {
@@ -514,15 +534,8 @@ export function DeveloperTerminal({
     Math.max(96, Math.min(value, 2000, workspaceLimit));
   const updateHeight = (value: number) => {
     const next = limitHeight(value);
-    heightRef.current = next;
     setHeight(next);
     return next;
-  };
-  const finishResize = () => {
-    if (!drag.current) return;
-    drag.current = undefined;
-    setResizing(false);
-    request({ action: 'preferences', height: heightRef.current });
   };
   useEffect(() => {
     if (resizing) document.body.classList.add('project-terminal-dragging');
@@ -591,6 +604,19 @@ export function DeveloperTerminal({
     ) : null;
   return (
     <section
+      onDragOver={(event) => {
+        if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={(event) => {
+        if (!event.dataTransfer.files.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (dropHandler.current) dropHandler.current(Array.from(event.dataTransfer.files));
+        else setError('Select a connected terminal tab before dropping a path.');
+      }}
       onContextMenu={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -598,55 +624,16 @@ export function DeveloperTerminal({
       }}
       className={`developer-terminal${resizing ? ' resizing' : ''}`}
       ref={root}
-      style={{ height, maxHeight: workspaceLimit }}
+      style={{ height: 'var(--terminal-height)', '--terminal-height': `${height}px`, maxHeight: workspaceLimit } as CSSProperties}
       aria-label="Project terminal"
     >
-      <div
-        className="developer-terminal-resize"
-        role="separator"
-        aria-label="Resize terminal"
-        aria-orientation="horizontal"
-        aria-valuemin={96}
-        aria-valuemax={Math.round(limitHeight(2000))}
-        aria-valuenow={Math.round(limitHeight(height))}
-        aria-valuetext={`${Math.round(limitHeight(height))} pixels`}
-        title="Drag to resize terminal. Double-click to reset."
-        tabIndex={0}
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          event.preventDefault();
-          drag.current = {
-            y: event.clientY,
-            height: root.current?.getBoundingClientRect().height || height,
-          };
-          setResizing(true);
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }}
-        onPointerMove={(event) => {
-          if (drag.current)
-            updateHeight(drag.current.height + drag.current.y - event.clientY);
-        }}
-        onPointerUp={finishResize}
-        onPointerCancel={finishResize}
-        onLostPointerCapture={finishResize}
-        onDoubleClick={() => {
-          const next = updateHeight(220);
-          request({ action: 'preferences', height: next });
-        }}
-        onKeyDown={(event) => {
-          if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
-            event.preventDefault();
-            const next = limitHeight(
-              event.key === 'Home'
-                ? 96
-                : event.key === 'End'
-                ? 2000
-                : limitHeight(height) + (event.key === 'ArrowUp' ? 20 : -20)
-            );
-            updateHeight(next);
-            request({ action: 'preferences', height: next });
-          }
-        }}
+      <SidebarResizeHandle
+        side="right" axis="vertical" className="developer-terminal-resize"
+        label="Resize terminal" width={limitHeight(height)} minWidth={96}
+        maxWidth={limitHeight(2000)} resetWidth={220} step={20}
+        liveResize={{ target: root, property: '--terminal-height' }}
+        onResizingChange={setResizing}
+        onChange={value => { const next = updateHeight(value); request({ action: 'preferences', height: next }); }}
       />
       <div className="developer-terminal-heading">
         <TerminalIcon size={14} aria-hidden="true" />
@@ -847,6 +834,7 @@ export function DeveloperTerminal({
           aria-labelledby={`terminal-tab-${selected.id}`}
         >
           <TerminalSurface
+            onDropReady={setDropHandler}
             group={group}
             tab={selected.id}
             active={active}

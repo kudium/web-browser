@@ -105,7 +105,7 @@ const sections = [
   },
   {
     id: 'ai',
-    title: 'Assistant',
+    title: 'AI Assistant',
     icon: Sparkles,
     description: 'Models and connections.',
   },
@@ -481,7 +481,7 @@ export function Settings() {
             {item.id === 'updates' && <AppUpdateSettings />}
             {item.id === 'import' && <BrowserImportSettings />}
             {item.id === 'ai' && (
-              <AISettingsPage>
+              <AISettingsPage onOpenAccount={() => { setSection('sync'); setQuery(''); }}>
                 <div className="preference-row">
                   <div>
                     <strong id="ai-project-instructions-label">

@@ -1,3 +1,8 @@
+import { nativeSidebarPage } from '../../utils/hooks/useSidebarPages';
+import type { SidebarPageDocks } from '../../utils/hooks/useSidebarPageDocks';
+import type { SidebarPageWidths } from '../../utils/hooks/useSidebarPageWidths';
+import { SidebarPageColumns } from './SidebarPageColumns';
+import type { SidebarPage } from '../../utils/hooks/useSidebarPages';
 import { aiContextManagement } from '../../browser/aiContextManagement';
 import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -104,11 +109,39 @@ export function AISidebar({
   sidebarPane,
   onSidebarPaneChange,
   onSidebarClose,
+  openedPages,
+  activation,
+  selectedPage,
+  pageWidths,
+  defaultPageWidth,
+  dockPosition,
+  pageDocks,
+  onPageDockChange,
+  bottomTarget,
+  onReorder,
+  onBalance,
+  onResetLayout,
+  onPageWidthsChange,
+  onPageResizingChange,
 }: {
   sidebarPanels?: SidebarPanelState;
   sidebarPane?: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email' | 'panels';
   onSidebarPaneChange?: (pane: 'assistant' | 'tasks' | 'developer' | 'notes' | 'activity' | 'email' | 'panels') => void;
-  onSidebarClose?: () => void;
+  onSidebarClose?: (page: SidebarPage) => void;
+  openedPages?: readonly SidebarPage[];
+  activation?: number;
+  selectedPage?: SidebarPage;
+  pageWidths?: SidebarPageWidths;
+  defaultPageWidth?: number;
+  dockPosition?: 'right' | 'bottom';
+  pageDocks?: SidebarPageDocks;
+  onPageDockChange?: (page: SidebarPage, position: 'right' | 'bottom') => void;
+  bottomTarget?: HTMLElement | null;
+  onReorder?: (page: SidebarPage, before?: SidebarPage) => void;
+  onBalance?: (position: 'right' | 'bottom') => void;
+  onResetLayout?: () => void;
+  onPageWidthsChange?: (changes: SidebarPageWidths) => void;
+  onPageResizingChange?: (resizing: boolean) => void;
   visible?: boolean;
   promptRequest?: { text: string; token: number; append?: boolean };
   workingTabs?: AIWorkingTab[];
@@ -167,6 +200,7 @@ export function AISidebar({
   const [savedPane, setSavedPane] = useAIPagePreference('pane', 'assistant');
   const pane = sidebarPane ?? savedPane;
   const setPane = onSidebarPaneChange ?? setSavedPane;
+  const pageOpen = (page: SidebarPage) => openedPages ? openedPages.includes(page) : pane === page;
 
   const [showStats] = useAIPagePreference('showStats', true);
   const [notesScopeRequest, setNotesScopeRequest] = useState<
@@ -200,7 +234,6 @@ export function AISidebar({
       focusAssistantPanel('developer');
     }
   }, [developerRequest, setPane]);
-  const showTasks = pane === 'tasks';
   const setShowTasks = useCallback(
     (value: boolean) => setPane(value ? 'tasks' : 'assistant'),
     [setPane]
@@ -649,7 +682,7 @@ export function AISidebar({
   useChatAutoScroll(
     log,
     followLog,
-    visible && pane === 'assistant',
+    visible && pageOpen('assistant'),
     chatState?.selectedId,
     changingChat
   );
@@ -1284,16 +1317,16 @@ export function AISidebar({
       submitting.current = false;
     }
   };
-  const assistantActions = (
+  const assistantActions = (tasks = false) => (
     <div className="ai-compact-actions">
       <button
         type="button"
         className="ai-history-toggle"
-        aria-label={showTasks ? 'Back to Assistant' : 'Saved AI tasks'}
-        title={showTasks ? 'Back to Assistant' : 'Saved AI tasks'}
-        onClick={() => setShowTasks(!showTasks)}
+        aria-label={tasks ? 'Back to Assistant' : 'Saved AI tasks'}
+        title={tasks ? 'Back to Assistant' : 'Saved AI tasks'}
+        onClick={() => setShowTasks(!tasks)}
       >
-        {showTasks ? <Sparkles size={15} /> : <ListTodo size={15} />}
+        {tasks ? <Sparkles size={15} /> : <ListTodo size={15} />}
       </button>
       {(busy || (external?.running && external?.paused)) && (
         <button
@@ -1336,8 +1369,8 @@ export function AISidebar({
     PanelOverlayContext.Provider,
     { value: overlayContainer },
     <aside
-      className="ai-sidebar"
-      aria-label={pane === 'panels' ? 'Sidebar panels' : 'Assistant'}
+      className={`ai-sidebar${openedPages ? ' ai-sidebar-multi' : ''}`}
+      aria-label={openedPages ? 'Open sidebar pages' : pane === 'panels' ? 'Sidebar panels' : 'Assistant'}
       onContextMenu={(event) => {
         if (
           (event.target as HTMLElement).closest(
@@ -1408,8 +1441,37 @@ export function AISidebar({
         } else addFiles(Array.from(event.dataTransfer.files));
       }}
     >
-      <SidebarPanels state={sidebarPanels} active={visible && pane === 'panels'} onClose={onSidebarClose || (() => setPane('assistant'))} />
-      <AssistantPanelHost panel="activity" visible={visible} active={pane === 'activity'}>
+      <SidebarPageColumns pages={openedPages} activation={activation} selectedPage={selectedPage || pane} widths={pageWidths} defaultWidth={defaultPageWidth} dockPosition={dockPosition} pageDocks={pageDocks} onPageDockChange={onPageDockChange} bottomTarget={bottomTarget} onReorder={onReorder} onBalance={onBalance} onReset={onResetLayout} onWidthsChange={onPageWidthsChange} onResizingChange={onPageResizingChange}>
+      <SidebarPanels panel="panels" layoutVersion={JSON.stringify([openedPages, pageWidths, pageDocks])} state={sidebarPanels.openedPanels ? { ...sidebarPanels, activeId: undefined, floating: false, snapshot: undefined, error: undefined } : sidebarPanels} active={visible && pageOpen('panels')} onClose={() => onSidebarClose ? onSidebarClose('panels') : setPane('assistant')} />
+      {sidebarPanels.panels
+        .filter(info => openedPages?.includes(nativeSidebarPage(info)))
+        .map(info => {
+          const page = nativeSidebarPage(info);
+          const opened = sidebarPanels.openedPanels?.find(panel => panel.id === info.id);
+          return (
+            <SidebarPanels
+              key={page}
+              panel={page}
+              layoutVersion={JSON.stringify([openedPages, pageWidths, pageDocks])}
+              state={{
+                ...sidebarPanels,
+                activeId: info.id,
+                ...opened,
+                // Global reveal requests must not detach unrelated native slots.
+                openRequest: 0,
+                error: opened?.error,
+                floating: opened?.floating,
+                snapshot: opened?.snapshot,
+              }}
+              active={visible && pageOpen(page)}
+              onClose={() => {
+                onSidebarClose?.(page);
+                void browser.sidebarPanels({ action: 'close', id: info.id }).catch(() => {});
+              }}
+            />
+          );
+        })}
+      <AssistantPanelHost panel="activity" visible={visible} active={pageOpen('activity')} onOpen={() => setPane('activity')} onClose={onSidebarClose ? () => onSidebarClose('activity') : undefined}>
         <div
           className="ai-sidebar-pane ai-activity-pane"
           role="region"
@@ -1430,7 +1492,7 @@ export function AISidebar({
           />
         </div>
       </AssistantPanelHost>
-      <AssistantPanelHost panel="email" visible={visible} active={pane === 'email'}>
+      <AssistantPanelHost panel="email" visible={visible} active={pageOpen('email')} onOpen={() => setPane('email')} onClose={onSidebarClose ? () => onSidebarClose('email') : undefined}>
         <div
           className="ai-sidebar-pane ai-email-pane"
           role="region"
@@ -1442,7 +1504,7 @@ export function AISidebar({
           </RenderErrorBoundary>
         </div>
       </AssistantPanelHost>
-      <AssistantPanelHost panel="notes" visible={visible} active={pane === 'notes'}>
+      <AssistantPanelHost panel="notes" visible={visible} active={pageOpen('notes')} onOpen={() => setPane('notes')} onClose={onSidebarClose ? () => onSidebarClose('notes') : undefined}>
         <div
           className="ai-sidebar-pane ai-notes-pane"
           role="region"
@@ -1454,7 +1516,7 @@ export function AISidebar({
           </RenderErrorBoundary>
         </div>
       </AssistantPanelHost>
-      <AssistantPanelHost panel="developer" visible={visible} active={pane === 'developer'}>
+      <AssistantPanelHost panel="developer" visible={visible} active={pageOpen('developer')} onOpen={() => setPane('developer')} onClose={onSidebarClose ? () => onSidebarClose('developer') : undefined}>
         <DeveloperSidebar
           openTerminalRequest={terminalOpenRequest}
           onManageGroup={onManageGroup}
@@ -1465,7 +1527,7 @@ export function AISidebar({
           onGroupContextMenu={onGroupContextMenu}
         />
       </AssistantPanelHost>
-      <AssistantPanelHost panel="tasks" visible={visible} active={showTasks}>
+      <AssistantPanelHost panel="tasks" visible={visible} active={pageOpen('tasks')} onOpen={() => setPane('tasks')} onClose={onSidebarClose ? () => onSidebarClose('tasks') : undefined}>
         <div
           className="ai-sidebar-pane"
           role="region"
@@ -1473,12 +1535,12 @@ export function AISidebar({
           aria-label="Tasks"
         >
           <AssistantPageHeader className="ai-conversation-toolbar">
-            {assistantActions}
+            {assistantActions(true)}
           </AssistantPageHeader>
           <AITasksPanel busy={busy} resumable={resumable} />
         </div>
       </AssistantPanelHost>
-      <AssistantPanelHost panel="assistant" visible={visible} active={pane === 'assistant'}>
+      <AssistantPanelHost panel="assistant" visible={visible} active={pageOpen('assistant')} onOpen={() => setPane('assistant')} onClose={onSidebarClose ? () => onSidebarClose('assistant') : undefined}>
         <div
           className={`ai-sidebar-pane ai-assistant-layout${
             historyOpen ? ' ai-history-open' : ''
@@ -1505,7 +1567,7 @@ export function AISidebar({
                 newLabel="Start new chat"
               />
             )}
-            {assistantActions}
+            {assistantActions()}
           </AssistantPageHeader>
           {chatState && historyOpen && (
             <div id="ai-chat-history-panel" className="ai-chat-history-panel">
@@ -2427,6 +2489,7 @@ export function AISidebar({
           </form>
         </div>
       </AssistantPanelHost>
+      </SidebarPageColumns>
       {chatState?.undoDeletion && (
         <div className="ai-chat-undo-fab" role="status">
           <span>Chat deleted</span>

@@ -138,13 +138,13 @@ export function SidebarPager({
       return;
     }
     const step = pending?.direction || direction;
-    const start = pending ? step * width + pending.offset : step * width;
+    const start = pending ? step * width + pending.offset : step * 12;
     element.animate(
       [
         { transform: `translate3d(${start}px,0,0)` },
         { transform: 'translate3d(0,0,0)' },
       ],
-      { duration: 280, easing: 'cubic-bezier(.22,1,.36,1)' }
+      { duration: pending ? 280 : 120, easing: 'cubic-bezier(.22,1,.36,1)' }
     );
     const snapshot = outgoing.current?.firstElementChild as
       | HTMLElement

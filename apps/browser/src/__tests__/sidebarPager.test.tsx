@@ -84,7 +84,7 @@ it('does not cancel a horizontal swipe because of later vertical drift', () => {
   });
   expect(onSwipe).toHaveBeenCalledWith(1);
 });
-it('animates a clicked space across the full sidebar width', () => {
+it('keeps clicked space motion short while preserving swipe motion', () => {
   const { rerender } = render(
     <SidebarPager page="home" direction={1} onSwipe={jest.fn()}>
       Home
@@ -99,10 +99,10 @@ it('animates a clicked space across the full sidebar width', () => {
   );
   expect(HTMLElement.prototype.animate).toHaveBeenCalledWith(
     [
-      { transform: 'translate3d(300px,0,0)' },
+      { transform: 'translate3d(12px,0,0)' },
       { transform: 'translate3d(0,0,0)' },
     ],
-    expect.objectContaining({ duration: 280 })
+    expect.objectContaining({ duration: 120 })
   );
 });
 

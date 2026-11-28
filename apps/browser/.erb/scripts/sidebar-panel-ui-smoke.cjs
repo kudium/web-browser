@@ -268,7 +268,9 @@ app
       `(()=>{const a=document.querySelector('[aria-label="Sidebar panel"]').getBoundingClientRect(),b=document.querySelector('[aria-label="Panel tab group"]').getBoundingClientRect();return Math.abs(a.top-b.top)})()`,
     );
     assert(row < 2, 'Both shared pickers must be on the same header row');
-    host.close();
+    // Independent lanes remain open when switching. Close every lane to test
+    // restoring the single-selection fixture from a fully closed host.
+    for (const panel of host.state().openedPanels) host.close(panel.id);
     await window.loadFile(path.join(root, 'index.html'));
     await pause(200);
     assert.equal(
@@ -343,6 +345,7 @@ app
     window.hide();
     removeHookPanels(window.webContents);
     for(const channel of ['personal-data-autofill-position','personal-data-autofill-enabled','personal-data-autofill-focus'])ipcMain.handle(channel,()=>false);
+    ipcMain.handle('personal-data-autofill-popup-position',()=>null);
     const http=require('node:http');
     const imageRequests = [];
     const imageServer = http.createServer((request,response)=>{
@@ -368,10 +371,15 @@ app
     const liveScript="context.panel.onAction('refresh',async payload=>{await context.panel.update({id:'live',title:'Live hook',content:{type:'text',text:'Updated '+document.title},actions:[{id:'refresh',label:'Refresh'}]});return {title:document.title,payload,primary:context.theme.primary}});await context.panel.show({id:'live',title:'Live hook',content:{type:'text',text:'Published from page hook'},actions:[{id:'refresh',label:'Refresh'}],reveal:true});";
     const approved={...emptyDeveloperConfig,enabled:true,before:"log('before')",after:liveScript};
     const sourceWindow=new BrowserWindow({show:false,webPreferences:{partition:'hook-panel-source-fixture',sandbox:true,contextIsolation:true,nodeIntegration:false,preload:siteDeveloperPreload()}});
+    sourceWindow.webContents.on('preload-error',(_event,_path,error)=>console.error('Page-hook fixture preload:',error));
+    sourceWindow.webContents.on('console-message',event=>{if(event.level==='error')console.error('Page-hook fixture:',event.message);});
     const beforeLive=new Set(window.contentView.children);
     registerDeveloperPage(sourceWindow.webContents,'fixture-profile',()=>{},()=>({groupId:'work',sourceId:'fixture-page'}),()=>approved,window);
     await sourceWindow.loadURL(pageURL);
     for(let i=0;i<50&&!host.state().panels.some(p=>p.title==='Live hook');i++)await pause(50);
+    // New independent lanes wait for their renderer's current geometry before
+    // creating native content. Provider registration precedes that frame.
+    for(let i=0;i<50&&!window.contentView.children.some(v=>!beforeLive.has(v)&&v.webContents);i++)await pause(50);
     const liveView=window.contentView.children.find(v=>!beforeLive.has(v)&&v.webContents);
     assert(liveView,'The real authenticated page-hook output bridge must create the shared panel');
     await pause(150);
@@ -391,6 +399,7 @@ app
       const previousViews=new Set(window.contentView.children);
     await sourceWindow.loadURL(pageURL);
       for(let i=0;i<50&&!host.state().panels.some(p=>p.kind==='hook');i++)await pause(50);
+      for(let i=0;i<50&&!window.contentView.children.some(v=>!previousViews.has(v)&&v.webContents);i++)await pause(50);
       const exampleView=window.contentView.children.find(v=>!previousViews.has(v)&&v.webContents);
       assert(exampleView,sample.id+': actual page hook must publish its panel');
       await pause(120);
@@ -469,7 +478,7 @@ app
       await pause(180);
       if (page==='chat' && width===640) assert((await window.webContents.executeJavaScript(`parseFloat(getComputedStyle(document.querySelector('.ai-messages')).marginLeft)`))>0,'Wide pinned history must be exercised');
       const rect=await window.webContents.executeJavaScript(`(()=>{const header=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0);const box=header.getBoundingClientRect(),actions=header.querySelector('.assistant-page-header-actions').getBoundingClientRect();return {top:box.top,height:box.height,left:actions.left,right:actions.right}})()`);
-      const controls=await window.webContents.executeJavaScript(`(()=>{const h=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0);return [...h.querySelectorAll('.chrome-icon-button')].map(b=>{const r=b.getBoundingClientRect();return {label:b.getAttribute('aria-label'),width:r.width,height:r.height,top:r.top,bottom:r.bottom}})})()`);
+      const controls=await window.webContents.executeJavaScript(`(()=>{const h=[...document.querySelectorAll('.assistant-page-header')].find(el=>el.getBoundingClientRect().height>0);return [...h.querySelectorAll('.chrome-icon-button')].filter(b=>b.getClientRects().length).map(b=>{const r=b.getBoundingClientRect();return {label:b.getAttribute('aria-label'),width:r.width,height:r.height,top:r.top,bottom:r.bottom}})})()`);
       for(const control of controls) {
         assert.equal(control.width,26,`${page}: ${control.label} must use shared control width`);
         assert.equal(control.height,26,`${page}: ${control.label} must use shared control height`);

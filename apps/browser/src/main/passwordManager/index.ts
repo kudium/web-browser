@@ -1,3 +1,4 @@
+import { validAutofillPopupPlacement } from '../../browser/autofillPopupPlacement';
 import { setActiveNote } from '../activeNote';
 import { showAppToast } from '../appToast';
 import { listSuggestions, runSuggestion } from '../hookSuggestions';
@@ -593,6 +594,20 @@ export function registerPasswordManager(
         [origin]: { side: placement.side, x: placement.x, y: placement.y },
       },
     });
+    return { saved: true };
+  });
+  ipcMain.handle('personal-data-autofill-popup-position', (event, placement) => {
+    const page = autofillPage(event);
+    if (!autofillEnabled(page)) throw new Error('Autofill is disabled.');
+    const origin = new URL(page.getURL()).origin;
+    const positions = getBrowserPreferences().personalDataAutofillPopupPositions || {};
+    if (placement === undefined) return positions[origin] || null;
+    if (!validAutofillPopupPlacement(placement)) throw new Error('Invalid autofill popup position');
+    const entries = Object.entries(positions).filter(([site]) => site !== origin).slice(-199);
+    updateBrowserPreferences({ personalDataAutofillPopupPositions: {
+      ...Object.fromEntries(entries),
+      [origin]: { side: placement.side, x: placement.x, y: placement.y },
+    } });
     return { saved: true };
   });
   ipcMain.handle('personal-data-autofill-availability', (event) => {

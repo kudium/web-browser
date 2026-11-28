@@ -115,7 +115,7 @@ class FakeSocket extends EventEmitter implements RelaySocketLike {
 }
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-function harness(initial?: Record<string, unknown>) {
+function harness(initial?: Record<string, unknown>, createDevice?: () => Promise<{ relayUrl: string; deviceId: string; deviceToken: string }>, fetchOverride?: typeof fetch) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-relay-'));
   const filename = path.join(root, 'mcp-relay.json');
   if (initial) fs.writeFileSync(filename, JSON.stringify(initial));
@@ -146,7 +146,8 @@ function harness(initial?: Record<string, unknown>) {
       sockets.push(socket);
       return socket;
     },
-    fetchImpl,
+    fetchImpl: fetchOverride || fetchImpl,
+    createDevice,
     reconnectDelay: () => 10,
     cloudflaredPath: () => undefined,
   });
@@ -341,10 +342,12 @@ it('runs the quick tunnel only from an installed cloudflared and reports its URL
   });
   try {
     const started = await client.command({ action: 'quickTunnel', running: true });
-    expect(spawnImpl).toHaveBeenCalledWith('/opt/homebrew/bin/cloudflared', ['tunnel', '--url', 'http://127.0.0.1:43187'], expect.anything());
+    expect(spawnImpl).toHaveBeenCalledWith('/opt/homebrew/bin/cloudflared', ['--no-autoupdate', 'tunnel', '--config', process.platform === 'win32' ? 'NUL' : '/dev/null', '--url', 'http://127.0.0.1:43187', '--protocol', 'http2', '--http-host-header', '127.0.0.1:43187'], expect.anything());
     expect(started.quickTunnel).toMatchObject({ running: true, available: true });
     child.stderr.emit('data', Buffer.from('INF +----+\nINF |  https://brave-fox-42.trycloudflare.com  |\n'));
-    expect(client.status().quickTunnel.url).toBe('https://brave-fox-42.trycloudflare.com');
+    expect(client.status().quickTunnel).toMatchObject({ url: 'https://brave-fox-42.trycloudflare.com', ready: false });
+    child.stderr.emit('data', 'Registered tunnel connection connIndex=0');
+    expect(client.status().quickTunnel.ready).toBe(true);
     await client.command({ action: 'quickTunnel', running: false });
     expect(child.kill).toHaveBeenCalled();
     expect(client.status().quickTunnel.running).toBe(false);
@@ -436,4 +439,99 @@ it('routes a relayed request through the real MCP server with the connector reac
     await controller.dispose();
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+
+it('pairs through the native account creator without returning the device credential to the renderer', async () => {
+  const create = jest.fn(async () => ({ relayUrl: 'https://browser.kudium.com', deviceId: 'abcdefghijklmnop', deviceToken: 'kd_abcdefghijklmnopqrstuvwxyz' }));
+  const h = harness(undefined, create);
+  try {
+    const result = await h.client.command({ action: 'connect' });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ paired: true, enabled: true, deviceId: 'abcdefghijklmnop' });
+    expect(JSON.stringify(result)).not.toContain('kd_abcdefghijklmnopqrstuvwxyz');
+    expect(h.requests[0]).toMatchObject({ url: 'https://browser.kudium.com/relay/devices/abcdefghijklmnop/enabled', init: { method: 'POST', body: '{"enabled":true}' } });
+    expect(h.sockets[0].url).toBe('wss://browser.kudium.com/relay/device');
+    expect(fs.statSync(h.filename).mode & 0o777).toBe(0o600);
+  } finally { await h.client.dispose(); h.cleanup(); }
+});
+
+it('ignores an account pairing result after external control is switched off', async () => {
+  let release!: (value: { relayUrl: string; deviceId: string; deviceToken: string }) => void;
+  const h = harness(undefined, () => new Promise((resolve) => { release = resolve; }));
+  try {
+    const work = h.client.command({ action: 'connect' });
+    await expect(h.client.command({ action: 'connect' })).rejects.toThrow('already in progress');
+    h.setEndpoint(false);
+    await h.client.mcpChanged(false);
+    release({ relayUrl: 'https://browser.kudium.com', deviceId: 'abcdefghijklmnop', deviceToken: 'kd_abcdefghijklmnopqrstuvwxyz' });
+    await expect(work).rejects.toThrow('turned off');
+    expect(h.client.status()).toMatchObject({ enabled: false, paired: false });
+    expect(h.requests).toHaveLength(0);
+    expect(h.sockets).toHaveLength(0);
+  } finally { await h.client.dispose(); h.cleanup(); }
+});
+
+it('bounds tunnel startup, preserves exit failures and ignores old process output', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-tunnel-fail-'));
+  const children: Array<EventEmitter & { stderr: EventEmitter; stdout: EventEmitter; kill: jest.Mock }> = [];
+  const client = createMCPRelayClient({
+    filename: path.join(root, 'relay.json'),
+    endpoint: () => ({ url: 'http://127.0.0.1:43187/mcp', token: 't', port: 43187 }),
+    approveConsent: async () => ({ approved: false }), changed: () => {},
+    cloudflaredPath: () => '/fixture/cloudflared', tunnelStartTimeoutMs: 10,
+    spawnImpl: (() => {
+      const child = Object.assign(new EventEmitter(), { stderr: new EventEmitter(), stdout: new EventEmitter(), kill: jest.fn() });
+      children.push(child); return child;
+    }) as unknown as typeof import('child_process').spawn,
+  });
+  try {
+    await client.command({ action: 'quickTunnel', running: true });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(client.status().quickTunnel).toMatchObject({ running: false, ready: false, error: expect.stringContaining('45 seconds') });
+    expect(children[0].kill).toHaveBeenCalled();
+    await client.command({ action: 'quickTunnel', running: true });
+    children[0].stderr.emit('data', 'https://stale.trycloudflare.com Registered tunnel connection');
+    expect(client.status().quickTunnel.url).toBeUndefined();
+    children[1].stderr.emit('data', 'https://fresh.trycloud');
+    children[1].stderr.emit('data', 'flare.com Registered tunnel connection');
+    expect(client.status().quickTunnel).toMatchObject({ ready: true, url: 'https://fresh.trycloudflare.com' });
+    children[1].stderr.emit('data', '\nERR connection failed token=fixture-secret\n');
+    children[1].emit('exit', 1);
+    expect(client.status().quickTunnel).toMatchObject({ running: false, error: expect.stringContaining('connection failed') });
+    expect(client.status().quickTunnel.error).not.toContain('fixture-secret');
+  } finally { await client.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+
+it('keeps relay disabled when activating the new device fails', async () => {
+  const h = harness(undefined, async () => ({ relayUrl: 'https://browser.kudium.com', deviceId: 'abcdefghijklmnop', deviceToken: 'kd_abcdefghijklmnopqrstuvwxyz' }), (async () => new Response('{}', { status: 503 })) as typeof fetch);
+  try {
+    await expect(h.client.command({ action: 'connect' })).rejects.toThrow('503');
+    expect(h.client.status()).toMatchObject({ enabled: false, paired: true });
+    expect(JSON.parse(fs.readFileSync(h.filename, 'utf8')).enabled).toBe(false);
+    expect(h.sockets).toHaveLength(0);
+  } finally { await h.client.dispose(); h.cleanup(); }
+});
+
+it('disables the remote device if external control turns off during activation', async () => {
+  let release!: (value: Response) => void;
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => { started = resolve; });
+  const fetchImpl = jest.fn(async (_url: string, init: RequestInit) => {
+    if (init.body === '{"enabled":true}') { started(); return new Promise<Response>((resolve) => { release = resolve; }); }
+    return new Response('{}');
+  });
+  const h = harness(undefined, async () => ({ relayUrl: 'https://browser.kudium.com', deviceId: 'abcdefghijklmnop', deviceToken: 'kd_abcdefghijklmnopqrstuvwxyz' }), fetchImpl as unknown as typeof fetch);
+  try {
+    const work = h.client.command({ action: 'connect' });
+    await waiting;
+    h.setEndpoint(false);
+    await h.client.mcpChanged(false);
+    release(new Response('{}'));
+    await expect(work).rejects.toThrow('turned off');
+    expect(fetchImpl).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ body: '{"enabled":false}' }));
+    expect(h.client.status().enabled).toBe(false);
+    expect(h.sockets).toHaveLength(0);
+  } finally { await h.client.dispose(); h.cleanup(); }
 });

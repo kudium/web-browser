@@ -236,6 +236,9 @@ it('keeps unsaved edits on save failure, confirms closing and saves the expected
   const editor = (await screen.findByLabelText(
     'Editor for edit.ts'
   )) as HTMLTextAreaElement;
+  expect(screen.getByRole('button', { name: 'Save' }).closest('.developer-files-toolbar')).toBe(
+    screen.getByRole('button', { name: 'Back to folder' }).closest('.developer-files-toolbar')
+  );
   fireEvent.change(editor, { target: { value: 'my edits' } });
   files.mockRejectedValueOnce(Error('This file changed on disk.'));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -253,7 +256,7 @@ it('keeps unsaved edits on save failure, confirms closing and saves the expected
   act(() => {
     window.dispatchEvent(new Event('developer-save-file'));
   });
-  await screen.findByText('edit.ts · Saved');
+  await screen.findByText('Saved');
   expect(files).toHaveBeenLastCalledWith('editable', {
     action: 'save',
     path: 'edit.ts',
@@ -633,4 +636,17 @@ it('keeps file browsing and wrap controls usable when preference storage is unav
     read.mockRestore();
     write.mockRestore();
   }
+});
+
+it('uses one compact filter toolbar at the project root and keeps folder expansion', async () => {
+  files.mockResolvedValue({ path: '', entries: [{ name: 'src', path: 'src', kind: 'folder' }] });
+  render(<Theme><DeveloperFiles sourceId="compact" projectName="Example" compactHeader /></Theme>);
+  await screen.findByRole('textbox', { name: 'Filter files' });
+  expect(screen.queryByRole('navigation', { name: 'Browse project folders' })).toBeNull();
+  expect(screen.getAllByRole('textbox', { name: 'Filter files' })).toHaveLength(1);
+  files.mockResolvedValue({ path: 'src', entries: [] });
+  fireEvent.click(await screen.findByRole('button', { name: 'src' }));
+  await screen.findByText('Empty folder');
+  expect(files).toHaveBeenCalledWith('compact', { action: 'list', path: 'src', hidden: false });
+  expect(screen.getAllByRole('textbox', { name: 'Filter files' })).toHaveLength(1);
 });

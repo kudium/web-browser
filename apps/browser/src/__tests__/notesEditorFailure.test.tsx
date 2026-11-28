@@ -11,6 +11,12 @@ jest.mock('../components/UI/MarkdownNoteEditor', () => {
 });
 
 it('keeps the note draft available when the lazy editor fails', async () => {
+  Object.assign(global, {
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
+  });
   const quiet = jest.spyOn(console, 'error').mockImplementation(() => {});
   const item = {
     id: 'one',

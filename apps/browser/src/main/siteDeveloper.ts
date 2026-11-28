@@ -1,3 +1,4 @@
+import { createAutofillPopupPlacement } from '../browser/autofillPopupPlacement';
 import { upsertSuggestion, dismissSuggestion, removeSuggestions, suggestionResult } from './hookSuggestions';
 import { addTodo } from './todos';
 import { installPageTranslation } from '../browser/pageTranslation';
@@ -45,7 +46,7 @@ export const developerPreloadSource = String.raw`
 const { ipcRenderer, webFrame } = require('electron');
 if (window === window.top) {
   (${installPageTranslation.toString()})(ipcRenderer);
-  (${installPersonalDataAutofill.toString()})(ipcRenderer, (${createPersonalDataMatching.toString()})().score);
+  (${installPersonalDataAutofill.toString()})(ipcRenderer, (${createPersonalDataMatching.toString()})().score, (${createAutofillPopupPlacement.toString()})());
   let generation = 0;
   let rerun;
   const owned = new Set();

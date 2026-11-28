@@ -34,11 +34,15 @@ export function AssistantPanelHost({
   active,
   visible = true,
   children,
+  onOpen,
+  onClose,
 }: {
   panel: AssistantPanel;
   active: boolean;
   visible?: boolean;
   children: ReactNode;
+  onOpen?: () => void;
+  onClose?: () => void;
 }) {
   return (
     <SidebarPanelHost
@@ -48,8 +52,9 @@ export function AssistantPanelHost({
       visible={visible}
       windowName={`kudium-assistant-${panel}`}
       placementKey={`kudium-assistant-window-${panel}`}
-      onDock={() => preference(panel, true)}
-      onWindowClose={() => preference(panel, false)}
+      onDock={onOpen || (() => preference(panel, true))}
+      onWindowClose={onClose || (() => preference(panel, false))}
+      onClose={onClose}
     >
       {children}
     </SidebarPanelHost>

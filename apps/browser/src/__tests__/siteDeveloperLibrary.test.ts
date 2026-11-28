@@ -9,11 +9,15 @@ import {
   developerPageSummaries,
   aiDeveloperProjectAccess,
   registerSiteDeveloperLibrary,
+  aiLinkDeveloperProject,
 } from '../main/siteDeveloperLibrary';
+import * as workspaceRestore from '../main/projectWorkspaceRestore';
+import { showBrowserDialog } from '../main/dialogs';
 import { getSiteSettings } from '../main/siteSettings';
 import { isGroupLocked } from '../main/groupLocks';
 import type { IApp } from '../types';
 
+jest.mock('../main/dialogs', () => ({ showBrowserDialog: jest.fn().mockResolvedValue({ response: 1 }) }));
 jest.mock('../main/preferences', () => ({
   getBrowserPreferences: () => ({
     ...jest.requireActual('../browser/preferences').defaultPreferences,
@@ -75,6 +79,37 @@ beforeEach(() => {
   (getSiteSettings as jest.Mock).mockReturnValue({
     developer: { enabled: true, before: '', after: 'log(url)', css: '' },
   });
+});
+it('uses the workspace review for panel links and folder drops, and preserves the AI-approved link path', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'panel-workspace-link-'));
+  fs.writeFileSync(path.join(root, 'kudium.workspace.json'), JSON.stringify({ version: 1, group: { name: 'Team' } }));
+  const mainFrame = {};
+  const sender = { id: 101, mainFrame, on: jest.fn(), removeListener: jest.fn(), send: jest.fn() };
+  const host = { webContents: sender, isDestroyed: () => false } as any;
+  const resume = jest.fn();
+  const sync = { suspend: jest.fn(() => resume), onNotice: () => () => {}, notice: () => undefined } as any;
+  const update = jest.fn();
+  const restore = jest.spyOn(workspaceRestore, 'restoreProjectWorkspace').mockResolvedValue({ name: 'Team', slug: 'team' });
+  const action = jest.spyOn(projects, 'projectAction').mockImplementation(async (_host, _key, request, check, _editor, _folder, _group, beforeLink) => {
+    check();
+    if (request === 'link') await beforeLink?.(root);
+    return { path: root, name: 'Team', available: true };
+  });
+  const dispose = registerSiteDeveloperLibrary(host, () => tabs, () => undefined, { update, sync });
+  const handler = (channel: string) => (ipcMain.handle as jest.Mock).mock.calls.filter(([name]) => name === channel).at(-1)![1];
+  const event = { sender, senderFrame: mainFrame };
+  try {
+    await handler('site-developer-project')(event, 'home', 'choose-folder');
+    await handler('site-developer-project')(event, 'home', 'link', undefined, root);
+    expect(restore).toHaveBeenCalledTimes(1);
+    await handler('project-folder-drop')(event, 'home', root);
+    expect(showBrowserDialog).toHaveBeenCalledWith(host, expect.objectContaining({ buttons: ['Cancel', 'Link folder'] }));
+    expect(restore).toHaveBeenCalledTimes(2);
+    await aiLinkDeveloperProject(host, 'home', root);
+    expect(restore).toHaveBeenCalledTimes(2);
+    expect(resume).toHaveBeenCalledTimes(3);
+    expect(update).not.toHaveBeenCalled();
+  } finally { dispose(); restore.mockRestore(); action.mockRestore(); fs.rmSync(root, { recursive: true, force: true }); }
 });
 it('lists only the chosen group and space, including saved hooks on unloaded pages, without returning source code', () => {
   const pages = developerPageSummaries(tabs, home, () => undefined);

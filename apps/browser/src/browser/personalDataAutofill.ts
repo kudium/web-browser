@@ -1,9 +1,11 @@
+import { createAutofillPopupPlacement, type AutofillPopupPlacement } from './autofillPopupPlacement';
 import type { VaultField } from './passwordManager';
 
 /** Runs only in the isolated page preload; no bridge is exposed to the website. */
 export function installPersonalDataAutofill(
   bridge: { invoke: (channel: string, input?: any) => Promise<any>; on: (channel: string, callback: (_event: unknown, enabled: boolean | { action: 'pick' | 'save' | 'fill' | 'save-form' | 'save-page'; x: number; y: number }, focus?: boolean) => void) => void },
-  match: (name: string, aliases: string[], target: any) => number
+  match: (name: string, aliases: string[], target: any) => number,
+  popupGeometry = createAutofillPopupPlacement(),
 ) {
   let enabled = false;
   let autoOpenOnFocus = true;
@@ -15,12 +17,16 @@ export function installPersonalDataAutofill(
   let generation = 0;
   let placement: { side: 'left' | 'right'; x: number; y: number } = { side: 'right', x: -30, y: -13 };
   let movedPlacement = false;
+  let popupPlacement: AutofillPopupPlacement | null = null;
+  let movedPopupPlacement = false;
+  let cancelPanelDrag: (() => void) | null = null;
   let dragging = false;
   let suppressClick = false;
   let loginPrompt = false;
   let authenticating = false;
   let openCurrent: ((quick?: boolean, preserveFocus?: boolean, manual?: 'pick' | 'save' | 'save-form' | 'save-page') => Promise<void>) | null = null;
   let refreshQuickFill: (() => void) | null = null;
+  let updateTriggers: (() => void) | null = null;
   const actions = new WeakMap<HTMLButtonElement, () => void>();
   const usable = (element: Element | null): element is HTMLInputElement | HTMLTextAreaElement =>
     (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
@@ -46,42 +52,81 @@ export function installPersonalDataAutofill(
       return best > 0 && scores.filter((score) => score === best).length === 1;
     });
   };
-  const close = () => { loginPrompt = false; dragging = false; generation++; openCurrent = null; refreshQuickFill = null; host?.remove(); host = null; root = null; };
+  const close = () => { cancelPanelDrag?.(); cancelPanelDrag = null; loginPrompt = false; dragging = false; generation++; openCurrent = null; refreshQuickFill = null; updateTriggers = null; host?.remove(); host = null; root = null; };
   const position = () => {
     if (!host || !target) return;
     const rect = target.getBoundingClientRect();
     host.style.left = `${Math.max(8, Math.min((placement.side === 'left' ? rect.left : rect.right) + placement.x, innerWidth - 68))}px`;
     host.style.top = `${Math.max(8, Math.min(rect.top + rect.height / 2 + placement.y, innerHeight - 34))}px`;
   };
-  const makePanelDraggable = (panel: HTMLDivElement, header: HTMLDivElement) => {
+  const placePopup = (panel: HTMLDivElement, input: HTMLInputElement | HTMLTextAreaElement, desired?: { left: number; top: number }) => {
+    const size = panel.getBoundingClientRect();
+    const layout = popupGeometry.layoutAutofillPopup(input.getBoundingClientRect(), { width: innerWidth, height: innerHeight }, size, popupPlacement, desired);
+    if (!layout) return null;
+    panel.style.width = `${layout.width}px`;
+    panel.style.maxHeight = `${layout.maxHeight}px`;
+    panel.style.left = `${layout.left}px`;
+    panel.style.top = layout.bottom === undefined ? `${layout.top}px` : 'auto';
+    panel.style.bottom = layout.bottom === undefined ? 'auto' : `${layout.bottom}px`;
+    return layout;
+  };
+  const makePanelDraggable = (panel: HTMLDivElement, header: HTMLDivElement, input?: HTMLInputElement | HTMLTextAreaElement) => {
     header.title = 'Drag to reposition';
     let drag: { id: number; x: number; y: number; left: number; top: number } | null = null;
+    let frame: number | undefined;
+    let pending: { left: number; top: number } | null = null;
+    let moved = false;
+    const move = () => {
+      frame = undefined;
+      const point = pending; pending = null;
+      if (!point || !drag || !panel.isConnected || (input && !input.isConnected)) return;
+      if (input) {
+        const layout = placePopup(panel, input, point);
+        if (!layout) { panel.remove(); generation++; cancel(); return; }
+        popupPlacement = { side: layout.side, x: layout.x, y: layout.y };
+        movedPopupPlacement = true;
+      } else {
+        const rect = panel.getBoundingClientRect();
+        panel.style.left = `${Math.max(8, Math.min(Math.max(8, innerWidth - rect.width - 8), point.left))}px`;
+        panel.style.bottom = 'auto';
+        panel.style.top = `${Math.max(8, Math.min(Math.max(8, innerHeight - rect.height - 8), point.top))}px`;
+      }
+    };
+    const cancel = () => {
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      frame = undefined; pending = null;
+      const previous = drag; drag = null; dragging = false; header.style.cursor = '';
+      if (previous && header.hasPointerCapture(previous.id)) header.releasePointerCapture(previous.id);
+    };
+    cancelPanelDrag = cancel;
     header.addEventListener('pointerdown', (event) => {
       if (!event.isTrusted || event.button !== 0 ||
         (event.target instanceof Element && event.target.closest('button, input, a'))) return;
       event.preventDefault();
       const rect = panel.getBoundingClientRect();
       drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+      moved = false;
       header.setPointerCapture(event.pointerId);
     });
     header.addEventListener('pointermove', (event) => {
       if (!event.isTrusted || !drag || event.pointerId !== drag.id) return;
-      const dx = event.clientX - drag.x; const dy = event.clientY - drag.y;
-      if (!dragging && Math.hypot(dx, dy) < 4) return;
-      dragging = true; header.style.cursor = 'grabbing';
-      const rect = panel.getBoundingClientRect();
-      panel.style.left = `${Math.max(8, Math.min(Math.max(8, innerWidth - rect.width - 8), drag.left + dx))}px`;
-      panel.style.bottom = 'auto';
-      panel.style.top = `${Math.max(8, Math.min(Math.max(8, innerHeight - rect.height - 8), drag.top + dy))}px`;
+      const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+      if (!moved && Math.hypot(dx, dy) < 4) return;
+      moved = true; dragging = true; header.style.cursor = 'grabbing';
+      pending = { left: drag.left + dx, top: drag.top + dy };
+      if (frame === undefined) frame = requestAnimationFrame(move);
     });
-    const finish = (event: PointerEvent) => {
-      if (!drag || event.pointerId !== drag.id) return;
-      drag = null; dragging = false; header.style.cursor = '';
-      if (header.hasPointerCapture(event.pointerId)) header.releasePointerCapture(event.pointerId);
-    };
-    header.addEventListener('pointerup', finish);
-    header.addEventListener('pointercancel', finish);
-    header.addEventListener('lostpointercapture', finish);
+    header.addEventListener('pointerup', (event) => {
+      if (!event.isTrusted || !drag || event.pointerId !== drag.id) return;
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      move();
+      const save = moved && input && input.isConnected && panel.isConnected && popupPlacement;
+      cancel();
+      if (save) void bridge.invoke('personal-data-autofill-popup-position', save).catch(() => {});
+    });
+    for (const type of ['pointercancel', 'lostpointercapture']) header.addEventListener(type, (event) => {
+      if (event.isTrusted && drag && (event as PointerEvent).pointerId === drag.id) cancel();
+    });
   };
   const write = (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
     if (!usable(input) || !input.isConnected) return;
@@ -183,20 +228,8 @@ export function installPersonalDataAutofill(
       const current = generation;
       const panel = document.createElement('div'); panel.className = 'panel';
       if (preserveFocus) panel.dataset.autofocus = 'true';
-      const rect = input.getBoundingClientRect();
-      panel.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - 298))}px`;
-      // Choose space outside the field instead of clamping a full-height
-      // dropdown upward across it. Short viewports use a scrollable panel.
-      const below = Math.max(0, innerHeight - rect.bottom - 12);
-      const above = Math.max(0, rect.top - 12);
-      const useBelow = below >= Math.min(320, above);
-      const room = useBelow ? below : above;
-      panel.style.maxHeight = `${Math.min(320, room)}px`;
-      panel.style.top = useBelow ? `${rect.bottom + 4}px` : 'auto';
-      if (!useBelow) panel.style.bottom = `${innerHeight - rect.top + 4}px`;
-      // If the field occupies almost the entire viewport, a picker cannot
-      // safely fit. Leave the input available rather than covering it.
-      if (room < 44) return;
+      // No popup is shown if there is no usable space outside the focused field.
+      if (!placePopup(panel, input)) return;
       panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Personal Data');
       const content = document.createElement('div');
       const loading = document.createElement('div'); loading.className = 'loading';
@@ -204,7 +237,7 @@ export function installPersonalDataAutofill(
       const spinner = document.createElement('div'); spinner.className = 'spinner'; spinner.setAttribute('aria-hidden', 'true');
       const loadingLabel = document.createElement('span'); loadingLabel.textContent = 'Loading Personal Data…';
       loading.append(spinner, loadingLabel); content.append(loading);
-      const header = document.createElement('div'); header.className = 'header'; makePanelDraggable(panel, header);
+      const header = document.createElement('div'); header.className = 'header'; makePanelDraggable(panel, header, input);
       const title = document.createElement('span'); title.textContent = 'Personal Data';
       const dismiss = button('Close', () => {
         if (panel.querySelector('.dismissal')) { paused = true; close(); return; }
@@ -562,60 +595,73 @@ export function installPersonalDataAutofill(
       } finally { if (watchdog !== undefined) clearInterval(watchdog); }
     };
     openCurrent = openPicker;
-    const trigger = button('▤', () => { if (suppressClick) { suppressClick = false; return; } void openPicker(); });
-    let drag: { id: number; x: number; y: number; left: number; top: number } | null = null;
-    trigger.addEventListener('pointerdown', (event) => {
-      if (!event.isTrusted || event.button !== 0 || !host) return;
-      event.preventDefault(); suppressClick = false;
-      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: parseFloat(host.style.left), top: parseFloat(host.style.top) };
-      trigger.setPointerCapture(event.pointerId);
-    });
-    trigger.addEventListener('pointermove', (event) => {
-      if (!event.isTrusted || !drag || event.pointerId !== drag.id || !host) return;
-      const dx = event.clientX - drag.x; const dy = event.clientY - drag.y;
-      if (!dragging && Math.hypot(dx, dy) < 4) return;
-      if (!dragging) generation++;
-      dragging = true; suppressClick = true; trigger.style.cursor = 'grabbing';
-      root?.querySelector('.panel')?.remove();
-      const rect = input.getBoundingClientRect();
-      const left = Math.max(8, Math.min(innerWidth - 34, Math.max(rect.left - 64, Math.min(rect.right + 38, drag.left + dx))));
-      const top = Math.max(8, Math.min(innerHeight - 34, Math.max(rect.top - 64, Math.min(rect.bottom + 38, drag.top + dy))));
-      const side = left + 13 < rect.left + rect.width / 2 ? 'left' : 'right';
-      placement = { side, x: Math.max(-128, Math.min(128, left - (side === 'left' ? rect.left : rect.right))), y: Math.max(-128, Math.min(128, top - (rect.top + rect.height / 2))) };
-      movedPlacement = true; position();
-    });
-    const finishDrag = (event: PointerEvent) => {
-      if (!drag || event.pointerId !== drag.id) return;
-      const moved = dragging; drag = null; dragging = false; trigger.style.cursor = '';
-      if (trigger.hasPointerCapture(event.pointerId)) trigger.releasePointerCapture(event.pointerId);
-      if (moved) void bridge.invoke('personal-data-autofill-position', placement).catch(() => {});
-    };
-    trigger.addEventListener('pointerup', finishDrag);
-    trigger.addEventListener('pointercancel', finishDrag);
-    trigger.addEventListener('lostpointercapture', finishDrag);
-    trigger.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="10" r="2"/><path d="M5 16c0-3 6-3 6 0M14 9h4m-4 4h4m-4 4h3"/></svg>';
-    trigger.className = 'trigger'; trigger.setAttribute('aria-label', 'Fill from Personal Data'); trigger.title = 'Fill from Personal Data · Drag to reposition';
-    const control = document.createElement('div'); control.className = 'autofill-control';
-    control.setAttribute('role', 'group'); control.setAttribute('aria-label', 'Personal Data autofill');
-    control.append(trigger); root.append(control);
-    if (input.form) {
-      const quick = button('Fill this form', () => { void openPicker(true); });
-      quick.className = 'quick-fill'; quick.title = 'Fill this form'; quick.setAttribute('aria-label', 'Fill this form');
-      quick.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7l0-7Z"/></svg>';
-      const owner = root;
-      let request = 0;
-      refreshQuickFill = () => {
-        const revision = ++request;
-        quick.remove();
-        if (!input.form || !enabled || paused || disposed) return;
-        void bridge.invoke('personal-data-autofill-availability').then((records) => {
-          if (revision !== request || root !== owner || !input.isConnected || !input.form || !enabled || paused || disposed) return;
-          const controls = Array.from(input.form.elements).filter(usable);
-          if (Array.isArray(records) && records.some((record) => formMatches(record, controls))) control.append(quick);
-        }).catch(() => {});
+    updateTriggers = () => {
+      if (!root || !host || disposed) return;
+      // A popup-only host must not leave an invisible hit target over the input.
+      host.style.width = autoOpenOnFocus ? '0px' : '56px';
+      host.style.height = autoOpenOnFocus ? '0px' : '26px';
+      if (autoOpenOnFocus) {
+        root.querySelector('.autofill-control')?.remove();
+        refreshQuickFill = null;
+        return;
+      }
+      if (root.querySelector('.autofill-control')) { refreshQuickFill?.(); return; }
+      const trigger = button('▤', () => { if (suppressClick) { suppressClick = false; return; } void openPicker(); });
+      let drag: { id: number; x: number; y: number; left: number; top: number } | null = null;
+      trigger.addEventListener('pointerdown', (event) => {
+        if (!event.isTrusted || event.button !== 0 || !host) return;
+        event.preventDefault(); suppressClick = false;
+        drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: parseFloat(host.style.left), top: parseFloat(host.style.top) };
+        trigger.setPointerCapture(event.pointerId);
+      });
+      trigger.addEventListener('pointermove', (event) => {
+        if (!event.isTrusted || !drag || event.pointerId !== drag.id || !host) return;
+        const dx = event.clientX - drag.x; const dy = event.clientY - drag.y;
+        if (!dragging && Math.hypot(dx, dy) < 4) return;
+        if (!dragging) generation++;
+        dragging = true; suppressClick = true; trigger.style.cursor = 'grabbing';
+        root?.querySelector('.panel')?.remove();
+        const rect = input.getBoundingClientRect();
+        const left = Math.max(8, Math.min(innerWidth - 34, Math.max(rect.left - 64, Math.min(rect.right + 38, drag.left + dx))));
+        const top = Math.max(8, Math.min(innerHeight - 34, Math.max(rect.top - 64, Math.min(rect.bottom + 38, drag.top + dy))));
+        const side = left + 13 < rect.left + rect.width / 2 ? 'left' : 'right';
+        placement = { side, x: Math.max(-128, Math.min(128, left - (side === 'left' ? rect.left : rect.right))), y: Math.max(-128, Math.min(128, top - (rect.top + rect.height / 2))) };
+        movedPlacement = true; position();
+      });
+      const finishDrag = (event: PointerEvent) => {
+        if (!drag || event.pointerId !== drag.id) return;
+        const moved = dragging; drag = null; dragging = false; trigger.style.cursor = '';
+        if (trigger.hasPointerCapture(event.pointerId)) trigger.releasePointerCapture(event.pointerId);
+        if (moved) void bridge.invoke('personal-data-autofill-position', placement).catch(() => {});
       };
-      refreshQuickFill();
-    }
+      trigger.addEventListener('pointerup', finishDrag);
+      trigger.addEventListener('pointercancel', finishDrag);
+      trigger.addEventListener('lostpointercapture', finishDrag);
+      trigger.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="10" r="2"/><path d="M5 16c0-3 6-3 6 0M14 9h4m-4 4h4m-4 4h3"/></svg>';
+      trigger.className = 'trigger'; trigger.setAttribute('aria-label', 'Fill from Personal Data'); trigger.title = 'Fill from Personal Data · Drag to reposition';
+      const control = document.createElement('div'); control.className = 'autofill-control';
+      control.setAttribute('role', 'group'); control.setAttribute('aria-label', 'Personal Data autofill');
+      control.append(trigger); root.append(control);
+      if (input.form) {
+        const quick = button('Fill this form', () => { void openPicker(true); });
+        quick.className = 'quick-fill'; quick.title = 'Fill this form'; quick.setAttribute('aria-label', 'Fill this form');
+        quick.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7l0-7Z"/></svg>';
+        const owner = root;
+        let request = 0;
+        refreshQuickFill = () => {
+          const revision = ++request;
+          quick.remove();
+          if (!input.form || autoOpenOnFocus || !enabled || paused || disposed) return;
+          void bridge.invoke('personal-data-autofill-availability').then((records) => {
+            if (revision !== request || root !== owner || !control.isConnected || !input.isConnected || !input.form || autoOpenOnFocus || !enabled || paused || disposed) return;
+            const controls = Array.from(input.form.elements).filter(usable);
+            if (Array.isArray(records) && records.some((record) => formMatches(record, controls))) control.append(quick);
+          }).catch(() => {});
+        };
+        refreshQuickFill();
+      }
+    };
+    updateTriggers();
     (input.closest('dialog,[role=dialog],[aria-modal=true]') || document.documentElement).append(host); position();
     if (automatic && autoOpenOnFocus) void openPicker(false, true);
   };
@@ -795,7 +841,7 @@ export function installPersonalDataAutofill(
     if (enabled) void startLoginWatch();
     if (!enabled) close();
     else if (!wasEnabled && !paused && usable(document.activeElement) && recognized(document.activeElement)) show(document.activeElement);
-    else refreshQuickFill?.();
+    else updateTriggers?.();
   });
   bridge.on('personal-data-autofill-authenticating', (_event, waiting) => {
     authenticating = waiting === true;
@@ -809,6 +855,12 @@ export function installPersonalDataAutofill(
     }
   });
   bridge.on('password-manager-locked', () => close());
+  void bridge.invoke('personal-data-autofill-popup-position').then((saved) => {
+    if (disposed || movedPopupPlacement || !popupGeometry.validAutofillPopupPlacement(saved)) return;
+    popupPlacement = { side: saved.side, x: saved.x, y: saved.y };
+    const panel = root?.querySelector<HTMLDivElement>('.panel');
+    if (!loginPrompt && panel && target?.isConnected && !placePopup(panel, target)) panel.remove();
+  }).catch(() => {});
   void bridge.invoke('personal-data-autofill-position').then((saved) => {
     if (disposed || movedPlacement || !saved || !['left', 'right'].includes(saved.side) || !Number.isFinite(saved.x) || !Number.isFinite(saved.y)) return;
     placement = saved; position();

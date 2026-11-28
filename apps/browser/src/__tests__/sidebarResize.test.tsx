@@ -69,3 +69,32 @@ it('resizes bottom-docked tools with the vertical keyboard splitter', () => {
   fireEvent.keyDown(handle,{key:'ArrowDown'});
   expect(change).toHaveBeenLastCalledWith(230);
 });
+
+it('updates the live layout per frame and commits React state only on release', () => {
+  const callbacks = new Map<number, FrameRequestCallback>();
+  let next = 0;
+  const request = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { callbacks.set(++next, callback); return next; });
+  const cancel = jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => { callbacks.delete(id); });
+  const target = document.createElement('div');
+  const change = jest.fn();
+  const liveChange = jest.fn();
+  const view = render(<SidebarResizeHandle width={300} side="right" minWidth={240} maxWidth={800}
+    liveResize={{ target: { current: target }, property: '--ai-sidebar-width' }} onLiveChange={liveChange}
+    onChange={change} onResizingChange={jest.fn()} />);
+  const handle = screen.getByRole('separator');
+  fireEvent.pointerDown(handle, { button: 0, clientX: 800 });
+  fireEvent.pointerMove(window, { clientX: 700 });
+  const callback = [...callbacks.values()][0]; callbacks.clear(); callback(16);
+  expect(target.style.getPropertyValue('--ai-sidebar-width')).toBe('400px');
+  expect(change).not.toHaveBeenCalled();
+  expect(liveChange).toHaveBeenLastCalledWith(400);
+  fireEvent.pointerUp(window, { clientX: 650 });
+  expect(target.style.getPropertyValue('--ai-sidebar-width')).toBe('450px');
+  expect(change).toHaveBeenCalledTimes(1);
+  expect(liveChange).toHaveBeenLastCalledWith(450);
+  expect(liveChange).toHaveBeenCalledTimes(2);
+  expect(change).toHaveBeenLastCalledWith(450);
+  fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+  expect(change).toHaveBeenLastCalledWith(310);
+  view.unmount(); request.mockRestore(); cancel.mockRestore();
+});

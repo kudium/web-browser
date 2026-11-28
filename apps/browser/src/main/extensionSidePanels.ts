@@ -494,11 +494,9 @@ export function attachExtensionSidePanels(
       const extension = extensionFor(event);
       const window = target(options);
       const host = sidebarPanelsFor(window);
-      if (
-        registered.get(host.state().activeId || '')?.extensionId ===
-        extension.id
-      )
-        host.close();
+      const state = host.state();
+      const ids = state.openedPanels?.map(panel => panel.id) || [state.activeId || ''];
+      for (const id of ids) if (registered.get(id)?.extensionId === extension.id) host.close(id);
     },
     apiOptions,
   );

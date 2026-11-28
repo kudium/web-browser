@@ -5,6 +5,7 @@ import type { IApp } from '../types';
 import type { DeveloperProject } from '../browser/developerProject';
 import { aiGroupId, aiGroups } from '../browser/aiGroups';
 import { isGroupLocked } from './groupLocks';
+import { showBrowserDialog } from './dialogs';
 import { projectAction } from './developerProject';
 
 const handlers = new Map<
@@ -15,7 +16,8 @@ const handlers = new Map<
 export function registerProjectFolderDrop(
   host: BrowserWindow,
   tabs: () => IApp[],
-  onLinked: () => void
+  onLinked: () => void,
+  link?: (id: string, folder: string) => Promise<DeveloperProject | null>
 ) {
   if (!handlers.size)
     ipcMain.handle(
@@ -54,7 +56,17 @@ export function registerProjectFolderDrop(
     if (!(await fs.promises.stat(real)).isDirectory())
       throw new Error('Drop a folder to link a project.');
     ensureAccess();
-    const project = await projectAction(
+    const answer = await showBrowserDialog(host, {
+      message: `Link “${path.basename(real)}” to this group?`,
+      detail: `${source.sessionName || source.name}\n${real}\n\nThis changes the group's linked project folder. Existing project files are kept.`,
+      buttons: ['Cancel', 'Link folder'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    ensureAccess();
+    if (answer.response !== 1) return null;
+    const project = link ? await link(id, real) : await projectAction(
       host,
       key,
       'link',
@@ -63,7 +75,7 @@ export function registerProjectFolderDrop(
       real,
       aiGroups(tabs()).find((group) => group.id === key)
     );
-    onLinked();
+    if (project) onLinked();
     return project;
   });
   return () => {

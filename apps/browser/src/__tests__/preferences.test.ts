@@ -647,3 +647,18 @@ it('validates start pages and space appearance without allowing privileged navig
   for (const startPageURL of ['javascript:alert(1)','file:///etc/passwd','https://user:password@example.com']) expect(()=>validatePreferences({startPageURL})).toThrow();
   expect(()=>validatePreferences({spaceFontSize:99})).toThrow();
 });
+
+
+it('validates and persists website popup placements separately from trigger positions', () => {
+  const positions = { 'https://example.com': { side: 'above' as const, x: -25, y: 12 } };
+  expect(validatePreferences({ personalDataAutofillPopupPositions: positions }).personalDataAutofillPopupPositions).toEqual(positions);
+  updateBrowserPreferences({ personalDataAutofillPopupPositions: positions });
+  expect(getBrowserPreferences().personalDataAutofillPopupPositions).toEqual(positions);
+  for (const value of [
+    { 'http://example.com': positions['https://example.com'] },
+    { 'https://example.com/path': positions['https://example.com'] },
+    { 'https://example.com': { side: 'below', x: 0, y: -12 } },
+    { 'https://example.com': { side: 'right', x: 5000, y: 0 } },
+  ]) expect(() => validatePreferences({ personalDataAutofillPopupPositions: value } as any)).toThrow('Invalid autofill popup position');
+  updateBrowserPreferences({ personalDataAutofillPopupPositions: {} });
+});

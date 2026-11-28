@@ -37,6 +37,9 @@ export const browser: BrowserClient = {
   preferenceAction: (action, profileId) =>
     window.electron.browser.preferenceAction(action, profileId),
   onPreferences: (callback) => window.electron.browser.onPreferences(callback),
+  onNativeOverlayReady: (callback) => window.electron.browser.onNativeOverlayReady(callback),
+  onSidebarHoverEdge: (callback) => window.electron.browser.onSidebarHoverEdge(callback),
+  onSidebarOverlayReady: (callback) => window.electron.browser.onSidebarOverlayReady(callback),
   onSnapshots: (callback) => window.electron.browser.onSnapshots(callback),
   onSpaceWheel: (callback) => window.electron.browser.onSpaceWheel(callback),
   onShortcut: (callback) => window.electron.browser.onShortcut(callback),

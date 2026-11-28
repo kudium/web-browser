@@ -2,12 +2,14 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { showBrowserDialog } from '../main/dialogs';
 import { ipcMain } from 'electron';
 import { registerProjectFolderDrop } from '../main/projectFolderDrop';
 import { projectAction } from '../main/developerProject';
 import { isGroupLocked } from '../main/groupLocks';
 import type { IApp } from '../types';
 
+jest.mock('../main/dialogs', () => ({ showBrowserDialog: jest.fn().mockResolvedValue({ response: 1 }) }));
 jest.mock('electron', () => ({
   ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
 }));
@@ -20,6 +22,25 @@ jest.mock('../main/developerProject', () => ({
   ),
 }));
 jest.mock('../main/groupLocks', () => ({ isGroupLocked: jest.fn() }));
+
+test('routes folder drops through the shared reviewed project linker', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'reviewed-project-drop-'));
+  const host = { webContents: { id: 28, mainFrame: {} }, isDestroyed: () => false };
+  const tabs = [{ id: 'tab', sessionId: 'group', url: 'https://example.test/', name: 'Team', icon: '' }] as IApp[];
+  const link = jest.fn(async () => ({ path: root, name: 'Team', available: true }));
+  const linked = jest.fn();
+  const off = registerProjectFolderDrop(host as never, () => tabs, linked, link);
+  const handler = (ipcMain.handle as jest.Mock).mock.calls.filter(([channel]) => channel === 'project-folder-drop').at(-1)![1];
+  const event = { sender: host.webContents, senderFrame: host.webContents.mainFrame };
+  try {
+    await handler(event, 'tab', root);
+    expect(link).toHaveBeenCalledWith('tab', fs.realpathSync(root));
+    expect(linked).toHaveBeenCalledTimes(1);
+    (isGroupLocked as jest.Mock).mockReturnValue(true);
+    await expect(handler(event, 'tab', root)).rejects.toThrow('Unlock');
+    expect(link).toHaveBeenCalledTimes(1);
+  } finally { off(); (isGroupLocked as jest.Mock).mockReturnValue(false); fs.rmSync(root, { recursive: true, force: true }); }
+});
 
 test('links a real folder only for its trusted window and current unlocked group', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'project-folder-drop-'));
@@ -94,4 +115,21 @@ test('links a real folder only for its trusted window and current unlocked group
     fs.rmSync(root, { recursive: true, force: true });
   }
   expect(ipcMain.removeHandler).toHaveBeenCalledWith('project-folder-drop');
+});
+
+test('cancelling a folder drop leaves the project and group unchanged', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cancel-project-drop-'));
+  const host = { webContents: { id: 29, mainFrame: {} }, isDestroyed: () => false };
+  const tabs = [{ id: 'tab', sessionId: 'group', name: 'Team', url: 'about:blank', icon: '' }] as IApp[];
+  const link = jest.fn();
+  const linked = jest.fn();
+  (showBrowserDialog as jest.Mock).mockResolvedValueOnce({ response: 0 });
+  const off = registerProjectFolderDrop(host as never, () => tabs, linked, link);
+  const handler = (ipcMain.handle as jest.Mock).mock.calls.filter(([channel]) => channel === 'project-folder-drop').at(-1)![1];
+  try {
+    await expect(handler({ sender: host.webContents, senderFrame: host.webContents.mainFrame }, 'tab', root)).resolves.toBeNull();
+    expect(showBrowserDialog).toHaveBeenLastCalledWith(host, expect.objectContaining({ buttons: ['Cancel', 'Link folder'], defaultId: 0, cancelId: 0 }));
+    expect(link).not.toHaveBeenCalled();
+    expect(linked).not.toHaveBeenCalled();
+  } finally { off(); fs.rmSync(root, { recursive: true, force: true }); }
 });

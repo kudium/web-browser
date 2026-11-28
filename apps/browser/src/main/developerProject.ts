@@ -149,7 +149,8 @@ export async function projectAction(
   ensureAccess: () => void,
   editorId?: string,
   folderPath?: string,
-  group?: BrowserProjectGroup
+  group?: BrowserProjectGroup,
+  beforeLink?: (folder: string) => Promise<BrowserProjectGroup | undefined>
 ): Promise<DeveloperProject | null> {
   ensureAccess();
   if (action === 'link' || action === 'choose-folder') {
@@ -168,10 +169,12 @@ export async function projectAction(
       ensureAccess();
       if (action === 'choose-folder')
         return { name: path.basename(folder), path: folder, available: true };
+      const restoredGroup = await beforeLink?.(folder);
+      ensureAccess();
       linkProjectFolder(
         key,
         folder,
-        group || { name: path.basename(folder), slug: '' }
+        restoredGroup || group || { name: path.basename(folder), slug: '' }
       );
     }
   }
@@ -196,7 +199,7 @@ export async function projectAction(
     getBrowserPreferences().writeBrowserInstructions
   ) {
     try {
-      updateBrowserProjectContext(folder, key, group);
+      updateBrowserProjectContext(folder, key, group, { preserveGroup: true });
     } catch (reason) {
       const permissionDenied = ['EPERM', 'EACCES'].includes((reason as NodeJS.ErrnoException).code || '');
       project.instructionsNotice = permissionDenied

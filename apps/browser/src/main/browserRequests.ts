@@ -17,11 +17,17 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
     !Array.isArray(value.visible) ||
     value.visible.length > 16 ||
     !optionalText(value.focusedId) ||
+    (value.geometryOnly !== undefined && typeof value.geometryOnly !== 'boolean') ||
     (value.suspended !== undefined && typeof value.suspended !== 'boolean') ||
     (value.sidebarSuspended !== undefined && typeof value.sidebarSuspended !== 'boolean') ||
+    (value.sidebarHidden !== undefined && typeof value.sidebarHidden !== 'boolean') ||
+    (value.sidebarOverlay !== undefined && typeof value.sidebarOverlay !== 'boolean') ||
+    [value.nativeOverlayToken, value.panelOverlayToken].some(token => token !== undefined && (!Number.isSafeInteger(token) || (token as number) < 0)) ||
+    (value.sidebarOverlayToken !== undefined && (!Number.isSafeInteger(value.sidebarOverlayToken) || (value.sidebarOverlayToken as number) < 0)) ||
     (value.tabSwitcher !== undefined && typeof value.tabSwitcher !== 'boolean')
   )
     return false;
+  if (value.geometryOnly === true && (value.apps.length || value.focusedId !== undefined)) return false;
   const ids = new Set<string>();
   if (
     !value.apps.every((item) => {
@@ -92,7 +98,7 @@ export function isBrowserLayout(value: unknown): value is BrowserLayout {
       if (
         !object(slot) ||
         !text(slot.id) ||
-        !ids.has(slot.id) ||
+        (value.geometryOnly !== true && !ids.has(slot.id)) ||
         visibleIds.has(slot.id) ||
         !['x', 'y', 'width', 'height'].every(
           (key) =>
@@ -170,6 +176,7 @@ export function isBrowserCommand(value: unknown): value is BrowserCommand {
     typeof value.action === 'string' &&
     commands.has(value.action as BrowserCommand['action']) &&
     (value.action !== 'page-translation-target' || (typeof value.translationTarget === 'string' && /^[a-z]{2}$/.test(value.translationTarget))) &&
+    (value.devToolsLive === undefined || typeof value.devToolsLive === 'boolean') &&
     (value.action !== 'page-devtools-resize' || (typeof value.devToolsFraction === 'number' && Number.isFinite(value.devToolsFraction) && value.devToolsFraction >= .2 && value.devToolsFraction <= .75)) &&
     (value.action !== 'extension-group-result' || (text(value.mutationId, 100) && optionalText(value.error))) &&
     (value.url === undefined || text(value.url, 65536)) &&

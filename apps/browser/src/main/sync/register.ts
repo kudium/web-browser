@@ -9,6 +9,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { setHookPublisher, setHookAccountStatus } from '../hookMarketplace';
+import { registerAccountRelay } from '../accountRelay';
 import {
   authenticatePersonalData,
   withPersonalData,
@@ -84,6 +85,11 @@ export function registerAccountSync(
     return client;
   };
   setHookPublisher((data) => get().publishHook(data));
+  const releaseAccountRelay = registerAccountRelay(() => get().createRelayDevice(), () => {
+    if (!safeStorage.isEncryptionAvailable()) return { available: false, signedIn: false, reason: 'Secure storage is unavailable. Resolve storage recovery in Preferences before connecting your account.' };
+    try { return { available: true, signedIn: get().isAccountConnected() }; }
+    catch { return { available: false, signedIn: false, reason: 'Your saved account could not be opened. Resolve storage recovery in Preferences before connecting.' }; }
+  });
   setHookAccountStatus(() => {
     const status = get().status();
     return { signedIn: status.connected, email: status.email };
@@ -421,6 +427,7 @@ export function registerAccountSync(
     }
   });
   app.once('will-quit', () => {
+    releaseAccountRelay();
     stopped = true;
     passwordScheduler.reset();
     personalScheduler.reset();

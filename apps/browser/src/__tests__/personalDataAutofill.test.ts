@@ -504,6 +504,7 @@ it.each(['profile email', 'duplicate email', 'conflicting emails', 'existing ema
 });
 
 it('drags the dropdown by its header, clamps it to the viewport, and ignores header buttons', async () => {
+  jest.useFakeTimers();
   let shadow!: ShadowRoot;
   const originalAttach = HTMLElement.prototype.attachShadow;
   const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
@@ -534,16 +535,18 @@ it('drags the dropdown by its header, clamps it to the viewport, and ignores hea
     expect(header.setPointerCapture).not.toHaveBeenCalled();
     handlers.pointerdown(event);
     handlers.pointermove({ ...event, clientX: 90, clientY: 100 });
+    jest.advanceTimersByTime(20);
     expect(panel.style.left).toBe('80px'); expect(panel.style.top).toBe('90px');
     expect(document.activeElement).toBe(input);
     handlers.pointermove({ ...event, clientX: -1000, clientY: -1000 });
+    jest.advanceTimersByTime(20);
     expect(panel.style.left).toBe('8px'); expect(panel.style.top).toBe('8px');
     handlers.pointercancel(event);
     handlers.pointermove({ ...event, clientX: 90, clientY: 100 });
     expect(panel.style.left).toBe('8px');
     expect(header.releasePointerCapture).toHaveBeenCalledWith(1);
   } finally {
-    dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = '';
+    dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; jest.useRealTimers();
   }
 });
 
@@ -581,7 +584,10 @@ it.each(['empty', 'ambiguous', 'matching'])('offers form filling only for usable
     expect(panel.style.top).toBe('auto');
     expect(document.activeElement).toBe(input);
     expect(!!panel.querySelector('.fill-form')).toBe(mode === 'matching');
-    expect(!!shadow.querySelector('.quick-fill')).toBe(mode === 'matching');
+    expect(shadow.querySelector('.autofill-control')).toBeNull();
+    expect(shadow.querySelector('.trigger')).toBeNull();
+    expect(shadow.querySelector('.quick-fill')).toBeNull();
+    expect(bridge.invoke).not.toHaveBeenCalledWith('personal-data-autofill-availability');
     if (mode === 'empty') expect(panel.querySelector('[aria-label^="Fill Email:"]')).toBeNull();
   } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; }
 });
@@ -636,4 +642,136 @@ it.each(['pick', 'save', 'fill', 'save-form', 'save-page'] as const)('native For
   dispose(); attach.mockRestore();
   if (hitTest) Object.defineProperty(document, 'elementFromPoint', hitTest);
   else delete (document as any).elementFromPoint;
+});
+
+
+it('updates manual triggers on preference changes and ignores availability for removed controls', async () => {
+  let shadow!: ShadowRoot;
+  const original = HTMLElement.prototype.attachShadow;
+  const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
+    shadow = original.call(this, init); return shadow;
+  });
+  const callbacks: Record<string, Function> = {};
+  const pending: ((records: any[]) => void)[] = [];
+  const records = [{ id: 'profile', kind: 'profile', title: 'Profile', fields: [{ name: 'Email', value: 'saved@example.com', secret: false }] }];
+  const bridge = {
+    invoke: jest.fn(async (channel: string) => {
+      if (channel === 'personal-data-autofill-focus' || channel.endsWith('enabled')) return true;
+      if (channel === 'personal-data-autofill-records') return records;
+      if (channel === 'personal-data-autofill-availability') return new Promise<any[]>((resolve) => pending.push(resolve));
+      return null;
+    }),
+    on: jest.fn((channel, callback) => { callbacks[channel] = callback; }),
+  };
+  document.body.innerHTML = '<form><input type="email" autocomplete="email"></form>';
+  const input = document.querySelector<HTMLInputElement>('input')!;
+  input.getClientRects = () => [{}] as any;
+  const dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+  try {
+    await settle(); input.focus(); await settle();
+    expect(shadow.querySelector('.panel[data-autofocus]')).not.toBeNull();
+    expect(shadow.querySelector('.autofill-control')).toBeNull();
+    expect(pending).toHaveLength(0);
+    expect((shadow.host as HTMLElement).style.width).toBe('0px');
+    expect((shadow.host as HTMLElement).style.height).toBe('0px');
+    const originalShadow = shadow;
+    callbacks['personal-data-autofill-enabled'](null, true, false);
+    expect(shadow).toBe(originalShadow);
+    expect(shadow.querySelector('.panel[data-autofocus]')).toBeNull();
+    expect(shadow.querySelector('.trigger')).not.toBeNull();
+    expect(pending).toHaveLength(1);
+    expect((shadow.host as HTMLElement).style.width).toBe('56px');
+    expect((shadow.host as HTMLElement).style.height).toBe('26px');
+    callbacks['personal-data-autofill-enabled'](null, true, true);
+    expect(shadow.querySelector('.autofill-control')).toBeNull();
+    expect((shadow.host as HTMLElement).style.width).toBe('0px');
+    pending[0](records); await settle();
+    expect(shadow.querySelector('.quick-fill')).toBeNull();
+    callbacks['personal-data-autofill-enabled'](null, true, false);
+    expect(pending).toHaveLength(2);
+    pending[1](records); await settle();
+    expect(shadow.querySelector('.trigger')).not.toBeNull();
+    expect(shadow.querySelector('.quick-fill')).not.toBeNull();
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('');
+    callbacks['personal-data-autofill-enabled'](null, false, false);
+    expect(document.documentElement.querySelector('div[style*="2147483647"]')).toBeNull();
+  } finally { dispose(); attach.mockRestore(); document.body.innerHTML = ''; }
+});
+
+
+it('remembers a completed popup drag relative to inputs and cancels stale drag frames', async () => {
+  jest.useFakeTimers();
+  let shadow!: ShadowRoot;
+  const originalAttach = HTMLElement.prototype.attachShadow;
+  const attach = jest.spyOn(HTMLElement.prototype, 'attachShadow').mockImplementation(function (this: HTMLElement, init) {
+    shadow = originalAttach.call(this, init); return shadow;
+  });
+  const listeners = new Map<EventTarget, Record<string, Function>>();
+  const originalOn = HTMLDivElement.prototype.addEventListener;
+  const on = jest.spyOn(HTMLDivElement.prototype, 'addEventListener').mockImplementation(function (this: HTMLDivElement, type: string, listener: any, options?: any) {
+    listeners.set(this, { ...listeners.get(this), [type]: listener });
+    originalOn.call(this, type, listener, options);
+  });
+  let saved: any = null;
+  const bridge = { invoke: jest.fn(async (channel: string, point?: any) => {
+    if (channel === 'personal-data-autofill-popup-position') { if (point) saved = point; return saved; }
+    if (channel === 'personal-data-autofill-position') return null;
+    if (channel.endsWith('enabled') || channel.endsWith('focus')) return true;
+    return [];
+  }), on: jest.fn() };
+  document.body.innerHTML = '<input type="email"><input type="email">';
+  const inputs = Array.from(document.querySelectorAll('input'));
+  inputs.forEach((input, index) => {
+    input.getClientRects = () => [{}] as any;
+    input.getBoundingClientRect = () => ({ left: 100 + index * 100, right: 300 + index * 100, top: 300 + index * 100, bottom: 330 + index * 100, width: 200, height: 30 }) as DOMRect;
+  });
+  let dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+  try {
+    await settle(); inputs[0].focus(); await settle();
+    const panel = shadow.querySelector<HTMLDivElement>('.panel')!;
+    const header = panel.querySelector<HTMLDivElement>('.header')!;
+    panel.getBoundingClientRect = () => ({ left: 100, top: 334, width: 290, height: 200 }) as DOMRect;
+    header.setPointerCapture = jest.fn(); header.hasPointerCapture = () => true; header.releasePointerCapture = jest.fn();
+    const handlers = listeners.get(header)!;
+    const event = { isTrusted: true, button: 0, pointerId: 1, clientX: 110, clientY: 344, target: header, preventDefault() {} };
+    handlers.pointerdown({ ...event, isTrusted: false });
+    expect(header.setPointerCapture).not.toHaveBeenCalled();
+    handlers.pointerdown(event);
+    handlers.pointermove({ ...event, clientX: 160, clientY: 60 });
+    expect(saved).toBeNull();
+    // Releasing before the animation frame flushes the final position once.
+    handlers.pointerup(event);
+    expect(saved).toEqual({ side: 'above', x: 50, y: 46 });
+    expect(panel.style.left).toBe('150px');
+    expect(panel.style.bottom).toBe(`${innerHeight - 250}px`);
+    expect(bridge.invoke).toHaveBeenCalledWith('personal-data-autofill-popup-position', saved);
+    inputs[1].focus(); await settle();
+    expect(shadow.querySelector<HTMLElement>('.panel')!.style.left).toBe('250px');
+    expect(shadow.querySelector<HTMLElement>('.panel')!.style.bottom).toBe(`${innerHeight - 350}px`);
+    dispose();
+    dispose = installPersonalDataAutofill(bridge, personalDataMatching.score);
+    await settle();
+    expect(shadow.querySelector<HTMLElement>('.panel')!.style.left).toBe('250px');
+    expect(shadow.querySelector<HTMLElement>('.panel')!.style.bottom).toBe(`${innerHeight - 350}px`);
+    expect(document.activeElement).toBe(inputs[1]);
+    const secondHeader = shadow.querySelector<HTMLDivElement>('.header')!;
+    secondHeader.setPointerCapture = jest.fn(); secondHeader.hasPointerCapture = () => false;
+    const secondHandlers = listeners.get(secondHeader)!;
+    secondHandlers.pointerdown({ ...event, target: secondHeader });
+    secondHandlers.pointermove({ ...event, clientX: 900, clientY: 600 });
+    inputs[0].focus(); await settle(); jest.advanceTimersByTime(20);
+    expect(saved).toEqual({ side: 'above', x: 50, y: 46 });
+    expect(shadow.querySelector<HTMLElement>('.panel')!.style.left).toBe('150px');
+    const lastHeader = shadow.querySelector<HTMLDivElement>('.header')!;
+    lastHeader.setPointerCapture = jest.fn(); lastHeader.hasPointerCapture = () => false;
+    const lastHandlers = listeners.get(lastHeader)!;
+    lastHandlers.pointerdown({ ...event, target: lastHeader });
+    // If the field grows to occupy the viewport during a drag, dismiss the popup.
+    inputs[0].getBoundingClientRect = () => ({ left: 0, right: innerWidth, top: 0, bottom: innerHeight }) as DOMRect;
+    lastHandlers.pointermove({ ...event, clientX: 900, clientY: 600 });
+    jest.advanceTimersByTime(20);
+    expect(shadow.querySelector('.panel')).toBeNull();
+    expect(saved).toEqual({ side: 'above', x: 50, y: 46 });
+  } finally { dispose(); attach.mockRestore(); on.mockRestore(); document.body.innerHTML = ''; jest.useRealTimers(); }
 });

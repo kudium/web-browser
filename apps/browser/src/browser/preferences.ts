@@ -1,3 +1,4 @@
+import type { AutofillPopupPlacement } from './autofillPopupPlacement';
 import type { ActivitySoundName } from './activitySound';
 import type { LinkRoutingRule } from './linkRouting';
 import { AdvancedPreferences, defaultAdvanced } from './advancedPreferences';
@@ -33,6 +34,7 @@ export interface BrowserPreferences {
   personalDataAutofill: boolean;
   personalDataAutofillOnFocus: boolean;
   personalDataAutofillExcludedSites: string[];
+  personalDataAutofillPopupPositions: Record<string, AutofillPopupPlacement>;
   personalDataAutofillPositions: Record<string, { side: 'left' | 'right'; x: number; y: number }>;
   addressBarFullUrl: boolean;
   showLinkPreview: boolean;
@@ -92,6 +94,7 @@ export const defaultPreferences: BrowserPreferences = {
   personalDataAutofillOnFocus: true,
   personalDataAutofillExcludedSites: [],
   personalDataAutofillPositions: {},
+  personalDataAutofillPopupPositions: {},
   addressBarFullUrl: false,
   showLinkPreview: true,
   addressBarExtensionsExpanded: true,

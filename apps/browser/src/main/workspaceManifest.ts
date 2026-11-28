@@ -51,6 +51,11 @@ export function readWorkspaceManifest(folder: string): WorkspaceManifest | undef
 }
 
 const cache = new Map<string, { mtimeMs: number; size: number; manifest?: WorkspaceManifest }>();
+const writers = new Set<(folder: string, manifest: WorkspaceManifest) => void>();
+export function onWorkspaceManifestWritten(listener: (folder: string, manifest: WorkspaceManifest) => void) {
+  writers.add(listener);
+  return () => { writers.delete(listener); };
+}
 /** Cheap repeated reads (taint checks run on every page read). Invalid files count as absent. */
 export function cachedWorkspaceManifest(folder: string): WorkspaceManifest | undefined {
   const file = workspaceManifestPath(folder);
@@ -82,9 +87,10 @@ function writeAtomic(file: string, contents: string, mode?: number) {
 
 /** Stable key order so browser edits produce readable diffs in version control. */
 export function serializeWorkspaceManifest(manifest: WorkspaceManifest) {
+  const canonical = validateWorkspaceManifest(manifest);
   const ordered: Record<string, unknown> = { version: WORKSPACE_MANIFEST_VERSION };
   (['group', 'project', 'tabs', 'scripts', 'terminals', 'siteSettings', 'skills', 'ai'] as const).forEach((key) => {
-    if (manifest[key] !== undefined) ordered[key] = manifest[key];
+    if (canonical[key] !== undefined) ordered[key] = canonical[key];
   });
   return `${JSON.stringify(ordered, null, 2)}\n`;
 }
@@ -103,6 +109,7 @@ export function writeWorkspaceManifest(folder: string, manifest: WorkspaceManife
   if (previous === next) return;
   writeAtomic(file, next);
   cache.delete(file);
+  writers.forEach((listener) => listener(folder, validated));
 }
 
 /**

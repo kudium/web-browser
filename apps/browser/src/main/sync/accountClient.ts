@@ -21,6 +21,8 @@ import {
 import { SyncedNote, validateSyncedNotes } from '../../browser/notes';
 import { SyncedLogin, validateSyncedLogins } from './passwords';
 import { syncRequest, SyncHTTPError, SYNC_ORIGIN } from './transport';
+import { validDeviceToken } from '../../browser/mcpRelay';
+import type { AccountRelayDevice } from '../accountRelay';
 
 const clientId = 'kudium-desktop';
 const keyRecord = 'account_key_check_v1';
@@ -1120,6 +1122,30 @@ export class AccountSyncClient {
       }
     this.phase = 'off';
     this.message = 'Disconnected. Local browsing data was kept.';
+  }
+
+  isAccountConnected() {
+    return !!this.saved.credential;
+  }
+
+  async createRelayDevice(): Promise<AccountRelayDevice> {
+    const credential = this.saved.credential;
+    if (!credential) throw new Error('Connect your Kudium account in Preferences → Sync, then select Connect cloud relay. Encrypted sync does not need to be enabled.');
+    let body: Record<string, unknown>;
+    try {
+      ({ body } = await this.request('/relay/devices', credential.token, { name: 'Kudium Browser' }));
+    } catch (error) {
+      if (error instanceof SyncHTTPError && error.status === 401)
+        throw new Error('Your account session expired. Reconnect in Preferences → Sync, then try again.');
+      throw error;
+    }
+    if (!body || typeof body.deviceId !== 'string' || !/^[a-z0-9]{16}$/.test(body.deviceId)) throw new Error('The relay returned an invalid device.');
+    const deviceToken = validDeviceToken(body.deviceToken);
+    if (this.saved.credential !== credential) {
+      await this.request(`/relay/devices/${body.deviceId}`, deviceToken, undefined, {}, 'DELETE').catch(() => {});
+      throw new Error('Your account changed while pairing. Connect the relay again.');
+    }
+    return { relayUrl: SYNC_ORIGIN, deviceId: body.deviceId, deviceToken };
   }
 
   async publishHook(data: unknown): Promise<{ id: string; version: number }> {

@@ -3,23 +3,32 @@ export type PageDevToolsDock = 'right' | 'bottom' | 'window' | 'panel';
 
 /** Chromium's inspector runs in its own native view, never the page renderer. */
 export class PageDevTools {
-  private entries = new Map<WebContents, { mode: PageDevToolsDock; fraction?: number; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void }>();
+  private entries = new Map<WebContents, { mode: PageDevToolsDock; fraction?: number; resizing?: boolean; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void }>();
   private generations = new WeakMap<WebContents, number>();
-  constructor(private changed: (contents: WebContents) => void, private registerPanel?: (contents: WebContents, view: WebContentsView) => (() => void)) {}
+  constructor(private changed: (contents: WebContents) => void, private registerPanel?: (contents: WebContents, view: WebContentsView) => (() => void), private observeView?: (view: WebContentsView, owner: () => BrowserWindow | undefined) => void) {}
   mode(contents: WebContents) { return this.entries.get(contents)?.mode; }
+  snapshotView(contents: WebContents, owner: BrowserWindow) {
+    const entry = this.entries.get(contents);
+    if (!entry?.view || entry.owner !== owner || (entry.mode !== 'right' && entry.mode !== 'bottom') || entry.view.webContents.isDestroyed() || !entry.view.getVisible()) return undefined;
+    return entry.view;
+  }
   fraction(contents: WebContents) { return this.entries.get(contents)?.fraction || .4; }
-  resize(contents: WebContents, fraction: number) {
+  resize(contents: WebContents, fraction: number, commit = true) {
     const entry=this.entries.get(contents);
     if (!entry || !Number.isFinite(fraction)) return;
     const next=Math.max(.2,Math.min(.75,fraction));
-    if(next===(entry.fraction || .4)) return;
+    if(next===(entry.fraction || .4)) {
+      if (commit && entry.resizing) { entry.resizing = false; this.changed(contents); }
+      return;
+    }
     entry.fraction=next;
+    entry.resizing = !commit;
     if(entry.bounds && entry.owner && !entry.owner.isDestroyed()) {
       const page=this.layout(contents,entry.owner,entry.bounds,entry.view?.getVisible() || false);
       const view=entry.owner.contentView.children.find(child=>child instanceof WebContentsView && child.webContents===contents);
       if(view instanceof WebContentsView) view.setBounds(page);
     }
-    this.changed(contents);
+    if (commit) this.changed(contents);
   }
   hide(contents: WebContents) { const entry=this.entries.get(contents); if(entry?.mode !== 'panel') entry?.view?.setVisible(false); }
   toggle(contents: WebContents) { if (this.entries.has(contents)) this.close(contents); else void this.open(contents, 'right').catch(() => this.close(contents)); }
@@ -55,7 +64,7 @@ export class PageDevTools {
     const generation = this.generations.get(contents);
     if (closed) await closed;
     if (contents.isDestroyed() || generation !== this.generations.get(contents)) return;
-    const entry: { mode: PageDevToolsDock; fraction?: number; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void } = { mode, closed: () => this.close(contents) };
+    const entry: { mode: PageDevToolsDock; fraction?: number; resizing?: boolean; bounds?: Rectangle; removePanel?: () => void; view?: WebContentsView; owner?: BrowserWindow; window?: BrowserWindow; closed: () => void } = { mode, closed: () => this.close(contents) };
     this.entries.set(contents, entry);
     if (mode === 'window') {
       entry.window = new BrowserWindow({ width:1000, height:720, title:'Page Developer Tools', webPreferences:{ sandbox:true, contextIsolation:true, nodeIntegration:false } });
@@ -64,6 +73,7 @@ export class PageDevTools {
     } else {
       entry.view = new WebContentsView({ webPreferences:{ sandbox:true, contextIsolation:true, nodeIntegration:false } });
       entry.view.setVisible(false);
+      this.observeView?.(entry.view, () => entry.owner);
       contents.setDevToolsWebContents(entry.view.webContents);
     }
     contents.once('devtools-closed', entry.closed);

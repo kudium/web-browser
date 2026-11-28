@@ -43,6 +43,7 @@ export interface BrowserTabRequest {
     | 'open-external'
     | 'open-sidebar'
     | 'extension-group-update';
+  groupAdditions?: IApp[];
   groupChanges?: { id: string; changes: Partial<IApp> }[];
   mutationId?: string;
   url?: string;
@@ -92,10 +93,21 @@ export interface BrowserState {
   failedURL?: string;
   initialLoading?: boolean;
 }
+export interface NativeOverlayReady { surface: 'page' | 'panel'; token: number; }
+
 export interface BrowserLayout {
+  /** Existing visible slots only; apps must be empty and focusedId omitted. */
+  geometryOnly?: boolean;
   focusedId?: string;
   suspended?: boolean;
   sidebarSuspended?: boolean;
+  /** Bound native snapshot preparation for the temporary left sidebar. */
+  sidebarOverlay?: boolean;
+  sidebarHidden?: boolean;
+  sidebarOverlayToken?: number;
+  /** Correlate popup readiness with this window's current suspension request. */
+  nativeOverlayToken?: number;
+  panelOverlayToken?: number;
   tabSwitcher?: boolean;
   apps: IApp[];
   visible: {
@@ -109,6 +121,7 @@ export interface BrowserLayout {
 export interface BrowserCommand {
   translationTarget?: string;
   devToolsFraction?: number;
+  devToolsLive?: boolean;
   id: string;
   action:
     | 'extension-group-result'
@@ -211,6 +224,8 @@ export type SpaceWheelEvent =
     };
 
 export interface BrowserSnapshot {
+  /** A docked inspector keeps the owning page ID for access checks. */
+  surface?: 'devtools';
   presentationId?: string;
   previewOnly?: boolean;
   id: string;
@@ -282,6 +297,9 @@ export interface BrowserClient {
   onPreferences(
     callback: (preferences: BrowserPreferences) => void
   ): () => void;
+  onNativeOverlayReady(callback: (event: NativeOverlayReady) => void): () => void;
+  onSidebarHoverEdge(callback: (inside: boolean) => void): () => void;
+  onSidebarOverlayReady(callback: (token: number) => void): () => void;
   onSnapshots(callback: (frames: BrowserSnapshot[]) => void): () => void;
   onSpaceWheel(callback: (event: SpaceWheelEvent) => void): () => void;
   onShortcut(callback: (shortcut: BrowserShortcut) => void): () => void;

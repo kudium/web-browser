@@ -14,6 +14,46 @@ OAuth. The `e2e` frame type is reserved for Kudium's own clients, which can
 carry ciphertext the relay never decodes. Users are told this in the
 "Connect a cloud assistant" flow; the relay is off per device by default.
 
+## Setup in Kudium
+
+1. If signed out, select **Sign in to Kudium** in Cloud relay to open
+   **Preferences → Sync**. Encrypted sync can stay off.
+2. In **External AI → Other agents & manual setup**, enable external control,
+   using **Enable external control** in the relay card, then select
+   **Connect cloud relay**. The main process creates a device at
+   `https://browser.kudium.com`, enables it, and saves its credential in the
+   owner-only relay store. Neither the account bearer nor device token is
+   returned to the settings page.
+3. Copy the connector URL into a cloud assistant and approve its request in
+   Kudium. Use the path URL, which needs no wildcard DNS.
+
+The relay switch appears only after a device is paired; it pauses or resumes
+cloud connections for that device. Before pairing the card shows the next
+available action instead. Missing account services, unavailable secure storage,
+and private windows display a specific limitation. Private windows cannot use
+the regular window's saved account to create relay devices. An isolated profile
+needs its own account sign-in; copying project workspace files does not transfer
+account credentials. Connection errors appear next to the relay heading.
+
+The advanced token form is for an existing device or a custom relay. A `kd_…`
+credential comes from `POST /relay/devices` using an authenticated account;
+it is not an MCP client token. There is currently no token-generation web page.
+The old `relay.kudium.com` default is not required for account pairing.
+
+**Quick tunnel** is a separate temporary fallback. Install `cloudflared`
+(on macOS, `brew install cloudflared`), enable external control, then select
+**Use quick tunnel**. Kudium waits for both the public URL and Cloudflare's
+registered connection before selecting **Quick tunnel (HTTPS)** in Client
+configuration. Copy that configuration, including its bearer token, to a
+client supporting token headers. This is not the relay's OAuth connector flow.
+Stopping the tunnel restores the local HTTP configuration.
+
+Startup has a 45-second deadline; failure remains visible after the process
+exits. The subprocess ignores named-tunnel configuration and `TUNNEL_*`
+environment overrides, uses HTTP/2, and forwards the loopback Host header
+required by the MCP server's DNS-rebinding protection. It never downloads a
+binary or modifies the local server's authentication checks.
+
 ## Device lifecycle
 
 1. **Pairing.** With the desktop sign-in credential (the same bearer the sync
@@ -21,8 +61,8 @@ carry ciphertext the relay never decodes. Users are told this in the
    enabled: false, urls: { host?, path } }`. `deviceToken` (`kd_…`) is shown
    once; keep it in the private store. `urls.host` is
    `https://<deviceId>.<RELAY_HOST>/mcp` when the deployment has wildcard
-   DNS; `urls.path` (`https://relay.kudium.com/relay/d/<deviceId>/mcp`) always
-   works.
+   DNS; `urls.path` (`https://browser.kudium.com/relay/d/<deviceId>/mcp`) uses the
+   serving origin without wildcard DNS.
 2. **Enable.** `POST /relay/devices/:id/enabled {"enabled": true}` with either
    the account bearer or the device token. Disabling closes the socket and
    drops every relay session at once (connectors must start a new MCP session).

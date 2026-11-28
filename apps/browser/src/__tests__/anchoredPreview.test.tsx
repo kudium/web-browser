@@ -62,7 +62,9 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
   (ResizeObserver as jest.Mock).mockImplementation((callback) => ({
     observe: jest.fn((element: HTMLElement) => {
       if (element.classList.contains('tab-preview-list')) {
-        Object.defineProperty(element, 'clientHeight', { get: () => listHeight });
+        Object.defineProperty(element, 'clientHeight', {
+          get: () => listHeight,
+        });
         resizeList = () => callback([{ target: element }]);
       }
     }),
@@ -98,10 +100,10 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
         onEnter={jest.fn()}
         onLeave={jest.fn()}
       />
-    </Theme>
+    </Theme>,
   );
   expect(
-    document.querySelectorAll('.tab-preview-row').length
+    document.querySelectorAll('.tab-preview-row').length,
   ).toBeLessThanOrEqual(13);
   act(() => {
     listHeight = 640;
@@ -110,7 +112,7 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
   });
   expect(screen.getByRole('button', { name: 'Page 19' })).toBeInTheDocument();
   expect(
-    document.querySelectorAll('.tab-preview-row').length
+    document.querySelectorAll('.tab-preview-row').length,
   ).toBeLessThanOrEqual(26);
   act(() => {
     listHeight = 160;
@@ -118,7 +120,7 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
     jest.advanceTimersByTime(20);
   });
   expect(
-    document.querySelectorAll('.tab-preview-row').length
+    document.querySelectorAll('.tab-preview-row').length,
   ).toBeLessThanOrEqual(11);
   act(() => {
     listHeight = 224;
@@ -131,7 +133,7 @@ it('resizes the bounded window of 10,000 tabs and reaches the end and search res
   expect(choose).toHaveBeenLastCalledWith('tab-9999');
   expect(screen.getByRole('button', { name: 'Page 9999' })).toBeInTheDocument();
   expect(
-    document.querySelectorAll('.tab-preview-row').length
+    document.querySelectorAll('.tab-preview-row').length,
   ).toBeLessThanOrEqual(13);
   fireEvent.change(search, { target: { value: 'Page 8123' } });
   expect(document.querySelectorAll('.tab-preview-row')).toHaveLength(1);
@@ -181,17 +183,17 @@ it('shows group identity above a compact hover list, including single-tab groups
         onEnter={jest.fn()}
         onLeave={jest.fn()}
       />
-    </Theme>
+    </Theme>,
   );
   expect(screen.getByText('Office & Team')).toBeInTheDocument();
   expect(screen.getByText('@office-team')).toHaveAttribute(
     'title',
-    'Select @office-team in the AI sidebar'
+    'Select @office-team in the AI sidebar',
   );
   fireEvent.click(
     screen.getByRole('button', {
       name: 'Select @office-team in the AI sidebar',
-    })
+    }),
   );
   expect(selectGroup).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole('button', { name: 'AI Chat' }));
@@ -220,3 +222,39 @@ it('shows group identity above a compact hover list, including single-tab groups
 });
 
 afterEach(() => jest.useRealTimers());
+
+it('makes empty collections useful without showing a redundant search box or duplicate creation action', () => {
+  const anchor = document.createElement('button');
+  document.body.append(anchor);
+  const create = jest.fn(),
+    manage = jest.fn();
+  const noop = () => {};
+  const view = render(
+    <Theme>
+      <AnchoredTabPreview
+        target={{ kind: 'folder', id: 'empty', anchor, interaction: 'click' }}
+        title="Empty workspace"
+        entries={[]}
+        selectedId=""
+        onSelect={noop}
+        onRemove={noop}
+        onNewTab={noop}
+        onBack={noop}
+        onClose={noop}
+        onEnter={noop}
+        onLeave={noop}
+        onNewGroup={create}
+        onManageCollection={manage}
+      />
+    </Theme>,
+  );
+  expect(screen.getByText('Empty collection')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Search preview')).not.toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'New group' })).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'New group' }));
+  expect(create).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Manage collection' }));
+  expect(manage).toHaveBeenCalledTimes(1);
+  view.unmount();
+  anchor.remove();
+});

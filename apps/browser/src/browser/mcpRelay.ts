@@ -19,7 +19,7 @@ export const RELAY_REQUEST_DEADLINE_MS = 30000;
 export const RELAY_CONSENT_DEADLINE_MS = 110000;
 export const RELAY_RECONNECT_MIN_MS = 1000;
 export const RELAY_RECONNECT_MAX_MS = 60000;
-export const RELAY_DEFAULT_URL = 'https://relay.kudium.com';
+export const RELAY_DEFAULT_URL = 'https://browser.kudium.com';
 
 export interface RelayConnectorInfo {
   id: string;
@@ -200,7 +200,13 @@ export interface MCPRelayConnector {
   lastSeen?: number;
   requests: number;
 }
+export interface MCPRelayAccountStatus {
+  available: boolean;
+  signedIn: boolean;
+  reason?: string;
+}
 export interface MCPRelayStatus {
+  account?: MCPRelayAccountStatus;
   enabled: boolean;
   paired: boolean;
   relayUrl: string;
@@ -212,11 +218,12 @@ export interface MCPRelayStatus {
   connectors: MCPRelayConnector[];
   /** Base64 X25519 public key Kudium clients use for e2e envelopes. */
   devicePublicKey?: string;
-  quickTunnel: { running: boolean; url?: string; error?: string; available: boolean };
+  quickTunnel: { running: boolean; ready?: boolean; url?: string; error?: string; available: boolean };
   error?: string;
 }
 export type MCPRelayCommand =
   | { action: 'status' }
+  | { action: 'connect' }
   | { action: 'pair'; relayUrl: string; deviceToken: string }
   | { action: 'create'; relayUrl: string; bearer: string; name?: string }
   | { action: 'unpair' }
@@ -231,6 +238,7 @@ export function validRelayCommand(value: unknown): MCPRelayCommand {
   const command = value as Record<string, unknown>;
   switch (command.action) {
     case 'status':
+    case 'connect':
     case 'unpair':
       return { action: command.action };
     case 'pair':

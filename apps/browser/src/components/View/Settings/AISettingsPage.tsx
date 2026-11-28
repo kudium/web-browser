@@ -23,7 +23,7 @@ const errorText = (reason: Error) =>
     ''
   );
 
-export function AISettingsPage({ children }: { children?: ReactNode }) {
+export function AISettingsPage({ children, onOpenAccount }: { children?: ReactNode; onOpenAccount?: () => void }) {
   const [showStats, setShowStats] = useAIPagePreference('showStats', true);
   const [tab, setTab] = useState<'model' | 'external' | 'skills'>('model');
   const [saved, setSaved] = useState<AISettings>({
@@ -220,7 +220,7 @@ export function AISettingsPage({ children }: { children?: ReactNode }) {
         aria-labelledby="ai-external-tab"
         hidden={tab !== 'external'}
       >
-        <ExternalAISettings />
+        <ExternalAISettings onOpenAccount={onOpenAccount} />
       </div>
       <div
         role="tabpanel"

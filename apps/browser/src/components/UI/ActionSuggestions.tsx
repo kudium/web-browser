@@ -254,6 +254,50 @@ export function ActionSuggestions({
                     'Run'
                   )}
                 </button>
+                {count > 1 && (
+                  <Popover.Root open={picker} onOpenChange={setPicker}>
+                    <Popover.Trigger>
+                      <button
+                        className="suggestion-queue-picker"
+                        aria-label="Choose queued action"
+                      >
+                        1 of {count}
+                      </button>
+                    </Popover.Trigger>
+                    <PanelPopoverContent
+                      className="suggestion-queue-list"
+                      size="1"
+                    >
+                      {(task ? todos : suggestions).map((item) => (
+                        <button
+                          key={task ? taskKey(item as TodoEntry) : item.id}
+                          onClick={() => {
+                            if (task) {
+                              const key = taskKey(item as TodoEntry);
+                              setTodayOrder((order) => [
+                                key,
+                                ...reconcile(order, todos.map(taskKey)).filter(
+                                  (id) => id !== key,
+                                ),
+                              ]);
+                            } else
+                              setHookOrder((order) => [
+                                item.id,
+                                ...reconcile(
+                                  order,
+                                  suggestions.map((value) => value.id),
+                                ).filter((id) => id !== item.id),
+                              ]);
+                            setPicker(false);
+                            setDetails(false);
+                          }}
+                        >
+                          {item.title}
+                        </button>
+                      ))}
+                    </PanelPopoverContent>
+                  </Popover.Root>
+                )}
                 {count > 1 && <button
                   aria-label="Next"
                   title="Next suggestion"
@@ -358,50 +402,6 @@ export function ActionSuggestions({
                 >
                   Hooks · {suggestions.length}
                 </button>
-              )}
-              {count > 1 && (
-                <Popover.Root open={picker} onOpenChange={setPicker}>
-                  <Popover.Trigger>
-                    <button
-                      className="suggestion-queue-picker"
-                      aria-label="Choose queued action"
-                    >
-                      1 of {count}
-                    </button>
-                  </Popover.Trigger>
-                  <PanelPopoverContent
-                    className="suggestion-queue-list"
-                    size="1"
-                  >
-                    {(task ? todos : suggestions).map((item) => (
-                      <button
-                        key={task ? taskKey(item as TodoEntry) : item.id}
-                        onClick={() => {
-                          if (task) {
-                            const key = taskKey(item as TodoEntry);
-                            setTodayOrder((order) => [
-                              key,
-                              ...reconcile(order, todos.map(taskKey)).filter(
-                                (id) => id !== key,
-                              ),
-                            ]);
-                          } else
-                            setHookOrder((order) => [
-                              item.id,
-                              ...reconcile(
-                                order,
-                                suggestions.map((value) => value.id),
-                              ).filter((id) => id !== item.id),
-                            ]);
-                          setPicker(false);
-                          setDetails(false);
-                        }}
-                      >
-                        {item.title}
-                      </button>
-                    ))}
-                  </PanelPopoverContent>
-                </Popover.Root>
               )}
             </div>
             {error && (

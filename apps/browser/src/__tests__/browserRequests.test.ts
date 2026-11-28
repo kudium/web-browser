@@ -14,7 +14,12 @@ const layout = {
 };
 it('validates complete layouts before existing view state can change', () => {
   expect(isBrowserLayout(layout)).toBe(true);
-  expect(isBrowserLayout({ ...layout, suspended: true, sidebarSuspended: false })).toBe(true);
+  expect(isBrowserLayout({ ...layout, sidebarHidden: true })).toBe(true);
+  expect(isBrowserLayout({ ...layout, sidebarHidden: 'yes' })).toBe(false);
+  expect(isBrowserLayout({ ...layout, suspended: true, sidebarSuspended: false, sidebarOverlay: true })).toBe(true);
+  expect(isBrowserLayout({ ...layout, sidebarOverlay: 'yes' })).toBe(false);
+  expect(isBrowserLayout({ ...layout, sidebarOverlay: true, sidebarOverlayToken: 7 })).toBe(true);
+  for (const sidebarOverlayToken of [-1, Infinity, '7', 1.2]) expect(isBrowserLayout({ ...layout, sidebarOverlayToken })).toBe(false);
   expect(isBrowserLayout({ apps: [], visible: [] })).toBe(true);
   [
     null,
@@ -56,4 +61,27 @@ it('rejects malformed command fields instead of passing them to native APIs', ()
     { id: 'one', action: 'find', url: 'a'.repeat(65537) },
     { id: 'one', action: 'set-permission', choice: {} },
   ].forEach((value) => expect(isBrowserCommand(value)).toBe(false));
+});
+
+it('validates bounded geometry updates without accepting tab metadata or duplicate slots', () => {
+  const geometry = { geometryOnly: true, apps: [], visible: layout.visible };
+  expect(isBrowserLayout(geometry)).toBe(true);
+  expect(isBrowserLayout({ ...geometry, geometryOnly: 'true' })).toBe(false);
+  expect(isBrowserLayout({ ...geometry, apps: layout.apps })).toBe(false);
+  expect(isBrowserLayout({ ...geometry, focusedId: 'one' })).toBe(false);
+  expect(isBrowserLayout({ ...geometry, visible: [...layout.visible, ...layout.visible] })).toBe(false);
+  expect(isBrowserLayout({ ...geometry, visible: [{ ...layout.visible[0], width: Infinity }] })).toBe(false);
+});
+
+it('rejects non-boolean live inspector resize flags', () => {
+  const request = { id:'one', action:'page-devtools-resize', devToolsFraction:.5, devToolsLive:true };
+  expect(isBrowserCommand(request)).toBe(true);
+  expect(isBrowserCommand({ ...request, devToolsLive:'true' })).toBe(false);
+});
+
+
+it.each(['nativeOverlayToken','panelOverlayToken'])('validates the %s readiness generation', field => {
+  expect(isBrowserLayout({...layout,[field]:7})).toBe(true);
+  for (const token of [-1,NaN,Infinity,1.5,'7',{},Number.MAX_SAFE_INTEGER+1])
+    expect(isBrowserLayout({...layout,[field]:token})).toBe(false);
 });

@@ -8,7 +8,7 @@ import type {
 import { randomUUID } from 'crypto';
 import { isPrivateSession } from './privateSessions';
 import { onWindowClosed } from './windowLifecycle';
-import { presentSnapshots } from './snapshotPresentation';
+import { presentSnapshots, captureNativeViewSnapshots } from './snapshotPresentation';
 import type {
   BrowserLayout,
   BrowserState,
@@ -34,6 +34,7 @@ type Host = {
   selectedId?: string;
   stamp: number;
   signature?: string;
+  stateSignatures: Map<string, string>;
   overlayGeneration?: number;
   pendingOverlay?: BrowserLayout;
 };
@@ -47,6 +48,7 @@ type Drag = {
 type Runtime = {
   view: (id: string) => WebContentsView | undefined;
   state: (id: string) => BrowserState | undefined;
+  snapshotViews?: (id: string, owner: BrowserWindow) => {view: WebContentsView; surface?: 'devtools'}[];
   chrome?: (window: BrowserWindow) => void;
 };
 const empty = (): BrowserLayout => ({ apps: [], visible: [] });
@@ -108,8 +110,11 @@ export class BrowserWindows {
       selectedId,
       layout: empty(),
       stamp: this.tick(),
+      stateSignatures: new Map(),
     };
     this.hosts.set(window.id, host);
+    const resetStates = () => host.stateSignatures.clear();
+    window.webContents.on('did-start-loading', resetStates);
     if (window !== this.root) this.runtime?.chrome?.(window);
     window.on('focus', () => {
       host.stamp = this.tick();
@@ -131,6 +136,7 @@ export class BrowserWindows {
       });
     });
     onWindowClosed(window, () => {
+      window.webContents.removeListener('did-start-loading', resetStates);
       this.hosts.delete(window.id);
       const removed = [...this.reserved]
         .filter(([, owner]) => owner === window.id)
@@ -281,20 +287,11 @@ export class BrowserWindows {
       host.pendingOverlay = layout;
       const generation = (host.overlayGeneration || 0) + 1;
       host.overlayGeneration = generation;
-      Promise.all(
-        host.layout.visible.map(async (slot) => {
-          const view = this.runtime?.view(slot.id);
-          if (!view || view.webContents.isDestroyed()) return undefined;
-          try {
-            return {
-              ...slot,
-              image: (await view.webContents.capturePage()).toDataURL(),
-            };
-          } catch {
-            return undefined;
-          }
-        })
-      )
+      Promise.all(host.layout.visible.map(slot => {
+        const view = this.runtime?.view(slot.id);
+        if (!view) return Promise.resolve([]);
+        return captureNativeViewSnapshots(slot.id, this.runtime?.snapshotViews?.(slot.id, window) ?? [{view}], {bounds:slot, useSlotBounds:this.host(slot.id) !== window});
+      }))
         .then(async (frames) => {
           if (
             window.isDestroyed() ||
@@ -304,10 +301,12 @@ export class BrowserWindows {
             return undefined;
           await presentSnapshots(
             window,
-            frames.filter(
+            frames.flat().filter(
               (frame): frame is NonNullable<typeof frame> =>
                 !!frame && this.allows(window, frame.id)
-            )
+            ),
+            undefined,
+            80,
           );
           if (
             window.isDestroyed() ||
@@ -356,6 +355,19 @@ export class BrowserWindows {
           this.pending.delete(tab.id);
       });
     this.changed();
+    if (layout.suspended && layout.nativeOverlayToken !== undefined && !window.isDestroyed())
+      window.webContents.send('browser-native-overlay-ready', {surface:'page', token:layout.nativeOverlayToken});
+    if (layout.sidebarOverlay && layout.sidebarOverlayToken !== undefined && !window.isDestroyed())
+      window.webContents.send('browser-sidebar-overlay-ready', layout.sidebarOverlayToken);
+  }
+
+  resize(window: BrowserWindow, slots: BrowserLayout['visible']) {
+    const host = this.hosts.get(window.id);
+    if (!host || host.layout.suspended || slots.length !== host.layout.visible.length) return undefined;
+    const ids = new Set(host.layout.visible.map(slot => slot.id));
+    if (new Set(slots.map(slot => slot.id)).size !== ids.size || slots.some(slot => !ids.has(slot.id) || !this.allows(window, slot.id))) return undefined;
+    host.layout = { ...host.layout, visible: slots.map(slot => ({ ...slot })) };
+    return host.layout.visible;
   }
 
   private eligible(host: Host, id: string) {
@@ -402,6 +414,11 @@ export class BrowserWindows {
     return { apps, visible, focusedId, suspended: false };
   }
 
+  isSidebarHidden(window: BrowserWindow) {
+    const host = this.hosts.get(window.id);
+    return !!host?.layout.sidebarHidden && !host.layout.suspended;
+  }
+
   host(id: string) {
     return this.hosts.get(this.owners.get(id) || -1)?.window || this.root!;
   }
@@ -438,6 +455,7 @@ export class BrowserWindows {
   }
 
   updateState(state: BrowserState) {
+    const signature = JSON.stringify(state);
     this.hosts.forEach((host) => {
       const tab = host.tabs.find((item) => item.id === state.id);
       if (tab)
@@ -446,12 +464,22 @@ export class BrowserWindows {
           name: state.title || tab.name,
           icon: state.icon || tab.icon,
         });
+      // Cache per renderer: a newly opened window must receive its first state,
+      // even when an existing window already has the same live tab state.
+      if (!host.window.isDestroyed() && host.stateSignatures.get(state.id) !== signature) {
+        host.stateSignatures.set(state.id, signature);
+        host.window.webContents.send('browser-state', state);
+      }
     });
-    this.broadcast('browser-state', state);
+  }
+
+  forgetState(id: string) {
+    this.hosts.forEach((host) => host.stateSignatures.delete(id));
   }
 
   locksChanged() {
     this.hosts.forEach((host) => {
+      host.stateSignatures.clear();
       host.overlayGeneration = (host.overlayGeneration || 0) + 1;
       host.pendingOverlay = undefined;
     });

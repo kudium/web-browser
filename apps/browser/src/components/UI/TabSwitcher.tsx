@@ -53,7 +53,7 @@ export function TabSwitcher({
         </Dialog.Description>
         <div className="tab-switcher-strip">
           {tabs.map((tab) => {
-            const frame = snapshots.find((item) => item.id === tab.id);
+            const frame = snapshots.find((item) => item.id === tab.id && !item.surface);
             const active = tab.id === selectedId;
             return (
               <button

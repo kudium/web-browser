@@ -211,6 +211,9 @@ app
         }
         if (req.url === '/late-image') {setTimeout(()=>{res.setHeader('Content-Type','image/svg+xml');res.end('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>');},2500);return;}
         if (req.url === '/early-document') {res.end('<title>Early document</title><h1>Ready before images</h1><img src="/late-image">');return;}
+        if (req.url.startsWith('/heavy-switching')) {
+          res.end(`<title>Heavy switching fixture</title><style>body{font:14px system-ui;background:#edf5f4}article{display:inline-block;padding:6px;border:1px solid #abc;contain:content}</style><h1>Heavy switching fixture</h1><input id="draft" value="retained draft"><main></main><script>document.querySelector('main').innerHTML=Array.from({length:8000},(_,i)=>'<article>Card '+i+' <span>Content</span></article>').join('');window.workTicks=0;setInterval(()=>{const end=performance.now()+15;while(performance.now()<end){}window.workTicks++;},50);window.fixtureReady=true;</script>`);return;
+        }
         if (req.url.includes('/connection-benchmark')) {setTimeout(()=>res.end('<title>Benchmark</title><h1>Ready</h1>'),700);return;}
         if (req.url.includes('/slow-connection')) {setTimeout(()=>res.end('<title>Connection ready</title><h1>Loaded</h1>'),4500);return;}
         if (req.url.includes('/slow-loading')) {
@@ -582,9 +585,17 @@ app
       await require('./ai-chat-scroll-acceptance.cjs')({main,evaluate,out});
       Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
     }
+    if (process.argv.includes('--switching-stress-only')) {
+      await require('./switching-stress-acceptance.cjs')({main,evaluate,out,url});
+      server.close();app.exit(0);return;
+    }
+    if (process.argv.includes('--space-switching-only')) {
+      await require('./space-switching-acceptance.cjs')({main,evaluate,out,url});
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.exit(0);return;
+    }
     if (process.argv.includes('--tab-switcher-only')) {
       await require('./tab-switcher-acceptance.cjs')({main,evaluate,out,url});
-      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.quit();return;
+      Object.values(windows).forEach(win=>{if(!win.isDestroyed())win.destroy();});server.close();app.exit(0);return;
     }
     if (process.argv.includes('--production-assets-only')) {
       await require('./production-assets-acceptance.cjs')({main,evaluate,runtimeDir,out,url});
@@ -3751,4 +3762,4 @@ app
 setTimeout(() => {
   console.error('UI check timed out');
   app.exit(1);
-}, process.argv.includes('--sign-in-only') ? 150000 : process.argv.includes('--compatibility-only') ? 120000 : (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) ? (process.argv.includes('--inspect') ? 600000 : 240000) : nativePrivateDialogs?180000:(process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();
+}, process.argv.includes('--switching-stress-only') ? 180000 : process.argv.includes('--sign-in-only') ? 150000 : process.argv.includes('--compatibility-only') ? 120000 : (process.argv.includes('--real-sites-only') || process.argv.includes('--kuditrust-only')) ? (process.argv.includes('--inspect') ? 600000 : 240000) : nativePrivateDialogs?180000:(process.argv.includes('--compact-tab-preview-only') || process.argv.includes('--website-tabs-only') || process.argv.includes('--opener-flow-only')) ? 45000 : 30000).unref();

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { writePrivateFile } from './privateFile';
-import { mergeWorkspaceGroup, writeProjectMCPEntries } from './workspaceManifest';
+import { mergeWorkspaceGroup, readWorkspaceManifest, writeProjectMCPEntries } from './workspaceManifest';
 import { WORKSPACE_MANIFEST_FILE } from '../browser/workspaceManifest';
 
 export interface BrowserProjectGroup {
@@ -88,7 +88,8 @@ function migrateBrowserDocument(folder: string) {
 export function updateBrowserProjectContext(
   folder: string,
   groupId: string,
-  group: BrowserProjectGroup | null
+  group: BrowserProjectGroup | null,
+  options: { preserveGroup?: boolean } = {}
 ) {
   const agentFile = path.join(folder, 'AGENTS.md');
   const old = readDocument(agentFile);
@@ -118,7 +119,8 @@ export function updateBrowserProjectContext(
   // Validate every document before the first write so a broken marker
   // leaves the folder untouched.
   migrateBrowserDocument(folder);
-  mergeWorkspaceGroup(folder, group ? { name: group.name, slug: group.slug } : null);
+  if (group && (!options.preserveGroup || !readWorkspaceManifest(folder)))
+    mergeWorkspaceGroup(folder, group ? { name: group.name, slug: group.slug } : null);
   plans.forEach(({ filename, old: original, updated }) =>
     saveDocument(filename, original, updated)
   );

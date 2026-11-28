@@ -14,6 +14,8 @@ export function useSidebarPanels(active = false) {
     if (active && !wasActive.current && !state.activeId) restored.current = false;
     wasActive.current = active;
     try {
+      // Independent layouts restore only their saved open IDs in the workspace.
+      if (state.openedPanels && localStorage.getItem('kudium-sidebar-layout')) return;
       const panel = state.panels.find((entry) => entry.id === state.activeId);
       if (panel) {
         restored.current = true;

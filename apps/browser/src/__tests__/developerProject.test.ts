@@ -173,11 +173,11 @@ it('moves the browser context when relinking to another folder', async () => {
     undefined,
     { name: 'Website', slug: 'website' }
   );
-  expect(fs.existsSync(path.join(first, 'kudium.workspace.json'))).toBe(false);
+  expect(fs.existsSync(path.join(first, 'kudium.workspace.json'))).toBe(true);
   expect(fs.existsSync(path.join(first, 'AGENTS.md'))).toBe(false);
   expect(fs.existsSync(path.join(second, 'kudium.workspace.json'))).toBe(true);
   await projectAction({} as any, 'group', 'unlink', () => {});
-  expect(fs.existsSync(path.join(second, 'kudium.workspace.json'))).toBe(false);
+  expect(fs.existsSync(path.join(second, 'kudium.workspace.json'))).toBe(true);
 });
 
 it('links a project without writing instructions when disabled', async () => {

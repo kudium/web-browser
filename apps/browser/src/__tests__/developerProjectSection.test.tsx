@@ -41,7 +41,7 @@ beforeAll(() => {
 beforeEach(() => {
   jest.clearAllMocks();
   project.mockReset();
-  Object.assign(window, { electron: { siteDeveloper: { project, editors } } });
+  Object.assign(window, { electron: { siteDeveloper: { project, editors, files: jest.fn().mockResolvedValue({ path: '', entries: [] }) } } });
 });
 it('links on demand, opens the project terminal and displays actionable errors', async () => {
   project.mockResolvedValue(null);
@@ -50,9 +50,9 @@ it('links on demand, opens the project terminal and displays actionable errors',
       <DeveloperProjectSection sourceId="one" active />
     </Theme>
   );
-  await screen.findByRole('button', { name: 'Link folder' });
+  await screen.findByRole('button', { name: 'Link Folder' });
   project.mockResolvedValue(linked);
-  fireEvent.click(screen.getByRole('button', { name: 'Link folder' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Link Folder' }));
   await screen.findByRole('button', { name: 'Terminal' });
   expect(project).toHaveBeenCalledWith('one', 'link', undefined);
   project.mockRejectedValueOnce(
@@ -93,7 +93,7 @@ it('does not reveal a previous group when a request finishes after switching gro
       <DeveloperProjectSection sourceId="two" active />
     </Theme>
   );
-  await screen.findByRole('button', { name: 'Link folder' });
+  await screen.findByRole('button', { name: 'Link Folder' });
   await act(async () => finish(linked));
   await waitFor(() => expect(screen.queryByText('Example')).toBeNull());
 });
@@ -201,9 +201,9 @@ it('links a project directly from group settings and displays the resulting fold
       </form>
     </Theme>
   );
-  await screen.findByRole('button', { name: 'Link folder' });
+  await screen.findByRole('button', { name: 'Link Folder' });
   project.mockResolvedValue(linked);
-  fireEvent.click(screen.getByRole('button', { name: 'Link folder' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Link Folder' }));
   await screen.findByText('Example');
   expect(project).toHaveBeenCalledWith('one', 'link', undefined);
   expect(submitted).not.toHaveBeenCalled();
@@ -223,11 +223,11 @@ it('picks up a project linked elsewhere without waiting for window focus', async
       <DeveloperProjectSection sourceId="one" active />
     </Theme>
   );
-  await screen.findByRole('button', { name: 'Link folder' });
+  await screen.findByRole('button', { name: 'Link Folder' });
   project.mockResolvedValue(linked);
   act(() => changed());
   await screen.findByText('Example');
-  expect(screen.queryByRole('button', { name: 'Link folder' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Link Folder' })).toBeNull();
 });
 
 it('isolates a file-view crash, retries it and lets the user return to pages', async () => {
@@ -269,4 +269,20 @@ it('isolates a file-view crash, retries it and lets the user return to pages', a
     failedView.mockRestore();
     logged.mockRestore();
   }
+});
+
+it('keeps project warnings compact and offers the existing folder review action', async () => {
+  const notice = 'The configuration changed outside Kudium. Link the folder again to review it.';
+  project.mockResolvedValue({ ...linked, instructionsNotice: notice });
+  render(<Theme><DeveloperProjectSection sourceId="one" active view="files" /></Theme>);
+  const warning = await screen.findByRole('button', { name: 'Project needs attention' });
+  expect(screen.queryByText(notice)).toBeNull();
+  expect(screen.queryByRole('navigation', { name: 'Project directory' })).toBeNull();
+  const calls = project.mock.calls.length;
+  fireEvent.click(warning);
+  await screen.findByText(notice);
+  expect(project).toHaveBeenCalledTimes(calls);
+  fireEvent.click(screen.getByRole('button', { name: 'Review folder…' }));
+  await waitFor(() => expect(project).toHaveBeenLastCalledWith('one', 'link', undefined));
+  expect(screen.getByRole('region', { name: 'Project files' })).toBeTruthy();
 });

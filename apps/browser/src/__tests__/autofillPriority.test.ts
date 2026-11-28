@@ -79,6 +79,7 @@ it.each([
         : ['multiple websites', 'selected website'].includes(mode)
           ? [global, website, second]
           : [global, website];
+    const callbacks: Record<string, Function> = {};
     const bridge = {
       invoke: jest.fn(async (channel: string, input?: any) => {
         if (channel.endsWith('enabled')) return true;
@@ -93,7 +94,7 @@ it.each([
           return `fixture-${input.id}-secret`;
         return null;
       }),
-      on: jest.fn(),
+      on: jest.fn((channel, callback) => { callbacks[channel] = callback; }),
     };
     document.body.innerHTML =
       '<form><input type="email" autocomplete="email"><input type="password" autocomplete="current-password"><button type="submit">Sign in</button></form>';
@@ -157,6 +158,9 @@ it.each([
         expect(submit).not.toHaveBeenCalled();
         return;
       }
+      // Switch to manual controls after verifying automatic suggestions.
+      callbacks['personal-data-autofill-enabled'](null, true, false);
+      await flush();
       const trigger = shadow.querySelector(
         mode === 'picker' ? '.trigger' : '.quick-fill',
       )!;

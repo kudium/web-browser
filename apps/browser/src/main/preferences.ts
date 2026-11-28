@@ -1,3 +1,4 @@
+import { validAutofillPopupPlacement } from '../browser/autofillPopupPlacement';
 import {
   app,
   BrowserWindow,
@@ -162,6 +163,17 @@ export function validatePreferences(
         value,
         process.platform === 'darwin'
       );
+      return;
+    }
+    if (key === 'personalDataAutofillPopupPositions') {
+      if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 200) throw new Error('Invalid autofill popup positions');
+      const positions: BrowserPreferences['personalDataAutofillPopupPositions'] = {};
+      for (const [origin, point] of Object.entries(value)) {
+        const url = new URL(origin);
+        if (url.protocol !== 'https:' || url.origin !== origin || !validAutofillPopupPlacement(point)) throw new Error('Invalid autofill popup position');
+        positions[origin] = { side: point.side, x: point.x, y: point.y };
+      }
+      validated.personalDataAutofillPopupPositions = positions;
       return;
     }
     if (key === 'personalDataAutofillPositions') {

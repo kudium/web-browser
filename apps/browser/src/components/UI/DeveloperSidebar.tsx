@@ -1,7 +1,9 @@
+import { readDeveloperViews, setDeveloperView, watchDeveloperViews } from '../../browser/developerViews';
 import { useAssistantPanelVisible } from './AssistantPanelContext';
 /* Optional interaction callbacks use parameter defaults. */
 /* eslint-disable react/require-default-props */
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -89,33 +91,10 @@ export function DeveloperSidebar({
   );
   const selectedGroup = focused ? aiGroupId(focused) : selected;
   const source = options.find((option) => option.id === selectedGroup)?.group;
-  const [views, setViews] = useState<Record<string, 'pages' | 'files'>>(() => {
-    try {
-      const saved = JSON.parse(
-        localStorage.getItem('kudiumbrowser.developer.views') || '{}'
-      );
-      return Object.fromEntries(
-        Object.entries(saved).filter(
-          ([, value]) => value === 'pages' || value === 'files'
-        )
-      ) as Record<string, 'pages' | 'files'>;
-    } catch {
-      return {};
-    }
-  });
+  const [views, setViews] = useState(readDeveloperViews);
+  useEffect(() => watchDeveloperViews(setViews), []);
   const view = views[selectedGroup] || 'pages';
-  const selectView = (next: 'pages' | 'files') => {
-    const updated = { ...views, [selectedGroup]: next };
-    setViews(updated);
-    try {
-      localStorage.setItem(
-        'kudiumbrowser.developer.views',
-        JSON.stringify(updated)
-      );
-    } catch {
-      /* Keep the view usable if storage is unavailable. */
-    }
-  };
+  const selectView = useCallback((next: 'pages' | 'files') => setDeveloperView(selectedGroup, next), [selectedGroup]);
   const pageSourceId = source?.id || '';
   const pageSnapshot = useSyncExternalStore(
     useMemo(
@@ -198,7 +177,6 @@ export function DeveloperSidebar({
       return;
     }
     const sourceId = source.id;
-    const group = selectedGroup;
     folderDropBusy.current = true;
     setLinkingFolder(true);
     setShortcutError('');
@@ -207,15 +185,15 @@ export function DeveloperSidebar({
         sourceId,
         files[0]
       );
+      if (!project) return;
       developerProjectStore.set(sourceId, project);
       if (
         dropTarget.current.sourceId === sourceId &&
         dropTarget.current.active &&
         project?.available
       ) {
+        hideTerminal();
         selectView('files');
-        setTerminalReset((value) => value + 1);
-        setTerminalRequest((value) => ({ group, count: value.count + 1 }));
       }
     } catch (reason) {
       if (dropTarget.current.sourceId === sourceId && dropTarget.current.active)
@@ -245,7 +223,7 @@ export function DeveloperSidebar({
       group: selectedGroup,
       count: value.count + 1,
     }));
-  }, [active, source, selectedGroup, openTerminalRequest]);
+  }, [active, source, selectedGroup, openTerminalRequest, selectView]);
 
   const hideTerminal = () => {
     window.electron.siteDeveloper
@@ -302,6 +280,7 @@ export function DeveloperSidebar({
       id="ai-developer-panel"
       aria-label="Developer"
       onDragOverCapture={(event) => {
+        if ((event.target as Element).closest('.developer-terminal')) { setFolderDragging(false); return; }
         if (!Array.from(event.dataTransfer.types).includes('Files')) return;
         event.preventDefault();
         event.stopPropagation();
@@ -313,6 +292,7 @@ export function DeveloperSidebar({
           setFolderDragging(false);
       }}
       onDropCapture={(event) => {
+        if ((event.target as Element).closest('.developer-terminal')) { setFolderDragging(false); return; }
         if (!event.dataTransfer.files.length) return;
         event.preventDefault();
         event.stopPropagation();
@@ -323,7 +303,7 @@ export function DeveloperSidebar({
       {folderDragging && (
         <div className="developer-folder-drop-hint">
           <FolderOpen size={22} aria-hidden="true" />
-          <span>Link folder and open terminal</span>
+          <span>Link project folder</span>
         </div>
       )}
       <AssistantPageHeader className="developer-sidebar-toolbar">

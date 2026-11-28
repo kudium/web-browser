@@ -7,19 +7,23 @@ const assert = require('assert');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'kudium-autofill-csp-'));
 app.setPath('userData', temporary);
 const source = require('esbuild').buildSync({
-  stdin: { contents: "export { installPersonalDataAutofill } from './src/browser/personalDataAutofill';", resolveDir: process.cwd(), loader: 'ts' },
+  stdin: { contents: "export { installPersonalDataAutofill } from './src/browser/personalDataAutofill'; export { createAutofillPopupPlacement } from './src/browser/autofillPopupPlacement';", resolveDir: process.cwd(), loader: 'ts' },
   bundle: true, format: 'iife', globalName: 'autofill', write: false,
 }).outputFiles[0].text;
+// Match the production preload's serialized functions, with explicit dependencies.
+const context = {};
+require('vm').runInNewContext(source, context);
 const preload = path.join(temporary, 'preload.cjs');
 fs.writeFileSync(preload, `
 const { contextBridge } = require('electron');
-${source}
+const installAutofill = (${context.autofill.installPersonalDataAutofill.toString()});
+const popupGeometry = (${context.autofill.createAutofillPopupPlacement.toString()})();
 let shadow;
 const attach = HTMLElement.prototype.attachShadow;
 HTMLElement.prototype.attachShadow = function (options) { shadow = attach.call(this, options); return shadow; };
 contextBridge.exposeInMainWorld('fixture', {
   start: async () => {
-    autofill.installPersonalDataAutofill({ on() {}, invoke: async channel => channel === 'personal-data-autofill-enabled' ? true : null }, () => 1);
+    installAutofill({ on() {}, invoke: async channel => channel === 'personal-data-autofill-focus' ? false : channel === 'personal-data-autofill-enabled' ? true : null }, () => 1, popupGeometry);
     await new Promise(resolve => setTimeout(resolve, 20));
     const input = document.querySelector('input');
     input.focus();

@@ -1,9 +1,12 @@
-Email identities, Today todos, and better AI workflows.
+Flexible panels, smoother browser controls, and portable project workspaces.
 
-- Connect multiple inboxes and forwarding-alias accounts, or associate a signed-in browser inbox with a tab group. The assistant can reuse or create aliases, enter them in requested sign-up forms, and read matching verification messages from a configured inbox.
-- Create and manage todo lists in shared or group storage. Choose task dates, reorder Today, and work through the sidebar task queue. The assistant can add requested todos to Today through the existing encrypted task storage without enabling AI access to other tasks.
-- Translate supported languages using downloaded local language packs, with original-page restoration and website translation preferences.
-- Improve AI tool discovery, bounded page observations, reusable browser flows, local model controls, and external connector support.
-- Preserve panel and editor state while refining context menus, autofill, tab/group moves, and compact single-line hovered-link previews.
+- Open Chat, Developer, Email, Activity, Notes and native extension or hook panels independently, in opening order. Resize neighboring panels, dock each one right or below the webpage, arrange columns, balance widths and restore layouts after restart.
+- Keep narrow panel headers readable with a More menu for secondary actions. Fix inherited resize widths and overlapping header controls while preserving panel content and native webpage bounds.
+- Reveal the hidden sidebar from the slim left frame, improve popup presentation over native pages, and retain drafts through resizing, docking and overlays.
+- Show compact folders and collections as icon stacks with shared previews. Refine alignment, icon sizes and suggestion rows without expanding the compact rail.
+- Hide redundant autofill triggers when focus suggestions are enabled, remember input-relative popup placement, and keep dragged suggestions clear of the input. Existing authentication and field-scope checks remain in place.
+- Improve Developer project linking, workspace import and restoration, saved terminal tabs and working directories, and safe path insertion from file drops. Saved commands are not replayed automatically.
+- Simplify account-based cloud relay pairing and quick-tunnel setup with clearer connection states and protected credentials.
+- Improve space and group switching, retained native view geometry, and cancellation of stale browser work.
 
 Versions 1.0.18 and 1.0.19 require one manual installation of 1.0.20 or later to restore update checks.

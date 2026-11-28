@@ -36,6 +36,8 @@ export function PageCaptureDialog({
   const close = useRef(onClose);
   close.current = onClose;
   const dragStart = useRef<{ x: number; y: number } | undefined>(undefined);
+  const selectionFrame = useRef(0);
+  const pendingSelection = useRef<{ x: number; y: number } | undefined>(undefined);
   const image = useRef<HTMLImageElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
@@ -80,6 +82,10 @@ export function PageCaptureDialog({
     load();
     return () => {
       mounted.current = false;
+      cancelAnimationFrame(selectionFrame.current);
+      selectionFrame.current = 0;
+      pendingSelection.current = undefined;
+      dragStart.current = undefined;
       const id = currentCapture.current?.captureId;
       if (id)
         browser.capture({ action: 'release', captureId: id }).catch(() => {});
@@ -91,6 +97,27 @@ export function PageCaptureDialog({
       x: Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width)),
       y: Math.max(0, Math.min(1, (clientY - bounds.top) / bounds.height)),
     };
+  };
+  const flushSelection = () => {
+    cancelAnimationFrame(selectionFrame.current);
+    selectionFrame.current = 0;
+    const pending = pendingSelection.current;
+    const start = dragStart.current;
+    pendingSelection.current = undefined;
+    if (!pending || !start || !image.current || !mounted.current) return;
+    const end = point(pending.x, pending.y);
+    setSelection({
+      x: Math.min(start.x, end.x),
+      y: Math.min(start.y, end.y),
+      width: Math.abs(end.x - start.x),
+      height: Math.abs(end.y - start.y),
+    });
+  };
+  const moveSelection = (clientX: number, clientY: number) => {
+    if (!dragStart.current) return;
+    pendingSelection.current = { x: clientX, y: clientY };
+    if (!selectionFrame.current)
+      selectionFrame.current = requestAnimationFrame(flushSelection);
   };
   const rectangle: CaptureRectangle | undefined =
     capture && selection
@@ -222,21 +249,18 @@ export function PageCaptureDialog({
                 setSelection(undefined);
                 setCopied(false);
               }}
-              onPointerMove={(event) => {
-                if (!dragStart.current) return;
-                const end = point(event.clientX, event.clientY);
-                const start = dragStart.current;
-                setSelection({
-                  x: Math.min(start.x, end.x),
-                  y: Math.min(start.y, end.y),
-                  width: Math.abs(end.x - start.x),
-                  height: Math.abs(end.y - start.y),
-                });
-              }}
-              onPointerUp={() => {
+              onPointerMove={(event) =>
+                moveSelection(event.clientX, event.clientY)
+              }
+              onPointerUp={(event) => {
+                moveSelection(event.clientX, event.clientY);
+                flushSelection();
                 dragStart.current = undefined;
               }}
               onPointerCancel={() => {
+                cancelAnimationFrame(selectionFrame.current);
+                selectionFrame.current = 0;
+                pendingSelection.current = undefined;
                 dragStart.current = undefined;
                 setSelection(undefined);
               }}

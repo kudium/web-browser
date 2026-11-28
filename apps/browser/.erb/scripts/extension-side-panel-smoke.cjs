@@ -303,7 +303,7 @@ app
         width: 300,
         height: 500,
       });
-      let entry = host.entries.get(host.state().activeId);
+      let entry = host.laneFor(host.state().activeId).entries.get(host.state().activeId);
       for (let i = 0; i < 100 && entry.view.webContents.isLoading(); i++)
         await pause(20);
       assert.match(
@@ -350,7 +350,7 @@ app
           `chrome.tabs.query({currentWindow:true}).then(tabs=>tabs.every(tab=>tab.windowId===${chrome.id} && tab.id!==${originalView.webContents.id}))`,
         ),
       );
-      let floating = host.floating.window;
+      let floating = host.laneFor(host.state().activeId).floating.window;
       for (let i = 0; i < 100 && floating.webContents.isLoading(); i++)
         await pause(20);
       assert(floating.contentView.children.includes(originalView));
@@ -381,7 +381,7 @@ app
         height: 500,
       });
       host.undock();
-      floating = host.floating.window;
+      floating = host.laneFor(host.state().activeId).floating.window;
       floating.close();
       assert.equal(
         host.state().floating,
@@ -450,7 +450,7 @@ app
         width: 300,
         height: 500,
       });
-      entry = host.entries.get(host.state().activeId);
+      entry = host.laneFor(host.state().activeId).entries.get(host.state().activeId);
       for (let i = 0; i < 100 && entry.view.webContents.isLoading(); i++)
         await pause(20);
       assert.equal(
@@ -488,7 +488,7 @@ app
       }
       assert.equal(menuState.menuClick.info.wasChecked,true);assert.equal(menuState.menuClick.info.checked,false);
       host.undock();
-      const profileWindow = host.floating.window;
+      const profileWindow = host.laneFor(host.state().activeId).floating.window;
       host.setSession(
         session.fromPartition(`persist:other-side-panel-${type}`),
       );

@@ -672,6 +672,10 @@ const electronHandler = {
         id
       );
     },
+    droppedFilePaths(files: File[]): string[] {
+      if (files.length > 128) throw new Error('Drop at most 128 paths at a time.');
+      return files.map((file) => webUtils.getPathForFile(file)).filter(Boolean);
+    },
     droppedProjectFile(file: File): Promise<{ sourceId: string; path: string } | null> {
       const filePath = webUtils.getPathForFile(file);
       if (!filePath) return Promise.resolve(null);
@@ -965,6 +969,25 @@ const electronHandler = {
       ipcRenderer.on('browser-preferences-changed', listener);
       return () =>
         ipcRenderer.removeListener('browser-preferences-changed', listener);
+    },
+    onNativeOverlayReady(callback: (event: import('../browser/contracts').NativeOverlayReady) => void) {
+      const listener = (_event: IpcRendererEvent, value: import('../browser/contracts').NativeOverlayReady) => {
+        if (value && (value.surface === 'page' || value.surface === 'panel') && Number.isSafeInteger(value.token) && value.token >= 0) callback(value);
+      };
+      ipcRenderer.on('browser-native-overlay-ready', listener);
+      return () => ipcRenderer.removeListener('browser-native-overlay-ready', listener);
+    },
+    onSidebarHoverEdge(callback: (inside: boolean) => void) {
+      const listener = (_event: IpcRendererEvent, inside: boolean) => { if (typeof inside === 'boolean') callback(inside); };
+      ipcRenderer.on('browser-sidebar-hover-edge', listener);
+      return () => ipcRenderer.removeListener('browser-sidebar-hover-edge', listener);
+    },
+    onSidebarOverlayReady(callback: (token: number) => void) {
+      const listener = (_event: IpcRendererEvent, token: number) => {
+        if (Number.isSafeInteger(token) && token >= 0) callback(token);
+      };
+      ipcRenderer.on('browser-sidebar-overlay-ready', listener);
+      return () => ipcRenderer.removeListener('browser-sidebar-overlay-ready', listener);
     },
     onSnapshots(callback: (snapshots: BrowserSnapshot[]) => void) {
       const listener = (

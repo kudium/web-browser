@@ -1,3 +1,4 @@
+import type { MCPRelayStatus } from '../../../browser/mcpRelay';
 import type { MCPConnection } from '../../../browser/mcp';
 import { normalizeMCPTunnelURL, mcpTunnelConnection } from '../../../browser/mcpTunnel';
 /* eslint jsx-a11y/label-has-associated-control: ["error", { "assert": "htmlFor" }] */
@@ -14,13 +15,18 @@ const message = (reason: unknown) =>
     ''
   );
 
-export function ExternalAISettings() {
+export function ExternalAISettings({ onOpenAccount }: { onOpenAccount?: () => void } = {}) {
   const [status, setStatus] = useState<MCPStatus>();
   const [port, setPort] = useState(43187);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [format, setFormat] = useState<'http' | 'https' | 'stdio' | 'tunnel'>('http');
+  const [format, setFormat] = useState<'http' | 'https' | 'stdio' | 'tunnel' | 'quick'>('http');
+  const [quickTunnel, setQuickTunnel] = useState<MCPRelayStatus['quickTunnel']>();
+  useEffect(() => {
+    if (quickTunnel?.ready && quickTunnel.url) setFormat('quick');
+    else setFormat((current) => current === 'quick' ? 'http' : current);
+  }, [quickTunnel?.ready, quickTunnel?.url]);
   const [tunnelDraft, setTunnelDraft] = useState<string>();
   const [tunnelError, setTunnelError] = useState('');
   const [configuration, setConfiguration] = useState('');
@@ -98,7 +104,10 @@ export function ExternalAISettings() {
         .then((value) => {
           if (alive) {
             let shown = value;
-            if (format === 'tunnel') shown = mcpTunnelConnection(value as MCPConnection, status.tunnelUrl || '');
+            if (format === 'quick') {
+              if (!quickTunnel?.ready || !quickTunnel.url) throw new Error('Start Quick tunnel and wait for it to connect.');
+              shown = mcpTunnelConnection(value as MCPConnection, `${quickTunnel.url}/mcp`);
+            } else if (format === 'tunnel') shown = mcpTunnelConnection(value as MCPConnection, status.tunnelUrl || '');
             else if (format === 'https' && status.httpsUrl) {
               const connection = value as MCPConnection;
               shown = { mcpServers: { kudiumbrowser: { ...connection.mcpServers.kudiumbrowser, url: status.httpsUrl } } };
@@ -114,7 +123,7 @@ export function ExternalAISettings() {
     return () => {
       alive = false;
     };
-  }, [status?.running, status?.url, status?.tunnelUrl, status?.httpsUrl, format, revision, manualOpen]);
+  }, [status?.running, status?.url, status?.tunnelUrl, status?.httpsUrl, format, revision, manualOpen, quickTunnel?.url, quickTunnel?.ready]);
   const update = async (enabled: boolean, rotate = false) => {
     setBusy(true);
     setError('');
@@ -129,9 +138,11 @@ export function ExternalAISettings() {
       setStatus(next);
       setPort(next.port);
       setRevision((value) => value + 1);
+      return next.running && next.enabled;
     } catch (reason) {
       setError(message(reason));
       setRevision((value) => value + 1);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -376,8 +387,9 @@ export function ExternalAISettings() {
               </Button>
             </div>
           </div>
-          <MCPRelaySettings externalEnabled={!!status?.enabled} />
+          <MCPRelaySettings externalEnabled={!!status?.enabled && !!status?.running} onEnableExternal={() => update(true)} onOpenAccount={onOpenAccount} onQuickTunnelChange={setQuickTunnel} />
           {status?.running ? (
+            <>
             <div className="ai-connection-config">
               <div className="ai-config-toolbar">
                 <label htmlFor="ai-mcp-format">Client configuration</label>
@@ -385,15 +397,16 @@ export function ExternalAISettings() {
                   id="ai-mcp-format"
                   value={format}
                   onChange={(event) =>
-                    setFormat(event.target.value as 'http' | 'https' | 'stdio' | 'tunnel')
+                    setFormat(event.target.value as 'http' | 'https' | 'stdio' | 'tunnel' | 'quick')
                   }
                 >
                   <option value="http">HTTP</option>
+                  {quickTunnel?.ready && quickTunnel.url && <option value="quick">Quick tunnel HTTPS</option>}
                   {status?.httpsUrl && <option value="https">Local HTTPS</option>}
                   <option value="tunnel">Custom HTTPS / tunnel</option>
                   <option value="stdio">stdio · Node 22+</option>
                 </select>
-                <Button disabled={busy || !configuration} onClick={copy}>
+                <Button variant="soft" disabled={busy || !configuration} onClick={copy}>
                   Copy
                 </Button>
               </div>
@@ -424,7 +437,7 @@ export function ExternalAISettings() {
               )}
               <div className="ai-config-address">
                 <span>Endpoint</span>
-                <code>{format === 'tunnel' ? status.tunnelUrl || 'No tunnel endpoint configured' : format === 'https' ? status.httpsUrl || status.url : status.url}</code>
+                <code>{format === 'quick' ? `${quickTunnel?.url}/mcp` : format === 'tunnel' ? status.tunnelUrl || 'No tunnel endpoint configured' : format === 'https' ? status.httpsUrl || status.url : status.url}</code>
               </div>
               <textarea
                 aria-label="MCP configuration"
@@ -457,12 +470,22 @@ export function ExternalAISettings() {
                   Reset token
                 </Button>
               </div>
-              <div className="ai-clients">
-                <strong>Connected clients</strong>
-                <small>
+              </div>
+              <div className="preference-card ai-clients">
+                <div className="ai-clients-header">
+                  <strong>Connected clients</strong>
+                  <Button size="1" variant="soft" disabled={busy}
+                    onClick={() => window.electron.ai.mcpExportAudit()
+                      .then((result) => {
+                        if (result.exported) setNotice(`Exported ${result.runs ?? 0} runs to ${result.path}.`);
+                        return result;
+                      }).catch((reason) => setError(message(reason)))}
+                  >Export audit log</Button>
+                </div>
+                <p className="ai-model-help">
                   Each paired client has its own token and name on receipts. A
                   ceiling caps what it may do even in a Full access group.
-                </small>
+                </p>
                 {status.clients?.length ? (
                   <ul aria-label="Connected clients">
                     {status.clients.map((client) => (
@@ -513,27 +536,11 @@ export function ExternalAISettings() {
                     ))}
                   </ul>
                 ) : (
-                  <small>No client has paired yet.</small>
+                  <p className="ai-clients-empty">No client has paired yet.</p>
                 )}
-                <Button
-                  size="1"
-                  variant="surface"
-                  disabled={busy}
-                  onClick={() =>
-                    window.electron.ai
-                      .mcpExportAudit()
-                      .then((result) => {
-                        if (result.exported)
-                          setNotice(`Exported ${result.runs ?? 0} runs to ${result.path}.`);
-                        return result;
-                      })
-                      .catch((reason) => setError(message(reason)))
-                  }
-                >
-                  Export audit log
-                </Button>
+
               </div>
-            </div>
+            </>
           ) : (
             <div className="ai-connection-off">
               <p>

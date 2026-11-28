@@ -1,3 +1,4 @@
+import { useSidebarPages } from '../utils/hooks/useSidebarPages';
 import { Theme } from '@radix-ui/themes';
 import '@testing-library/jest-dom';
 import {
@@ -1054,4 +1055,36 @@ it('opens the chat from a popup group request and focuses its scoped composer', 
   expect(ai.run).not.toHaveBeenCalled();
   view.unmount();
   localStorage.removeItem('kudiumbrowser-ai-page-pane');
+});
+
+it('keeps actual Developer, Email and Chat pages open together and closes only Email', async () => {
+  mockAI();
+  localStorage.clear();
+  sessionStorage.clear();
+  function Workspace() {
+    const sidebar = useSidebarPages(false, 'assistant');
+    return <Theme>
+      <button onClick={() => sidebar.openPage('developer')}>Open Developer page</button>
+      <button onClick={() => sidebar.openPage('email')}>Open Email page</button>
+      <button onClick={() => sidebar.openPage('assistant')}>Open Chat page</button>
+      <AISidebar openedPages={sidebar.pages} sidebarPane="assistant" onSidebarPaneChange={sidebar.openPage} onSidebarClose={sidebar.closePage} />
+    </Theme>;
+  }
+  const view = render(<Workspace />);
+  fireEvent.click(screen.getByText('Open Developer page'));
+  fireEvent.click(screen.getByText('Open Email page'));
+  fireEvent.click(screen.getByText('Open Chat page'));
+  const input = await screen.findByRole('textbox', { name: 'Task for AI' });
+  fireEvent.change(input, { target: { value: 'Keep my chat draft' } });
+  const order = () => [...view.container.querySelectorAll<HTMLElement>('.sidebar-page-column:not([hidden])')].map(column => column.dataset.sidebarPage);
+  expect(order()).toEqual(['developer', 'email', 'assistant']);
+  expect(screen.getByRole('button', { name: 'Close Developer' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Close Chat' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Close Email' }));
+  expect(order()).toEqual(['developer', 'assistant']);
+  expect(screen.getByRole('textbox', { name: 'Task for AI' })).toBe(input);
+  expect(input).toHaveValue('Keep my chat draft');
+  fireEvent.click(screen.getByText('Open Email page'));
+  expect(order()).toEqual(['developer', 'assistant', 'email']);
+  expect(input).toHaveValue('Keep my chat draft');
 });

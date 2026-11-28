@@ -7,7 +7,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { Button, DropdownMenu, IconButton } from '@radix-ui/themes';
+import { Button, DropdownMenu, IconButton, Popover } from '@radix-ui/themes';
 import {
   Folder,
   FolderPlus,
@@ -19,9 +19,10 @@ import {
   ArrowUpRight,
   MoreHorizontal,
   ChevronDown,
+  AlertTriangle,
 } from 'lucide-react';
 import { developerProjectStore } from '../../browser/developerProjectStore';
-import { PanelDropdownContent } from './PanelDialog';
+import { PanelDropdownContent, PanelPopoverContent } from './PanelDialog';
 import type {
   ProjectAction,
   ProjectEditors,
@@ -36,6 +37,7 @@ export function DeveloperProjectSection({
   active,
   onOpenTerminal = () => {},
   onProjectChange = () => {},
+  onProjectLinked = () => {},
   view,
   onViewChange,
   settingsOnly = false,
@@ -45,6 +47,7 @@ export function DeveloperProjectSection({
   active: boolean;
   onOpenTerminal?: () => void;
   onProjectChange?: () => void;
+  onProjectLinked?: () => void;
   view?: 'pages' | 'files';
   onViewChange?: (next: 'pages' | 'files') => void;
   settingsOnly?: boolean;
@@ -130,7 +133,15 @@ export function DeveloperProjectSection({
       );
       if (request === revision.current) {
         developerProjectStore.set(sourceId, value);
-        if (action === 'link' || action === 'unlink') {
+        if (
+          action === 'link' &&
+          value?.available &&
+          value.path !== project?.path
+        ) {
+          onProjectChange();
+          setFilesOpen(true);
+          onProjectLinked();
+        } else if (action === 'unlink') {
           setFilesOpen(false);
           onProjectChange();
         }
@@ -145,6 +156,120 @@ export function DeveloperProjectSection({
       }
     }
   };
+  const projectControls = project && (
+    <div className="developer-project-management">
+      {(project.instructionsNotice || !project.available) && (
+        <Popover.Root>
+          <Popover.Trigger>
+            <IconButton
+              type="button"
+              variant="ghost"
+              color="amber"
+              size="1"
+              className="developer-project-warning"
+              aria-label="Project needs attention"
+              title="Project needs attention"
+            >
+              <AlertTriangle size={15} aria-hidden="true" />
+            </IconButton>
+          </Popover.Trigger>
+          <PanelPopoverContent
+            size="1"
+            align="end"
+            className="developer-project-status"
+          >
+            <strong>Project needs attention</strong>
+            <p role="status">
+              {project.instructionsNotice ||
+                'The linked folder is unavailable. Choose its new location to reconnect it.'}
+            </p>
+            <Popover.Close>
+              <Button
+                type="button"
+                size="1"
+                variant="soft"
+                color="gray"
+                disabled={busy}
+                onClick={() => perform('link')}
+              >
+                {project.available ? 'Review folder…' : 'Choose folder…'}
+              </Button>
+            </Popover.Close>
+          </PanelPopoverContent>
+        </Popover.Root>
+      )}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>
+          <IconButton
+            variant="ghost"
+            color="gray"
+            size="1"
+            disabled={busy}
+            aria-label="Project options"
+            title={`${project.name} · ${project.path}`}
+          >
+            <MoreHorizontal size={16} />
+          </IconButton>
+        </DropdownMenu.Trigger>
+        <PanelDropdownContent size="1">
+          <DropdownMenu.Item
+            disabled={busy || !project.available}
+            onSelect={() => perform('folder')}
+          >
+            Show folder
+          </DropdownMenu.Item>
+          <DropdownMenu.Item disabled={busy} onSelect={() => perform('link')}>
+            Change folder…
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item disabled={busy} onSelect={() => perform('unlink')}>
+            Unlink project
+          </DropdownMenu.Item>
+        </PanelDropdownContent>
+      </DropdownMenu.Root>
+    </div>
+  );
+  const projectHeading = project && (
+    <div className="developer-project-heading">
+      <Folder size={18} aria-hidden="true" />
+      <div className="developer-project-copy">
+        <strong title={project.path}>{project.name}</strong>
+        {settingsOnly && (
+          <nav
+            className="developer-project-breadcrumbs"
+            aria-label="Project directory"
+            title={project.path}
+          >
+            {(
+              project.breadcrumbs || [
+                { name: project.path, path: project.path },
+              ]
+            ).map((crumb, index) => (
+              <span className="developer-project-crumb" key={crumb.path}>
+                {index > 0 && (
+                  <span
+                    className="developer-project-crumb-divider"
+                    aria-hidden="true"
+                  >
+                    ›
+                  </span>
+                )}
+                <button
+                  type="button"
+                  disabled={busy || !project.available}
+                  title={`Open ${crumb.path}`}
+                  onClick={() => perform('folder', undefined, crumb.path)}
+                >
+                  {crumb.name}
+                </button>
+              </span>
+            ))}
+          </nav>
+        )}
+      </div>
+      {settingsOnly && projectControls}
+    </div>
+  );
   return (
     <section
       className={`developer-project${
@@ -174,247 +299,179 @@ export function DeveloperProjectSection({
       )}
       {!loading && project && (
         <>
-          <div className="developer-project-heading">
-            <Folder size={18} aria-hidden="true" />
-            <div className="developer-project-copy">
-              <strong>{project.name}</strong>
-              <nav
-                className="developer-project-breadcrumbs"
-                aria-label="Project directory"
-                title={project.path}
-              >
-                {(
-                  project.breadcrumbs || [
-                    { name: project.path, path: project.path },
-                  ]
-                ).map((crumb, index) => (
-                  <span className="developer-project-crumb" key={crumb.path}>
-                    {index > 0 && (
-                      <span
-                        className="developer-project-crumb-divider"
-                        aria-hidden="true"
-                      >
-                        ›
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      disabled={busy || !project.available}
-                      title={`Open ${crumb.path}`}
-                      onClick={() => perform('folder', undefined, crumb.path)}
-                    >
-                      {crumb.name}
-                    </button>
-                  </span>
-                ))}
-              </nav>
-            </div>
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger>
-                <IconButton
-                  variant="ghost"
-                  color="gray"
-                  size="1"
-                  disabled={busy}
-                  aria-label="Project options"
-                  title="Project options"
+          <div
+            className={settingsOnly ? undefined : 'developer-project-toolbar'}
+          >
+            {settingsOnly && projectHeading}
+            {!settingsOnly && (
+              <div className="developer-project-actions">
+                <div
+                  className={
+                    onViewChange ? 'developer-project-views' : undefined
+                  }
+                  role={onViewChange ? 'group' : undefined}
+                  aria-label={onViewChange ? 'Developer view' : undefined}
                 >
-                  <MoreHorizontal size={16} />
-                </IconButton>
-              </DropdownMenu.Trigger>
-              <PanelDropdownContent size="1">
-                <DropdownMenu.Item
-                  disabled={busy || !project.available}
-                  onSelect={() => perform('folder')}
-                >
-                  Show folder
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  disabled={busy}
-                  onSelect={() => perform('link')}
-                >
-                  Change folder…
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator />
-                <DropdownMenu.Item
-                  disabled={busy}
-                  onSelect={() => perform('unlink')}
-                >
-                  Unlink project
-                </DropdownMenu.Item>
-              </PanelDropdownContent>
-            </DropdownMenu.Root>
-          </div>
-          {project.instructionsNotice && (
-            <p role="status" className="developer-project-notice">
-              {project.instructionsNotice}
-            </p>
-          )}
-          {!project.available && (
-            <p className="developer-project-notice">
-              Folder unavailable. Choose another in Project options.
-            </p>
-          )}
-          {!settingsOnly && (
-            <div className="developer-project-actions">
-              <div
-                className={onViewChange ? 'developer-project-views' : undefined}
-                role={onViewChange ? 'group' : undefined}
-                aria-label={onViewChange ? 'Developer view' : undefined}
-              >
-                {onViewChange && (
-                  <Button
-                    type="button"
-                    size="1"
-                    variant="ghost"
-                    ref={pagesButton}
-                    color="gray"
-                    aria-pressed={!filesOpen}
-                    aria-label="Pages"
-                    title="Pages"
-                    onKeyDown={navigateViews}
-                    onClick={() => setFilesOpen(false)}
-                  >
-                    <PanelTop size={16} />
-                    <span className="developer-project-view-label">Pages</span>
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  size="1"
-                  variant="ghost"
-                  color="gray"
-                  disabled={busy || !project.available}
-                  ref={filesButton}
-                  aria-expanded={filesOpen}
-                  onKeyDown={navigateViews}
-                  aria-pressed={view === undefined ? undefined : filesOpen}
-                  aria-controls="developer-project-files"
-                  aria-label="Files"
-                  title="Files"
-                  onClick={() => setFilesOpen(onViewChange ? true : !filesOpen)}
-                >
-                  <Files size={16} />
-                  <span className="developer-project-view-label">Files</span>
-                </Button>
-              </div>
-              <div className="developer-project-launchers">
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger>
+                  {onViewChange && (
                     <Button
                       type="button"
                       size="1"
                       variant="ghost"
+                      ref={pagesButton}
                       color="gray"
-                      disabled={busy || !project.available}
-                      aria-label="Terminal"
-                      title="Terminal"
+                      aria-pressed={!filesOpen}
+                      aria-label="Pages"
+                      title="Pages"
+                      onKeyDown={navigateViews}
+                      onClick={() => setFilesOpen(false)}
                     >
-                      <Terminal size={14} />
-                      <span className="developer-project-action-label">
-                        Terminal
+                      <PanelTop size={16} />
+                      <span className="developer-project-view-label">
+                        Pages
                       </span>
-                      <ChevronDown size={12} />
                     </Button>
-                  </DropdownMenu.Trigger>
-                  <PanelDropdownContent size="1">
-                    <DropdownMenu.Item onSelect={onOpenTerminal}>
-                      Open here
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item onSelect={() => perform('terminal')}>
-                      Open system terminal
-                    </DropdownMenu.Item>
-                  </PanelDropdownContent>
-                </DropdownMenu.Root>
-                <DropdownMenu.Root
-                  onOpenChange={(open) => {
-                    if (open) refreshEditors();
-                  }}
-                >
-                  <DropdownMenu.Trigger>
-                    <Button
-                      type="button"
-                      size="1"
-                      variant="ghost"
-                      color="gray"
-                      disabled={busy || !project.available}
-                      title="Choose an editor"
-                      aria-label="Editor"
-                    >
-                      <Code2 size={14} />
-                      <span className="developer-project-action-label">
-                        Editor
-                      </span>
-                      <ChevronDown size={12} />
-                    </Button>
-                  </DropdownMenu.Trigger>
-                  <PanelDropdownContent size="1">
-                    <DropdownMenu.Label>Open in</DropdownMenu.Label>
-                    {editorLoading && (
-                      <DropdownMenu.Item disabled>
-                        Finding editors…
-                      </DropdownMenu.Item>
-                    )}
-                    {!editorLoading &&
-                      editors.editors.map((editor) => (
-                        <DropdownMenu.CheckboxItem
-                          key={editor.id}
-                          checked={editor.id === editors.preferred}
-                          onSelect={() => perform('editor', editor.id)}
-                        >
-                          {editor.icon ? (
-                            <img
-                              className="developer-editor-icon"
-                              src={editor.icon}
-                              alt=""
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <Code2 size={16} aria-hidden="true" />
-                          )}
-                          {editor.name}
-                        </DropdownMenu.CheckboxItem>
-                      ))}
-                    {!editorLoading && !editors.editors.length && (
-                      <DropdownMenu.Item disabled>
-                        No editors found
-                      </DropdownMenu.Item>
-                    )}
-                    <DropdownMenu.Separator />
-                    <DropdownMenu.Item
-                      disabled={editorLoading}
-                      onSelect={() => refreshEditors(true)}
-                    >
-                      <FolderPlus size={16} aria-hidden="true" />
-                      Choose application…
-                    </DropdownMenu.Item>
-                  </PanelDropdownContent>
-                </DropdownMenu.Root>
-                <DeveloperScripts
-                  sourceId={sourceId}
-                  disabled={busy || !project.available}
-                  onRun={onOpenTerminal}
-                />
-                {project.repository && (
+                  )}
                   <Button
                     type="button"
                     size="1"
                     variant="ghost"
                     color="gray"
                     disabled={busy || !project.available}
-                    onClick={() => perform('repository')}
-                    title={project.repository}
-                    aria-label="Repository"
+                    ref={filesButton}
+                    aria-expanded={filesOpen}
+                    onKeyDown={navigateViews}
+                    aria-pressed={view === undefined ? undefined : filesOpen}
+                    aria-controls="developer-project-files"
+                    aria-label="Files"
+                    title="Files"
+                    onClick={() =>
+                      setFilesOpen(onViewChange ? true : !filesOpen)
+                    }
                   >
-                    <GitBranch size={14} aria-hidden="true" />
-                    <span className="developer-project-action-label">
-                      Repository
-                    </span>
+                    <Files size={16} />
+                    <span className="developer-project-view-label">Files</span>
                   </Button>
-                )}
+                </div>
+                {projectHeading}
+                <div className="developer-project-launchers">
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger>
+                      <Button
+                        type="button"
+                        size="1"
+                        variant="ghost"
+                        color="gray"
+                        disabled={busy || !project.available}
+                        aria-label="Terminal"
+                        title="Terminal"
+                      >
+                        <Terminal size={14} />
+                        <span className="developer-project-action-label">
+                          Terminal
+                        </span>
+                        <ChevronDown size={12} />
+                      </Button>
+                    </DropdownMenu.Trigger>
+                    <PanelDropdownContent size="1">
+                      <DropdownMenu.Item onSelect={onOpenTerminal}>
+                        Open here
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item onSelect={() => perform('terminal')}>
+                        Open system terminal
+                      </DropdownMenu.Item>
+                    </PanelDropdownContent>
+                  </DropdownMenu.Root>
+                  <DropdownMenu.Root
+                    onOpenChange={(open) => {
+                      if (open) refreshEditors();
+                    }}
+                  >
+                    <DropdownMenu.Trigger>
+                      <Button
+                        type="button"
+                        size="1"
+                        variant="ghost"
+                        color="gray"
+                        disabled={busy || !project.available}
+                        title="Choose an editor"
+                        aria-label="Editor"
+                      >
+                        <Code2 size={14} />
+                        <span className="developer-project-action-label">
+                          Editor
+                        </span>
+                        <ChevronDown size={12} />
+                      </Button>
+                    </DropdownMenu.Trigger>
+                    <PanelDropdownContent size="1">
+                      <DropdownMenu.Label>Open in</DropdownMenu.Label>
+                      {editorLoading && (
+                        <DropdownMenu.Item disabled>
+                          Finding editors…
+                        </DropdownMenu.Item>
+                      )}
+                      {!editorLoading &&
+                        editors.editors.map((editor) => (
+                          <DropdownMenu.CheckboxItem
+                            key={editor.id}
+                            checked={editor.id === editors.preferred}
+                            onSelect={() => perform('editor', editor.id)}
+                          >
+                            {editor.icon ? (
+                              <img
+                                className="developer-editor-icon"
+                                src={editor.icon}
+                                alt=""
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <Code2 size={16} aria-hidden="true" />
+                            )}
+                            {editor.name}
+                          </DropdownMenu.CheckboxItem>
+                        ))}
+                      {!editorLoading && !editors.editors.length && (
+                        <DropdownMenu.Item disabled>
+                          No editors found
+                        </DropdownMenu.Item>
+                      )}
+                      <DropdownMenu.Separator />
+                      <DropdownMenu.Item
+                        disabled={editorLoading}
+                        onSelect={() => refreshEditors(true)}
+                      >
+                        <FolderPlus size={16} aria-hidden="true" />
+                        Choose application…
+                      </DropdownMenu.Item>
+                    </PanelDropdownContent>
+                  </DropdownMenu.Root>
+                  <DeveloperScripts
+                    sourceId={sourceId}
+                    disabled={busy || !project.available}
+                    onRun={onOpenTerminal}
+                  />
+                  {project.repository && (
+                    <Button
+                      type="button"
+                      size="1"
+                      variant="ghost"
+                      color="gray"
+                      disabled={busy || !project.available}
+                      onClick={() => perform('repository')}
+                      title={project.repository}
+                      aria-label="Repository"
+                    >
+                      <GitBranch size={14} aria-hidden="true" />
+                      <span className="developer-project-action-label">
+                        Repository
+                      </span>
+                    </Button>
+                  )}
+                  {projectControls}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
           {!settingsOnly && filesOpen && (
             <div id="developer-project-files">
               <RenderErrorBoundary
@@ -428,6 +485,7 @@ export function DeveloperProjectSection({
               >
                 <DeveloperFiles
                   sourceId={sourceId}
+                  compactHeader
                   projectName={project.name}
                   projectPath={project.path}
                   onOpenTerminal={onOpenTerminal}
@@ -447,14 +505,15 @@ export function DeveloperProjectSection({
           </div>
           <Button
             type="button"
-            size="1"
+            size="2"
             color="gray"
             variant="soft"
+            className="developer-project-link-button"
             disabled={busy}
             onClick={() => perform('link')}
           >
-            <FolderPlus size={14} />
-            Link folder
+            <FolderPlus size={17} aria-hidden="true" />
+            {busy ? 'Linking…' : 'Link Folder'}
           </Button>
         </div>
       )}

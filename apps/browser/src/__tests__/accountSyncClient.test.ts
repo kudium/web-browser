@@ -371,3 +371,40 @@ test('failed sync backs off exponentially, skips automatic retries and resets af
     jest.useRealTimers();
   }
 });
+
+test('cloud relay pairing uses the account privately without enabling encrypted sync', async () => {
+  const save = jest.fn();
+  const request = jest.fn(async () => ({ status: 201, headers: new Headers(), body: { deviceId: 'abcdefghijklmnop', deviceToken: 'kd_abcdefghijklmnopqrstuvwxyz' } }));
+  const client = new AccountSyncClient({
+    load: () => ({ credential: { token: 'private-account-token', email: 'test@example.com', accountId: 'account', deviceId: 'one' } }),
+    save, preferences: () => defaultPreferences, enable: jest.fn(), open: async () => {}, request,
+  });
+  await expect(client.createRelayDevice()).resolves.toEqual({ relayUrl: 'https://browser.kudium.com', deviceId: 'abcdefghijklmnop', deviceToken: 'kd_abcdefghijklmnopqrstuvwxyz' });
+  expect(request).toHaveBeenCalledWith('/relay/devices', 'private-account-token', { name: 'Kudium Browser' });
+  expect(save).not.toHaveBeenCalled();
+});
+
+test('cloud relay pairing explains sign-in and expired sessions', async () => {
+  const { SyncHTTPError } = await import('../main/sync/transport');
+  const request = jest.fn(async () => { throw new SyncHTTPError(401, 'unauthorized'); });
+  const options = { save: () => {}, preferences: () => defaultPreferences, enable: () => {}, open: async () => {}, request };
+  const signedOut = new AccountSyncClient({ ...options, load: () => ({}) });
+  await expect(signedOut.createRelayDevice()).rejects.toThrow('Preferences → Sync');
+  expect(request).not.toHaveBeenCalled();
+  const signedIn = new AccountSyncClient({ ...options, load: () => ({ credential: { token: 'private', email: 'test@example.com', accountId: 'account', deviceId: 'one' } }) });
+  await expect(signedIn.createRelayDevice()).rejects.toThrow('session expired');
+});
+
+test('an account disconnect during relay creation revokes the orphan device', async () => {
+  let release!: (value: any) => void;
+  const request = jest.fn(async (path: string) => path === '/relay/devices' ? new Promise<any>((resolve) => { release = resolve; }) : { status: 200, headers: new Headers(), body: {} });
+  const client = new AccountSyncClient({
+    load: () => ({ credential: { token: 'private', email: 'test@example.com', accountId: 'account', deviceId: 'one' } }),
+    save: () => {}, preferences: () => defaultPreferences, enable: () => {}, open: async () => {}, request,
+  });
+  const work = client.createRelayDevice();
+  await client.disconnect();
+  release({ status: 201, headers: new Headers(), body: { deviceId: 'abcdefghijklmnop', deviceToken: 'kd_abcdefghijklmnopqrstuvwxyz' } });
+  await expect(work).rejects.toThrow('account changed');
+  expect(request).toHaveBeenCalledWith('/relay/devices/abcdefghijklmnop', 'kd_abcdefghijklmnopqrstuvwxyz', undefined, {}, 'DELETE');
+});

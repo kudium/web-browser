@@ -10,6 +10,9 @@ import {
   ArrowLeft,
   Code2,
   Search,
+  WrapText,
+  Undo2,
+  Save,
 } from 'lucide-react';
 import { PanelDialogContent, PanelDialogHeader } from './PanelDialog';
 import {
@@ -41,11 +44,13 @@ export function DeveloperFiles({
   sourceId,
   projectName,
   projectPath,
+  compactHeader = false,
   onOpenTerminal = () => {},
 }: {
   sourceId: string;
   projectName: string;
   projectPath?: string;
+  compactHeader?: boolean;
   onOpenTerminal?: () => void;
 }) {
   const positionKey = `${sourceId}:${projectPath || projectName}`;
@@ -593,6 +598,22 @@ export function DeveloperFiles({
   const currentPath = preview?.path || listing.path;
   let emptyMessage = 'No visible files in this folder.';
   if (hidden) emptyMessage = 'This folder is empty.';
+  const filterField = (
+    <TextField.Root
+      size="1"
+      aria-label="Filter files"
+      placeholder="Filter files…"
+      value={query}
+      onChange={(event) => {
+        setQuery(event.target.value);
+        remember({ query: event.target.value });
+      }}
+    >
+      <TextField.Slot>
+        <Search size={12} />
+      </TextField.Slot>
+    </TextField.Root>
+  );
   return (
     <section
       className="developer-files"
@@ -623,12 +644,13 @@ export function DeveloperFiles({
         }
       }}
     >
-      <div className="developer-files-toolbar">
+      <div className="developer-files-toolbar" data-preview={!!preview}>
         {preview ? (
           <button
             type="button"
             className="developer-files-back"
             aria-label="Back to folder"
+            title={`${preview.path} · ${fileStatus}`}
             onClick={() =>
               guard(() => {
                 setPreview(undefined);
@@ -640,6 +662,8 @@ export function DeveloperFiles({
             <ArrowLeft size={16} aria-hidden="true" />
             <strong>{preview.name}</strong>
           </button>
+        ) : compactHeader && !listing.path ? (
+          filterField
         ) : (
           <nav
             className="developer-files-breadcrumbs"
@@ -660,6 +684,65 @@ export function DeveloperFiles({
             ))}
           </nav>
         )}
+        {compactHeader && !preview && listing.path && filterField}
+        {preview && (
+          <div className="developer-file-preview-actions">
+            <span role="status" title={fileStatus}>
+              {fileStatus}
+            </span>
+            {preview.text !== undefined && (
+              <IconButton
+                size="1"
+                variant="ghost"
+                color="gray"
+                aria-label="Wrap"
+                aria-pressed={wrap}
+                onClick={toggleWrap}
+                title="Wrap long lines"
+              >
+                <WrapText size={14} aria-hidden="true" />
+              </IconButton>
+            )}
+            {preview.version && (
+              <>
+                <IconButton
+                  size="1"
+                  variant="ghost"
+                  color="gray"
+                  aria-label="Discard"
+                  title="Discard changes"
+                  disabled={!dirty || busy}
+                  onClick={discard}
+                >
+                  <Undo2 size={14} aria-hidden="true" />
+                </IconButton>
+                <IconButton
+                  size="1"
+                  variant="soft"
+                  color="gray"
+                  aria-label={busy ? 'Saving…' : 'Save'}
+                  title="Save file"
+                  disabled={!dirty || busy || loading}
+                  onClick={() => save()}
+                >
+                  <Save size={14} aria-hidden="true" />
+                </IconButton>
+              </>
+            )}
+            <IconButton
+              size="1"
+              color="gray"
+              variant="ghost"
+              aria-label="Open in editor"
+              title="Open in editor"
+              disabled={busy}
+              onClick={() => external('editor', preview.path)}
+            >
+              <Code2 size={14} aria-hidden="true" />
+            </IconButton>
+          </div>
+        )}
+
         <IconButton
           size="1"
           color="gray"
@@ -768,53 +851,6 @@ export function DeveloperFiles({
             tabIndex={-1}
             aria-label={`Preview of ${preview.name}`}
           >
-            <div className="developer-file-preview-actions">
-              <span title={preview.path}>
-                {preview.name} · {fileStatus}
-              </span>
-              {preview.text !== undefined && (
-                <Button
-                  size="1"
-                  variant="ghost"
-                  color="gray"
-                  aria-pressed={wrap}
-                  onClick={toggleWrap}
-                  title="Wrap long lines"
-                >
-                  Wrap
-                </Button>
-              )}
-              {preview.version && (
-                <>
-                  <Button
-                    size="1"
-                    variant="ghost"
-                    color="gray"
-                    disabled={!dirty || busy}
-                    onClick={discard}
-                  >
-                    Discard
-                  </Button>
-                  <Button
-                    size="1"
-                    disabled={!dirty || busy || loading}
-                    onClick={() => save()}
-                  >
-                    {busy ? 'Saving…' : 'Save'}
-                  </Button>
-                </>
-              )}
-              <Button
-                size="1"
-                color="gray"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => external('editor', preview.path)}
-              >
-                <Code2 size={12} />
-                Open in editor
-              </Button>
-            </div>
             {preview.imageURL ? (
               <DeveloperImagePreview
                 key={preview.path}
@@ -873,22 +909,7 @@ export function DeveloperFiles({
             fileMenu([]);
           }}
         >
-          {(entryCount > 8 || query) && (
-            <TextField.Root
-              size="1"
-              aria-label="Filter files"
-              placeholder="Filter files…"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                remember({ query: event.target.value });
-              }}
-            >
-              <TextField.Slot>
-                <Search size={12} />
-              </TextField.Slot>
-            </TextField.Root>
-          )}
+          {!compactHeader && (entryCount > 8 || query) && filterField}
           <div className="developer-files-list" aria-label="Files and folders">
             <DeveloperFileTree
               sourceId={sourceId}

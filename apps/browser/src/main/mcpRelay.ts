@@ -28,6 +28,8 @@ import {
   redirectHost,
   relaySocketURL,
   validRelayCommand,
+  validRelayURL,
+  validDeviceToken,
 } from '../browser/mcpRelay';
 import { writePrivateFile } from './privateFile';
 import { RelayDeviceKeys, generateRelayDeviceKeys, openRelayPayload, sealRelayPayload } from './mcpRelayCrypto';
@@ -96,6 +98,9 @@ export interface MCPRelayOptions {
   fetchImpl?: typeof fetch;
   spawnImpl?: typeof spawn;
   cloudflaredPath?: () => string | undefined;
+  tunnelStartTimeoutMs?: number;
+  accountState?: () => NonNullable<MCPRelayStatus['account']>;
+  createDevice?: () => Promise<{ relayUrl: string; deviceId: string; deviceToken: string }>;
   /** Test hook for backoff timing. */
   reconnectDelay?: (attempt: number) => number;
 }
@@ -172,9 +177,12 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
   const inflight = new Map<string, AbortController>();
   /** MCP sessions opened through the relay, per connector, ended when the socket drops. */
   const sessions = new Map<string, Set<string>>();
-  let tunnel: { process: ChildProcess; url?: string; error?: string } | undefined;
+  let tunnel: { process: ChildProcess; url?: string; ready: boolean; registered: boolean; logs: string; timer?: ReturnType<typeof setTimeout> } | undefined;
+  let tunnelError: string | undefined;
+  let creatingDevice = false;
 
   const status = (): MCPRelayStatus => ({
+    ...(options.accountState ? { account: options.accountState() } : {}),
     enabled: store.enabled,
     paired: !!store.deviceToken,
     relayUrl: store.relayUrl,
@@ -188,7 +196,8 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
     quickTunnel: {
       running: !!tunnel,
       ...(tunnel?.url ? { url: tunnel.url } : {}),
-      ...(tunnel?.error ? { error: tunnel.error } : {}),
+      ready: !!tunnel?.ready,
+      ...(tunnelError ? { error: tunnelError } : {}),
       available: !!(options.cloudflaredPath || defaultCloudflared)(),
     },
     ...(error ? { error } : {}),
@@ -431,7 +440,7 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
       handleFrame(frame).catch(() => {});
     };
     current.onerror = () => {
-      if (socket === current) error = 'The relay connection failed.';
+      if (socket === current) { error = 'The relay connection failed. Check your network and try again.'; changed(); }
     };
     current.onclose = (event) => {
       if (socket !== current) return;
@@ -454,6 +463,7 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
   const api = async (relative: string, init: RequestInit, token: string) => {
     const response = await fetchImpl(`${store.relayUrl}${relative}`, {
       ...init,
+      redirect: 'error',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(init.headers || {}) },
       signal: AbortSignal.timeout(15000),
     });
@@ -466,6 +476,7 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
     const current = tunnel;
     tunnel = undefined;
     if (current) {
+      if (current.timer) clearTimeout(current.timer);
       try {
         current.process.kill();
       } catch {
@@ -479,30 +490,44 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
     const binary = (options.cloudflaredPath || defaultCloudflared)();
     if (!binary) throw new Error('cloudflared is not installed. Install it with your package manager; Kudium never downloads binaries.');
     stopTunnel();
-    const child = spawnImpl(binary, ['tunnel', '--url', `http://127.0.0.1:${endpoint.port}`], { stdio: ['ignore', 'pipe', 'pipe'] });
-    const current: NonNullable<typeof tunnel> = { process: child };
+    tunnelError = undefined;
+    const env = { ...process.env };
+    Object.keys(env).filter((key) => key.startsWith('TUNNEL_')).forEach((key) => delete env[key]);
+    const child = spawnImpl(binary, [
+      '--no-autoupdate', 'tunnel', '--config', process.platform === 'win32' ? 'NUL' : '/dev/null',
+      '--url', `http://127.0.0.1:${endpoint.port}`, '--protocol', 'http2',
+      '--http-host-header', `127.0.0.1:${endpoint.port}`,
+    ], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const current: NonNullable<typeof tunnel> = { process: child, ready: false, registered: false, logs: '' };
     tunnel = current;
+    const fail = (detail: string) => {
+      if (tunnel !== current) return;
+      tunnelError = detail;
+      stopTunnel();
+      changed();
+    };
+    current.timer = setTimeout(() => fail('Quick tunnel could not connect within 45 seconds. Check your network or proxy, then try again.'), options.tunnelStartTimeoutMs ?? 45000);
+    current.timer.unref?.();
     const onChunk = (chunk: Buffer | string) => {
-      if (tunnel !== current || current.url) return;
-      const url = parseQuickTunnelURL(String(chunk));
-      if (url) {
-        current.url = url;
+      if (tunnel !== current) return;
+      current.logs = (current.logs + String(chunk)).slice(-8192);
+      const url = parseQuickTunnelURL(current.logs);
+      if (url) current.url = url;
+      current.registered ||= current.logs.includes('Registered tunnel connection');
+      if (current.url && current.registered && !current.ready) {
+        current.ready = true;
+        if (current.timer) clearTimeout(current.timer);
+        current.timer = undefined;
         changed();
       }
     };
     child.stderr?.on('data', onChunk);
     child.stdout?.on('data', onChunk);
-    child.on('error', (reason) => {
-      if (tunnel !== current) return;
-      current.error = reason.message;
-      tunnel = undefined;
-      changed();
-    });
+    child.on('error', (reason) => fail(`Quick tunnel could not start: ${reason.message}`));
     child.on('exit', (code) => {
       if (tunnel !== current) return;
-      tunnel = undefined;
-      if (code && code !== 0) error = `Quick tunnel exited (${code}).`;
-      changed();
+      const detail = current.logs.split('\n').filter((line) => /\bERR\b|error|failed/i.test(line)).at(-1)?.replace(/(token|authorization|secret)[=:]\S+/gi, '$1=[redacted]').slice(0, 240);
+      fail(`Quick tunnel stopped${code ? ` (exit ${code})` : ''}.${detail ? ` ${detail}` : ' Try starting it again.'}`);
     });
   };
 
@@ -537,6 +562,36 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
           error = undefined;
           attempt = 0;
           connect();
+          break;
+        }
+        case 'connect': {
+          if (!options.endpoint()) throw new Error('Enable external control before connecting the relay.');
+          if (!options.createDevice) throw new Error('Account pairing is unavailable.');
+          if (creatingDevice) throw new Error('Relay pairing is already in progress.');
+          creatingDevice = true;
+          try {
+            const created = await options.createDevice();
+            if (disposed || !options.endpoint()) throw new Error('External control was turned off while pairing. Connect again when it is enabled.');
+            disconnect('Pairing again.');
+            await endSessions();
+            if (disposed || !options.endpoint()) throw new Error('External control was turned off while pairing.');
+            store.relayUrl = validRelayURL(created.relayUrl);
+            store.deviceToken = validDeviceToken(created.deviceToken);
+            store.deviceId = created.deviceId;
+            store.connectors = {};
+            store.enabled = false;
+            save();
+            await api(`/relay/devices/${encodeURIComponent(created.deviceId)}/enabled`, { method: 'POST', body: JSON.stringify({ enabled: true }) }, created.deviceToken);
+            if (disposed || !options.endpoint()) {
+              await api(`/relay/devices/${encodeURIComponent(created.deviceId)}/enabled`, { method: 'POST', body: JSON.stringify({ enabled: false }) }, created.deviceToken).catch(() => {});
+              throw new Error('External control was turned off while pairing.');
+            }
+            store.enabled = true;
+            save();
+            error = undefined;
+            attempt = 0;
+            connect();
+          } finally { creatingDevice = false; changed(); }
           break;
         }
         case 'create': {
@@ -605,7 +660,7 @@ export function createMCPRelayClient(options: MCPRelayOptions) {
         }
         case 'quickTunnel':
           if (request.running) startTunnel();
-          else stopTunnel();
+          else { stopTunnel(); tunnelError = undefined; }
           break;
         default:
           break;

@@ -23,3 +23,15 @@ it('restores a remembered panel on reopen without reopening an explicitly closed
   rerender({ active: true });
   await waitFor(() => expect(browser.sidebarPanels).toHaveBeenCalledWith({ action: 'activate', id: 'extension', reveal: false }));
 });
+
+it('does not resurrect a closed native panel from the legacy selection when an independent layout exists', async () => {
+  localStorage.clear();
+  localStorage.setItem('kudium-sidebar-layout', JSON.stringify({ pages: ['email'], activePage: 'email' }));
+  localStorage.setItem('kudium-sidebar-panel-selection', 'saved-extension');
+  const state: SidebarPanelState = { panels: [{ id: 'extension', key: 'saved-extension', title: 'Extension', kind: 'extension' }], openedPanels: [], openRequest: 0 };
+  (browser.sidebarPanels as jest.Mock).mockClear().mockResolvedValue(state);
+  const view = renderHook(() => useSidebarPanels(true));
+  await waitFor(() => expect(view.result.current.panels).toHaveLength(1));
+  expect(browser.sidebarPanels).toHaveBeenCalledTimes(1);
+  expect(browser.sidebarPanels).toHaveBeenCalledWith({ action: 'list' });
+});

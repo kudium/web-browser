@@ -1,3 +1,4 @@
+import type { SidebarPage } from '../../utils/hooks/useSidebarPages';
 import { PanelDockButton } from './PanelDockButton';
 import { useLayoutEffect, useRef, useEffect, useState } from 'react';
 import {
@@ -35,10 +36,14 @@ export function SidebarPanels({
   state,
   active,
   onClose,
+  layoutVersion,
+  panel,
 }: {
   state: SidebarPanelState;
   active: boolean;
   onClose: () => void;
+  layoutVersion?: string;
+  panel?: SidebarPage;
 }) {
   const [pickerTab, setPickerTab] = useState<'active' | 'global'>('active');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -136,10 +141,18 @@ export function SidebarPanels({
     let lastLayout = '';
     const update = () => {
       const rect = element?.getBoundingClientRect();
-      const bounds =
+      let bounds =
         active && !state.floating && rect && rect.width > 0 && rect.height > 0
           ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
           : null;
+      // Clip native content to the scrolling panel area, not just the window.
+      const scroller = element?.closest('.ai-sidebar-multi');
+      if (bounds && scroller) {
+        const area = scroller.getBoundingClientRect();
+        const x = Math.max(bounds.x, area.left), y = Math.max(bounds.y, area.top);
+        const right = Math.min(bounds.x + bounds.width, area.right), bottom = Math.min(bounds.y + bounds.height, area.bottom);
+        bounds = right > x && bottom > y ? { x, y, width: right - x, height: bottom - y } : null;
+      }
       const signature = JSON.stringify(bounds);
       if (signature === lastLayout) return;
       lastLayout = signature;
@@ -147,24 +160,46 @@ export function SidebarPanels({
         if (lastLayout === signature) lastLayout = '';
       });
     };
+    const moving = new Map<EventTarget, Set<string>>();
+    let motionDeadline = 0;
     const schedule = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(update);
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        update();
+        if (performance.now() >= motionDeadline) moving.clear();
+        if (moving.size) schedule();
+      });
     };
     layoutUpdate.current = schedule;
-    // A fixed-width native slot moves while its parent opens; position changes
-    // do not trigger ResizeObserver. Reconcile once the shell finishes moving.
-    const motionEnd = (event: Event) => {
-      if (
-        event.target instanceof Element &&
-        element &&
-        event.target.contains(element)
-      )
-        schedule();
+    // Position-only motion does not trigger ResizeObserver. Follow ancestors
+    // while they move, with a deadline if a cancelled/removed node emits no end.
+    const motionKey = (event: Event) => event.type.startsWith('transition')
+      ? `transition:${(event as TransitionEvent).propertyName || ''}`
+      : `animation:${(event as AnimationEvent).animationName || ''}`;
+    const relevantMotion = (event: Event) => event.target instanceof Element &&
+      element && event.target.contains(element);
+    const motionStart = (event: Event) => {
+      if (!relevantMotion(event)) return;
+      const keys = moving.get(event.target!) || new Set<string>();
+      keys.add(motionKey(event));
+      moving.set(event.target!, keys);
+      motionDeadline = performance.now() + 1500;
+      schedule();
     };
+    const motionEnd = (event: Event) => {
+      if (!relevantMotion(event)) return;
+      const keys = moving.get(event.target!);
+      keys?.delete(motionKey(event));
+      if (!keys?.size) moving.delete(event.target!);
+      schedule();
+    };
+    document.addEventListener('transitionrun', motionStart);
+    document.addEventListener('animationstart', motionStart);
     document.addEventListener('transitionend', motionEnd);
     document.addEventListener('transitioncancel', motionEnd);
     document.addEventListener('animationend', motionEnd);
+    document.addEventListener('animationcancel', motionEnd);
     const observer = new ResizeObserver(schedule);
     if (element) observer.observe(element);
     window.addEventListener('resize', schedule);
@@ -174,6 +209,10 @@ export function SidebarPanels({
       layoutUpdate.current = undefined;
       cancelAnimationFrame(frame);
       observer.disconnect();
+      moving.clear();
+      document.removeEventListener('transitionrun', motionStart);
+      document.removeEventListener('animationstart', motionStart);
+      document.removeEventListener('animationcancel', motionEnd);
       document.removeEventListener('transitionend', motionEnd);
       document.removeEventListener('transitioncancel', motionEnd);
       document.removeEventListener('animationend', motionEnd);
@@ -184,6 +223,7 @@ export function SidebarPanels({
         .catch(() => {});
     };
   }, [active, state.activeId, state.openRequest, state.floating]);
+  useLayoutEffect(() => { layoutUpdate.current?.(); }, [layoutVersion]);
   // Metadata refreshes can require layout, but must not hide or detach the view.
   useLayoutEffect(() => {
     layoutUpdate.current?.();
@@ -350,13 +390,14 @@ export function SidebarPanels({
           disabled={!state.activeId || Boolean(state.error)}
           onClick={() => {
             void browser
-              .sidebarPanels({ action: state.floating ? 'dock' : 'undock' })
+              .sidebarPanels({ action: state.floating ? 'dock' : 'undock', id: state.activeId })
               .catch(() => {});
           }}
         />
         <ChromeIconButton
           icon={X}
           label="Close sidebar panel"
+          data-header-essential
           onClick={onClose}
         />
       </AssistantPageHeader>
@@ -418,7 +459,7 @@ export function SidebarPanels({
           action={{
             label: 'Dock panel back',
             onClick: () => {
-              void browser.sidebarPanels({ action: 'dock' }).catch(() => {});
+              void browser.sidebarPanels({ action: 'dock', id: state.activeId }).catch(() => {});
             },
           }}
         />

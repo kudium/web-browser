@@ -297,3 +297,12 @@ test('management uses the existing extension control with its logical owner and 
   [...f.providers.values()][0].manage();
   expect(manage).toHaveBeenLastCalledWith(f.window, expect.objectContaining({ id: 11 }), f.extension.id);
 });
+
+test('an extension close request affects only its own open panel when other native panels are open', () => {
+  const f = fixture();
+  const own = [...f.providers.keys()][0];
+  (f.host.state as jest.Mock).mockReturnValue({ activeId: 'foreign-extension', openedPanels: [{ id: own }, { id: 'foreign-extension' }, { id: 'hook-output' }] });
+  f.call('close', { windowId: 1 });
+  expect(f.host.close).toHaveBeenCalledTimes(1);
+  expect(f.host.close).toHaveBeenCalledWith(own);
+});

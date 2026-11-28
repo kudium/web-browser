@@ -29,7 +29,7 @@ it('writes the manifest group, a one-line AGENTS.md reference and the bridge ent
   updateBrowserProjectContext(root, 'group-id', { name: 'Website', slug: 'website' });
   expect([read('kudium.workspace.json'), read('AGENTS.md'), read('.mcp.json')]).toEqual(before);
   updateBrowserProjectContext(root, 'group-id', null);
-  expect(exists('kudium.workspace.json')).toBe(false);
+  expect(manifest().group).toEqual({ name: 'Website', slug: 'website' });
   expect(exists('AGENTS.md')).toBe(false);
   // The MCP entry is harmless (no token) and may be the user's now; it stays.
   expect(exists('.mcp.json')).toBe(true);
@@ -54,6 +54,7 @@ it('keeps user-authored manifest keys and other MCP servers', () => {
   updateBrowserProjectContext(root, 'one', null);
   expect(manifest()).toEqual({
     version: 1,
+    group: { name: 'Renamed', slug: 'renamed' },
     tabs: [{ url: 'http://localhost:5173/' }],
     scripts: [{ id: 'dev', name: 'Dev', command: 'pnpm dev' }],
   });

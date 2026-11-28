@@ -1,3 +1,5 @@
+import { registerWorkspaceAccess } from './aiWorkspaceAccess';
+import { createAccountRelayDevice, accountRelayStatus } from './accountRelay';
 import { appleFillRequested } from './aiAppleIntent';
 import { capabilityFailure } from '../browser/aiCapabilityContracts';
 import { AICompletionContract } from './aiCompletionContract';
@@ -7152,22 +7154,23 @@ return function registerScopedAI(
       history: conversationHistory.slice(),
     };
   });
+  const assertWorkspaceAccessChange = () => {
+    if (run || externalRun || taskDraftRun || dialogs.busy() || composerQueue?.hasPending)
+      throw new Error('Stop the current AI action before changing permissions.');
+  };
+  const changeWorkspaceAccess = (mode: unknown) => {
+    assertWorkspaceAccessChange();
+    composerPreferences.save({ accessMode: aiAccessMode(mode) });
+    chooseAccess(mode);
+  };
+  const releaseWorkspaceAccess = registerWorkspaceAccess(host, {
+    mode: () => accessMode,
+    change: changeWorkspaceAccess,
+    assertChange: assertWorkspaceAccessChange,
+  });
   ipcMain.handle('ai-permissions', (event, mode) => {
     trusted(event);
-    if (mode !== undefined) {
-      if (
-        run ||
-        externalRun ||
-        taskDraftRun ||
-        dialogs.busy() ||
-        composerQueue?.hasPending
-      )
-        throw new Error(
-          'Stop the current AI action before changing permissions.'
-        );
-      composerPreferences.save({ accessMode: aiAccessMode(mode) });
-      chooseAccess(mode);
-    }
+    if (mode !== undefined) changeWorkspaceAccess(mode);
     return permissionStatus();
   });
   ipcMain.handle('ai-groups', (event, next) => {
@@ -7805,6 +7808,10 @@ return function registerScopedAI(
     },
   });
   relay = createMCPRelayClient({
+    createDevice: privateMode ? undefined : createAccountRelayDevice,
+    accountState: privateMode
+      ? () => ({ available: false, signedIn: false, reason: 'Cloud account pairing is unavailable in private windows. Connect from a regular browser window.' })
+      : accountRelayStatus,
     filename: path.join(dataRoot, 'mcp-relay.json'),
     endpoint: () => {
       const status = mcp.status();
@@ -8094,6 +8101,7 @@ return function registerScopedAI(
     }
   });
   return () => {
+    releaseWorkspaceAccess();
     configurationDisposed = true;
     configurationListeners.delete(refreshConfiguration);
     composerQueue?.dispose();

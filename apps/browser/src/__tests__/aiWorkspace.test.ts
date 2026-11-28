@@ -157,7 +157,7 @@ it('applies a manifest after one review, confirms the ai block separately and wr
     'approval on',
     'update [{"id":"t1","changes":{"groupDisplay":"folder"}}]',
     'open http://localhost:8000/docs from t1',
-    'update [{"id":"t1","changes":{"pinned":true}}]',
+    'update [{"id":"t1","changes":{"tabPinned":true}}]',
     'update [{"id":"t1","changes":{"aiTrusted":true}},{"id":"t2","changes":{"aiTrusted":true}}]',
     'access full',
     'approval off',

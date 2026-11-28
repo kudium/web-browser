@@ -100,7 +100,7 @@ beforeEach(() => {
     },
   });
 });
-it('links a dropped folder to the current group and opens the built-in terminal', async () => {
+it('links an approved dropped folder to the current group and focuses Files', async () => {
   pages.mockResolvedValue([]);
   const project = { name: 'Atlas', path: '/Projects/Atlas', available: true };
   (
@@ -112,20 +112,16 @@ it('links a dropped folder to the current group and opens the built-in terminal'
   fireEvent.dragOver(panel, {
     dataTransfer: { types: ['Files'], dropEffect: 'none' },
   });
-  expect(screen.getByText('Link folder and open terminal')).toBeTruthy();
+  expect(screen.getByText('Link project folder')).toBeTruthy();
   fireEvent.drop(panel, { dataTransfer: { files: [file], types: ['Files'] } });
   await waitFor(() =>
     expect(
       window.electron.siteDeveloper.linkDroppedProject
     ).toHaveBeenCalledWith('home', file)
   );
-  await waitFor(() =>
-    expect(window.electron.siteDeveloper.terminal).toHaveBeenCalledWith(
-      JSON.stringify(['work', 'default']),
-      expect.objectContaining({ action: 'show' })
-    )
-  );
-  expect(screen.queryByText('Link folder and open terminal')).toBeNull();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Files' }).getAttribute('aria-pressed')).toBe('true'));
+  expect(window.electron.siteDeveloper.terminal).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: 'show' }));
+  expect(screen.queryByText('Link project folder')).toBeNull();
 });
 
 it('rejects multiple folders and ignores a duplicate drop while linking', async () => {
@@ -162,7 +158,7 @@ it('rejects multiple folders and ignores a duplicate drop while linking', async 
   await waitFor(() =>
     expect(window.electron.siteDeveloper.terminal).toHaveBeenCalledWith(
       JSON.stringify(['work', 'default']),
-      expect.objectContaining({ action: 'show' })
+      expect.objectContaining({ action: 'preferences', open: false })
     )
   );
 });
@@ -763,4 +759,18 @@ it('retains the Developer page but stops tab-driven refreshes while its host is 
   expect(pages).not.toHaveBeenCalled();
   view.rerender(panel(true));
   await waitFor(() => expect(pages).toHaveBeenCalled());
+});
+
+it('does not intercept a folder dropped inside a terminal', async () => {
+  pages.mockResolvedValue([]);
+  render(content(true));
+  const terminal = document.createElement('div');
+  terminal.className = 'developer-terminal';
+  const received = jest.fn((event: Event) => { event.preventDefault(); event.stopPropagation(); });
+  terminal.addEventListener('drop', received);
+  screen.getByRole('region', { name: 'Developer' }).appendChild(terminal);
+  fireEvent.drop(terminal, { dataTransfer: { files: [new File([], 'Folder')], types: ['Files'] } });
+  expect(received).toHaveBeenCalledTimes(1);
+  expect(window.electron.siteDeveloper.linkDroppedProject).not.toHaveBeenCalled();
+  terminal.remove();
 });

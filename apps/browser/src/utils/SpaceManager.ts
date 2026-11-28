@@ -87,6 +87,13 @@ export function spaceFrameColor(
 ) {
   return resolveAppTheme(space, themeColor).frame;
 }
+// Selection belongs to this window. Notify mounted consumers synchronously,
+// without broadcasting to other windows or rebuilding shared space metadata.
+type SelectionChange = { id: string; selectedAppId?: string } | { activeId: string };
+const selectionListeners = new Set<(change: SelectionChange) => void>();
+const notifySelection = (change: SelectionChange) =>
+  selectionListeners.forEach((listener) => listener(change));
+
 export const SpaceManager = {
   getAll(): Space[] {
     const seen = new Set<string>();
@@ -194,8 +201,9 @@ export const SpaceManager = {
     return LocalStorage.get(ACTIVE_SPACE_KEY) || DEFAULT_SPACE;
   },
   select(id: string) {
+    if (SpaceManager.activeId() === id) return;
     LocalStorage.set(ACTIVE_SPACE_KEY, id);
-    eventBus.dispatch(EVENT_KEY.SPACE_UPDATE);
+    notifySelection({ activeId: id });
   },
   set(spaces: Space[]) {
     writeSavedList(SPACE_KEY, spaces);
@@ -233,12 +241,13 @@ export const SpaceManager = {
       } catch {
         /* First selection. */
       }
+      if (selection[id] === changes.selectedAppId) return;
       selection[id] = changes.selectedAppId;
       LocalStorage.set(
         'kudium-window-selected-tabs',
         JSON.stringify(selection)
       );
-      eventBus.dispatch(EVENT_KEY.SPACE_UPDATE);
+      notifySelection({ id, selectedAppId: changes.selectedAppId });
       return;
     }
     SpaceManager.set(
@@ -272,6 +281,16 @@ export function useSpaces() {
       setSpaces(SpaceManager.getAll());
       setActiveId(SpaceManager.activeId());
     };
+    const selection = (change: SelectionChange) => {
+      if ('activeId' in change) setActiveId(change.activeId);
+      else setSpaces((previous) => {
+        const space = previous.find((entry) => entry.id === change.id);
+        if (!space || space.selectedAppId === change.selectedAppId) return previous;
+        return previous.map((entry) => entry === space
+          ? { ...entry, selectedAppId: change.selectedAppId } : entry);
+      });
+    };
+    selectionListeners.add(selection);
     const unsubscribe = eventBus.on(EVENT_KEY.SPACE_UPDATE, update);
     const onStorage = (event: StorageEvent) => {
       if (event.key === SPACE_KEY || event.key === null) update();
@@ -279,6 +298,7 @@ export function useSpaces() {
     window.addEventListener('storage', onStorage);
     return () => {
       unsubscribe();
+      selectionListeners.delete(selection);
       window.removeEventListener('storage', onStorage);
     };
   }, []);

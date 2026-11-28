@@ -21,7 +21,12 @@ export async function syncRequest(
   headers: Record<string, string> = {},
   method = body ? 'POST' : 'GET'
 ): Promise<TransportResult> {
-  if (!path.startsWith('/api/auth/') && !path.startsWith('/v1/sync/'))
+  if (
+    !path.startsWith('/api/auth/') &&
+    !path.startsWith('/v1/sync/') &&
+    path !== '/relay/devices' &&
+    !/^\/relay\/devices\/[a-z0-9]{16}$/.test(path)
+  )
     throw new Error('Invalid sync request');
   const response = await fetch(`${SYNC_ORIGIN}${path}`, {
     method,

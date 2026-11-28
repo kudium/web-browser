@@ -29,6 +29,7 @@ export function SidebarPanelHost({
   placementKey = `kudium-panel-window-${panel}`,
   onDock,
   onWindowClose,
+  onClose,
 }: {
   id: string;
   title: string;
@@ -39,6 +40,7 @@ export function SidebarPanelHost({
   placementKey?: string;
   onDock?: () => void;
   onWindowClose?: () => void;
+  onClose?: () => void;
 }) {
   const dock = useRef<HTMLDivElement>(null);
   const [container] = useState(() => document.createElement('div'));
@@ -236,9 +238,21 @@ export function SidebarPanelHost({
             {/* Placement callbacks track the current native window lifecycle. */}
             <AssistantPanelWindowContext.Provider
               // eslint-disable-next-line react/jsx-no-constructed-context-values
-              value={{ title, floating, toggle: floating ? dockBack : undock }}
+              value={{
+                title,
+                floating,
+                toggle: floating ? dockBack : undock,
+                close: onClose
+                  ? () => {
+                      if (floating) windows.get(panel)?.close();
+                      else onClose();
+                    }
+                  : undefined,
+              }}
             >
-              <AssistantPanelVisibilityContext.Provider value={floating || (active && visible)}>
+              <AssistantPanelVisibilityContext.Provider
+                value={floating || (active && visible)}
+              >
                 {visited && children}
               </AssistantPanelVisibilityContext.Provider>
             </AssistantPanelWindowContext.Provider>

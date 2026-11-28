@@ -1,6 +1,8 @@
 import {
   SidebarPanelRegistry,
   registerSidebarPanelWindow,
+  sidebarPanelsFor,
+  suspendSidebarPanels,
 } from '../main/sidebarPanels';
 import { EventEmitter } from 'events';
 import type { BrowserWindow, WebContentsView } from 'electron';
@@ -13,7 +15,7 @@ jest.mock('electron', () => ({
   BrowserWindow: jest.fn(),
 }));
 
-function fixture() {
+function fixture(independent = false) {
   const frame = {};
   const window = Object.assign(new EventEmitter(), {
     isDestroyed: () => false,
@@ -28,9 +30,13 @@ function fixture() {
   });
   const views: any[] = [];
   const createView = jest.fn(() => {
+    let bounds = { x: 0, y: 0, width: 0, height: 0 };
+    let visible = false;
     const view = {
-      setVisible: jest.fn(),
-      setBounds: jest.fn(),
+      getVisible: () => visible,
+      getBounds: () => bounds,
+      setVisible: jest.fn(value => { visible = value; }),
+      setBounds: jest.fn(value => { bounds = value; }),
       setBorderRadius: jest.fn(),
       webContents: Object.assign(new EventEmitter(), {
         isDestroyed: () => false,
@@ -41,7 +47,7 @@ function fixture() {
     views.push(view);
     return view as unknown as WebContentsView;
   });
-  const host = new SidebarPanelRegistry(window as unknown as BrowserWindow);
+  const host = new SidebarPanelRegistry(window as unknown as BrowserWindow, independent);
   return { host, window, views, createView };
 }
 
@@ -249,6 +255,7 @@ test('sidebar IPC accepts only the registered window main frame', () => {
     ),
   ).toEqual({
     panels: [],
+    openedPanels: [],
     targets: [],
     canGoBack: false,
     canGoForward: false,
@@ -417,4 +424,159 @@ test('panel history skips removed and out-of-group providers and survives closin
   expect(host.state().canGoBack).toBe(false);
   host.close(); expect(host.state().canGoBack).toBe(true);
   host.navigate(-1); expect(host.state().activeId).toBe('c');
+});
+
+test('does not repeat native bounds or visibility updates for an unchanged panel layout', () => {
+  const { host, views, createView } = fixture();
+  host.register({ info: { id:'stable', title:'Stable', kind:'hook' }, contentKey:'one', createView });
+  host.activate('stable');
+  const bounds = { x:700, y:100, width:300, height:600 };
+  host.layout('stable', bounds);
+  views[0].setBounds.mockClear(); views[0].setVisible.mockClear(); views[0].setBorderRadius.mockClear();
+  host.layout('stable', bounds); host.layout('stable', bounds);
+  expect(views[0].setBounds).not.toHaveBeenCalled();
+  expect(views[0].setVisible).not.toHaveBeenCalled();
+  expect(views[0].setBorderRadius).not.toHaveBeenCalled();
+  host.layout('stable', { ...bounds, x:690 });
+  expect(views[0].setBounds).toHaveBeenCalledTimes(1);
+});
+
+
+test('bounds a stalled popup capture, reuses pending preparation, and discards late panel pixels', async () => {
+  jest.useFakeTimers();
+  const {host,views,createView}=fixture();
+  host.register({info:{id:'one',title:'One',kind:'hook'},contentKey:'one',createView});
+  host.activate('one');
+  host.layout('one',{x:600,y:100,width:400,height:600});
+  let finish!: (image:any)=>void;
+  views[0].webContents.capturePage.mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));
+  try {
+    const pending=host.setSuspended(true,true);
+    expect(host.setSuspended(true,true)).toBe(pending);
+    expect(views[0].getVisible()).toBe(true);
+    await jest.advanceTimersByTimeAsync(80);
+    await pending;
+    expect(views[0].getVisible()).toBe(false);
+    expect(host.state().snapshot).toBeUndefined();
+    await host.setSuspended(false);
+    finish({toDataURL:()=> 'data:image/png;base64,late'});
+    await jest.advanceTimersByTimeAsync(0);
+    expect(views[0].getVisible()).toBe(true);
+    expect(host.state().snapshot).toBeUndefined();
+  } finally {host.dispose();jest.useRealTimers();}
+});
+
+
+test('acknowledges panel readiness after the native view hides and cancels stale popup requests', async () => {
+  const {window,views,createView}=fixture();
+  const owner=window as unknown as BrowserWindow;
+  registerSidebarPanelWindow(owner);
+  const host=sidebarPanelsFor(owner);
+  host.register({info:{id:'one',title:'One',kind:'hook'},contentKey:'one',createView});
+  host.activate('one');host.layout('one',{x:600,y:100,width:400,height:600});
+  let finish!: (image:any)=>void;
+  views[0].webContents.capturePage.mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));
+  suspendSidebarPanels(owner,true,7);
+  expect(window.webContents.send).not.toHaveBeenCalledWith('browser-native-overlay-ready',{surface:'panel',token:7});
+  suspendSidebarPanels(owner,false);
+  finish({toDataURL:()=> 'data:image/png;base64,stale'});
+  await new Promise(resolve=>setTimeout(resolve,0));
+  expect(window.webContents.send).not.toHaveBeenCalledWith('browser-native-overlay-ready',{surface:'panel',token:7});
+  expect(views[0].getVisible()).toBe(true);
+  suspendSidebarPanels(owner,true,8);
+  await new Promise(resolve=>setTimeout(resolve,0));
+  expect(views[0].getVisible()).toBe(false);
+  expect(window.webContents.send).toHaveBeenCalledWith('browser-native-overlay-ready',{surface:'panel',token:8});
+  window.emit('closed');
+});
+
+test('independent native panels keep separate views, geometry and close/reopen state', () => {
+  const { host, views, createView } = fixture(true);
+  for (const id of ['extension-a', 'hook-b']) host.register({ info: { id, title: id, kind: 'feature' }, contentKey: 'v1', createView });
+  host.activate('extension-a');
+  host.layout('extension-a', { x: 300, y: 50, width: 300, height: 600 });
+  host.activate('hook-b');
+  host.layout('hook-b', { x: 610, y: 50, width: 300, height: 600 });
+  expect(host.state().openedPanels?.map(panel => panel.id)).toEqual(['extension-a', 'hook-b']);
+  expect(views.every(view => view.getVisible())).toBe(true);
+  const secondBounds = views[1].getBounds();
+  host.layout('extension-a', { x: 200, y: 50, width: 400, height: 600 });
+  expect(views[1].getBounds()).toBe(secondBounds);
+  host.close('extension-a');
+  expect(host.state().openedPanels?.map(panel => panel.id)).toEqual(['hook-b']);
+  expect(views[0].getVisible()).toBe(false);
+  expect(views[1].getVisible()).toBe(true);
+  expect(views[0].webContents.close).not.toHaveBeenCalled();
+  host.activate('extension-a');
+  expect(views[0].getVisible()).toBe(false);
+  host.layout('extension-a', { x: 200, y: 50, width: 400, height: 600 });
+  expect(createView).toHaveBeenCalledTimes(2);
+  expect(views.every(view => view.getVisible())).toBe(true);
+  host.layout('foreign', { x: 0, y: 0, width: 100, height: 100 });
+  expect(createView).toHaveBeenCalledTimes(2);
+});
+
+test('independent native content replacement and availability changes affect only their owner', () => {
+  const { host, views, createView } = fixture(true);
+  let available = true;
+  const provider = { info: { id: 'first', title: 'First', kind: 'extension' as const }, contentKey: 'v1', createView, available: () => available };
+  host.register(provider);
+  host.register({ info: { id: 'second', title: 'Second', kind: 'hook' }, contentKey: 'v1', createView });
+  for (const id of ['first', 'second']) { host.activate(id); host.layout(id, { x: 300, y: 50, width: 300, height: 600 }); }
+  host.register({ ...provider, contentKey: 'v2' });
+  expect(views[0].webContents.close).toHaveBeenCalledTimes(1);
+  expect(views[1].webContents.close).not.toHaveBeenCalled();
+  expect(views[1].getVisible()).toBe(true);
+  expect(createView).toHaveBeenCalledTimes(3);
+  available = false;
+  host.refresh();
+  expect(host.state().openedPanels?.map(panel => panel.id)).toEqual(['second']);
+  expect(views[2].getVisible()).toBe(false);
+  expect(() => host.activate('first')).toThrow(/unavailable/);
+  host.remove('first');
+  expect(views[2].webContents.close).toHaveBeenCalledTimes(1);
+  expect(views[1].getVisible()).toBe(true);
+});
+
+test('parallel panel suspension obeys the capture deadline and ignores late captures after cancellation', async () => {
+  jest.useFakeTimers();
+  const { host, views, createView } = fixture(true);
+  for (const id of ['first', 'second']) {
+    host.register({ info: { id, title: id, kind: 'feature' }, contentKey: 'v1', createView });
+    host.activate(id); host.layout(id, { x: 300, y: 50, width: 300, height: 600 });
+  }
+  const resolve: Array<(value: unknown) => void> = [];
+  views.forEach(view => view.webContents.capturePage.mockImplementation(() => new Promise(done => resolve.push(done))));
+  const work = host.setSuspended(true, true);
+  expect(resolve).toHaveLength(2);
+  await jest.advanceTimersByTimeAsync(81);
+  await work;
+  expect(views.every(view => !view.getVisible())).toBe(true);
+  await host.setSuspended(false, true);
+  resolve.forEach(done => done({ toDataURL: () => 'late snapshot' }));
+  await jest.advanceTimersByTimeAsync(100);
+  expect(views.every(view => view.getVisible())).toBe(true);
+  expect(host.state().openedPanels?.every(panel => !panel.snapshot)).toBe(true);
+  host.dispose();
+  jest.useRealTimers();
+});
+
+test('tab-specific documents follow their logical extension panel while unrelated native panels remain open', () => {
+  const { host, views, createView } = fixture(true);
+  let tab = 'first';
+  for (const id of ['first', 'second']) host.register({ info: { id, key: 'logical-extension', title: 'Extension', kind: 'extension' }, groupId: 'extension-owner', contentKey: id, createView, available: () => tab === id });
+  host.register({ info: { id: 'unrelated', title: 'Other extension', kind: 'extension' }, contentKey: 'v1', createView });
+  host.activate('first'); host.layout('first', { x: 300, y: 50, width: 300, height: 600 });
+  host.activate('unrelated'); host.layout('unrelated', { x: 610, y: 50, width: 300, height: 600 });
+  tab = 'second'; host.refresh();
+  expect(host.state().openedPanels?.map(panel => panel.id)).toEqual(['second', 'unrelated']);
+  expect(views[0].getVisible()).toBe(false);
+  expect(views[1].getVisible()).toBe(true);
+  host.layout('second', { x: 300, y: 50, width: 300, height: 600 });
+  expect(createView).toHaveBeenCalledTimes(3);
+  tab = 'first'; host.refresh();
+  host.layout('first', { x: 300, y: 50, width: 300, height: 600 });
+  expect(createView).toHaveBeenCalledTimes(3);
+  expect(views[0].getVisible()).toBe(true);
+  expect(views[1].getVisible()).toBe(true);
 });

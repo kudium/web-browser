@@ -1,8 +1,10 @@
 # Reusable sidebar panels
 
-The existing right sidebar is shared by Chat, Notes, Activity, Tasks, Developer,
-and registered feature panels. Its width, resize handle, and placement remain
-owned by the workspace shell.
+The right sidebar contains independent Chat, Notes, Activity, Tasks, Developer,
+Email and registered-feature pages. Opening a page appends its column in opening
+order; an already-open page keeps its position. Each page has its own close
+control. Width, resize handle and right/bottom placement remain owned by the
+workspace shell.
 
 ## React feature content
 
@@ -19,8 +21,8 @@ These blank windows are permitted only by the trusted workspace host. Remote
 navigation remains blocked.
 
 Retained React pages use `AssistantPanelVisibilityContext` to pause work that
-is only needed while visible. The host reports a docked page as visible only
-when selected and the sidebar is open; floating pages remain visible. Keep
+is only needed while visible. The host reports a docked page as visible while its own column is open;
+floating pages remain visible. Keep
 drafts mounted while pausing subscriptions and refreshes for hidden pages.
 
 ## Isolated native feature content
@@ -292,12 +294,74 @@ back discards the forward branch. History survives closing/reopening the sidebar
 for the current browser session; it does not retain old versions of a provider's
 updated document.
 
+## Portable project groups
+
+Linking a folder from the Developer panel or dropping it on a group reads its
+`kudium.workspace.json` before writing browser context. An existing manifest gets
+the shared workspace diff review: group name and slug, layout, supported session
+mode, URLs and tab pins, project scripts, site permissions, terminal definitions,
+skills and named AI sessions. Existing tabs and scripts are retained. Script
+commands are saved without execution; restored terminals stay stopped. AI trust
+and browser access mode require a separate review through the existing permission
+guards. `setup_project` retains its own approved link path and does not repeat the
+native import review.
+
+With **Keep browser context in linked projects** enabled, one main-process writer
+updates the manifest after group, URL, project script, terminal or site-setting
+changes. Saves coalesce for 500 ms; unchanged layouts do no filesystem work. The
+file retains declared skills, named AI sessions and script shortcuts. Terminal
+directories are relative to the project, so a teammate can clone the folder and
+link it in their own browser. Local browser/group IDs, global scripts, terminal
+output, live processes and account credentials remain outside the manifest.
+
+Unlinking retains the portable JSON. Starting the browser leaves an existing
+manifest intact. External edits are checked before subsequent writes; conflicting
+changes show a notice in the project section and require relinking for review.
+The AI's existing `get_workspace_config` tool reads this file, and the generated
+AGENTS.md reference points project agents to it and the Kudium MCP bridge.
+
+## Linking project folders
+
+The Developer page presents Link Folder on its own centered row. Linking from
+Developer or group settings selects Files; group settings opens the same
+Developer panel using its existing navigation event. Both controls share the
+saved group view through `browser/developerViews.ts`.
+
+A drop on the Developer page validates a local directory and asks for
+confirmation before changing the group's project link. Cancelling leaves the
+link and current view untouched. Group access is checked again after the dialog.
+A drop anywhere inside the terminal bypasses project linking and inserts safely
+quoted filesystem paths into the selected terminal. It does not insert `cd`,
+press Enter, open a new terminal, or execute the dropped path. Control characters
+in filenames are rejected; terminal readiness and the selected tab are respected.
+
+## Developer terminal restoration
+
+The existing main-process `ProjectTerminals` store remembers each group's tabs,
+names, selection, visibility, size, output and working directories in the private
+`developer-terminals.json` file. Restoring a tab starts a fresh shell without
+replaying previously executed commands.
+
+On macOS and Linux, shell directory changes are read from the owning process,
+not from terminal text. Submitted input triggers a check; output checks wait for
+a quiet interval. Checks coalesce and run at most once per second per shell;
+macOS uses a PID-scoped lsof call with a 500 ms deadline. Saved commands do not
+probe continuously while producing output. Late results are ignored after exit,
+restart, removal, access changes or project replacement. Directories must resolve
+inside the linked project, including through symlinks. If a restored subdirectory
+was deleted, the tab opens at the project root. Windows retains the directory
+chosen when creating a terminal. No live shell processes or commands are replayed
+from disk.
+
 ## Shared bottom docking
 
-The workspace panel container supports right and bottom placement for Chat, Notes,
-Activity, Tasks, Developer and native panels. `PanelDockButton` shares
-`usePanelDock`; placement and bottom height are saved locally. Changing placement
-keeps every existing `SidebarPanelHost` portal and native provider mounted. The
+The workspace panel container supports independent right or bottom placement for
+Chat, Notes, Activity, Tasks, Developer, Email and native panels. Right and bottom
+areas can be open at the same time. `PanelDockButton` uses the page’s dock
+context, with `usePanelDock` as the legacy default; placement and bottom height
+are saved locally. Changing a page’s placement
+moves its stable column portal container and keeps every existing
+`SidebarPanelHost` portal and native provider mounted. The
 existing `SidebarResizeHandle` supports horizontal and vertical movement. The
 viewport and native-panel bounds observers remain the only layout reporters.
 
@@ -305,3 +369,184 @@ Page Developer Tools registers as a native feature provider when Dock in panel i
 selected. The existing registry owns its picker, resize bounds, suspension,
 retention and pop-out behavior. Its Manage control opens the native DevTools dock
 menu. Closing the inspected tab removes its provider.
+
+## Sidebar resizing
+
+Manual resizing keeps native webpages live. `SidebarResizeHandle` updates the
+workspace CSS dimension once per animation frame through `liveResize` and commits
+the saved width on release or cancellation. Keyboard sizing still commits directly.
+The viewport observer sends `geometryOnly` layouts with no app metadata; the main
+process accepts bounds only for the owning window's existing visible tabs and checks
+current group access. It updates native bounds without reconfiguring tabs or
+publishing tab state. Dialogs and overlapping portals retain snapshot suspension.
+
+Run `.erb/scripts/sidebar-resize-smoke.cjs` with Electron from `apps/browser` for
+the native view fixture. It checks intermediate bounds and final viewport agreement
+with synthetic pointer events; it does not simulate physical OS pointer routing.
+
+Native panel slots follow position-only ancestor motion while it is active,
+including intermediate frames, and stop tracking on completion or after 1.5 seconds
+if an end event is lost. Unchanged rounded bounds and visibility do not cause native
+view updates. Terminal sizing reuses the shared live resize handle; inspector sizing
+uses its live callback for native geometry and publishes tab state only on commit.
+Screenshot-area dragging batches image measurements and selection changes to a frame
+and flushes the final pointer position before saving the crop.
+
+## Space and group switching
+
+Active-space and remembered-tab changes notify this window synchronously. They
+do not broadcast shared metadata events or scan saved tabs. Shared edits still
+use the existing space update and workspace persistence paths. Keep unaffected
+space objects stable, and resolve the destination remembered tab on the first
+render so native layout never briefly selects a neighboring tab in the old space.
+Clicked spaces move 12 px over 120 ms; deliberate swipes keep their full-width
+transition and reduced-motion behavior.
+
+Native tab-state publication deduplicates identical payloads per renderer. Clear
+that cache on renderer reload, tab removal and group-lock changes; new windows
+receive their own first state. Native page visibility and bounds only update
+when changed. This retains existing pages and does not bypass ownership checks.
+
+After building the renderer, run `node .erb/scripts/run-browser-ui-smoke.cjs
+--space-switching-only` from `apps/browser` for 40 consecutive UI-driven space
+and group clicks against real WebContentsViews. The disposable local fixture
+checks remembered tabs, retained page identities and intermediate native focus,
+and writes latency samples and a screenshot. Its 10 ms observation interval and
+warmed local pages do not establish performance for cold or remote pages.
+
+The `--switching-stress-only` fixture covers 810 saved tabs in 10 spaces and
+210 groups, delayed cold responses, three pages with 8,000 DOM cards and
+recurring 15 ms JavaScript tasks, retained form drafts, and MDN, Wikipedia and
+GitHub cold loads. It reports selected UI frame latency separately from native
+view visibility, records renderer long tasks/frame gaps and writes a Chromium
+CPU profile. Public-site failures are reported separately from local correctness
+checks. Small-sample percentiles and profiler overhead are not whole-app latency
+guarantees; inspect outliers and repeat with one benchmark process at a time.
+
+
+## Popup presentation over native surfaces
+
+The shared overlay observer marks intersecting popup content pending until the
+owning native page and/or docked panel acknowledge the current suspension token.
+Keep content mounted for Radix positioning, autofocus and dismissal; pending
+content has zero opacity and no pointer interaction. Overlapping content skips
+its opening animation, so it appears together after native views yield. Popups
+outside native surfaces keep their normal presentation.
+
+Popup capture and replacement-image presentation each have an 80 ms deadline;
+a stalled capture yields without a snapshot. The page and panel prepare in
+parallel. Dismissal invalidates pending tokens, and late captures cannot hide a
+restored view or reveal an old popup. Other snapshot consumers keep their existing wait and capture fallback; native
+page suspension is bounded even when a dialog requests it before mounting.
+
+Run `.erb/scripts/popup-overlay-smoke.cjs` with Electron from `apps/browser` for
+a disposable native-page fixture using the actual Browser options and GroupPicker
+components. It checks delayed intermediate frames, cancellation, autofocus,
+action selection and retained page state. Synthetic input and a local page do
+not establish installed-app or remote-page latency.
+
+
+Default item-aligned Select menus participate directly in overlap detection,
+including when they have no Radix popper wrapper. Custom renderer popups opt in
+with `data-native-overlay-content` and reuse the same readiness and suspension
+path; assistant composer suggestions use this marker. Pending popup descendants
+cannot receive pointer input.
+
+Docked right/bottom page inspectors contribute their own snapshot frame at their
+actual bounds. Inspector frames retain their owning tab ID and access checks, and
+are keyed by surface so the page is never stretched over the inspector. Detached
+inspectors and panels retain their separate-window lifecycle.
+
+Compact folder-style tab groups render one icon stack and open the shared anchored
+tab preview. They never render inline tab lists or change the saved expanded state;
+returning to the full sidebar restores that state.
+
+
+Compact collections use the shared anchored preview, including empty collections.
+The rail shows one collection icon and active highlight, never nested groups or
+inline creation controls. Click and ArrowRight/ArrowDown open its popup without
+changing persisted collapse state. Popups provide New group and Manage collection
+through the existing creation and settings handlers. Empty collections reuse
+EmptyState and expose one creation action. A single Add menu in the compact rail
+uses existing tab, group and collection actions; full-sidebar controls are retained.
+
+The hidden sidebar reserves an 8px visual frame. Keep its renderer trigger at that
+width; observe `before-mouse-event` on visible website and docked inspector views
+to extend hover access to the first 16px of the window. Do not cancel page mouse
+events or add a transparent native shield. Coalesce enter/leave notifications,
+ignore drags and suspended views, and unsubscribe when the native view is destroyed.
+
+## Independent sidebar page columns
+
+`useSidebarPages` owns opening order and active-page focus. Session storage keeps
+window-local ordering across renderer reloads; a local layout preference restores
+the last saved IDs and focus in a new app session. Widths and individual docks
+restore separately. Only available registered providers contribute native columns;
+unavailable saved providers reserve no empty space. The old single-page layout
+migrates on first use. Toolbar toggles and shared header Close controls remove only
+their own page. Every request to open an existing page reveals its column, including when the
+active page has been scrolled out, without reordering it.
+`SidebarPageColumns` keeps the existing keyed hosts mounted, including closed
+pages, so drafts, AI streams and terminal content retain their identity. Do not
+render a second AISidebar or duplicate feature state for each column.
+
+Right columns keep independent saved widths; their total area is bounded to
+leave room for the website. Fit each displayed column to its available area without
+overwriting the saved preference. Column hosts own committed widths; do not spread
+page width variables onto the workspace, where they override fitted sizes. The
+shared outer area handle clears its temporary page width after committing, including
+zero-distance and cancelled drags. Additional columns scroll horizontally. Bottom
+columns fill the webpage’s full width, with the last column absorbing remaining
+space. They fit smaller rows down to the shared 240px minimum before scrolling.
+Dividers redistribute the two neighboring widths, with animation-frame live CSS
+updates and preference commits only on release. The outer right handle resizes
+the first right page; the bottom edge handle controls the bottom area’s height.
+`useSidebarPageDocks` stores each page’s placement independently. Each shared
+PanelDockButton uses its column’s context, leaving other pages in place. Both
+areas maintain opening order and their existing content identities. The selected column remains
+visible when the area resizes. Native content rectangles are intersected with the
+scrolling area before the existing registry receives them; fully scrolled-out
+native content is hidden. Column-order changes update geometry without an
+intermediate null layout. Dock/undock callbacks open or close their own page and
+never replace other columns. The shared AssistantPageHeader supplies each built-in
+page's close action. Mixed right/bottom docking reuses the same hosts and order.
+
+The Arrange panel grip supports header dragging and Alt+Left/Right movement.
+Clicking it constructs the native layout menu on demand, with movement, Balance
+panel widths and Reset panel layout. Reset restores standard ordering, widths,
+right docking and bottom height while preserving open content.
+
+The main registry creates independent lanes using its existing native lifecycle
+for each activated logical panel. Tab-specific documents of the same extension
+follow its existing provider selection; unrelated extensions and hook outputs
+remain open together. Explicit close, dock, pop-out, content replacement
+and geometry affect only that provider. Closed views remain cached for reopening;
+provider removal and unloading dispose them. Profile and availability checks remain
+in the shared registry and extension adapter.
+
+Run `.erb/scripts/sidebar-native-pages-smoke.cjs` with Electron from `apps/browser`
+for concurrent real native extension/hook views, retained drafts after close/reopen,
+independent pop-out/dock, overlay suspension and cleanup. It uses disposable local
+providers and does not establish compatibility with every extension.
+
+Run `.erb/scripts/sidebar-pages-smoke.cjs` with Electron from `apps/browser` for
+actual Developer, Email and Chat columns against a live local native web page.
+It checks order, independent close/reopen, retained input, narrow-window scrolling,
+independent placement, full-width bottom rows, divider dragging in both dock
+areas, repeated reveal requests and complete layout restoration in a fresh window
+session. Its fixture has no signed-in accounts and does not verify
+remote email or AI operations.
+
+## Responsive panel headers
+
+AssistantPageHeader measures only its own controls with resize and mutation
+observers. Secondary buttons and the dock selector collapse into More panel
+options when controls overlap or the row overflows, and return when it widens. Keep titles, Close,
+Arrange and picker/popup anchors in the header. Data-header-essential marks any
+feature-specific control that must remain visible. Overflow controls stay mounted;
+More builds native menu metadata only on click and dispatches the existing action
+or select change. Recheck disabled state, connection and header visibility after
+selection so stale menu choices cannot operate on closed pages.
+
+The sidebar page Electron fixture checks narrow Chat and Activity headers, button
+bounds and independent docking from More. It uses local disposable data.

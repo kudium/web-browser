@@ -1,6 +1,6 @@
 // Optional resize settings use parameter defaults for both sidebar positions.
 /* eslint-disable react/require-default-props */
-import { useEffect, useRef } from 'react';
+import { RefObject, useEffect, useRef } from 'react';
 
 export const defaultSidebarWidth = 300;
 const minimum = 240;
@@ -22,8 +22,13 @@ export function SidebarResizeHandle({
   minWidth = minimum,
   maxWidth = maximum(),
   resetWidth = defaultSidebarWidth,
+  liveResize,
+  onLiveChange,
+  step = 10,
 }: {
   width: number;
+  step?: number;
+  liveResize?: { target: RefObject<HTMLElement | null>; property: string };
   axis?: 'horizontal' | 'vertical';
   label?: string;
   className?: string;
@@ -32,15 +37,32 @@ export function SidebarResizeHandle({
   maxWidth?: number;
   resetWidth?: number;
   onChange: (nextWidth: number) => void;
+  onLiveChange?: (nextWidth: number) => void;
   onResizingChange: (resizing: boolean) => void;
 }) {
-  const drag = useRef<{ pointer: number; x: number; width: number } | undefined>(undefined);
+  const drag = useRef<
+    { pointer: number; x: number; width: number } | undefined
+  >(undefined);
   const frame = useRef(0);
+  const liveWidth = useRef<number | undefined>(undefined);
   const pendingWidth = useRef<number | undefined>(undefined);
   const removeDragListeners = useRef<() => void | undefined>(undefined);
-  useEffect(() => () => { cancelAnimationFrame(frame.current); removeDragListeners.current?.(); }, []);
-  const change = (value: number) =>
-    onChange(Math.round(Math.max(minWidth, Math.min(maxWidth, value))));
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(frame.current);
+      removeDragListeners.current?.();
+    },
+    []
+  );
+  const change = (value: number) => {
+    const next = Math.round(Math.max(minWidth, Math.min(maxWidth, value)));
+    const target = liveResize?.target.current;
+    if (drag.current && target && liveResize) {
+      target.style.setProperty(liveResize.property, `${next}px`);
+      if (liveWidth.current !== next) onLiveChange?.(next);
+      liveWidth.current = next;
+    } else onChange(next);
+  };
   const flush = () => {
     cancelAnimationFrame(frame.current);
     frame.current = 0;
@@ -56,6 +78,8 @@ export function SidebarResizeHandle({
     removeDragListeners.current?.();
     removeDragListeners.current = undefined;
     if (drag.current) {
+      if (liveWidth.current !== undefined) onChange(liveWidth.current);
+      liveWidth.current = undefined;
       drag.current = undefined;
       onResizingChange(false);
     }
@@ -67,7 +91,9 @@ export function SidebarResizeHandle({
       role="separator"
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
-      aria-label={label || (side === 'right' ? 'Resize AI sidebar' : 'Resize sidebar')}
+      aria-label={
+        label || (side === 'right' ? 'Resize AI sidebar' : 'Resize sidebar')
+      }
       aria-orientation={axis === 'vertical' ? 'horizontal' : 'vertical'}
       aria-valuemin={minWidth}
       aria-valuemax={maxWidth}
@@ -88,12 +114,15 @@ export function SidebarResizeHandle({
                   .width || width,
         };
         event.currentTarget.setPointerCapture(event.pointerId);
-        // Suspending a native WebContentsView can release DOM capture. Track
-        // this drag at window level until its matching release/cancellation.
+        // Keep tracking the captured drag through native view boundary changes
+        // until its matching release or cancellation.
         const move = (input: PointerEvent) => {
           if (drag.current?.pointer === input.pointerId) {
-            pendingWidth.current = drag.current.width +
-              ((axis === 'vertical' ? input.clientY : input.clientX) - drag.current.x) * (side === 'right' ? -1 : 1);
+            pendingWidth.current =
+              drag.current.width +
+              ((axis === 'vertical' ? input.clientY : input.clientX) -
+                drag.current.x) *
+                (side === 'right' ? -1 : 1);
             if (!frame.current) frame.current = requestAnimationFrame(flush);
           }
         };
@@ -119,14 +148,14 @@ export function SidebarResizeHandle({
       onPointerCancel={finish}
       onDoubleClick={() => change(resetWidth)}
       onKeyDown={(event) => {
-        const step = event.shiftKey ? 30 : 10;
+        const increment = event.shiftKey ? step * 3 : step;
         if (event.key === (axis === 'vertical' ? 'ArrowUp' : 'ArrowLeft')) {
           event.preventDefault();
-          change(width + (side === 'right' ? step : -step));
+          change(width + (side === 'right' ? increment : -increment));
         }
         if (event.key === (axis === 'vertical' ? 'ArrowDown' : 'ArrowRight')) {
           event.preventDefault();
-          change(width + (side === 'right' ? -step : step));
+          change(width + (side === 'right' ? -increment : increment));
         }
         if (event.key === 'Home') {
           event.preventDefault();

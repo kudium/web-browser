@@ -144,8 +144,10 @@ jest.mock('electron', () => {
     WebContentsView: jest.fn().mockImplementation((options) => ({
       options,
       setBorderRadius: jest.fn(),
-      setVisible: jest.fn(),
-      setBounds: jest.fn(),
+      setVisible: jest.fn(function (this: { visible?: boolean }, value: boolean) { this.visible = value; }),
+      getVisible: function (this: { visible?: boolean }) { return !!this.visible; },
+      setBounds: jest.fn(function (this: { bounds?: object }, value: object) { this.bounds = value; }),
+      getBounds: function (this: { bounds?: object }) { return this.bounds || { x: 0, y: 0, width: 0, height: 0 }; },
       webContents: Object.assign(new Emitter(), {
         isDestroyed: () => false,
         isDevToolsOpened: () => false,
@@ -371,7 +373,7 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     { suspended: false, sidebarSuspended: true },
   ]) {
     emit(window.webContents, [], [], undefined, visibility);
-    expect(suspendPanel).toHaveBeenLastCalledWith(window, visibility.sidebarSuspended);
+    expect(suspendPanel).toHaveBeenLastCalledWith(window, visibility.sidebarSuspended, undefined);
   }
   suspendPanel.mockRestore();
   emit({} as any);
@@ -432,7 +434,7 @@ it('restores lazily, isolates groups, retains visited hidden views and closes re
     width: 800,
     height: 600,
   });
-  expect(views[1].setVisible).toHaveBeenCalledWith(false);
+  expect(views[1].getVisible()).toBe(false);
   emit();
   expect(WebContentsView).toHaveBeenCalledTimes(3);
   const popup = views[0].webContents.setWindowOpenHandler.mock.calls[0][0]({

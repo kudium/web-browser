@@ -16,8 +16,11 @@ export function GroupIcon({
   compact?: boolean;
   expanded?: boolean;
 }) {
+  const compactFolder =
+    compact && item.groupDisplay === 'folder' && !item.favorite;
   if (
     item.groupDisplay === 'folder' &&
+    !compactFolder &&
     !item.favorite &&
     !item.sessionIconEmoji &&
     !item.sessionIconImage
@@ -40,13 +43,13 @@ export function GroupIcon({
     })
     .slice(0, 3);
   const mixed =
-    (!compact || item.favorite) &&
+    (!compact || item.favorite || compactFolder) &&
     !item.sessionIconEmoji &&
     !item.sessionIconImage &&
     icons.length > 1;
   return (
     <span
-      className={`group-icon-slot${mixed ? ' group-icons' : ''}`}
+      className={`group-icon-slot${mixed ? ' group-icons' : ''}${compactFolder ? ' compact-group-stack' : ''}`}
       aria-hidden="true"
     >
       {mixed ? icons.map((tab) => <TabIcon key={tab.id} tab={tab} />) : null}

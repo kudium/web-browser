@@ -126,7 +126,7 @@ export function AIComposerSuggestions({
       ?.scrollIntoView?.({ block: 'nearest' });
   }, [selectedIndex]);
   return createPortal(
-    <div className="ai-composer-suggestions" ref={popup}>
+    <div className="ai-composer-suggestions" data-native-overlay-content ref={popup}>
       {children}
     </div>,
     overlay ||

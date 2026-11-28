@@ -28,6 +28,7 @@ import { GroupIcon } from './GroupIcon';
 import { IconPicker } from './IconPicker';
 import { collectionProfile } from '../../utils/collectionGroups';
 import type { SidebarDropResult } from '../../browser/sidebarDrop';
+import { setDeveloperView } from '../../browser/developerViews';
 import { DeveloperProjectSection } from './DeveloperProjectSection';
 
 function GroupEditorContent({
@@ -650,6 +651,11 @@ function GroupEditorContent({
               sourceId={item.id}
               active
               settingsOnly
+              onProjectLinked={() => {
+                setDeveloperView(aiGroupId(item), 'files');
+                window.dispatchEvent(new CustomEvent('kudiumbrowser-open-group-developer', { detail: item.id }));
+                close();
+              }}
               onOpenDeveloper={() => {
                 window.dispatchEvent(
                   new CustomEvent('kudiumbrowser-open-group-developer', {

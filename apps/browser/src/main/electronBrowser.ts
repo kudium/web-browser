@@ -1,3 +1,5 @@
+import { observeSidebarHoverEdge } from './sidebarHoverEdge';
+import { ProjectWorkspaceSync } from './projectWorkspaceSync';
 import { activeNoteFor, sameActiveNote } from './activeNote';
 import { captureSelectedText } from './selectionCapture';
 import { savePageSelection } from './pageSelection';
@@ -44,7 +46,7 @@ import { extensionDocumentId, assertExtensionDocument } from './extensionDocumen
 import { extensionCreatedTab } from '../browser/extensionTabs';
 import { extensionActiveTab } from './extensionSidePanels';
 import { registerExtensionWorkspace } from './extensionWorkspaceGroups';
-import { presentSnapshots } from './snapshotPresentation';
+import { presentSnapshots, captureNativeViewSnapshots } from './snapshotPresentation';
 import {
   getGroupRemovalJournal,
   registerGroupRemoval,
@@ -167,21 +169,27 @@ export function registerElectronBrowser(
     if (windows) windows.remove(view); else window.contentView.removeChildView(view);
     activityLayoutChanges.emit('change');
   };
-  const sendState = (state: BrowserState) =>
-    windows
-      ? windows.updateState(state)
-      : window.webContents.send('browser-state', state);
+  const stateSignatures = new Map<string, string>();
+  const resetStateSignatures = () => stateSignatures.clear();
+  window.webContents.on('did-start-loading', resetStateSignatures);
+  const sendState = (state: BrowserState) => {
+    if (windows) return windows.updateState(state);
+    const signature = JSON.stringify(state);
+    if (stateSignatures.get(state.id) === signature) return;
+    stateSignatures.set(state.id, signature);
+    window.webContents.send('browser-state', state);
+  };
   let developerWindows: ReturnType<typeof registerSiteDeveloperWindows>;
   let synchronizingExtensions = false;
-  const groupMutations = new Map<string, { window: BrowserWindow; changes: { id: string; changes: Partial<IApp> }[]; finish(error?: string): void }>();
+  const groupMutations = new Map<string, { window: BrowserWindow; changes: { id: string; changes: Partial<IApp> }[]; additions: IApp[]; finish(error?: string): void }>();
   // The renderer owns the workspace: group edits round-trip through it and
   // resolve once it confirms the save (extension tab groups and AI share this).
-  const updateGroupTabs = (owner: BrowserWindow, changes: { id: string; changes: Partial<IApp> }[]) =>
+  const updateGroupTabs = (owner: BrowserWindow, changes: { id: string; changes: Partial<IApp> }[], additions: IApp[] = []) =>
     new Promise<void>((resolve, reject) => {
       const mutationId = randomUUID();
       const timer = setTimeout(() => { groupMutations.delete(mutationId); reject(new Error('The workspace did not save the group change')); }, 10000);
-      groupMutations.set(mutationId, { window: owner, changes, finish(error) { clearTimeout(timer); error ? reject(new Error(error)) : resolve(); } });
-      owner.webContents.send('browser-tab-request', { action: 'extension-group-update', mutationId, groupChanges: changes });
+      groupMutations.set(mutationId, { window: owner, changes, additions, finish(error) { clearTimeout(timer); error ? reject(new Error(error)) : resolve(); } });
+      owner.webContents.send('browser-tab-request', { action: 'extension-group-update', mutationId, groupChanges: changes, groupAdditions: additions });
     });
   const releaseExtensionWorkspace = privateMode ? () => {} : registerExtensionWorkspace({
     apps: () => [...configurations.values()],
@@ -237,7 +245,7 @@ export function registerElectronBrowser(
       createView:()=>view, manage:()=>showPageDevToolsMenu(contents,owner)});
     host.activate(id,true);
     return ()=>host.remove(id);
-  });
+  }, (view, owner) => { observeSidebarHoverEdge(view, owner, host => windows ? windows.isSidebarHidden(host) : sidebarHidden && !suspended); });
   window.once('closed', () => pageDevTools.dispose());
   const savedDeveloperErrors = new Map<
     string,
@@ -394,6 +402,7 @@ export function registerElectronBrowser(
   let visible = new Set<string>();
   let pipVisible = new Set<string>();
   let suspended = false;
+  let sidebarHidden = false;
   let autoPiPEnabled = getBrowserPreferences().automaticPictureInPicture;
   const linkPreviews = new Map<BrowserWindow, { tooltip: NativeTooltip; tabId?: string }>();
   const hideLinkPreview = (id?: string) => {
@@ -425,9 +434,8 @@ export function registerElectronBrowser(
       });
     const failure = failures.get(id);
     const initialLoading = !loaded.has(id) && !failure;
-    view.setVisible(
-      visible.has(id) && !suspended && !failure && !initialLoading
-    );
+    const showing = visible.has(id) && !suspended && !failure && !initialLoading;
+    if (view.getVisible() !== showing) view.setVisible(showing);
     const origin = siteOrigin(contents.getURL());
     const profile = loginProfileKey(configurations.get(id) || ({} as IApp));
     const state: BrowserState = {
@@ -515,9 +523,25 @@ export function registerElectronBrowser(
     edited.delete(id);
     sleeping.delete(id);
     lastStates.delete(id);
+    stateSignatures.delete(id);
+    windows?.forgetState(id);
     failures.delete(id);
     loaded.delete(id);
   };
+  const workspaceSync = privateMode ? undefined : new ProjectWorkspaceSync(() =>
+    [...configurations.values()].filter((item) => !removals.blocks(item) && !isGroupLocked(item))
+  );
+  const workspaceFor = (host: BrowserWindow) => workspaceSync ? {
+    sync: workspaceSync,
+    update: (changes: { id: string; changes: Partial<IApp> }[], additions: IApp[] = []) => {
+      for (const patch of changes) {
+        const current = configurations.get(patch.id);
+        if (!current || hostFor(patch.id) !== host || isGroupLocked(current) || removals.blocks(current))
+          throw new Error('This group is no longer available.');
+      }
+      return updateGroupTabs(host, changes, additions);
+    },
+  } : undefined;
   const applyLayout = (incomingLayout: BrowserLayout, prepared = false) => {
     if (!incomingLayout.suspended && pendingOverlay) {
       pendingOverlay = undefined;
@@ -580,28 +604,12 @@ export function registerElectronBrowser(
             .slice(0, 20)
             .map((item) => item.id)
         : [];
-      const snapshots = [...new Set([...visible, ...previewIds])].map(
-        async (id) => {
-          const browserView = views.get(id);
-          if (!browserView || browserView.webContents.isDestroyed())
-            return undefined;
-          const bounds = browserView.getBounds();
-          try {
-            const capture = await browserView.webContents.capturePage();
-            return {
-              id,
-              ...bounds,
-              previewOnly: !visible.has(id),
-              image: (visible.has(id)
-                ? capture
-                : capture.resize({ width: 480 })
-              ).toDataURL(),
-            };
-          } catch {
-            return undefined;
-          }
-        }
-      );
+      const snapshots = [...new Set([...visible, ...previewIds])].map(id => {
+        const view = views.get(id);
+        if (!view) return Promise.resolve([]);
+        const inspector = visible.has(id) ? pageDevTools.snapshotView(view.webContents, hostFor(id)) : undefined;
+        return captureNativeViewSnapshots(id, [{view}, ...(inspector ? [{view:inspector, surface:'devtools' as const}] : [])], {previewOnly: !visible.has(id)});
+      });
       Promise.all(snapshots)
         .then(async (frames) => {
           if (
@@ -612,12 +620,14 @@ export function registerElectronBrowser(
             return undefined;
           await presentSnapshots(
             window,
-            frames.filter(
+            frames.flat().filter(
               (frame): frame is NonNullable<typeof frame> =>
                 !!frame &&
                 !!configurations.get(frame.id) &&
                 !isGroupLocked(configurations.get(frame.id)!)
-            )
+            ),
+            undefined,
+            80,
           );
           if (
             !pendingOverlay ||
@@ -639,6 +649,7 @@ export function registerElectronBrowser(
     focusedId = layout.focusedId;
     const wasVisible = pipVisible;
     suspended = Boolean(layout.suspended);
+    sidebarHidden = Boolean(layout.sidebarHidden);
     visible = new Set(layout.visible.map((item) => item.id));
     linkPreviews.forEach(entry => { if (entry.tabId && !visible.has(entry.tabId)) hideLinkPreview(entry.tabId); });
     if (!suspended) pictureInPicture.forEach((controller, id) => {
@@ -723,6 +734,7 @@ export function registerElectronBrowser(
         if (!adopted) window.contentView.addChildView(view);
         const browserView = view;
         const contents = view.webContents;
+        observeSidebarHoverEdge(view, () => hostFor(item.id), host => windows ? windows.isSidebarHidden(host) : sidebarHidden && !suspended);
         contents.on('update-target-url', (_event, url) => {
           if (!url || !getBrowserPreferences().showLinkPreview || url.length > 65536 ||
               !visible.has(item.id) || suspended || isGroupLocked(configurations.get(item.id) || item)) {
@@ -1440,12 +1452,8 @@ export function registerElectronBrowser(
       if (slot || focusedId === item.id) hiddenSince.delete(item.id);
       else if (!hiddenSince.has(item.id)) hiddenSince.set(item.id, Date.now());
       if (!slot || suspended) pageDevTools.hide(view.webContents);
-      view.setVisible(
-        Boolean(slot) &&
-          !suspended &&
-          !failures.has(item.id) &&
-          loaded.has(item.id)
-      );
+      const showing = Boolean(slot) && !suspended && !failures.has(item.id) && loaded.has(item.id);
+      if (view.getVisible() !== showing) view.setVisible(showing);
       if (slot) {
         const profileId = loginProfileKey(item);
         if ((layout.focusedId || layout.visible[0]?.id) === item.id)
@@ -1470,15 +1478,24 @@ export function registerElectronBrowser(
         slot &&
         [slot.x, slot.y, slot.width, slot.height].every(Number.isFinite)
       ) {
-        view.setBounds(pageDevTools.layout(view.webContents, hostFor(item.id), {
+        const bounds = pageDevTools.layout(view.webContents, hostFor(item.id), {
           x: Math.max(0, Math.round(slot.x)),
           y: Math.max(0, Math.round(slot.y)),
           width: Math.max(0, Math.round(slot.width)),
           height: Math.max(0, Math.round(slot.height)),
-        }, !suspended && !failures.has(item.id) && loaded.has(item.id)));
+        }, !suspended && !failures.has(item.id) && loaded.has(item.id));
+        const previousBounds = view.getBounds();
+        if (bounds.x !== previousBounds.x || bounds.y !== previousBounds.y ||
+          bounds.width !== previousBounds.width || bounds.height !== previousBounds.height)
+          view.setBounds(bounds);
       }
       publish(item.id, view);
     });
+    workspaceSync?.refresh();
+    if (!windows && layout.suspended && layout.nativeOverlayToken !== undefined && !window.isDestroyed())
+      window.webContents.send('browser-native-overlay-ready', {surface:'page', token:layout.nativeOverlayToken});
+    if (!windows && layout.sidebarOverlay && layout.sidebarOverlayToken !== undefined && !window.isDestroyed())
+      window.webContents.send('browser-sidebar-overlay-ready', layout.sidebarOverlayToken);
   };
   const resetUnloadedHistory = (
     id: string,
@@ -1694,6 +1711,8 @@ export function registerElectronBrowser(
         const current = configurations.get(patch.id);
         if (current) configurations.set(patch.id, { ...current, ...patch.changes });
       }
+      if (!request.error) for (const app of pending.additions) configurations.set(app.id, app);
+      if (!request.error) workspaceSync?.refresh();
       pending.finish(request.error);
       return;
     }
@@ -2335,7 +2354,7 @@ export function registerElectronBrowser(
         void pageDevTools.open(contents, request.action.replace('page-devtools-', '') as 'right' | 'bottom' | 'panel' | 'window').catch(error => console.warn('Could not open page Developer Tools', error));
         break;
       case 'page-devtools-resize':
-        pageDevTools.resize(contents, request.devToolsFraction!);
+        pageDevTools.resize(contents, request.devToolsFraction!, request.devToolsLive !== true);
         break;
       case 'page-devtools-close':
         pageDevTools.close(contents);
@@ -2748,9 +2767,11 @@ export function registerElectronBrowser(
         window,
         () =>
           [...configurations.values()].filter((item) => !removals.blocks(item)),
-        (id) => views.get(id)?.webContents
+        (id) => views.get(id)?.webContents,
+        workspaceFor(window)
       );
   const releaseGroupLocks = getGroupLocks().subscribe(() => {
+    stateSignatures.clear();
     [...configurations.entries()].forEach(([id, item]) => {
       if (!isGroupLocked(item)) return;
       const view = views.get(id);
@@ -2768,6 +2789,30 @@ export function registerElectronBrowser(
     });
     developerWindows.update();
   });
+  const resizeViews = (source: BrowserWindow, layout: BrowserLayout) => {
+    if (layout.suspended || suspended || pendingOverlay) return;
+    const slots = windows ? windows.resize(source, layout.visible) : layout.visible;
+    if (!slots || (!windows && (slots.length !== visible.size || slots.some(slot => !visible.has(slot.id))))) return;
+    let changed = false;
+    for (const slot of slots) {
+      const item = configurations.get(slot.id);
+      const view = views.get(slot.id);
+      if (!item || !view || view.webContents.isDestroyed() || hostFor(slot.id) !== source || isGroupLocked(item) || removals.blocks(item)) continue;
+      const bounds = pageDevTools.layout(view.webContents, source, {
+        x: Math.max(0, Math.round(slot.x)), y: Math.max(0, Math.round(slot.y)),
+        width: Math.max(0, Math.round(slot.width)), height: Math.max(0, Math.round(slot.height)),
+      }, !failures.has(item.id) && loaded.has(item.id));
+      const previous = view.getBounds();
+      if (previous.x === bounds.x && previous.y === bounds.y && previous.width === bounds.width && previous.height === bounds.height) continue;
+      view.setBounds(bounds);
+      changed = true;
+    }
+    if (changed) {
+      hideLinkPreview();
+      activityLayoutChanges.emit('change');
+      developerWindows.update();
+    }
+  };
   const sync = (event: IpcMainEvent, layout: BrowserLayout) => {
     const source =
       windows?.trusted(event) ||
@@ -2776,7 +2821,8 @@ export function registerElectronBrowser(
         ? window
         : undefined);
     if (!source || !isBrowserLayout(layout)) return;
-    suspendSidebarPanels(source, Boolean(layout.sidebarSuspended ?? layout.suspended));
+    if (layout.geometryOnly) { resizeViews(source, layout); return; }
+    suspendSidebarPanels(source, Boolean(layout.sidebarSuspended ?? layout.suspended), layout.panelOverlayToken);
     const chromeFocused = source.webContents.isFocused();
     if (windows) windows.setLayout(source, layout);
     else applyLayout(layout);
@@ -2808,6 +2854,12 @@ export function registerElectronBrowser(
   );
   const stopRuntime = windows?.attach({
     view: (id) => views.get(id),
+    snapshotViews: (id, owner) => {
+      const view = views.get(id);
+      if (!view) return [];
+      const inspector = pageDevTools.snapshotView(view.webContents, owner);
+      return [{view}, ...(inspector ? [{view:inspector, surface:'devtools' as const}] : [])];
+    },
     state: (id) => lastStates.get(id),
     chrome: (host) => {
       watchClosing(host);
@@ -2831,7 +2883,8 @@ export function registerElectronBrowser(
                 windows.allows(host, item.id)
               ),
             (id) =>
-              windows.allows(host, id) ? views.get(id)?.webContents : undefined
+              windows.allows(host, id) ? views.get(id)?.webContents : undefined,
+            workspaceFor(host)
           );
       onWindowClosed(host, () => {
         capture();
@@ -2883,6 +2936,7 @@ export function registerElectronBrowser(
     releaseExtensionWorkspace();
     for (const pending of groupMutations.values()) pending.finish('Browser window closed');
     groupMutations.clear();
+    workspaceSync?.dispose();
     if (disposed) return;
     disposed = true;
     if (privateMode) clearPrivateSiteSettings(privateProfilePrefix);
@@ -2909,6 +2963,7 @@ export function registerElectronBrowser(
     keyboardCleanup.forEach((cleanup) => cleanup());
     pendingTabCleanup.forEach((cleanup) => cleanup());
     window.removeListener('closed', dispose);
+    window.webContents.removeListener('did-start-loading', resetStateSignatures);
     ipcMain.removeListener('browser-sync', sync);
     ipcMain.removeListener('browser-command', command);
     websiteTabs.forEach(({ contents, cleanup }) => {

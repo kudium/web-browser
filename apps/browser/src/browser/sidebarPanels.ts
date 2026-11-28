@@ -42,6 +42,7 @@ export interface SidebarPanelTarget {
 export interface SidebarPanelState {
   panels: SidebarPanelInfo[];
   activeId?: string;
+  openedPanels?: Array<{ id: string; floating?: boolean; error?: string; snapshot?: import('./contracts').BrowserSnapshot }>;
   canGoBack?: boolean;
   canGoForward?: boolean;
   openRequest: number;
@@ -57,9 +58,7 @@ export type SidebarPanelRequest =
   | { action: 'manage'; id: string }
   | { action: 'activate'; id: string; reveal?: boolean }
   | { action: 'target'; groupId?: string }
-  | { action: 'close' }
-  | { action: 'undock' }
-  | { action: 'dock' }
+  | { action: 'close' | 'undock' | 'dock'; id?: string }
   | {
       action: 'layout';
       id: string;

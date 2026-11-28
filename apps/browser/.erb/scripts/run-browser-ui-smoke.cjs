@@ -11,7 +11,7 @@ env.KUDIUMBROWSER_SMOKE_OUTPUT ||= path.join(
 const result = spawnSync(
   require('electron'),
   ['.erb/scripts/browser-ui-smoke.cjs', ...process.argv.slice(2)],
-  { cwd: appRoot, env, stdio: 'inherit', timeout: 60000 },
+  { cwd: appRoot, env, stdio: 'inherit', timeout: process.argv.includes('--switching-stress-only') ? 190000 : 60000 },
 );
 if (result.error) console.error(result.error);
 process.exitCode = result.error || result.status !== 0 ? result.status || 1 : 0;
